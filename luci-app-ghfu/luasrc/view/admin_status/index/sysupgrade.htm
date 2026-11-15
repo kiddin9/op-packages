@@ -1,0 +1,31 @@
+<%
+local fs = require "nixio.fs"
+local uci = require "luci.model.uci".cursor()
+local autoupgrade_fm = "1"
+
+if fs.access("/etc/config/luci") then
+    autoupgrade_fm = uci:get("luci", "main", "autoupgrade_fm") or autoupgrade_fm
+end
+if autoupgrade_fm == "1" then
+-%>
+<script type="text/javascript">
+(function() {
+    var checkUrl = '<%=url([[admin]], [[system]], [[ghfu]], [[sysversion_check]])%>';
+    fetch(checkUrl, { method: 'GET', credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+            if (json && json.code === 0 && json.notice && json.version) {
+                var mainContent = document.querySelector("#maincontent");
+                if (mainContent) {
+                    var banner = document.createElement("div");
+                    banner.className = "alert-message fade-in success";
+                    banner.style.cssText = "display:flex;margin-top:-1.5rem;padding:0.31rem 0rem;";
+                    banner.innerHTML = '<div style="flex:10"><a href="<%=url([[admin]], [[system]], [[ghfu]])%>"><p><%:New version available%>：' + json.version + '</p></a></div>';
+                    mainContent.insertBefore(banner, mainContent.firstChild);
+                }
+            }
+        })
+        .catch(function() {});
+})();
+</script>
+<% end -%>

@@ -1,5 +1,9 @@
 include $(TOPDIR)/rules.mk
 
+PKG_NAME:=luci-app-tailscale-next
+PKG_VERSION:=1.0.0
+PKG_RELEASE:=2
+
 LUCI_TITLE:=LuCI support for Tailscale Next
 LUCI_URL:=https://github.com/tokisaki-galaxy/luci-app-tailscale-community
 PKG_DESCRIPTION:=Provides a LuCI Web management interface for Tailscale, allowing viewing status, configuring nodes and daemons.

@@ -8,11 +8,12 @@ PKG_NAME:=luci-app-cloudflared-next
 
 LUCI_TITLE:=LuCI for Cloudflared
 LUCI_DEPENDS:=+cloudflared-next
+LUCI_PKGARCH:=all
 LUCI_DESCRIPTION:=LuCI support for Cloudflare Zero Trust Tunnels
 
 PKG_MAINTAINER:=Hilman Maulana <hilman0.0maulana@gmail.com>, Sergey Ponomarev <stokito@gmail.com>
 PKG_VERSION:=1.2
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Apache-2.0
 
 include $(TOPDIR)/feeds/luci/luci.mk

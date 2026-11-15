@@ -1,0 +1,2143 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-only
+Copyright (C) 2026 smallprogram & Kiddin'
+Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware filtering, auto-selection & flash.js validation
+-->
+
+<%+header%>
+
+<style>
+    /* ── CSS变量：亮色主题 ─────────────────────────────── */
+    :root {
+        --ghfu-text:          #1e293b;
+        --ghfu-text-muted:    #475569;
+        --ghfu-border:        #d1d5db;
+        --ghfu-bg-card:       transparent;
+        --ghfu-bg-status:     #eff6ff;
+        --ghfu-border-status: #93c5fd;
+        --ghfu-text-status:   #1e3a8a;
+        --ghfu-bg-assets:     transparent;
+        --ghfu-border-assets: #d1d5db;
+        --ghfu-divider:       #e5e7eb;
+        --ghfu-log-bg:        #0f172a;
+        --ghfu-log-text:      #dbeafe;
+        --ghfu-log-border:    #334155;
+        --ghfu-ok:            #16a34a;
+        --ghfu-new:           #dc2626;
+        --ghfu-warn:          #d97706;
+        --ghfu-modal-bg:      #ffffff;
+        --ghfu-modal-text:    #1e293b;
+        --ghfu-modal-muted:   #475569;
+        --ghfu-spinner-track: #e2e8f0;
+        --ghfu-spinner-head:  #2563eb;
+        --ghfu-overlay:       rgba(15, 23, 42, 0.70);
+        --ghfu-accent:        #2563eb;
+        --ghfu-danger:        #ef4444;
+        --ghfu-card-shadow:   0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+        --ghfu-row-hover:     rgba(148, 163, 184, 0.13);
+        --ghfu-row-selected:  rgba(37, 99, 235, 0.09);
+        --ghfu-input-ro-bg:   rgba(148, 163, 184, 0.07);
+    }
+
+    /* ── 暗色主题变量覆盖（JS检测后设置 data-ghfu-dark 属性触发） ── */
+    #ghfu-root[data-ghfu-dark] {
+        --ghfu-text:          #e2e8f0;
+        --ghfu-text-muted:    #94a3b8;
+        --ghfu-border:        #334155;
+        --ghfu-bg-status:     #1e2d40;
+        --ghfu-border-status: #3b82f6;
+        --ghfu-text-status:   #93c5fd;
+        --ghfu-border-assets: #334155;
+        --ghfu-divider:       #1e293b;
+        --ghfu-log-bg:        #0a0f1e;
+        --ghfu-log-text:      #bfdbfe;
+        --ghfu-log-border:    #1e3a5f;
+        --ghfu-ok:            #4ade80;
+        --ghfu-new:           #f87171;
+        --ghfu-warn:          #fbbf24;
+        --ghfu-modal-bg:      #1e293b;
+        --ghfu-modal-text:    #e2e8f0;
+        --ghfu-modal-muted:   #94a3b8;
+        --ghfu-spinner-track: #334155;
+        --ghfu-spinner-head:  #60a5fa;
+        --ghfu-overlay:       rgba(0, 0, 0, 0.80);
+        --ghfu-accent:        #60a5fa;
+        --ghfu-danger:        #fb7185;
+        --ghfu-card-shadow:   0 2px 8px rgba(0,0,0,0.35);
+        --ghfu-row-hover:     rgba(148, 163, 184, 0.10);
+        --ghfu-row-selected:  rgba(96, 165, 250, 0.14);
+        --ghfu-input-ro-bg:   rgba(148, 163, 184, 0.05);
+    }
+
+    #ghfu-root {
+        max-width: none;
+        margin: 0;
+        padding: 14px 16px 12px;
+    }
+
+    #ghfu-root.ghfu-input-locked {
+        pointer-events: none;
+        user-select: none;
+    }
+
+    #ghfu-root h2 {
+        margin: 0 0 8px;
+        color: var(--ghfu-text);
+        letter-spacing: 0;
+    }
+
+    #ghfu-root .ghfu-subtitle {
+        color: var(--ghfu-text-muted);
+        margin: 0 0 12px;
+        font-size: 12px;
+    }
+
+    .ghfu-alert-banner {
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin: 0 0 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        border: 1px solid rgba(245, 158, 11, 1);
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--ghfu-warn);
+    }
+
+    .ghfu-alert-banner a {
+        color: var(--ghfu-accent);
+        text-decoration: underline;
+        font-weight: 700;
+    }
+
+    #ghfu-root .cbi-value-title {
+        color: var(--ghfu-text) !important;
+        font-weight: 600;
+    }
+
+    #ghfu-root .ghfu-wide {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .ghfu-layout {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        grid-auto-rows: minmax(0, auto);
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    .ghfu-card {
+        border: 1px solid var(--ghfu-border);
+        border-radius: 12px;
+        background: var(--ghfu-bg-card);
+        padding: 16px;
+        box-shadow: var(--ghfu-card-shadow), 0 6px 18px rgba(15, 23, 42, 0.08);
+        transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
+
+    .ghfu-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--ghfu-card-shadow), 0 20px 38px rgba(15, 23, 42, 0.22);
+        border-color: color-mix(in srgb, var(--ghfu-border) 65%, var(--ghfu-accent) 35%);
+    }
+
+    .ghfu-card-title {
+        margin: 0 0 14px;
+        padding: 2px 0 10px 12px;
+        border-left: 3px solid var(--ghfu-accent);
+        border-bottom: 1px solid var(--ghfu-divider);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--ghfu-text);
+    }
+
+    .ghfu-card .cbi-value {
+        margin: 0 0 10px;
+    }
+
+    .ghfu-card .cbi-value:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Row 1: Left = Status (5 cols), Right = Available Firmware (5 cols) */
+    .ghfu-card-status    { grid-column: 1 / span 5; grid-row: 1; }
+    .ghfu-card-assets    { grid-column: 6 / span 5; grid-row: 1; }
+    /* Row 2: Left = Execution Logs (6 cols), Right = updatelogs.txt Changelog (4 cols) */
+    .ghfu-card-log       { grid-column: 1 / span 6; grid-row: 2; }
+    .ghfu-card-changelog { grid-column: 7 / span 4; grid-row: 2; }
+
+    .ghfu-card-log,
+    .ghfu-card-changelog {
+        min-height: 520px;
+        height: 520px;
+    }
+
+    .ghfu-card-log > .cbi-value-field,
+    .ghfu-card-assets > .cbi-value-field,
+    .ghfu-card-changelog > .cbi-value-field {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    #ghfu_status {
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 auto;
+        box-sizing: border-box;
+        border: 1px solid var(--ghfu-border-status);
+        border-radius: 8px;
+        background: linear-gradient(145deg, var(--ghfu-bg-status) 0%, rgba(148, 163, 184, 0.08) 100%);
+        padding: 10px 14px;
+        color: var(--ghfu-text-status);
+        line-height: 1.7;
+    }
+
+    .ghfu-status-hero {
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 10px;
+        font-weight: 700;
+        border: 1px solid transparent;
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--ghfu-text-status);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ghfu-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    .ghfu-badge-formal {
+        background: rgba(22, 163, 74, 0.16);
+        color: var(--ghfu-ok);
+        border: 1px solid rgba(22, 163, 74, 0.35);
+    }
+
+    .ghfu-badge-beta {
+        background: rgba(217, 119, 6, 0.16);
+        color: var(--ghfu-warn);
+        border: 1px solid rgba(217, 119, 6, 0.35);
+    }
+
+    .ghfu-badge-rec {
+        background: rgba(37, 99, 235, 0.14);
+        color: var(--ghfu-accent);
+        border: 1px solid rgba(37, 99, 235, 0.35);
+        margin-left: 6px;
+        font-size: 10.5px;
+        padding: 1px 6px;
+    }
+
+    .ghfu-badge-latest {
+        background: rgba(22, 163, 74, 0.14);
+        color: var(--ghfu-ok);
+        border: 1px solid rgba(22, 163, 74, 0.32);
+        margin-left: 6px;
+        font-size: 10.5px;
+        padding: 1px 6px;
+    }
+
+    .ghfu-status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .ghfu-status-item {
+        border: 1px dashed var(--ghfu-border-status);
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: rgba(255, 255, 255, 0.20);
+        color: var(--ghfu-text-status);
+        min-width: 0;
+        word-break: break-word;
+    }
+
+    #ghfu_assets {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 145px;
+        max-height: 210px;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        border: 1px solid var(--ghfu-border-assets);
+        border-radius: 8px;
+        padding: 4px 6px;
+        background: var(--ghfu-bg-assets);
+        box-sizing: border-box;
+    }
+
+    #ghfu_assets .ghfu-asset-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px;
+        padding: 8px 10px;
+        margin: 2px 0;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        cursor: pointer;
+        transition: background 0.14s, border-color 0.14s;
+        color: var(--ghfu-text);
+        text-decoration: none;
+        line-height: 1.4;
+    }
+
+    #ghfu_assets .ghfu-asset-row:hover {
+        background: var(--ghfu-row-hover);
+    }
+
+    #ghfu_assets .ghfu-asset-row.ghfu-row-selected {
+        background: var(--ghfu-row-selected);
+        border-color: var(--ghfu-accent);
+    }
+
+    #ghfu_assets .ghfu-asset-row input[type="radio"] {
+        flex: 0 0 16px;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        accent-color: var(--ghfu-accent);
+        pointer-events: none;
+    }
+
+    #ghfu_assets .ghfu-asset-name {
+        color: var(--ghfu-text);
+        flex: 1;
+        min-width: 0;
+        word-break: break-word;
+        line-height: 1.4;
+    }
+
+    #ghfu_updatelogs_box {
+        width: 100%;
+        height: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        box-sizing: border-box;
+        border: 1px solid var(--ghfu-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-y: auto;
+        background: var(--ghfu-input-ro-bg);
+        color: var(--ghfu-text);
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-line;
+    }
+
+    #ghfu_updatelogs_box a {
+        color: orangered;
+        text-decoration: underline;
+    }
+
+    #ghfu_updatelogs_box h4 {
+        margin: 8px 0 4px;
+        padding-bottom: 0;
+        color: var(--ghfu-text);
+    }
+
+    #ghfu_log {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 0;
+        height: 100%;
+        flex: 1 1 auto;
+        display: block;
+        box-sizing: border-box;
+        border-radius: 8px;
+        border: 1px solid var(--ghfu-log-border);
+        background: var(--ghfu-log-bg);
+        color: var(--ghfu-log-text);
+        font-family: "Cascadia Mono", "JetBrains Mono", "Consolas", monospace;
+        line-height: 1.45;
+    }
+
+    .ghfu-conclusion-ok   { color: var(--ghfu-ok);   font-weight: 700; }
+    .ghfu-conclusion-new  { color: var(--ghfu-new);  font-weight: 700; }
+    .ghfu-conclusion-warn { color: var(--ghfu-warn); font-weight: 700; }
+
+    .ghfu-status-hero.ghfu-conclusion-ok {
+        border-color: rgba(34, 197, 94, 0.35);
+        background: rgba(34, 197, 94, 0.10);
+        color: var(--ghfu-ok);
+    }
+
+    .ghfu-status-hero.ghfu-conclusion-new {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.10);
+        color: var(--ghfu-new);
+    }
+
+    .ghfu-status-hero.ghfu-conclusion-warn {
+        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(245, 158, 11, 0.10);
+        color: var(--ghfu-warn);
+    }
+
+    .ghfu-card-actions {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--ghfu-divider);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .ghfu-upgrade-bar {
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .ghfu-upgrade-checks {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .ghfu-upgrade-checks label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: normal;
+        color: var(--ghfu-text);
+        margin: 0;
+        user-select: none;
+    }
+
+    .ghfu-upgrade-checks input[type="checkbox"] {
+        margin: 0;
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        accent-color: var(--ghfu-accent);
+        cursor: pointer;
+    }
+
+    .ghfu-card-actions .cbi-button {
+        margin: 0;
+    }
+
+    .ghfu-btn-accent {
+        background: #834be2 !important;
+        border-color: #834be2 !important;
+        color: #ffffff !important;
+    }
+
+    .ghfu-card-assets .cbi-value {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+    }
+
+    .ghfu-card-assets .cbi-value-title {
+        margin: 0;
+        text-align: left;
+    }
+
+    #ghfu-root .cbi-button {
+        border-radius: 10px;
+        padding: 8px 16px;
+        transition: opacity 0.15s, filter 0.15s;
+    }
+
+    #ghfu-root .cbi-button:not(:disabled):hover {
+        filter: brightness(1.08);
+    }
+
+    #ghfu-root .cbi-button:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+        pointer-events: auto;
+    }
+
+    #ghfu_upgrade,
+    #ghfu_val_continue {
+        background: linear-gradient(135deg, var(--ghfu-danger) 0%, #f97316 100%) !important;
+        border-color: var(--ghfu-danger) !important;
+        color: #ffffff !important;
+    }
+
+    #ghfu_upgrade:not(:disabled):hover,
+    #ghfu_val_continue:not(:disabled):hover {
+        filter: brightness(1.12);
+    }
+
+    @media (max-width: 980px) {
+        .ghfu-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .ghfu-card-status,
+        .ghfu-card-assets,
+        .ghfu-card-log,
+        .ghfu-card-changelog {
+            grid-column: 1;
+            grid-row: auto;
+        }
+
+        .ghfu-card-log,
+        .ghfu-card-changelog {
+            height: 400px;
+            min-height: 320px;
+        }
+    }
+
+    @media (max-width: 760px) {
+        #ghfu-root { padding: 12px; }
+
+        .ghfu-status-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ghfu-card-actions,
+        .ghfu-upgrade-bar {
+            justify-content: stretch;
+        }
+
+        .ghfu-card-actions .cbi-button {
+            width: 100%;
+        }
+
+        .ghfu-card-assets .cbi-value {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+    }
+
+    #ghfu-upgrade-modal,
+    #ghfu-validate-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--ghfu-overlay);
+        z-index: 2147483647;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        touch-action: none;
+    }
+
+    body.ghfu-upgrade-lock,
+    html.ghfu-upgrade-lock {
+        overflow: hidden !important;
+    }
+
+    body.ghfu-upgrade-lock * {
+        pointer-events: none !important;
+    }
+
+    body.ghfu-upgrade-lock #ghfu-upgrade-modal,
+    body.ghfu-upgrade-lock #ghfu-upgrade-modal *,
+    body.ghfu-upgrade-lock #ghfu-validate-modal,
+    body.ghfu-upgrade-lock #ghfu-validate-modal * {
+        pointer-events: auto !important;
+    }
+
+    .ghfu-modal-box {
+        background: var(--ghfu-modal-bg);
+        border-radius: 14px;
+        padding: 32px 36px;
+        text-align: center;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+        max-width: 460px;
+        width: 92%;
+        box-sizing: border-box;
+    }
+
+    .ghfu-validate-box {
+        max-width: 540px;
+        text-align: left;
+        padding: 26px 30px;
+    }
+
+    .ghfu-modal-spinner {
+        width: 48px; height: 48px;
+        border: 5px solid var(--ghfu-spinner-track);
+        border-top-color: var(--ghfu-spinner-head);
+        border-radius: 50%;
+        animation: ghfu-spin 0.8s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    #ghfu-upgrade-modal.ghfu-modal-countdown .ghfu-modal-spinner {
+        display: none;
+    }
+
+    @keyframes ghfu-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .ghfu-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ghfu-modal-text);
+        margin-bottom: 10px;
+    }
+
+    .ghfu-modal-msg {
+        font-size: 13px;
+        color: var(--ghfu-modal-muted);
+        line-height: 1.6;
+    }
+
+    .ghfu-modal-actions {
+        margin-top: 18px;
+        display: none;
+        justify-content: center;
+    }
+
+    #ghfu-upgrade-modal.ghfu-modal-countdown .ghfu-modal-actions {
+        display: flex;
+    }
+
+    .ghfu-val-alert {
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 12px 0;
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        background: rgba(239, 68, 68, 0.10);
+        color: var(--ghfu-new);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .ghfu-val-code {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--ghfu-log-bg);
+        color: var(--ghfu-log-text);
+        font-family: "Cascadia Mono", "JetBrains Mono", "Consolas", monospace;
+        font-size: 12px;
+        max-height: 140px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .ghfu-val-meta {
+        margin: 10px 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--ghfu-border);
+        background: var(--ghfu-input-ro-bg);
+        color: var(--ghfu-modal-text);
+        font-size: 12px;
+        line-height: 1.5;
+        word-break: break-all;
+    }
+
+    .ghfu-val-force-row {
+        margin: 12px 0 6px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px dashed var(--ghfu-border);
+        background: var(--ghfu-input-ro-bg);
+    }
+
+    .ghfu-val-force-row label {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--ghfu-modal-text);
+    }
+
+    .ghfu-val-force-row input[type="checkbox"] {
+        margin-top: 2px;
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        accent-color: var(--ghfu-danger);
+        cursor: pointer;
+    }
+
+    .ghfu-val-force-desc {
+        margin-top: 6px;
+        margin-left: 24px;
+        font-size: 12px;
+        color: var(--ghfu-modal-muted);
+        line-height: 1.5;
+    }
+
+    .ghfu-val-actions {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--ghfu-divider);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+</style>
+
+<div class="cbi-map" id="ghfu-root">
+    <h2 id="ghfu_title"></h2>
+    <p class="ghfu-subtitle" id="ghfu_subtitle"></p>
+
+    <div id="ghfu_uci_warn" class="ghfu-alert-banner" style="display:none;"></div>
+    <div id="ghfu_custom_part_warn" class="ghfu-alert-banner" style="display:none;">
+        <%:Warning: Custom firmware with modified root partition size should use%> <a target="_blank" href="https://openwrt.ai">openwrt.ai</a> <%:or luci-app-attendedsysupgrade to rebuild, otherwise direct online upgrade will reset partitions and lose configuration.%>
+    </div>
+
+    <div class="cbi-section ghfu-layout">
+        <!-- 左上：系统与固件状态卡片 -->
+        <div class="ghfu-card ghfu-card-status">
+            <div class="ghfu-card-title" id="ghfu_status_label"></div>
+            <div id="ghfu_status"></div>
+
+            <div class="ghfu-card-actions">
+                <button class="cbi-button cbi-button-neutral ghfu-btn-accent" id="ghfu_backup" type="button"></button>
+                <button class="cbi-button cbi-button-action" id="ghfu_refresh" type="button"></button>
+                <button class="cbi-button cbi-button-neutral ghfu-btn-accent" id="ghfu_notes" type="button" disabled="disabled"></button>
+            </div>
+        </div>
+
+        <!-- 右上：可选固件卡片（底部直接选择保留配置/保留已安装软件包并刷入） -->
+        <div class="ghfu-card ghfu-card-assets">
+            <div class="ghfu-card-title" id="ghfu_assets_label"></div>
+
+            <div class="cbi-value">
+                <label class="cbi-value-title" for="ghfu_search" id="ghfu_search_label"></label>
+                <div class="cbi-value-field">
+                    <input id="ghfu_search" class="cbi-input-text ghfu-wide" type="text" />
+                </div>
+            </div>
+
+            <div class="cbi-value-field">
+                <div id="ghfu_assets"></div>
+            </div>
+
+            <div class="ghfu-card-actions ghfu-upgrade-bar">
+                <div class="ghfu-upgrade-checks">
+                    <label>
+                        <input id="ghfu_keep" type="checkbox" checked="checked" />
+                        <span id="ghfu_keep_label"></span>
+                    </label>
+                    <label>
+                        <input id="ghfu_retain_pkg" type="checkbox" />
+                        <span id="ghfu_retain_pkg_label"></span>
+                    </label>
+                </div>
+                <button class="cbi-button cbi-button-apply" id="ghfu_upgrade" type="button" disabled="disabled"></button>
+            </div>
+        </div>
+
+        <!-- 左下：执行日志卡片 -->
+        <div class="ghfu-card ghfu-card-log">
+            <div class="ghfu-card-title" id="ghfu_log_label"></div>
+            <div class="cbi-value-field">
+                <textarea id="ghfu_log" class="cbi-input-textarea" readonly="readonly"></textarea>
+            </div>
+        </div>
+
+        <!-- 右下：固件更新日志卡片（updatelogs.txt） -->
+        <div class="ghfu-card ghfu-card-changelog">
+            <div class="ghfu-card-title" id="ghfu_changelog_label"></div>
+            <div class="cbi-value-field">
+                <div id="ghfu_updatelogs_box"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 升级倒计时与刷入进度 Modal（倒计时阶段支持随时取消） -->
+<div id="ghfu-upgrade-modal">
+    <div class="ghfu-modal-box">
+        <div class="ghfu-modal-spinner"></div>
+        <div class="ghfu-modal-title" id="ghfu_modal_title"></div>
+        <div class="ghfu-modal-msg" id="ghfu_modal_msg"></div>
+        <div class="ghfu-modal-actions">
+            <button class="cbi-button cbi-button-neutral" id="ghfu_countdown_cancel" type="button"></button>
+        </div>
+    </div>
+</div>
+
+<!-- 固件校验不通过警告与强制升级选项 Modal（参考 LuCI flash.js） -->
+<div id="ghfu-validate-modal">
+    <div class="ghfu-modal-box ghfu-validate-box">
+        <div class="ghfu-modal-title" id="ghfu_val_title"></div>
+        <div class="ghfu-val-alert">
+            <div id="ghfu_val_summary"></div>
+            <div class="ghfu-val-code" id="ghfu_val_detail" style="display:none;"></div>
+        </div>
+        <div class="ghfu-val-meta" id="ghfu_val_meta" style="display:none;"></div>
+        <div id="ghfu_val_backup_warn" class="ghfu-alert-banner" style="display:none;margin:10px 0;"></div>
+        <div class="ghfu-val-force-row" id="ghfu_val_force_box">
+            <label>
+                <input type="checkbox" id="ghfu_val_force_chk" />
+                <span id="ghfu_val_force_label"></span>
+            </label>
+            <div class="ghfu-val-force-desc" id="ghfu_val_force_desc"></div>
+        </div>
+        <div class="ghfu-val-actions">
+            <button class="cbi-button cbi-button-neutral" id="ghfu_val_cancel" type="button"></button>
+            <button class="cbi-button cbi-button-apply" id="ghfu_val_continue" type="button" disabled="disabled"></button>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var I18N = {
+        title: '<%:System Online Upgrade%>',
+        subtitle: '<%:One-click firmware upgrade assistant powered by dl.openwrt.ai/firmware with automatic device adaptation.%>',
+        searchLabel: '<%:Firmware Fuzzy Search%>',
+        searchPlaceholder: '<%:Enter keyword to filter firmware names%>',
+        lastFlashedLabel: '<%:Last Flashed Firmware%>',
+        keepLabel: '<%:Keep Configuration%>',
+        retainPkgLabel: '<%:Retain Installed Packages%>',
+        statusLabel: '<%:System and Firmware Status%>',
+        assetsLabel: '<%:Available Firmware%>',
+        assetsLabelWithCount: '<%:Available Firmware (%d)%>',
+        logLabel: '<%:Logs%>',
+        changelogLabel: '<%:Firmware Changelog%>',
+        noChangelog: '<%:No firmware changelog available%>',
+        refreshBtn: '<%:Check Update%>',
+        flashLatestBtn: '<%:Flash this latest firmware%>',
+        reflashLatestBtn: '<%:Already latest version, sure to reflash this version?%>',
+        flashOldBtn: '<%:Sure to flash this older version?%>',
+        waitingStatus: '<%:Waiting to check firmware%>',
+        noMatch: '<%:No matching firmware%>',
+        beginFetch: '<%:Checking latest firmware%>',
+        fetchFailed: '<%:Check failed%>',
+        requestFailed: '<%:Request failed: %>',
+        latestRelease: '<%:Latest version: %>',
+        statusUpdated: '<%:Status updated%>',
+        currentVersion: '<%:Current system version%>',
+        currentDevice: '<%:Current device%>',
+        latestRel: '<%:Latest version%>',
+        pubTime: '<%:Published time%>',
+        releaseTotal: '<%:Firmware count%>',
+        fetchingInProgress: '<%:Checking...%>',
+        fetchFirmwareFailed: '<%:Failed to fetch firmware list%>',
+        fetchFieldFailed: '<%:Fetch failed%>',
+        chooseFirmware: '<%:Please select firmware to upgrade%>',
+        chooseAsset: '<%:Please select a firmware asset%>',
+        upgradeReqFailed: '<%:Upgrade request failed: %>',
+        selectedFirmware: '<%:Selected firmware: %>',
+        unknown: '<%:unknown%>',
+        backupBtn: '<%:Download Backup%>',
+        upgradingTitle: '<%:Upgrading System%>',
+        upgradingMsg: '<%:Upgrade successful, Waiting for device...%>',
+        unreachableMsg: '<%:Device unreachable! Still waiting for device...%>',
+        beginDownload: '<%:Starting download: %>',
+        countdownPrefix: '<%:System upgrade will start in %>',
+        countdownSuffix: '<%: seconds%>',
+        startingUpgrade: '<%:Flashing...%>',
+        countdownLockTitle: '<%:Firmware Download Completed%>',
+        countdownLockMsg: '<%:Firmware is ready. System upgrade will start in %d seconds. Please do not leave this page.%>',
+        countdownCancelBtn: '<%:Cancel Upgrade%>',
+        countdownCancelledLog: '<%:Upgrade countdown cancelled by user, temporary firmware removed%>',
+        fetchTimedOut: '<%:Unable to fetch firmware list, please check your network connection%>',
+        notesBtn: '<%:Open Firmware Directory%>',
+        notesUnavailable: '<%:Firmware directory URL is unavailable, please check update again%>',
+        popupBlocked: '<%:Unable to open a new window. Please allow pop-ups in your browser.%>',
+        autoFilterMatched: '<%:Automatically selected recommended firmware: %s%>',
+        businessLocked: '<%:Upgrade workflow is running, please wait until current operation finishes%>',
+        formalBadge: '<%:Formal Release%>',
+        betaBadge: '<%:Preview Release%>',
+        recBadge: '<%:Recommended%>',
+        latestBadge: '<%:Latest%>',
+        unsavedUciWarn: '<%:Warning: There are unsaved changes that will get lost on reboot!%>',
+        valTitle: '<%:Firmware Image Check Failed%>',
+        valSummary: '<%:The uploaded image file does not contain a supported format. Make sure that you choose the generic image format for your platform.%>',
+        valForceLabel: '<%:Force upgrade%>',
+        valForceDesc: '<%:Select \'Force upgrade\' to flash the image even if the image format check fails. Use only if you are sure that the firmware is correct and meant for your device!%>',
+        valNotForceable: '<%:Force upgrade is disallowed for this image by the system validator.%>',
+        valNoBackupWarn: '<%:The image does not support keeping current configuration; configuration retention will be disabled (-n).%>',
+        valCancelBtn: '<%:Cancel%>',
+        valContinueBtn: '<%:Force Flash%>',
+        valCancelledLog: '<%:Upgrade cancelled by user after firmware check warning%>',
+        sizeLabel: '<%:Size%>',
+        sha256Label: '<%:SHA256%>'
+    };
+
+    var BUILTIN_VALID_EXTS = ['.img.gz', '.img', '.bin', '.tar.gz', '.tar', '.itb', '.trx', '.chk', '.dlf', '.ari'];
+    var assets = [];
+    var selectedAsset = null;
+    var selectedReleaseText = '';
+    var lastFlashedFirmwareText = '';
+    var latestReleaseName = '';
+    var latestReleaseUrl = '';
+    var latestIsFormal = true;
+    var hasNewUpdate = false;
+    var lastInstallEpoch = 0;
+    var currentDeviceInfo = null;
+    var resolvedDevicePath = '';
+    var routerTzOffsetMin = null;
+    var rebootPollTimer = null;
+    var rebootPollAttempts = 0;
+    var rebootSeenOffline = false;
+    var upgradeModalActive = false;
+    var downloadPollTimer = null;
+    var countdownTimer = null;
+    var activeCountdownFwName = '';
+    var upgradeWorkflowBusy = false;
+    var pendingValidationCtx = null;
+    var appVersion = '<%=app_version or ""%>';
+
+    function byId(id) { return document.getElementById(id); }
+    function t(key) { return I18N[key] || key; }
+    function trim(s) { return String(s || '').replace(/^\s+|\s+$/g, ''); }
+
+    function updateAssetsLabel(count) {
+        byId('ghfu_assets_label').textContent = t('assetsLabelWithCount').replace('%d', String(count || 0));
+    }
+
+    function updateTitle() {
+        byId('ghfu_title').textContent = appVersion ? (t('title') + ' v' + appVersion) : t('title');
+    }
+
+    function isAssetLatest(asset) {
+        if (!asset) {
+            return true;
+        }
+        if (typeof asset.is_latest === 'boolean') {
+            return asset.is_latest;
+        }
+        if (latestReleaseName && asset.version_tag) {
+            return asset.version_tag === latestReleaseName;
+        }
+        if (latestReleaseName && asset.name) {
+            return String(asset.name).indexOf(latestReleaseName) !== -1;
+        }
+        return true;
+    }
+
+    function updateUpgradeButtonText() {
+        var btn = byId('ghfu_upgrade');
+        if (!btn) return;
+
+        if (!selectedAsset) {
+            btn.textContent = hasNewUpdate ? t('flashLatestBtn') : t('reflashLatestBtn');
+            return;
+        }
+
+        if (!isAssetLatest(selectedAsset)) {
+            btn.textContent = t('flashOldBtn');
+        } else if (hasNewUpdate) {
+            btn.textContent = t('flashLatestBtn');
+        } else {
+            btn.textContent = t('reflashLatestBtn');
+        }
+    }
+
+    function updateWarnings(hasUnsavedUci) {
+        var uciWarn = byId('ghfu_uci_warn');
+        if (uciWarn) {
+            if (hasUnsavedUci) {
+                uciWarn.textContent = t('unsavedUciWarn');
+                uciWarn.style.display = 'block';
+            } else {
+                uciWarn.style.display = 'none';
+            }
+        }
+        var partWarn = byId('ghfu_custom_part_warn');
+        if (partWarn && currentDeviceInfo) {
+            partWarn.style.display = currentDeviceInfo.is_kwrt ? 'none' : 'block';
+        }
+    }
+
+    function updateConfig(cfg) {
+        if (!cfg) { return; }
+        if (byId('ghfu_keep')) {
+            byId('ghfu_keep').checked = (cfg.keep_config || '1') === '1';
+        }
+        if (byId('ghfu_retain_pkg')) {
+            byId('ghfu_retain_pkg').checked = (cfg.retain_packages || '0') === '1';
+        }
+        if (cfg.selected_release !== undefined) {
+            lastFlashedFirmwareText = cfg.selected_release || '';
+        }
+    }
+
+    function setDisabled(id, disabled) {
+        var el = byId(id);
+        if (el) {
+            el.disabled = !!disabled;
+        }
+    }
+
+    function syncInteractiveState() {
+        var root = byId('ghfu-root');
+        var busy = !!upgradeWorkflowBusy;
+
+        if (root) {
+            root.classList.toggle('ghfu-input-locked', busy);
+        }
+
+        setDisabled('ghfu_keep', busy);
+        setDisabled('ghfu_retain_pkg', busy);
+        setDisabled('ghfu_search', busy);
+
+        setDisabled('ghfu_refresh', busy);
+        setDisabled('ghfu_backup', busy);
+        setDisabled('ghfu_upgrade', busy || assets.length === 0 || !selectedAsset);
+        setDisabled('ghfu_notes', busy || !latestReleaseUrl);
+
+        var radios = byId('ghfu_assets').querySelectorAll('input[type="radio"]');
+        radios.forEach(function(radio) {
+            radio.disabled = busy;
+        });
+
+        if (busy && root && root.contains(document.activeElement) && document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+    }
+
+    function setUpgradeWorkflowBusy(busy) {
+        upgradeWorkflowBusy = !!busy;
+        syncInteractiveState();
+    }
+
+    function ensureNotBusy() {
+        if (!upgradeWorkflowBusy) {
+            return true;
+        }
+        appendLog(t('businessLocked'));
+        return false;
+    }
+
+    function extractFirmwareName(text) {
+        var raw = trim(text || '');
+        if (!raw) {
+            return '';
+        }
+
+        var candidate = raw;
+        if (candidate.indexOf('/') !== -1) {
+            var seg = candidate.split('/');
+            while (seg.length > 0) {
+                var last = trim(seg.pop());
+                if (last) {
+                    candidate = last;
+                    break;
+                }
+            }
+        }
+
+        return trim(candidate);
+    }
+
+    function selectAsset(asset, silent) {
+        if (upgradeWorkflowBusy) {
+            return;
+        }
+        if (!asset || !asset.url) {
+            return;
+        }
+        selectedAsset = asset;
+        selectedReleaseText = (latestReleaseName ? (latestReleaseName + ' / ') : '') + (asset.name || '');
+        renderAssets();
+        updateUpgradeButtonText();
+        if (!silent) {
+            appendLog(t('selectedFirmware') + (asset.name || ''));
+        }
+    }
+
+    function applyAutoFirmwareFilter() {
+        var visible = getVisibleAssets();
+        if (!visible.length) {
+            selectedAsset = null;
+            updateUpgradeButtonText();
+            return;
+        }
+
+        selectAsset(visible[0], true);
+        appendLog(t('autoFilterMatched').replace('%s', visible[0].name));
+    }
+
+    function applyTheme() {
+        var root = byId('ghfu-root');
+        if (!root) return;
+        var isDark = false;
+
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            isDark = true;
+        }
+
+        if (!isDark) {
+            var darkClasses = ['dark', 'is-dark', 'night', 'dark-mode', 'theme-dark', 'luci-dark'];
+            var body = document.body;
+            var html = document.documentElement;
+            for (var i = 0; i < darkClasses.length; i++) {
+                if (body.classList.contains(darkClasses[i]) ||
+                    html.classList.contains(darkClasses[i])) {
+                    isDark = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isDark) {
+            var dt = document.body.getAttribute('data-theme') ||
+                     document.body.getAttribute('data-color-scheme') ||
+                     document.documentElement.getAttribute('data-theme') ||
+                     document.documentElement.getAttribute('data-argon-mode') ||
+                     document.body.getAttribute('data-argon-mode');
+            if (dt && dt.indexOf('dark') !== -1) isDark = true;
+        }
+
+        if (!isDark) {
+            try {
+                var bg = window.getComputedStyle(document.body).backgroundColor;
+                var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (m) {
+                    var lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
+                    if (lum < 0.4) isDark = true;
+                }
+            } catch (e) {}
+        }
+
+        if (isDark) {
+            root.setAttribute('data-ghfu-dark', '1');
+        } else {
+            root.removeAttribute('data-ghfu-dark');
+        }
+    }
+
+    function initTexts() {
+        updateTitle();
+        byId('ghfu_subtitle').textContent = t('subtitle');
+        byId('ghfu_search_label').textContent = t('searchLabel');
+        byId('ghfu_search').placeholder = t('searchPlaceholder');
+        byId('ghfu_keep_label').textContent = t('keepLabel');
+        byId('ghfu_retain_pkg_label').textContent = t('retainPkgLabel');
+        byId('ghfu_status_label').textContent = t('statusLabel');
+        updateAssetsLabel(0);
+        byId('ghfu_log_label').textContent = t('logLabel');
+        byId('ghfu_changelog_label').textContent = t('changelogLabel');
+        byId('ghfu_updatelogs_box').textContent = t('fetchingInProgress');
+        byId('ghfu_refresh').textContent = t('refreshBtn');
+        byId('ghfu_notes').textContent = t('notesBtn');
+        updateUpgradeButtonText();
+        byId('ghfu_backup').textContent = t('backupBtn');
+        byId('ghfu_modal_title').textContent = t('upgradingTitle');
+        byId('ghfu_modal_msg').textContent = t('upgradingMsg');
+        byId('ghfu_countdown_cancel').textContent = t('countdownCancelBtn');
+        byId('ghfu_val_title').textContent = t('valTitle');
+        byId('ghfu_val_summary').textContent = t('valSummary');
+        byId('ghfu_val_force_label').textContent = t('valForceLabel');
+        byId('ghfu_val_force_desc').textContent = t('valForceDesc');
+        byId('ghfu_val_cancel').textContent = t('valCancelBtn');
+        byId('ghfu_val_continue').textContent = t('valContinueBtn');
+
+        renderStatusCard({
+            conclusion: t('beginFetch'),
+            conclusionCls: 'ghfu-conclusion-warn',
+            currentVerValue: t('fetchingInProgress'),
+            deviceValue: t('fetchingInProgress'),
+            latestValue: t('fetchingInProgress'),
+            publishedValue: t('fetchingInProgress'),
+            releaseTotalValue: t('fetchingInProgress')
+        });
+    }
+
+    function pad2(v) {
+        return v < 10 ? ('0' + v) : String(v);
+    }
+
+    function toRouterDate(dateObj) {
+        if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+            return null;
+        }
+        var browserOffset = -new Date().getTimezoneOffset();
+        var targetOffset = (typeof routerTzOffsetMin === 'number') ? routerTzOffsetMin : browserOffset;
+        return new Date(dateObj.getTime() + (targetOffset - browserOffset) * 60000);
+    }
+
+    function formatRouterDate(dateObj) {
+        var d = toRouterDate(dateObj);
+        if (!d) {
+            return '-';
+        }
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' +
+            pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }
+
+    function formatEpochToRouter(epoch) {
+        if (!epoch) {
+            return '-';
+        }
+        return formatRouterDate(new Date(epoch * 1000));
+    }
+
+    function formatIsoToRouter(iso) {
+        if (!iso) {
+            return '-';
+        }
+        return formatRouterDate(new Date(iso));
+    }
+
+    function appendLog(line) {
+        var el = byId('ghfu_log');
+        var ts = formatRouterDate(new Date());
+        el.value += '[' + ts + '] ' + line + '\n';
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function getCurrentVersionDisplay() {
+        if (currentDeviceInfo && currentDeviceInfo.system_version) {
+            return currentDeviceInfo.system_version;
+        }
+        if (lastInstallEpoch) {
+            return formatEpochToRouter(lastInstallEpoch);
+        }
+        return t('fetchingInProgress');
+    }
+
+    function getCurrentDeviceDisplay() {
+        if (resolvedDevicePath) {
+            return resolvedDevicePath;
+        }
+        if (currentDeviceInfo) {
+            if (currentDeviceInfo.candidates && currentDeviceInfo.candidates.length > 0) {
+                return currentDeviceInfo.candidates[0];
+            }
+            if (currentDeviceInfo.board_name) {
+                return currentDeviceInfo.board_name;
+            }
+            if (currentDeviceInfo.model) {
+                return currentDeviceInfo.model;
+            }
+        }
+        return '-';
+    }
+
+    function getLastFlashedFirmwareDisplay(flashedRaw) {
+        var src = (flashedRaw !== undefined && flashedRaw !== null) ? flashedRaw : (lastFlashedFirmwareText || '');
+        var extracted = extractFirmwareName(src);
+        if (extracted) {
+            return extracted;
+        }
+        if (currentDeviceInfo && currentDeviceInfo.system_version && assets.length > 0 && assets[0] && assets[0].name) {
+            var curVer = trim(currentDeviceInfo.system_version);
+            if (/^\d{2}\.\d{2}\.\d{4}$/.test(curVer)) {
+                return String(assets[0].name).replace(/\b\d{2}\.\d{2}\.\d{4}\b/, curVer);
+            }
+        }
+        return '-';
+    }
+
+    function renderStatusCard(opts) {
+        var curVerText = t('currentVersion') + ': ' + (opts.currentVerValue || getCurrentVersionDisplay());
+        var deviceText = t('currentDevice') + ': ' + (opts.deviceValue || getCurrentDeviceDisplay());
+        var releaseText = t('latestRel') + ': ' + (opts.latestValue || '-');
+        var publishedText = t('pubTime') + ': ' + (opts.publishedValue || '-');
+        var releaseTotalText = t('releaseTotal') + ': ' + (opts.releaseTotalValue || '-');
+        var lastFlashedText = t('lastFlashedLabel') + ': ' + getLastFlashedFirmwareDisplay(opts.lastFlashedRaw);
+        var conclusionText = opts.conclusion || '-';
+        var conclusionCls = opts.conclusionCls || 'ghfu-conclusion-ok';
+        var badgeHtml = '';
+
+        if (opts.showBadge) {
+            if (opts.isFormal) {
+                badgeHtml = '<span class="ghfu-badge ghfu-badge-formal">' + escHtml(t('formalBadge')) + '</span>';
+            } else {
+                badgeHtml = '<span class="ghfu-badge ghfu-badge-beta">' + escHtml(t('betaBadge')) + '</span>';
+            }
+        }
+
+        byId('ghfu_status').innerHTML =
+            '<div class="ghfu-status-hero ' + conclusionCls + '">' +
+                '<span>' + escHtml(conclusionText) + '</span>' +
+                badgeHtml +
+            '</div>' +
+            '<div class="ghfu-status-grid">' +
+                '<div class="ghfu-status-item">' + escHtml(deviceText) + '</div>' +
+                '<div class="ghfu-status-item">' + escHtml(curVerText) + '</div>' +
+                '<div class="ghfu-status-item">' + escHtml(releaseText) + '</div>' +
+                '<div class="ghfu-status-item">' + escHtml(publishedText) + '</div>' +
+                '<div class="ghfu-status-item">' + escHtml(releaseTotalText) + '</div>' +
+                '<div class="ghfu-status-item" id="ghfu_status_flashed_item">' + escHtml(lastFlashedText) + '</div>' +
+            '</div>';
+    }
+
+    function escHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, function(c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+
+    function parseJsonResponse(r) {
+        return r.text().then(function(txt) {
+            try {
+                return JSON.parse(txt);
+            } catch (e) {
+                throw new Error('Server returned invalid JSON response');
+            }
+        });
+    }
+
+    function request(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams(data).toString()
+        }).then(parseJsonResponse);
+    }
+
+    function requestWithTimeout(url, data, timeoutMs) {
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams(data).toString(),
+            signal: controller.signal
+        }).then(function(r) {
+            clearTimeout(timer);
+            return parseJsonResponse(r);
+        }).catch(function(err) {
+            clearTimeout(timer);
+            throw err;
+        });
+    }
+
+    function humanSize(size) {
+        if (!size || size <= 0) return '0 B';
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var i = 0;
+        var n = size;
+        while (n >= 1024 && i < units.length - 1) {
+            n /= 1024;
+            i++;
+        }
+        return n.toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
+    }
+
+    function shouldKeepAsset(asset) {
+        if (!asset || typeof asset !== 'object') {
+            return false;
+        }
+        var name = String(asset.name || '').toLowerCase();
+        if (!name) {
+            return false;
+        }
+        for (var i = 0; i < BUILTIN_VALID_EXTS.length; i++) {
+            var ext = BUILTIN_VALID_EXTS[i];
+            if (name.length > ext.length && name.slice(-ext.length) === ext) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getVisibleAssets() {
+        return assets.filter(shouldKeepAsset);
+    }
+
+    function getSearchFilteredAssets() {
+        var raw = String(byId('ghfu_search').value || '').toLowerCase();
+        var kw = raw.replace(/[\s\u3000]+/g, ' ').replace(/^\s+|\s+$/g, '');
+        var tokens = kw ? kw.split(' ') : [];
+        return getVisibleAssets().filter(function(a) {
+            if (!tokens.length) {
+                return true;
+            }
+            var name = String(a.name || '').toLowerCase();
+            for (var i = 0; i < tokens.length; i++) {
+                if (name.indexOf(tokens[i]) === -1) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    function renderAssets() {
+        var box = byId('ghfu_assets');
+        box.innerHTML = '';
+
+        var filtered = getSearchFilteredAssets();
+
+        updateAssetsLabel(filtered.length);
+
+        if (!filtered.length) {
+            box.textContent = t('noMatch');
+            return;
+        }
+
+        filtered.forEach(function(a, idx) {
+            var isSelected = !!(selectedAsset && selectedAsset.url === a.url);
+            var row = document.createElement('div');
+            row.className = 'ghfu-asset-row' + (isSelected ? ' ghfu-row-selected' : '');
+
+            var id = 'ghfu_asset_' + idx;
+            var input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'ghfu_asset';
+            input.id = id;
+            input.value = a.url || '';
+            input.addEventListener('change', function() {
+                if (upgradeWorkflowBusy) {
+                    return;
+                }
+                selectAsset(a, false);
+            });
+
+            if (isSelected) {
+                input.checked = true;
+            }
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'ghfu-asset-name';
+            var sizeStr = (a.size && a.size > 0) ? (' (' + humanSize(a.size) + ')') : '';
+            var htmlName = escHtml((a.name || '') + sizeStr);
+            if (a.recommended) {
+                htmlName += '<span class="ghfu-badge ghfu-badge-rec">' + escHtml(t('recBadge')) + '</span>';
+            }
+            if (a.is_latest) {
+                htmlName += '<span class="ghfu-badge ghfu-badge-latest">' + escHtml(t('latestBadge')) + '</span>';
+            }
+            nameSpan.innerHTML = htmlName;
+
+            row.addEventListener('click', function() {
+                if (upgradeWorkflowBusy) {
+                    return;
+                }
+                if (!input.checked) {
+                    input.checked = true;
+                    selectAsset(a, false);
+                }
+            });
+
+            row.appendChild(input);
+            row.appendChild(nameSpan);
+            box.appendChild(row);
+        });
+
+        syncInteractiveState();
+    }
+
+    function normalizeAssets(raw) {
+        if (Array.isArray(raw)) {
+            return raw;
+        }
+        if (!raw || typeof raw !== 'object') {
+            return [];
+        }
+        var keys = Object.keys(raw).sort(function(a, b) {
+            var na = parseInt(a, 10), nb = parseInt(b, 10);
+            if (!isNaN(na) && !isNaN(nb)) {
+                return na - nb;
+            }
+            return String(a).localeCompare(String(b));
+        });
+        var out = [];
+        keys.forEach(function(k) {
+            if (raw[k] && typeof raw[k] === 'object') {
+                out.push(raw[k]);
+            }
+        });
+        return out;
+    }
+
+    function normalizeLogLines(raw) {
+        if (Array.isArray(raw)) {
+            return raw;
+        }
+        if (raw === null || raw === undefined) {
+            return [];
+        }
+        if (typeof raw === 'string') {
+            return raw ? [raw] : [];
+        }
+        if (typeof raw === 'object') {
+            var keys = Object.keys(raw).sort(function(a, b) {
+                var na = parseInt(a, 10), nb = parseInt(b, 10);
+                if (!isNaN(na) && !isNaN(nb)) {
+                    return na - nb;
+                }
+                return String(a).localeCompare(String(b));
+            });
+            var out = [];
+            keys.forEach(function(k) {
+                var v = raw[k];
+                if (v !== null && v !== undefined && String(v) !== '') {
+                    out.push(String(v));
+                }
+            });
+            return out;
+        }
+        return [String(raw)];
+    }
+
+    function saveUpgradeCheckOptions() {
+        if (upgradeWorkflowBusy) {
+            return;
+        }
+        var keepConfig = byId('ghfu_keep').checked ? '1' : '0';
+        var retainPkg = byId('ghfu_retain_pkg').checked ? '1' : '0';
+        request('<%=url([[admin]], [[system]], [[ghfu]], [[config]])%>', {
+            keep_config: keepConfig,
+            retain_packages: retainPkg
+        }).catch(function() {});
+    }
+
+    function stopDownloadPolling() {
+        if (downloadPollTimer) {
+            clearTimeout(downloadPollTimer);
+            downloadPollTimer = null;
+        }
+    }
+
+    function stopCountdownTimer() {
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+    }
+
+    function restoreButtonsAfterDownload() {
+        setUpgradeWorkflowBusy(false);
+    }
+
+    function showValidationModal(fwName, keepConfig, retainPkg, validation) {
+        var modal = byId('ghfu-validate-modal');
+        var detailEl = byId('ghfu_val_detail');
+        var metaEl = byId('ghfu_val_meta');
+        var backupWarnEl = byId('ghfu_val_backup_warn');
+        var forceChk = byId('ghfu_val_force_chk');
+        var forceDesc = byId('ghfu_val_force_desc');
+        var continueBtn = byId('ghfu_val_continue');
+
+        if (modal && modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        var msg = trim(validation && validation.message || '');
+        if (detailEl) {
+            if (msg) {
+                detailEl.textContent = msg;
+                detailEl.style.display = 'block';
+            } else {
+                detailEl.textContent = '';
+                detailEl.style.display = 'none';
+            }
+        }
+
+        if (metaEl) {
+            var metaParts = [];
+            if (validation && validation.size > 0) {
+                metaParts.push('<strong>' + escHtml(t('sizeLabel')) + ':</strong> ' + escHtml(humanSize(validation.size)));
+            }
+            if (validation && validation.sha256) {
+                metaParts.push('<strong>' + escHtml(t('sha256Label')) + ':</strong> <code>' + escHtml(validation.sha256) + '</code>');
+            }
+            if (metaParts.length > 0) {
+                metaEl.innerHTML = metaParts.join(' &nbsp;|&nbsp; ');
+                metaEl.style.display = 'block';
+            } else {
+                metaEl.style.display = 'none';
+            }
+        }
+
+        var allowBackup = !(validation && validation.allow_backup === false);
+        var effectiveKeepConfig = allowBackup ? keepConfig : '0';
+        if (backupWarnEl) {
+            if (!allowBackup && keepConfig === '1') {
+                backupWarnEl.textContent = t('valNoBackupWarn');
+                backupWarnEl.style.display = 'block';
+            } else {
+                backupWarnEl.style.display = 'none';
+            }
+        }
+
+        var forceable = !(validation && validation.forceable === false);
+        if (forceChk) {
+            forceChk.checked = false;
+            forceChk.disabled = !forceable;
+        }
+        if (forceDesc) {
+            forceDesc.textContent = forceable ? t('valForceDesc') : t('valNotForceable');
+        }
+        if (continueBtn) {
+            continueBtn.disabled = true;
+        }
+
+        pendingValidationCtx = {
+            fwName: fwName,
+            keepConfig: effectiveKeepConfig,
+            retainPkg: retainPkg,
+            forceable: forceable
+        };
+
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+        upgradeModalActive = true;
+        document.body.classList.add('ghfu-upgrade-lock');
+        document.documentElement.classList.add('ghfu-upgrade-lock');
+    }
+
+    function hideValidationModal() {
+        var modal = byId('ghfu-validate-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        pendingValidationCtx = null;
+        upgradeModalActive = false;
+        document.body.classList.remove('ghfu-upgrade-lock');
+        document.documentElement.classList.remove('ghfu-upgrade-lock');
+    }
+
+    function handleDownloadedFirmware(fwName, keepConfig, retainPkg, validation) {
+        var isValid = !(validation && validation.valid === false);
+        if (!isValid) {
+            showValidationModal(fwName, keepConfig, retainPkg, validation);
+            return;
+        }
+        var effectiveKeep = (validation && validation.allow_backup === false) ? '0' : keepConfig;
+        startUpgradeCountdown(fwName, effectiveKeep, retainPkg, false);
+    }
+
+    function pollDownloadProgress(keepConfig, retainPkg, offset) {
+        request('<%=url([[admin]], [[system]], [[ghfu]], [[download_status]])%>', {
+            offset: String(offset || 0)
+        }).then(function(resp) {
+            if (!resp || !resp.ok) {
+                appendLog(t('fetchFailed'));
+                restoreButtonsAfterDownload();
+                stopDownloadPolling();
+                return;
+            }
+
+            var lines = normalizeLogLines(resp.logs);
+            lines.forEach(appendLog);
+
+            if (resp.done) {
+                stopDownloadPolling();
+                if (resp.download_ok && resp.fw_name) {
+                    handleDownloadedFirmware(resp.fw_name, keepConfig, retainPkg, resp.validation);
+                } else {
+                    restoreButtonsAfterDownload();
+                }
+                return;
+            }
+
+            downloadPollTimer = setTimeout(function() {
+                pollDownloadProgress(keepConfig, retainPkg, resp.next_offset || 0);
+            }, 1000);
+        }).catch(function(err) {
+            appendLog(t('requestFailed') + err);
+            restoreButtonsAfterDownload();
+            stopDownloadPolling();
+        });
+    }
+
+    function refreshStatus() {
+        if (!ensureNotBusy()) {
+            return;
+        }
+
+        byId('ghfu_refresh').disabled = true;
+        byId('ghfu_notes').disabled = true;
+        renderStatusCard({
+            conclusion: t('beginFetch'),
+            conclusionCls: 'ghfu-conclusion-warn',
+            currentVerValue: getCurrentVersionDisplay(),
+            deviceValue: getCurrentDeviceDisplay(),
+            latestValue: t('fetchingInProgress'),
+            publishedValue: t('fetchingInProgress'),
+            releaseTotalValue: t('fetchingInProgress')
+        });
+        appendLog(t('beginFetch'));
+
+        requestWithTimeout(
+            '<%=url([[admin]], [[system]], [[ghfu]], [[status]])%>',
+            {},
+            20000
+        ).then(function(resp) {
+            appVersion = String(resp && resp.app_version || '');
+            updateTitle();
+            if (resp && resp.device_info) {
+                currentDeviceInfo = resp.device_info;
+            }
+            if (resp && resp.resolved_path) {
+                resolvedDevicePath = resp.resolved_path;
+            }
+            updateWarnings(resp && resp.has_unsaved_uci);
+
+            byId('ghfu_refresh').disabled = false;
+            if (!resp.ok) {
+                byId('ghfu_notes').disabled = true;
+                latestReleaseUrl = '';
+                if (typeof resp.tz_offset_min === 'number') {
+                    routerTzOffsetMin = resp.tz_offset_min;
+                }
+                if (resp.install_epoch) {
+                    lastInstallEpoch = resp.install_epoch;
+                }
+                renderStatusCard({
+                    conclusion: t('fetchFirmwareFailed'),
+                    conclusionCls: 'ghfu-conclusion-warn',
+                    currentVerValue: getCurrentVersionDisplay(),
+                    deviceValue: getCurrentDeviceDisplay(),
+                    latestValue: t('fetchFieldFailed'),
+                    publishedValue: t('fetchFieldFailed'),
+                    releaseTotalValue: t('fetchFieldFailed'),
+                    lastFlashedRaw: lastFlashedFirmwareText
+                });
+                appendLog(resp.msg || t('fetchFailed'));
+                return;
+            }
+
+            if (resp.config) {
+                updateConfig(resp.config);
+            }
+            if (typeof resp.tz_offset_min === 'number') {
+                routerTzOffsetMin = resp.tz_offset_min;
+            }
+            if (resp.install_epoch) {
+                lastInstallEpoch = resp.install_epoch;
+            }
+
+            hasNewUpdate = !!resp.has_new;
+            latestIsFormal = (resp.notice !== false);
+
+            var ulogsBox = byId('ghfu_updatelogs_box');
+            if (ulogsBox) {
+                var ulogs = trim(resp.updatelogs || (resp.latest && resp.latest.updatelogs) || '');
+                if (ulogs) {
+                    ulogsBox.innerHTML = ulogs;
+                } else {
+                    ulogsBox.textContent = t('noChangelog');
+                }
+            }
+
+            latestReleaseName = (resp.latest && resp.latest.release_name) ? resp.latest.release_name : '';
+            latestReleaseUrl = (resp.latest && resp.latest.html_url) ? String(resp.latest.html_url) : '';
+            assets = normalizeAssets(resp.latest && resp.latest.assets);
+            selectedAsset = null;
+            byId('ghfu_search').value = '';
+            renderAssets();
+            applyAutoFirmwareFilter();
+            updateUpgradeButtonText();
+            byId('ghfu_notes').disabled = !latestReleaseUrl;
+            byId('ghfu_upgrade').disabled = (assets.length === 0 || !selectedAsset);
+
+            var conclusionCls = resp.has_new ? 'ghfu-conclusion-new' : 'ghfu-conclusion-ok';
+            renderStatusCard({
+                conclusion: resp.msg || '-',
+                conclusionCls: conclusionCls,
+                showBadge: true,
+                isFormal: latestIsFormal,
+                currentVerValue: getCurrentVersionDisplay(),
+                deviceValue: getCurrentDeviceDisplay(),
+                latestValue: ((resp.latest && resp.latest.release_name) || '-'),
+                publishedValue: ((resp.latest && resp.latest.published_at) ? formatIsoToRouter(resp.latest.published_at) : '-'),
+                releaseTotalValue: (resp.latest && typeof resp.latest.release_total_count === 'number') ? String(resp.latest.release_total_count) : '-',
+                lastFlashedRaw: (resp.config && resp.config.selected_release) || lastFlashedFirmwareText
+            });
+
+            appendLog(t('latestRelease') + ((resp.latest && resp.latest.release_name) || '-'));
+            appendLog(resp.msg || t('statusUpdated'));
+
+            syncInteractiveState();
+        })
+        .catch(function(err) {
+            byId('ghfu_refresh').disabled = false;
+            byId('ghfu_notes').disabled = true;
+            latestReleaseUrl = '';
+            renderStatusCard({
+                conclusion: t('fetchFirmwareFailed'),
+                conclusionCls: 'ghfu-conclusion-warn',
+                currentVerValue: getCurrentVersionDisplay(),
+                deviceValue: getCurrentDeviceDisplay(),
+                latestValue: t('fetchFieldFailed'),
+                publishedValue: t('fetchFieldFailed'),
+                releaseTotalValue: t('fetchFieldFailed')
+            });
+            byId('ghfu_upgrade').disabled = true;
+            if (err && err.name === 'AbortError') {
+                appendLog(t('fetchTimedOut'));
+            } else {
+                appendLog(t('requestFailed') + err);
+            }
+        });
+    }
+
+    function openLatestReleasePage() {
+        if (!latestReleaseUrl) {
+            appendLog(t('notesUnavailable'));
+            return;
+        }
+        var w = window.open(latestReleaseUrl, '_blank', 'noopener,noreferrer');
+        if (!w) {
+            appendLog(t('popupBlocked'));
+        }
+    }
+
+    function doDownload() {
+        if (!ensureNotBusy()) {
+            return;
+        }
+
+        if (!selectedAsset || !selectedAsset.url) {
+            appendLog(t('chooseAsset'));
+            return;
+        }
+
+        var selectedRelease = trim(selectedReleaseText || selectedAsset.name || '');
+        var keepConfig = byId('ghfu_keep').checked ? '1' : '0';
+        var retainPkg = byId('ghfu_retain_pkg').checked ? '1' : '0';
+
+        if (!selectedRelease) {
+            appendLog(t('chooseFirmware'));
+            return;
+        }
+
+        setUpgradeWorkflowBusy(true);
+        stopDownloadPolling();
+
+        appendLog(t('beginDownload') + (selectedAsset.name || selectedRelease));
+
+        request('<%=url([[admin]], [[system]], [[ghfu]], [[download]])%>', {
+            selected_release: selectedRelease,
+            keep_config: keepConfig,
+            retain_packages: retainPkg,
+            asset_url: selectedAsset.url,
+            asset_name: selectedAsset.name || selectedRelease,
+            asset_size: String(selectedAsset.size || 0),
+            asset_digest: selectedAsset.sha256 || ''
+        }).then(function(resp) {
+            var lines = normalizeLogLines(resp.logs);
+            lines.forEach(appendLog);
+            if (!resp.ok) {
+                restoreButtonsAfterDownload();
+                return;
+            }
+
+            if (resp.started) {
+                pollDownloadProgress(keepConfig, retainPkg, 0);
+                return;
+            }
+
+            if (resp.fw_name) {
+                handleDownloadedFirmware(resp.fw_name, keepConfig, retainPkg, resp.validation);
+            } else {
+                restoreButtonsAfterDownload();
+            }
+        }).catch(function(err) {
+            appendLog(t('upgradeReqFailed') + err);
+            restoreButtonsAfterDownload();
+        });
+    }
+
+    function startUpgradeCountdown(fwName, keepConfig, retainPkg, forceUpgrade) {
+        stopCountdownTimer();
+        var sec = 5;
+        activeCountdownFwName = fwName;
+        showUpgradeModal('countdown', sec);
+        appendLog(t('countdownPrefix') + sec + t('countdownSuffix'));
+        countdownTimer = setInterval(function() {
+            sec--;
+            if (sec <= 0) {
+                stopCountdownTimer();
+                activeCountdownFwName = '';
+                appendLog(t('startingUpgrade'));
+                showUpgradeModal('upgrading');
+                doUpgradeRequest(fwName, keepConfig, retainPkg, forceUpgrade);
+            } else {
+                showUpgradeModal('countdown', sec);
+                appendLog(t('countdownPrefix') + sec + t('countdownSuffix'));
+            }
+        }, 1000);
+    }
+
+    function cancelUpgradeCountdown() {
+        stopCountdownTimer();
+        var fwName = activeCountdownFwName;
+        activeCountdownFwName = '';
+        hideUpgradeModal();
+        appendLog(t('countdownCancelledLog'));
+        restoreButtonsAfterDownload();
+        if (fwName) {
+            request('<%=url([[admin]], [[system]], [[ghfu]], [[cancel_upgrade]])%>', {
+                fw_name: fwName
+            }).catch(function() {});
+        }
+    }
+
+    function doUpgradeRequest(fwName, keepConfig, retainPkg, forceUpgrade) {
+        request('<%=url([[admin]], [[system]], [[ghfu]], [[upgrade]])%>', {
+            fw_name: fwName,
+            selected_release: trim(selectedReleaseText || fwName),
+            keep_config: keepConfig,
+            retain_packages: retainPkg,
+            force: forceUpgrade ? '1' : '0'
+        }).then(function(resp) {
+            var lines = normalizeLogLines(resp.logs);
+            lines.forEach(appendLog);
+            if (resp.ok && resp.rebooting) {
+                showUpgradeModal('upgrading');
+                pollForReboot();
+                return;
+            }
+
+            hideUpgradeModal();
+            if (resp && resp.need_force) {
+                showValidationModal(fwName, keepConfig, retainPkg, resp.validation);
+                return;
+            }
+            restoreButtonsAfterDownload();
+        }).catch(function(err) {
+            appendLog(t('upgradeReqFailed') + err);
+            hideUpgradeModal();
+            restoreButtonsAfterDownload();
+        });
+    }
+
+    function showUpgradeModal(stage, countdownSec) {
+        var modal = byId('ghfu-upgrade-modal');
+        var titleEl = byId('ghfu_modal_title');
+        var msgEl = byId('ghfu_modal_msg');
+        var currentStage = stage || 'upgrading';
+
+        if (modal) {
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+
+            if (currentStage === 'countdown') {
+                modal.classList.add('ghfu-modal-countdown');
+            } else {
+                modal.classList.remove('ghfu-modal-countdown');
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        if (titleEl && msgEl) {
+            if (currentStage === 'countdown') {
+                var safeSec = Math.max(1, parseInt(countdownSec, 10) || 1);
+                titleEl.textContent = t('countdownLockTitle');
+                msgEl.textContent = t('countdownLockMsg').replace('%d', String(safeSec));
+            } else {
+                titleEl.textContent = t('upgradingTitle');
+                msgEl.textContent = t('upgradingMsg');
+            }
+        }
+
+        upgradeModalActive = true;
+        document.body.classList.add('ghfu-upgrade-lock');
+        document.documentElement.classList.add('ghfu-upgrade-lock');
+    }
+
+    function hideUpgradeModal() {
+        var modal = byId('ghfu-upgrade-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('ghfu-modal-countdown');
+        }
+
+        byId('ghfu_modal_title').textContent = t('upgradingTitle');
+        byId('ghfu_modal_msg').textContent = t('upgradingMsg');
+
+        upgradeModalActive = false;
+        document.body.classList.remove('ghfu-upgrade-lock');
+        document.documentElement.classList.remove('ghfu-upgrade-lock');
+    }
+
+    function pollForReboot() {
+        if (rebootPollTimer) {
+            clearTimeout(rebootPollTimer);
+        }
+
+        rebootPollAttempts = 0;
+        rebootSeenOffline = false;
+
+        var pingUrl = '<%=resource%>/icons/loading.svg';
+        var adminHomeUrl = '<%=url("admin")%>';
+        if (!adminHomeUrl || adminHomeUrl.indexOf('/cgi-bin/luci/admin') === -1) {
+            adminHomeUrl = '/cgi-bin/luci/admin/';
+        } else if (adminHomeUrl.slice(-1) !== '/') {
+            adminHomeUrl += '/';
+        }
+
+        var poll = function() {
+            rebootPollTimer = setTimeout(function() {
+                rebootPollAttempts++;
+                if (rebootPollAttempts >= 30 && byId('ghfu_modal_msg')) {
+                    byId('ghfu_modal_msg').textContent = t('unreachableMsg');
+                }
+
+                var img = new Image();
+                img.onload = function() {
+                    if (!rebootSeenOffline && rebootPollAttempts < 3) {
+                        poll();
+                        return;
+                    }
+                    clearTimeout(rebootPollTimer);
+                    hideUpgradeModal();
+                    window.location.href = adminHomeUrl;
+                };
+                img.onerror = function() {
+                    rebootSeenOffline = true;
+                    poll();
+                };
+                img.src = pingUrl + '?_=' + Date.now();
+            }, 3000);
+        };
+
+        rebootPollTimer = setTimeout(poll, 6000);
+    }
+
+    function blockNavigationWhileUpgrading(evt) {
+        if (!upgradeModalActive) {
+            return;
+        }
+        var upModal = byId('ghfu-upgrade-modal');
+        var valModal = byId('ghfu-validate-modal');
+        if ((upModal && upModal.contains(evt.target)) || (valModal && valModal.contains(evt.target))) {
+            return;
+        }
+        evt.preventDefault();
+        evt.stopPropagation();
+    }
+
+    document.addEventListener('click', blockNavigationWhileUpgrading, true);
+    document.addEventListener('mousedown', blockNavigationWhileUpgrading, true);
+    document.addEventListener('touchstart', blockNavigationWhileUpgrading, true);
+
+    window.addEventListener('beforeunload', function(e) {
+        if (!upgradeModalActive) {
+            return;
+        }
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    byId('ghfu_refresh').addEventListener('click', refreshStatus);
+    byId('ghfu_upgrade').addEventListener('click', doDownload);
+    byId('ghfu_keep').addEventListener('change', saveUpgradeCheckOptions);
+    byId('ghfu_retain_pkg').addEventListener('change', saveUpgradeCheckOptions);
+    byId('ghfu_search').addEventListener('input', renderAssets);
+    byId('ghfu_backup').addEventListener('click', function() {
+        window.location.href = '<%=url([[admin]], [[system]], [[ghfu]], [[backup]])%>';
+    });
+    byId('ghfu_notes').addEventListener('click', openLatestReleasePage);
+    byId('ghfu_countdown_cancel').addEventListener('click', cancelUpgradeCountdown);
+
+    byId('ghfu_val_force_chk').addEventListener('change', function() {
+        var canContinue = !!(pendingValidationCtx && pendingValidationCtx.forceable && this.checked);
+        byId('ghfu_val_continue').disabled = !canContinue;
+    });
+
+    byId('ghfu_val_cancel').addEventListener('click', function() {
+        var ctx = pendingValidationCtx;
+        hideValidationModal();
+        appendLog(t('valCancelledLog'));
+        restoreButtonsAfterDownload();
+        if (ctx && ctx.fwName) {
+            request('<%=url([[admin]], [[system]], [[ghfu]], [[cancel_upgrade]])%>', {
+                fw_name: ctx.fwName
+            }).catch(function() {});
+        }
+    });
+
+    byId('ghfu_val_continue').addEventListener('click', function() {
+        var ctx = pendingValidationCtx;
+        var forceChecked = byId('ghfu_val_force_chk').checked;
+        if (!ctx || !ctx.forceable || !forceChecked) {
+            return;
+        }
+        hideValidationModal();
+        startUpgradeCountdown(ctx.fwName, ctx.keepConfig, ctx.retainPkg, true);
+    });
+
+    function initLocalStatus() {
+        request('<%=url([[admin]], [[system]], [[ghfu]], [[local_status]])%>', {})
+            .then(function(resp) {
+                if (!resp || !resp.ok) {
+                    return;
+                }
+
+                appVersion = String(resp.app_version || '');
+                updateTitle();
+
+                if (resp.device_info) {
+                    currentDeviceInfo = resp.device_info;
+                }
+                updateWarnings(resp.has_unsaved_uci);
+
+                if (resp.config) {
+                    updateConfig(resp.config);
+                }
+
+                if (typeof resp.tz_offset_min === 'number') {
+                    routerTzOffsetMin = resp.tz_offset_min;
+                }
+                if (resp.install_epoch) {
+                    lastInstallEpoch = resp.install_epoch;
+                }
+
+                renderStatusCard({
+                    conclusion: t('beginFetch'),
+                    conclusionCls: 'ghfu-conclusion-warn',
+                    currentVerValue: getCurrentVersionDisplay(),
+                    deviceValue: getCurrentDeviceDisplay(),
+                    latestValue: t('fetchingInProgress'),
+                    publishedValue: t('fetchingInProgress'),
+                    releaseTotalValue: t('fetchingInProgress'),
+                    lastFlashedRaw: lastFlashedFirmwareText
+                });
+            })
+            .catch(function() {
+                renderStatusCard({
+                    conclusion: t('beginFetch'),
+                    conclusionCls: 'ghfu-conclusion-warn',
+                    currentVerValue: getCurrentVersionDisplay(),
+                    deviceValue: getCurrentDeviceDisplay(),
+                    latestValue: t('fetchingInProgress'),
+                    publishedValue: t('fetchingInProgress'),
+                    releaseTotalValue: t('fetchingInProgress')
+                });
+            })
+            .then(function() {
+                refreshStatus();
+            });
+    }
+
+    initTexts();
+    applyTheme();
+    setUpgradeWorkflowBusy(false);
+    initLocalStatus();
+})();
+</script>
+
+<%+footer%>

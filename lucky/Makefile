@@ -5,8 +5,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
 PKG_VERSION:=3.5.0
-PKG_RELEASE:=5
-PKGARCH:=all 
+PKG_RELEASE:=6
 LUCKY_CONF_DIR := /etc/config/lucky.daji
 LUCKY_TMP_BACKUP := /tmp/luckyconfdir
 
@@ -42,12 +41,15 @@ ifeq ($(ARCH),aarch64)
 	LUCKY_ARCH:=arm64
 endif
 
+PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz
+PKG_SOURCE_URL:=https://github.com/gdy666/lucky/releases/download/v$(PKG_VERSION)/
+PKG_HASH:=skip
+
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=GDY666 <gdy666@foxmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
-PKG_HASH:=skip
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -63,12 +65,9 @@ define Package/$(PKG_NAME)/description
   Main functions of Lucky: ipv4/ipv6 portforward,ddns,IOT wake on lan ,reverse proxy and more...
 endef
 
-
-
-
 define Build/Prepare
-	[ ! -f $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz ] && wget https://github.com/gdy666/lucky/releases/download/v$(PKG_VERSION)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -O $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz
-	tar -xzvf $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -C $(PKG_BUILD_DIR)
+	mkdir -p $(PKG_BUILD_DIR)
+	tar -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
 endef
 
 

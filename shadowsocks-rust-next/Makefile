@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=shadowsocks-rust-next
 PKG_VERSION:=1.25.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 # Architecture mapping to match shadowsocks-rust release naming
 ifeq ($(ARCH),x86_64)
@@ -16,9 +16,6 @@ ifeq ($(ARCH),arm)
 endif
 ifeq ($(ARCH),i386)
 	SS_ARCH:=i686-unknown-linux-musl
-endif
-ifeq ($(ARCH),mipsel)
-	SS_ARCH:=mips-unknown-linux-musl
 endif
 
 PKG_SOURCE:=shadowsocks-v$(PKG_VERSION).$(SS_ARCH).tar.xz
@@ -39,7 +36,7 @@ define Package/shadowsocks-rust-next/Default
   SUBMENU:=Web Servers/Proxies
   TITLE:=shadowsocks-rust (Next)
   URL:=https://github.com/shadowsocks/shadowsocks-rust
-  DEPENDS:=@(i386||x86_64||arm||aarch64||mipsel||mips)
+  DEPENDS:=@(i386||x86_64||arm||aarch64)
 endef
 
 define Package/shadowsocks-rust-ssserver-next

@@ -1,5 +1,9 @@
 include $(TOPDIR)/rules.mk
 
+PKG_NAME:=luci-app-easytier-next
+PKG_VERSION:=1.0.0
+PKG_RELEASE:=5
+
 LUCI_TITLE:=LuCI support for EasyTier Next
 LUCI_URL:=https://github.com/EasyTier/EasyTier
 PKG_DESCRIPTION:=Provides a modern LuCI Web management interface for EasyTier decentralized mesh VPN.

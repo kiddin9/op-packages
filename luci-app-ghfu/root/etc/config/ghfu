@@ -1,0 +1,4 @@
+config ghfu 'main'
+    option selected_release ''
+    option keep_config '1'
+    option retain_packages '0'
