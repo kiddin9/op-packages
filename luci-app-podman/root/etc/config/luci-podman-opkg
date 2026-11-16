@@ -1,3 +1,0 @@
-config luci_podman 'globals'
-	option init_start_priority '100'
-	option socket_path 'unix:///run/podman/podman.sock'
