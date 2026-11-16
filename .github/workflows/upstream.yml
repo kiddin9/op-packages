@@ -223,6 +223,7 @@ jobs:
         # git_clone https://github.com/lazywalker/mmdvm-openwrt && rm -rf mmdvm-openwrt/misc && mvdir mmdvm-openwrt
         git_clone https://github.com/wukongdaily/luci-app-run run1 && mvdir run1
         git_clone https://github.com/szwjp/luci-app-homeproxy
+        git_clone https://github.com/szwjp/luci-app-nginx-console
         git_clone https://github.com/htcnokia/luci-app-homeproxy-pro
         git_clone https://github.com/weicaixian86/luci-app-pingpacket pingpacket && mv -f pingpacket/luci* ./;rm -rf pingpacket
         ) &
@@ -270,7 +271,6 @@ jobs:
         (
         git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/*dae* ./;rm -rf openwrt-daede
         git_clone https://github.com/kenzok8/vmlinux-btf vmlinuxb && mvdir vmlinuxb
-        git_clone https://github.com/QiuSimons/luci-app-daed daed1 && mv -f daed1/luci-app* ./;rm -rf daed1
         git_clone https://github.com/QiuSimons/luci-app-honk honk1 && mv -f honk1/{luci-app*,honk} ./;rm -rf honk1
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_clone https://github.com/linkease/istore-packages
