@@ -138,3 +138,11 @@ msgstr "请先安装缺失的软件包："
 #: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:119
 msgid "Missing dependencies"
 msgstr "缺少依赖"
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:170
+msgid "Enable IKEv2 (PSK + MOBIKE)"
+msgstr "启用 IKEv2（PSK + MOBIKE）"
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:171
+msgid "Adds an IKEv2 connection for the native iOS/Android IKEv2 client. It supports MOBIKE, so the phone keeps the tunnel while switching between Wi-Fi and cellular. It authenticates with the PSK only (no username/password), so use a strong PSK; existing IKEv1 clients are unaffected."
+msgstr "为 iOS/Android 原生 IKEv2 客户端增加一条 IKEv2 连接。它支持 MOBIKE，手机在 Wi-Fi 与蜂窝网络之间切换时可保持隧道。该连接仅用 PSK 认证（不再校验账号密码），请使用足够强的 PSK；原有 IKEv1 客户端不受影响。"

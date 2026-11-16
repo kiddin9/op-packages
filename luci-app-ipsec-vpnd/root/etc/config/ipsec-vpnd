@@ -9,4 +9,6 @@ config service 'ipsec'
 	option enabled '0'
 	option password 'changeme'
 	option clientip '10.9.8.10/24'
+	# IKEv2 + MOBIKE（手机漫游）。默认关闭：IKEv2 只校验 PSK，不校验账号密码。
+	option ikev2 '0'
 

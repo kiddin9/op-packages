@@ -46,6 +46,15 @@ count_matches() {
 	fi
 }
 
+file_sum() {
+	# busybox 没有 cksum；md5sum/md5 两边都有
+	if command -v md5sum >/dev/null 2>&1; then
+		md5sum "$1" | cut -d' ' -f1
+	else
+		md5 -q "$1"
+	fi
+}
+
 file_mode() {
 	# 跨平台取权限（macOS / Linux / busybox 的 stat 参数都不一样，统一走 ls -l）
 	ls -l "$1" 2>/dev/null | awk '{
@@ -114,15 +123,39 @@ check "secrets 含 PSK" "1" "$(count_matches '^: PSK "psk1"$' "$TMP/etc/ipsec.se
 check "secrets 含 XAuth" "1" "$(count_matches '^acc1 : XAUTH "pw1"$' "$TMP/etc/ipsec.secrets")"
 check "secrets 权限 0600" "600" "$(file_mode "$TMP/etc/ipsec.secrets")"
 check "首次渲染报告 changed" "changed" "$(cat "$TMP/out")"
+check "IKEv1 开启 DPD" "1" "$(count_matches '^	dpdaction=clear$' "$TMP/etc/ipsec.conf")"
+check "DPD 探测间隔 30s" "1" "$(count_matches '^	dpddelay=30s$' "$TMP/etc/ipsec.conf")"
+check "DPD 超时 150s" "1" "$(count_matches '^	dpdtimeout=150s$' "$TMP/etc/ipsec.conf")"
+check "IKE/CHILD 生命周期已显式设置" "1" "$(count_matches '^	lifetime=4h$' "$TMP/etc/ipsec.conf")"
+check "默认不生成 IKEv2 conn" "0" "$(count_matches '^conn ikev2_psk$' "$TMP/etc/ipsec.conf")"
 
 # 幂等：同样的配置再渲染一次，报告 unchanged 且不改动文件
-before="$(cksum "$TMP/etc/ipsec.conf")"
+before="$(file_sum "$TMP/etc/ipsec.conf")"
 rc="$(run_render "$TMP/uci")"
 check "重复渲染退出码 0" "0" "$rc"
 check "重复渲染报告 unchanged" "unchanged" "$(cat "$TMP/out")"
-check "重复渲染不改文件" "$before" "$(cksum "$TMP/etc/ipsec.conf")"
+check "重复渲染不改文件" "$before" "$(file_sum "$TMP/etc/ipsec.conf")"
 
-# --- 2. enabled=0 ----------------------------------------------------------
+# --- 2. IKEv2 + MOBIKE -----------------------------------------------------
+cat > "$TMP/uci" <<'EOF'
+enabled=1
+clientip=10.9.8.10/24
+clientdns=10.9.8.1
+account=acc1
+password=pw1
+secret=psk1
+ikev2=1
+EOF
+
+rc="$(run_render "$TMP/uci")"
+check "ikev2=1 时渲染成功" "0" "$rc"
+check "ikev2=1 时生成 IKEv2 conn" "1" "$(count_matches '^conn ikev2_psk$' "$TMP/etc/ipsec.conf")"
+check "IKEv2 conn 开启 mobike" "1" "$(count_matches '^	mobike=yes$' "$TMP/etc/ipsec.conf")"
+check "IKEv2 复用 clientip 地址池" "2" "$(grep -c '^	rightsourceip=10.9.8.10/24$' "$TMP/etc/ipsec.conf")"
+check "IKEv2 复用 clientdns" "2" "$(grep -c '^	rightdns=10.9.8.1$' "$TMP/etc/ipsec.conf")"
+check "IKEv2 不需要 EAP 凭据" "0" "$(count_matches ': EAP ' "$TMP/etc/ipsec.secrets")"
+
+# --- 3. enabled=0 ----------------------------------------------------------
 cat > "$TMP/uci" <<'EOF'
 enabled=0
 clientip=10.9.8.10/24
@@ -130,11 +163,13 @@ clientdns=10.9.8.1
 account=acc1
 password=pw1
 secret=psk1
+ikev2=1
 EOF
 
 rc="$(run_render "$TMP/uci")"
 check "enabled=0 时渲染成功" "0" "$rc"
 check "enabled=0 时不生成 conn" "0" "$(count_matches '^conn xauth_psk$' "$TMP/etc/ipsec.conf")"
+check "enabled=0 时不生成 IKEv2 conn" "0" "$(count_matches '^conn ikev2_psk$' "$TMP/etc/ipsec.conf")"
 check "enabled=0 时清掉遗留 secrets" "0" "$([ -e "$TMP/etc/ipsec.secrets" ] && echo 1 || echo 0)"
 check "enabled=0 时报告 changed" "changed" "$(cat "$TMP/out")"
 

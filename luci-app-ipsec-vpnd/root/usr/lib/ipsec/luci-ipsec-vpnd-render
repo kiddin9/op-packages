@@ -41,11 +41,13 @@ vt_clientdns="10.9.8.1"
 vt_account="vpnuser"
 vt_password="changeme"
 vt_secret="changeme"
+vt_ikev2="0"
 config_get vt_clientip "ipsec" "clientip" "$vt_clientip"
 config_get vt_clientdns "ipsec" "clientdns" "$vt_clientdns"
 config_get vt_account "ipsec" "account" "$vt_account"
 config_get vt_password "ipsec" "password" "$vt_password"
 config_get vt_secret "ipsec" "secret" "$vt_secret"
+config_get vt_ikev2 "ipsec" "ikev2" "$vt_ikev2"
 
 # 先写到临时文件，再和现有文件比对：内容没变就不动文件。
 # 这样 rpcd 的 apply 才知道要不要重启服务 —— 别的页面触发一次 apply
@@ -63,6 +65,9 @@ cat > "$TMP_CONF" <<EOF
 
 config setup
     # strictcrlpolicy=yes
+    # never：同一个 XAuth 账号允许手机/电脑同时在线（本包只有一个账号）。
+    # 代价是旧 SA 不会被新 SA 顶掉，必须靠 dpdaction=clear + 超时清理，
+    # 所以下面每个 conn 都显式开了 DPD。
     uniqueids=never
 
 # Add connections here.
@@ -73,7 +78,7 @@ if [ "$vt_enabled" = "1" ]; then
 
 conn xauth_psk
 	keyexchange=ikev1
-	ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+	ike=aes128-sha256-modp2048,aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
 	esp=aes128-sha1,3des-sha1
 	left=%defaultroute
 	leftauth=psk
@@ -85,7 +90,41 @@ conn xauth_psk
 	rightdns=$vt_clientdns
 	leftupdown=/usr/lib/ipsec/luci-ipsec-vpnd-updown
 	auto=add
+	lifetime=4h
+	ikelifetime=8h
+	dpddelay=30s
+	dpdtimeout=150s
+	dpdaction=clear
 EOF
+
+	if [ "$vt_ikev2" = "1" ]; then
+		# IKEv2 + MOBIKE：手机 Wi-Fi/4G 切换时在协议内更新地址，不必重握手。
+		# 原生 iOS/Android 的 IKEv2 客户端只支持 PSK 或证书两种服务端认证；
+		# 本包没有 PKI，所以走 PSK（与 IKEv1 共用同一个 secret）。
+		# 代价：IKEv2 只凭 PSK 接入，不再要求账号密码，故默认关闭、由用户显式开启。
+		cat >> "$TMP_CONF" <<EOF
+
+conn ikev2_psk
+	keyexchange=ikev2
+	ike=aes128-sha256-modp2048,aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024
+	esp=aes128gcm16,aes128-sha1,3des-sha1
+	left=%defaultroute
+	leftauth=psk
+	leftsubnet=0.0.0.0/0
+	right=%any
+	rightauth=psk
+	rightsourceip=$vt_clientip
+	rightdns=$vt_clientdns
+	leftupdown=/usr/lib/ipsec/luci-ipsec-vpnd-updown
+	auto=add
+	mobike=yes
+	lifetime=4h
+	ikelifetime=8h
+	dpddelay=30s
+	dpdtimeout=150s
+	dpdaction=clear
+EOF
+	fi
 else
 	# 服务停用时也要把 conn 拿掉：charon 由系统 ipsec 服务托管，配置是全局的，
 	# 残留的 conn 会让服务在"已停用"状态下依然接受连接。

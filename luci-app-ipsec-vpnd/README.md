@@ -16,6 +16,8 @@ IKEv1 + PSK + Xauth（账号密码），目标用户是家用 / 小公司路由�
 - **不再自建服务实例**：本包不提供自己的 `ipsec-vpnd` 服务，charon 统一交给 strongSwan 自带的 `ipsec` 服务托管（`strongswan-ipsec` 包提供），从根本上避免两个服务抢 UDP/500、4500——抢端口时后启动的那个会**静默退出**，LuCI 上只显示「未运行」却查不到原因
 - **菜单位置**：`VPN → IPSec VPN Server`（order 30）
 - **依赖自检与诊断**：服务启动前检查 strongSwan 运行时是否完整，缺失时拒绝启动并写明确日志；LuCI 页面顶部直接列出缺哪一项、给出对应安装命令
+- **弱网/漫游默认项**：IKEv1 连接默认开 DPD（死连接约 150s 内清理）；VPN zone 自动做 MSS clamp（ipsec0 MTU 1400，避免大包 PMTU 黑洞）；WAN 公网地址变化时自动重启 ipsec 清理旧 SA
+- **可选 IKEv2 + MOBIKE**（`ikev2=1`）：额外生成一条 IKEv2 连接，给 iOS/Android 原生「IKEv2」客户端用，手机在 Wi-Fi/蜂窝网络之间切换时不必重新握手；默认关闭，因为它只用 PSK 认证（不再校验账号密码）
 
 ## 界面与配置项
 
@@ -29,6 +31,7 @@ UCI 路径 `ipsec-vpnd.@ipsec[0]`，字段：
 | `account` | `vpnuser` | Xauth 用户名 |
 | `password` | `changeme` | Xauth 密码 |
 | `secret` | `changeme` | IKE PSK 预共享密钥 |
+| `ikev2` | `0` | 是否额外提供 IKEv2（PSK + MOBIKE）连接。开启后 IKEv2 客户端只需 PSK，不需要账号密码 |
 
 VPN 客户端拨号后会拿到 `clientip` 池里一个地址，`clientdns` 指向 VPN 网关（路由器上的 `ipsec0` IP，固定为 `10.9.8.1`）。
 
@@ -71,6 +74,35 @@ testuser : XAUTH "testpass"
 `10.9.8.10/32` 冲突，服务端日志出现
 `no matching CHILD_SA config found for 10.9.8.0/24 === <服务端IP>/32`，
 最终报 `INVALID_ID_INFORMATION`，IKE 起来了但 CHILD SA 装不上。
+
+### iOS / Android 原生 IKEv2（可选，先在页面打开「启用 IKEv2」）
+
+IKEv2 支持 MOBIKE：手机 Wi-Fi ↔ 蜂窝切换时在协议内更新地址，不用重新做完整握手。
+服务端只用 PSK 认证（与 IKEv1 共用 `secret`），所以客户端**不需要填账号密码**；
+请使用足够强的 PSK。原有 IKEv1 客户端不受影响，可同时使用。
+
+- **iPhone / iPad**：设置 → 通用 → VPN 与设备管理 → VPN → 添加 VPN 配置 → 类型选 `IKEv2`；
+  服务器填公网地址或 DDNS；远程 ID 留空（或填服务器地址）；本地 ID 留空；
+  认证选「共享密钥」，填入页面上配置的 PSK。
+- **Android 11+**：设置 → 网络 → VPN → 添加 VPN → 类型 `IKEv2/IPSec PSK`；
+  服务器填公网地址；IPSec 预共享密钥填 PSK；用户名密码留空。
+
+> Apple 的 IKEv2「用户名 + 密码」认证（EAP-MSCHAPv2）要求服务端出示证书，本包不会自动
+> 生成/分发证书，所以继续用 IKEv1（Cisco IPSec）+ 账号密码，或接受 IKEv2 仅 PSK。
+> 在路由上等价于：`uci set ipsec-vpnd.ipsec.ikev2=1 && uci commit ipsec-vpnd`，再在 LuCI 里保存一次（触发 apply）。
+
+## 稳定性与漫游（服务端行为）
+
+| 机制 | 值 | 作用 |
+|---|---|---|
+| DPD | `dpddelay=30s` / `dpdtimeout=150s` / `dpdaction=clear` | 客户端掉线/切网后约 2.5 分钟内清掉旧 SA，不再长期显示"幽灵在线" |
+| MSS clamp | `firewall.VPN.mtu_fix=1` | ipsec0 MTU 1400，出方向 SYN 自动 clamp 到 1360，避免大包卡死 |
+| WAN 重拨 | `/etc/hotplug.d/iface/90-ipsec-vpnd` | 公网地址变化时才重启 ipsec；普通 ifup/renew 不踢在线客户端 |
+| 生命周期 | `lifetime=4h` / `ikelifetime=8h` | 减少弱网下每小时 rekey 的失败点 |
+| 提案 | IKEv2 首选 AES-128-GCM/SHA-256；IKEv1 保留 AES-128-SHA1、3DES 回退 | 新客户端走更快/更强的套件，老客户端仍可连 |
+
+> 这些是服务端自己的行为，不依赖 ImmortalWrt 的默认配置；安装到其它 OpenWrt/ImmortalWrt
+> 设备时同样生效（MSS clamp 由本包的 uci-defaults / 升级脚本写入，DPD 等由渲染器生成）。
 
 ## 依赖
 
@@ -246,6 +278,9 @@ GNU 环境，所以改完记得也在设备上跑一遍：busybox 的 `tr` 不�
 | 服务显示「未运行」但 charon 明明在跑 | 说明有第二个服务实例抢占了 UDP/500、4500。本包不再自建服务，正常情况下只有系统 `ipsec` 一个实例；`ls /etc/rc.d/*ipsec*` 检查是否残留旧版 `ipsec-vpnd` 链接 |
 | 装完 `ipsec0` 上没有 VPN 网关地址 | 执行 `ifup VPN`；本包在安装与服务启动时都会自动执行一次 |
 | GitHub Actions 出包失败 | 看 `Build` workflow 的 step 日志；常见是 host 工具链 apt 装失败、或 apk-tools/po2lmo 编译报错 |
+| 手机切网后显示"已连接"但打不开网页 | IKEv1 没有 MOBIKE，切网必然断；改用 IKEv2 配置（页面开启 `ikev2`），或等 DPD（约 150s）清掉旧 SA 后让客户端重连。`ipsec statusall` 能看到是否残留旧 SA |
+| 网页能开，视频/大文件卡住 | 检查 MSS clamp 是否生效：`nft list ruleset \| grep ipsec0` 应有两条 maxseg；没有就 `uci set firewall.VPN.mtu_fix=1 && uci commit firewall && fw4 reload` |
+| 升级后 IKEv2 开关没有/不生效 | `uci get ipsec-vpnd.ipsec.ikev2`（默认 `0`）；在 LuCI 勾选「启用 IKEv2」并保存应用，渲染器会加 `conn ikev2_psk` 并重启 ipsec |
 
 ## 许可证
 

@@ -1,4 +1,28 @@
 #!/bin/sh
 
+APP_JS="/www/luci-static/quickstart/app.js"
+
+sed -i -E '
+  # 1. 去除首页顶部 iStoreOS官网
+  s/[^[]*\("iStoreOS官网","iStoreOS website"\)\),1\),//
+
+  # 2. 主题跟随系统判断 html[data-darkmode="true"] 并监听属性变化
+  s/\([^()]*\.matches\)!=null\?[^:]*:window\.matchMedia\([^)]*\)\.matches/document.documentElement.dataset.darkmode==="true"/
+  s/\.addEventListener\("change",([^)]+)\)/&,(new MutationObserver(\1)).observe(document.documentElement,{attributes:!0,attributeFilter:["data-darkmode"]})/
+
+  # 3. 去除网络连接卡片中的软件源检测与配置
+  s/[a-zA-Z0-9_$]+\.networkInfo/&==="softSourceFailed"?"netSuccess":&/
+  s/,"softSourceFailed"|,softSourceFailed:\[[^]]*\]|:[^:?]*==="softSourceFailed"\?"source"//g
+
+  # 4. 彻底移除软件源配置（tool-source）入口与“恢复默认八项”按钮
+  s/,\{id:"tool-source"[^}]*\}|,"tool-source"//g
+  s/get favorites\(\)\{return ([^}]*\.favorites)\}/get favorites(){return \1.filter(y=>y!=="tool-source")}/
+  s/,[a-zA-Z0-9_$]+\("button",\{[^}]*"data-shortcut-restore":""\},[^}]*\("恢复默认八项","Restore eight defaults"\)\),1\)//
+
+  # 5. 自定义链接支持 / 开头的绝对路径（保存时转为 http://localhost/... 以通过后端校验，展示与跳转时还原为 /...）
+  s/!\/\^https\?:\\\/\\\/\/\.test\(([a-zA-Z0-9_$]+\.url)\)/(\/^\\\/(?!\\\/)\/.test(\1)\&\&(\1="http:\/\/localhost"+\1),&)/
+  s/path:([a-zA-Z0-9_$]+\.url),/path:\1.replace(\/^http:\\\/\\\/localhost(?=\\\/)\/,""),/
+' "$APP_JS"
+
 rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
 exit 0

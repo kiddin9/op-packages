@@ -1,0 +1,32 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# WAN 公网地址变化时重启 charon。
+#
+# 为什么需要：IKEv1/IKEv2 的已有 SA 都绑在旧的本端地址上。PPPoE 重拨后
+# 旧 SA 会假死，而服务端没有 DPD 时能一直挂到 reauth 超时（约 2.8h），
+# 期间 LuCI 列表里全是"在线"的旧会话。重启 charon 让所有 SA 立即失效，
+# 客户端重连后拿到新的 SA。
+#
+# 只在地址真的变化时重启：普通 ifup/renew 不踢在线客户端。
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "wan" ] || exit 0
+[ "$(uci -q get ipsec-vpnd.ipsec.enabled)" = "1" ] || exit 0
+[ -x /etc/init.d/ipsec ] || exit 0
+
+. /lib/functions/network.sh 2>/dev/null || exit 0
+network_get_ipaddr ip wan || exit 0
+[ -n "$ip" ] || exit 0
+
+STATE="/tmp/.ipsec-vpnd-wan-ip"
+old="$(cat "$STATE" 2>/dev/null)"
+printf '%s\n' "$ip" > "$STATE"
+
+# 首次启动没有旧值：只记录，不重启（此时 ipsec 可能还没起来）。
+[ -n "$old" ] || exit 0
+[ "$old" = "$ip" ] && exit 0
+
+logger -t ipsec-vpnd "WAN 地址变化 $old -> $ip，重启 ipsec 以清理旧 SA"
+/etc/init.d/ipsec restart >/dev/null 2>&1
+exit 0

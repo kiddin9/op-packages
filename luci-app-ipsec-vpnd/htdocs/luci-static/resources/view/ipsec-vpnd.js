@@ -167,6 +167,11 @@ return view.extend({
 		o.password = true;
 		o.rmempty = false;
 
+		o = s.option(form.Flag, 'ikev2', _('Enable IKEv2 (PSK + MOBIKE)'),
+			_('Adds an IKEv2 connection for the native iOS/Android IKEv2 client. It supports MOBIKE, so the phone keeps the tunnel while switching between Wi-Fi and cellular. It authenticates with the PSK only (no username/password), so use a strong PSK; existing IKEv1 clients are unaffected.'));
+		o.default = o.disabled;
+		o.rmempty = false;
+
 		// 在线客户端列表：页面最底部，5s 轮询刷新。数据来自 rpcd 后端
 		// /usr/libexec/rpcd/ipsec-vpnd（解析 `ipsec statusall` 的 stroke 输出）。
 		s = m.section(form.TypedSection);

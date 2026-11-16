@@ -79,6 +79,9 @@ uci -q batch <<-EOF >/dev/null
 	set firewall.VPN.forward="ACCEPT"
 	set firewall.VPN.output="ACCEPT"
 	set firewall.VPN.network="VPN"
+	# ipsec0 MTU 1400，PPPoE 1492；不开 mtu_fix 时客户端可能按 1500
+	# 协商 MSS，遇到 PMTU 黑洞就是"小包通、大包卡死"。
+	set firewall.VPN.mtu_fix="1"
 
 	delete firewall.vpn
 	set firewall.vpn=forwarding

@@ -9,7 +9,8 @@
 #
 # Documented strongSwan variables used:
 #   PLUTO_VERB           up-client / down-client / up-host / down-host [...]
-#   PLUTO_XAUTH_ID       XAuth username
+#   PLUTO_XAUTH_ID       XAuth username (IKEv1)
+#   PLUTO_PEER_ID        peer IKE identity (IKEv2 PSK has no XAuth ID)
 #   PLUTO_PEER           peer (client) IP address
 #   PLUTO_PEER_SOURCEIP  virtual IP sent to the client (responder side)
 #   PLUTO_PEER_CLIENT    peer traffic selector (may carry the /32 VIP)
@@ -44,7 +45,8 @@ flock_unlock() {
 
 now="$(date +%s)"
 
-user="${PLUTO_XAUTH_ID:-}"
+# IKEv2 PSK 没有 XAuth 用户名，退回对端 IKE ID，保证与 rpcd 解析出的 key 一致
+user="${PLUTO_XAUTH_ID:-${PLUTO_PEER_ID:-}}"
 remote="${PLUTO_PEER:-}"
 
 # 用户名与对端地址都来自网络侧（任何能连到 UDP 500 的人都能影响它们）。
