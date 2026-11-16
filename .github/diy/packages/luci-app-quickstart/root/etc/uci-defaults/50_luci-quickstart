@@ -16,7 +16,8 @@ sed -i -E '
 
   # 4. 彻底移除软件源配置（tool-source）入口与“恢复默认八项”按钮
   s/,\{id:"tool-source"[^}]*\}|,"tool-source"//g
-  s/get favorites\(\)\{return ([^}]*\.favorites)\}/get favorites(){return \1.filter(y=>y!=="tool-source")}/
+  s/,\{id:"tool-firmware"[^}]*\}|,"tool-firmware"//g
+  s/,\{id:"tool-sandbox"[^}]*\}|,"tool-sandbox"//g
   s/,[a-zA-Z0-9_$]+\("button",\{[^}]*"data-shortcut-restore":""\},[^}]*\("恢复默认八项","Restore eight defaults"\)\),1\)//
 
   # 5. 自定义链接支持 / 开头的绝对路径（保存时转为 http://localhost/... 以通过后端校验，展示与跳转时还原为 /...）
