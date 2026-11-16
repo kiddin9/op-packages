@@ -12,10 +12,11 @@
 
 . "${IPKG_INSTROOT:-}/lib/functions.sh"
 
-# 依赖自检：strongSwan 运行时不全时不要生成一份"看着能起、实际连不上"的配置，
-# 直接报错，由调用方（rpcd apply / postinst）把原因透出来。
+# 依赖自检：只拦「必需」项（starter/charon/kernel-libipsec）。
+# xauth-generic / des 是可选插件：6.1 默认关闭 IKEv1 的构建里没有 xauth-generic，
+# 这时仍应生成 IKEv2 配置，而不是整体失败。
 if [ -x /usr/lib/ipsec/luci-ipsec-vpnd-deps ]; then
-	deps_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-deps files)"
+	deps_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-deps files-required)"
 	if [ $? -ne 0 ]; then
 		oldifs="$IFS"
 		IFS='
@@ -26,12 +27,16 @@ if [ -x /usr/lib/ipsec/luci-ipsec-vpnd-deps ]; then
 			esac
 		done
 		IFS="$oldifs"
-		logger -t ipsec-vpnd "strongSwan 运行时不完整，未生成 ipsec.conf。请先 apk update，再安装 strongswan-minimal strongswan-mod-xauth-generic strongswan-mod-kernel-libipsec strongswan-mod-des"
+		logger -t ipsec-vpnd "strongSwan 运行时不完整，未生成 ipsec.conf。请先 apk update，再安装 strongswan-minimal strongswan-mod-kernel-libipsec"
 		exit 1
 	fi
 fi
 
 config_load ipsec-vpnd
+
+# IKEv1/XAuth 只在系统 strongSwan 带 xauth-generic 插件时可用。
+# 可用环境变量覆盖，便于离线测试。
+IKEV1_PLUGIN_CONF="${IKEV1_PLUGIN_CONF:-/etc/strongswan.d/charon/xauth-generic.conf}"
 
 vt_enabled=0
 config_get vt_enabled "ipsec" "enabled" "0"
@@ -48,6 +53,18 @@ config_get vt_account "ipsec" "account" "$vt_account"
 config_get vt_password "ipsec" "password" "$vt_password"
 config_get vt_secret "ipsec" "secret" "$vt_secret"
 config_get vt_ikev2 "ipsec" "ikev2" "$vt_ikev2"
+
+vt_ikev1=1
+if [ ! -f "$IKEV1_PLUGIN_CONF" ]; then
+	vt_ikev1=0
+	logger -t ipsec-vpnd "未找到 xauth-generic 插件，IKEv1/XAuth 不可用；继续生成 IKEv2 配置"
+fi
+
+# 两条路都没有时不生成配置，避免服务起来却谁都连不上。
+if [ "$vt_enabled" = "1" ] && [ "$vt_ikev1" = "0" ] && [ "$vt_ikev2" != "1" ]; then
+	logger -t ipsec-vpnd "IKEv1 不可用且未启用 IKEv2，未生成 ipsec.conf"
+	exit 1
+fi
 
 # 先写到临时文件，再和现有文件比对：内容没变就不动文件。
 # 这样 rpcd 的 apply 才知道要不要重启服务 —— 别的页面触发一次 apply
@@ -74,7 +91,8 @@ config setup
 EOF
 
 if [ "$vt_enabled" = "1" ]; then
-	cat >> "$TMP_CONF" <<EOF
+	if [ "$vt_ikev1" = "1" ]; then
+		cat >> "$TMP_CONF" <<EOF
 
 conn xauth_psk
 	keyexchange=ikev1
@@ -96,6 +114,7 @@ conn xauth_psk
 	dpdtimeout=150s
 	dpdaction=clear
 EOF
+	fi
 
 	if [ "$vt_ikev2" = "1" ]; then
 		# IKEv2 + MOBIKE：手机 Wi-Fi/4G 切换时在协议内更新地址，不必重握手。
@@ -134,12 +153,17 @@ fi
 if [ "$vt_enabled" = "1" ]; then
 	# secrets 含 PSK 与 XAUTH 密码，用 177 umask 创建并收紧权限，避免本地用户读取
 	umask 177
-	cat > "$TMP_SECRETS" <<EOF
+	{
+		cat <<EOF
 # /etc/ipsec.secrets - strongSwan IPsec secrets file
 # 由 luci-app-ipsec-vpnd 自动生成，请勿手工修改。
 : PSK "$vt_secret"
-$vt_account : XAUTH "$vt_password"
 EOF
+		# IKEv1 不可用时不要留无用的 XAuth 凭据
+		if [ "$vt_ikev1" = "1" ]; then
+			printf '%s : XAUTH "%s"\n' "$vt_account" "$vt_password"
+		fi
+	} > "$TMP_SECRETS"
 	umask 022
 else
 	# 停用时清掉遗留的凭据，避免旧口令继续留在磁盘上

@@ -91,6 +91,20 @@ IKEv2 支持 MOBIKE：手机 Wi-Fi ↔ 蜂窝切换时在协议内更新地址�
 > 生成/分发证书，所以继续用 IKEv1（Cisco IPSec）+ 账号密码，或接受 IKEv2 仅 PSK。
 > 在路由上等价于：`uci set ipsec-vpnd.ipsec.ikev2=1 && uci commit ipsec-vpnd`，再在 LuCI 里保存一次（触发 apply）。
 
+## IKEv1 是可选能力（strongSwan 6.1 起默认关闭）
+
+本包渲染前会检查 `/etc/strongswan.d/charon/xauth-generic.conf`：
+
+- **存在**：生成 `conn xauth_psk`（IKEv1 + PSK + XAuth）和可选的 `conn ikev2_psk`；
+- **不存在**（例如 strongSwan 6.1 未用 `--enable-ikev1` 编译）：**只生成 IKEv2 conn**，不再因为缺 xauth 插件而整体失败；LuCI 依赖面板会用「可选/警告」提示，而不是红色错误；
+- 如果既没有 IKEv1 也没启用 IKEv2，render 会拒绝生成配置并写日志，避免服务起来却谁都不能连。
+
+> **对 iPhone 用户**：iOS 的「Cisco IPSec」配置走 IKEv1 + XAuth。如果系统 strongSwan 不带 IKEv1，这个配置会连不上；请改用「IKEv2 + 共享密钥」配置（本包 r19 起支持）。纯 IKEv2 环境不受影响。
+
+### 安全提示
+
+strongSwan 6.0.7 的后续版本（6.1.0 / 发行版 backport）修复了 11 个 CVE，其中包含 IKEv2 的认证绕过与 rekey use-after-free。装好系统后先确认包版本里带了补丁（例如 OpenWrt snapshot 的 `6.0.7-r13` 已包含，部分稳定版仍是 `-r1`）；长期停留在未打补丁的 `-r1` 不建议。
+
 ## 稳定性与漫游（服务端行为）
 
 | 机制 | 值 | 作用 |
@@ -111,9 +125,10 @@ IKEv2 支持 MOBIKE：手机 Wi-Fi ↔ 蜂窝切换时在协议内更新地址�
 | 包 | 作用 |
 |---|---|
 | `strongswan-minimal` | strongSwan 最小集，含 charon、starter（`/usr/lib/ipsec/starter`）、stroke 插件 |
-| `strongswan-mod-xauth-generic` | XAuth 账号认证插件，缺它 XAuth 账号无法登录 |
-| `strongswan-mod-kernel-libipsec` | 内核态 IPsec |
-| `strongswan-mod-des` | 3DES 加密插件，缺它本包声明的 3DES 提案不可用（老版本 iOS/Android 客户端需要） |
+| `strongswan-default` | strongSwan 默认插件集（6.0.x 含 xauth-generic/des，保证 IKEv1 可用；6.1 的打包会按自身能力调整） |
+| `strongswan-mod-xauth-generic` | **可选**（由 `strongswan-default` 间接引入）。6.1 起 strongSwan 默认关闭 IKEv1，该插件可能不存在，此时只提供 IKEv2 |
+| `strongswan-mod-kernel-libipsec` | 内核态 IPsec（必需） |
+| `strongswan-mod-des` | **可选**。3DES 加密插件，缺它只影响 3DES 回退，AES 不受影响 |
 | `kmod-tun` | TUN/TAP 设备 |
 
 > `strongswan-mod-stroke` 会连带装上 `strongswan-ipsec`（提供 `/usr/sbin/ipsec` 命令与系统自带的 `ipsec` 服务）。
@@ -280,6 +295,7 @@ GNU 环境，所以改完记得也在设备上跑一遍：busybox 的 `tr` 不�
 | GitHub Actions 出包失败 | 看 `Build` workflow 的 step 日志；常见是 host 工具链 apt 装失败、或 apk-tools/po2lmo 编译报错 |
 | 手机切网后显示"已连接"但打不开网页 | IKEv1 没有 MOBIKE，切网必然断；改用 IKEv2 配置（页面开启 `ikev2`），或等 DPD（约 150s）清掉旧 SA 后让客户端重连。`ipsec statusall` 能看到是否残留旧 SA |
 | 网页能开，视频/大文件卡住 | 检查 MSS clamp 是否生效：`nft list ruleset \| grep ipsec0` 应有两条 maxseg；没有就 `uci set firewall.VPN.mtu_fix=1 && uci commit firewall && fw4 reload` |
+| 依赖面板提示 IKEv1 不可用 | 系统 strongSwan 缺 `xauth-generic`（6.1 默认关闭 IKEv1）。IKEv2 不受影响；需要 IKEv1 就换回带 IKEv1 的 strongSwan 构建，或改用 IKEv2 客户端 |
 | 升级后 IKEv2 开关没有/不生效 | `uci get ipsec-vpnd.ipsec.ikev2`（默认 `0`）；在 LuCI 勾选「启用 IKEv2」并保存应用，渲染器会加 `conn ikev2_psk` 并重启 ipsec |
 
 ## 许可证

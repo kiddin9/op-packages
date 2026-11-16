@@ -92,6 +92,9 @@ chmod 0755 "$TMP/bin/logger"
 PATH="$TMP/bin:$PATH"
 export PATH
 
+# 默认模拟「有 xauth-generic 插件」的 6.0.x 环境；无 IKEv1 的用例会临时删掉它
+: > "$TMP/xauth-generic.conf"
+
 # 渲染器里的绝对路径统统换成临时目录
 sed -e "s|/etc/ipsec.conf|$TMP/etc/ipsec.conf|g" \
     -e "s|/etc/ipsec.secrets|$TMP/etc/ipsec.secrets|g" \
@@ -100,7 +103,8 @@ sed -e "s|/etc/ipsec.conf|$TMP/etc/ipsec.conf|g" \
 chmod 0755 "$TMP/render"
 
 run_render() {
-	TEST_UCI="$1" IPKG_INSTROOT="$TMP" "$TMP/render" >"$TMP/out" 2>&1
+	TEST_UCI="$1" IPKG_INSTROOT="$TMP" IKEV1_PLUGIN_CONF="$TMP/xauth-generic.conf" \
+		"$TMP/render" >"$TMP/out" 2>&1
 	echo $?
 }
 
@@ -155,7 +159,44 @@ check "IKEv2 复用 clientip 地址池" "2" "$(grep -c '^	rightsourceip=10.9.8.1
 check "IKEv2 复用 clientdns" "2" "$(grep -c '^	rightdns=10.9.8.1$' "$TMP/etc/ipsec.conf")"
 check "IKEv2 不需要 EAP 凭据" "0" "$(count_matches ': EAP ' "$TMP/etc/ipsec.secrets")"
 
-# --- 3. enabled=0 ----------------------------------------------------------
+# --- 3. 无 IKEv1 插件（6.1 关闭 IKEv1 的构建） ------------------------------
+rm -f "$TMP/xauth-generic.conf"
+cat > "$TMP/uci" <<'EOF'
+enabled=1
+clientip=10.9.8.10/24
+clientdns=10.9.8.1
+account=acc1
+password=pw1
+secret=psk1
+ikev2=1
+EOF
+
+rc="$(run_render "$TMP/uci")"
+check "无 IKEv1 插件时渲染成功" "0" "$rc"
+check "无 IKEv1 插件时不生成 IKEv1 conn" "0" "$(count_matches '^conn xauth_psk$' "$TMP/etc/ipsec.conf")"
+check "无 IKEv1 插件时仍生成 IKEv2 conn" "1" "$(count_matches '^conn ikev2_psk$' "$TMP/etc/ipsec.conf")"
+check "无 IKEv1 插件时 secrets 不含 XAUTH" "0" "$(count_matches ': XAUTH ' "$TMP/etc/ipsec.secrets")"
+check "无 IKEv1 插件时 secrets 仍含 PSK" "1" "$(count_matches '^: PSK "psk1"$' "$TMP/etc/ipsec.secrets")"
+
+# 无 IKEv1 且没启用 IKEv2：两条路都没有，必须失败且不写配置
+cat > "$TMP/uci" <<'EOF'
+enabled=1
+clientip=10.9.8.10/24
+clientdns=10.9.8.1
+account=acc1
+password=pw1
+secret=psk1
+ikev2=0
+EOF
+rm -f "$TMP/etc/ipsec.conf"
+rc="$(run_render "$TMP/uci")"
+check "无 IKEv1 且无 IKEv2 时拒绝渲染" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+check "无可用协议时不生成 ipsec.conf" "0" "$([ -e "$TMP/etc/ipsec.conf" ] && echo 1 || echo 0)"
+
+# 恢复插件，供后面的用例使用
+: > "$TMP/xauth-generic.conf"
+
+# --- 4. enabled=0 ----------------------------------------------------------
 cat > "$TMP/uci" <<'EOF'
 enabled=0
 clientip=10.9.8.10/24
@@ -185,7 +226,7 @@ EOF
 
 cat > "$TMP/usr/lib/ipsec/luci-ipsec-vpnd-deps" <<'EOF'
 #!/bin/sh
-[ "$1" = "files" ] && echo "starter|missing|/usr/lib/ipsec/starter"
+[ "$1" = "files" ] || [ "$1" = "files-required" ] && echo "starter|missing|/usr/lib/ipsec/starter"
 exit 1
 EOF
 chmod 0755 "$TMP/usr/lib/ipsec/luci-ipsec-vpnd-deps"

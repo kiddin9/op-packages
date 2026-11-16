@@ -137,3 +137,11 @@ msgstr ""
 #: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:171
 msgid "Adds an IKEv2 connection for the native iOS/Android IKEv2 client. It supports MOBIKE, so the phone keeps the tunnel while switching between Wi-Fi and cellular. It authenticates with the PSK only (no username/password), so use a strong PSK; existing IKEv1 clients are unaffected."
 msgstr ""
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:141
+msgid "IKEv1 is unavailable; IKEv2 still works."
+msgstr ""
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:146
+msgid "To enable IKEv1, install:"
+msgstr ""

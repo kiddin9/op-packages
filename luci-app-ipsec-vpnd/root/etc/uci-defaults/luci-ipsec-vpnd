@@ -100,6 +100,10 @@ EOF
 # 避免改名后覆盖本包自带配置（默认 enabled=0）
 [ -f "/etc/config/ipsec" ] && rm -f "/etc/config/ipsec"
 
+# strongswan-default 会带 swanctl 服务；本包用 ipsec 服务托管 charon，
+# 两个都自启会抢 UDP 500/4500。
+[ -x /etc/init.d/swanctl ] && { /etc/init.d/swanctl stop >/dev/null 2>&1; /etc/init.d/swanctl disable >/dev/null 2>&1; }
+
 # 记录初始化标记，避免升级时重复执行破坏性操作
 uci -q set ipsec-vpnd.ipsec.initialized='1'
 uci -q commit ipsec-vpnd
