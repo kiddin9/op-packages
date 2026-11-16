@@ -1,20 +1,3 @@
---- a/luci-app-quickstart/luasrc/view/quickstart/main.htm
-+++ b/luci-app-quickstart/luasrc/view/quickstart/main.htm
-@@ -47,6 +47,13 @@
-           location.href = vue_prefix;
-         }
-       }
-+    setTimeout(() => {
-+  	  document.querySelectorAll('.item_container .item').forEach(el => {
-+  	  if (el.textContent.trim() === '软件源配置' || el.textContent.trim() === '系统维护') {
-+  	  el.remove(); // 或 el.style.display = 'none';
-+  	  }
-+  	  });
-+    }, 800);
-     })();
- </script>
- <div id="app">
-
 --- a/luci-app-quickstart/Makefile
 +++ b/luci-app-quickstart/Makefile
 @@ -6,7 +6,7 @@
