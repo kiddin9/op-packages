@@ -1,0 +1,285 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-dae\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-12 16:20+0800\n"
+"PO-Revision-Date: 2026-11-12 16:20+0800\n"
+"Last-Translator: szwjp <szwjp@users.noreply.github.com>\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Panel"
+msgstr "面板"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Geo data"
+msgstr "Geo 数据"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Disabled"
+msgstr "未启用"
+
+msgid "Autostart"
+msgstr "开机自启"
+
+msgid "No autostart"
+msgstr "不自启"
+
+msgid "Listener"
+msgstr "监听地址"
+
+msgid "Open panel"
+msgstr "打开面板"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "API secret"
+msgstr "API 密钥"
+
+msgid "Show"
+msgstr "显示"
+
+msgid "Hide"
+msgstr "隐藏"
+
+msgid "Copy"
+msgstr "复制"
+
+msgid "Copied"
+msgstr "已复制"
+
+msgid "Loading…"
+msgstr "读取中…"
+
+msgid "Working…"
+msgstr "处理中…"
+
+msgid "Updating…"
+msgstr "更新中…"
+
+msgid "Update now"
+msgstr "立即更新"
+
+msgid "File"
+msgstr "文件"
+
+msgid "Size"
+msgstr "大小"
+
+msgid "Modified"
+msgstr "修改时间"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "Never updated."
+msgstr "尚未更新。"
+
+msgid "The update completed."
+msgstr "更新完成。"
+
+msgid "The update failed."
+msgstr "更新失败。"
+
+msgid "The operation completed."
+msgstr "操作已完成。"
+
+msgid "The operation failed."
+msgstr "操作失败。"
+
+msgid "Could not read the dae service state."
+msgstr "读取 dae 服务状态失败。"
+
+msgid "Could not read the geo data state."
+msgstr "读取 Geo 数据状态失败。"
+
+msgid "If luci-app-dae was installed just now, restart rpcd so that its backend is registered."
+msgstr "如果刚安装 luci-app-dae，请重启 rpcd 使其后端生效。"
+
+msgid "dae"
+msgstr "dae 引擎"
+
+msgid "The doona panel drives the dae engine over its native HTTP API. dae serves the panel itself; this page shows the service state, opens the panel and updates the geo data."
+msgstr "doona 面板通过 dae 的原生 HTTP API 驱动引擎。面板由 dae 自己托管；本页显示服务状态、打开面板，并更新 Geo 数据。"
+
+msgid "The dae service is not enabled yet. Press Start to enable and start it."
+msgstr "dae 服务尚未启用，点「启动」即可启用并启动。"
+
+msgid "The dae service is stopped. Press Start to run it."
+msgstr "dae 服务已停止，点「启动」即可运行。"
+
+msgid "The panel is not installed. Install the doona package."
+msgstr "面板未安装，请安装 doona 软件包。"
+
+msgid "The panel is not reachable from this browser."
+msgstr "当前浏览器访问不到面板。"
+
+msgid "The API listens on the router itself, so the panel is not reachable from another machine."
+msgstr "API 只监听路由器本机，其他机器访问不到面板。"
+
+msgid "The panel asks for this secret the first time it is opened. It is also readable with: uci get dae.main.api_secret"
+msgstr "面板首次打开时会要求输入这个密钥。也可以用 uci get dae.main.api_secret 读取。"
+
+msgid "The secret is not available to this session."
+msgstr "当前会话无权读取密钥。"
+
+msgid "The secret could not be written to the clipboard. It is shown instead."
+msgstr "密钥没能写入剪贴板，已改为直接显示。"
+
+msgid "The dae service started."
+msgstr "dae 服务已启动。"
+
+msgid "The dae service stopped."
+msgstr "dae 服务已停止。"
+
+msgid "The dae service restarted."
+msgstr "dae 服务已重启。"
+
+msgid "The dae service did not start. Check the system log."
+msgstr "dae 服务启动失败，请查看系统日志。"
+
+msgid "The dae service did not stop. Check the system log."
+msgstr "dae 服务停止失败，请查看系统日志。"
+
+msgid "The dae service did not restart. Check the system log."
+msgstr "dae 服务重启失败，请查看系统日志。"
+
+msgid "The settings could not be written. Check the system log."
+msgstr "配置写入失败，请查看系统日志。"
+
+msgid "The operation is not known."
+msgstr "未知操作。"
+
+msgid "The dae service reported an issue."
+msgstr "dae 服务报告了一个问题。"
+
+msgid "The backend did not confirm the operation."
+msgstr "后端没有确认这次操作。"
+
+msgid "The update was started."
+msgstr "更新已开始。"
+
+msgid "Another update is already running."
+msgstr "已有更新正在进行。"
+
+msgid "The update script is missing. Reinstall the dae package."
+msgstr "更新脚本缺失，请重新安装 dae 软件包。"
+
+msgid "The geo data was updated and dae was restarted."
+msgstr "Geo 数据已更新，dae 已重启。"
+
+msgid "The geo data is already up to date."
+msgstr "Geo 数据已是最新。"
+
+msgid "The geo data was updated. It takes effect the next time dae starts."
+msgstr "Geo 数据已更新，下次启动 dae 时生效。"
+
+msgid "The download or verification failed. The installed files were left untouched."
+msgstr "下载或校验失败，已安装的文件未改动。"
+
+msgid "The previous update was interrupted."
+msgstr "上一次更新被中断。"
+
+msgid "dae did not come back up after the update; the previous files were restored."
+msgstr "更新后 dae 未能启动，已恢复原有文件。"
+
+msgid "dae is not running and the previous files could not be restored. Check the system log."
+msgstr "dae 未运行且原有文件无法恢复，请查看系统日志。"
+
+msgid "The geoip.dat and geosite.dat files back the geoip: and geosite: rules. dae reads them when it starts, so it is restarted after an update."
+msgstr "geoip.dat 与 geosite.dat 是 geoip: 与 geosite: 规则的数据源。dae 只在启动时读取，因此更新后会重启 dae。"
+
+msgid "Panel writes"
+msgstr "面板写入"
+
+msgid "Off — the panel can only read the configuration."
+msgstr "关闭 — 面板只能读取配置。"
+
+msgid "On — the panel can change the configuration, nodes and groups."
+msgstr "开启 — 面板可以修改配置、节点与组。"
+
+msgid "Allow panel writes"
+msgstr "允许面板写入"
+
+msgid "Stop panel writes"
+msgstr "停止面板写入"
+
+msgid "Configuration, nodes, groups and rules can only be edited in the panel while writes are on."
+msgstr "只有在写入开启时，才能在面板里编辑配置、节点、组与规则。"
+
+msgid "The panel may now change the configuration."
+msgstr "面板现在可以修改配置。"
+
+msgid "The panel can only read the configuration now."
+msgstr "面板现在只能读取配置。"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "dae needs a numeric address and a port. Saving restarts the service immediately."
+msgstr "dae 需要数值地址和端口；保存后会立即重启服务。"
+
+msgid "Enter a listener address and port."
+msgstr "请输入监听地址和端口。"
+
+msgid "The listener was saved."
+msgstr "监听地址已保存。"
+
+msgid "The listener was not saved."
+msgstr "监听地址未保存。"
+
+msgid "The listener was saved and is in effect."
+msgstr "监听地址已保存并生效。"
+
+msgid "The listener was saved. It takes effect when the service starts."
+msgstr "监听地址已保存，将在服务启动时生效。"
+
+msgid "The listener did not change."
+msgstr "监听地址没有变化。"
+
+msgid "The listener is invalid. Use a numeric address and a port, such as 0.0.0.0:9527."
+msgstr "监听地址无效。请填写数值地址和端口，例如 0.0.0.0:9527。"
+
+msgid "The new listener did not start; the previous address was restored."
+msgstr "新监听地址未能启动，已恢复原地址。"
+
+msgid "The new listener did not start and the previous address could not be restored. Check the system log."
+msgstr "新监听地址未能启动，且原地址恢复失败。请检查系统日志。"
+
+msgid "That port is already in use. Choose another one."
+msgstr "该端口已被占用，请换一个端口。"
+
+msgid "Confirm"
+msgstr "确定"
+
+msgid "Confirm listener"
+msgstr "确定"
+
+msgid "Panel address"
+msgstr "面板访问地址"
+
+msgid "The address the panel is opened at. Saving restarts the service immediately."
+msgstr "面板打开时使用的地址。保存后会立即重启服务。"
+
+msgid "Enter the panel address."
+msgstr "请输入面板地址。"

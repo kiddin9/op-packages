@@ -1,0 +1,447 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=99
+STOP=10
+
+# procd service for dae with the native HTTP control plane.
+#
+# The service reads /etc/config/dae (UCI) and writes the api section into its
+# own file, /etc/dae/api.dae, so the listener address, the secret and the
+# panel path stay in UCI while the rest of the configuration stays in dae's own
+# format under /etc/dae.
+#
+# The default layout is the managed one: the entry file /etc/dae/config.dae
+# only holds one include block, and the modules live in /etc/dae/config.d/.
+# That layout is what dae's config editor needs to write through the API.
+#
+# USE_PROCD, START and STOP have to stay within the first eleven lines of
+# this file. rpcd builds the list of init scripts that the LuCI page
+# "Startup" shows from those three values, and it reads them from the head of
+# the script only: a script whose START= sits further down is left out of
+# that list, and its autostart state is reported as off.
+
+. /lib/functions.sh
+
+CONFIG=dae
+PROG=/usr/bin/dae
+# Set when start_service fails before procd is handed the instance.
+START_FAILED=0
+# The panel is shipped by the doona package, which installs it here. dae serves
+# it from its own listener under /ui/.
+UI_PATH=/usr/share/doona
+API_FILE=/etc/dae/api.dae
+REDIRECTS_STATE=/var/run/dae-redirects.state
+
+# The dae configuration may quote an interface name and may name more than one,
+# separated by commas. The redirect workaround and the boot wait each need a
+# single device, so the first entry is used and the quoting is stripped.
+first_interface() {
+	local value="$1"
+	value="${value%%,*}"
+	value="${value#\"}"
+	value="${value%\"}"
+	value="${value#\'}"
+	value="${value%\'}"
+	printf '%s\n' "$value"
+}
+
+# The interface names live in dae's own configuration under /etc/dae, next to
+# the UCI options. The UCI option wins, for a device whose bridge is named
+# differently. Both places are read the same way, so a quoted or comma
+# separated value does not come out as part of the device name.
+config_interface() {
+	local option="$1" config_file interface
+
+	config_get interface main "$option" ""
+	if [ -z "$interface" ]; then
+		config_get config_file main config_file "/etc/dae/config.dae"
+		interface="$(sed -n "s/^[[:space:]]*${option}:[[:space:]]*\"\{0,1\}\([^\"[:space:],#]*\).*/\1/p" \
+			"$(dirname "$config_file")"/config.d/*.dae "$config_file" 2>/dev/null | head -n 1)"
+	fi
+	first_interface "$interface"
+}
+
+# The interface dae attaches to is named in its own configuration file, so the
+# redirect workaround has to look at the same place.
+lan_interface() {
+	config_interface lan_interface
+}
+
+# dae refuses to attach to an interface that sends ICMP redirects: the
+# redirects would fight with the rules dae installs. The kernel keeps the
+# setting in "all" as well as in the interface itself, and the effective
+# value is the larger of the two, so both are turned off while dae runs and
+# restored when it stops.
+redirects_disable() {
+	local device="$1" all old_all old_device
+
+	[ -n "$device" ] || return 0
+	[ -d "/proc/sys/net/ipv4/conf/$device" ] || return 0
+
+	all="$(cat /proc/sys/net/ipv4/conf/all/send_redirects 2>/dev/null)"
+	old_all="$all"
+	old_device="$(cat "/proc/sys/net/ipv4/conf/$device/send_redirects" 2>/dev/null)"
+
+	# The original values are written down once, on the first start: a
+	# restart must not overwrite them with the values the previous run
+	# left behind, or the original setting is lost for good.
+	if [ ! -f "$REDIRECTS_STATE" ]; then
+		{
+			echo "all=$old_all"
+			echo "$device=$old_device"
+		} > "$REDIRECTS_STATE"
+	fi
+
+	[ "$all" = "1" ] && echo 0 > /proc/sys/net/ipv4/conf/all/send_redirects
+	[ "$old_device" = "1" ] && echo 0 > "/proc/sys/net/ipv4/conf/$device/send_redirects"
+
+	return 0
+}
+
+redirects_restore() {
+	local key value
+
+	[ -f "$REDIRECTS_STATE" ] || return 0
+
+	while IFS='=' read -r key value; do
+		case "$key" in
+			all)
+				[ -n "$value" ] && echo "$value" > /proc/sys/net/ipv4/conf/all/send_redirects
+				;;
+			*)
+				[ -n "$value" ] && [ -d "/proc/sys/net/ipv4/conf/$key" ] && \
+					echo "$value" > "/proc/sys/net/ipv4/conf/$key/send_redirects"
+				;;
+		esac
+	done < "$REDIRECTS_STATE"
+
+	rm -f "$REDIRECTS_STATE"
+	return 0
+}
+
+start_service() {
+	local enabled config_file api_listen api_secret api_write device
+	config_load "$CONFIG"
+	config_get_bool enabled main enabled 0
+	if [ "$enabled" -ne "1" ]; then
+		# The daemon will not run, so whatever a killed instance left
+		# behind has to be put back: a stale state file would otherwise
+		# keep ICMP redirects switched off for the whole system.
+		redirects_restore
+		return 1
+	fi
+
+	config_get config_file main config_file "/etc/dae/config.dae"
+	config_get api_listen main api_listen "0.0.0.0:9527"
+	config_get api_secret main api_secret ""
+	config_get api_write main api_write "0"
+
+	write_api_section "$api_listen" "$api_secret" "$api_write" || {
+		# service_started reports this below: rc.common loses the return
+		# value of start_service, so the failure has to survive in a variable.
+		START_FAILED=1
+		return 1
+	}
+
+	device="$(lan_interface)"
+	redirects_disable "$device"
+
+	procd_open_instance dae
+	procd_set_param command "$PROG" run -c "$config_file"
+	# The geo data files live in /usr/share/v2ray, installed by the geo
+	# packages; point dae at them.
+	procd_set_param env DAE_LOCATION_ASSET=/usr/share/v2ray
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn 3600 5 5
+	procd_set_param limits nofile="1048576 1048576"
+	procd_close_instance
+}
+
+# rc.common turns the return value of its start() into the exit code of the
+# init script, and the one from start_service is lost on the way: the procd
+# wrapper closes the service object afterwards and that close is the last
+# command. A start that did not bring the daemon up would then leave exit code
+# 0 behind, which reads as success to every caller. rc.common calls this hook
+# right after start_service and returns its result, so the real outcome is
+# reported from here.
+service_started() {
+	local enabled
+	config_load "$CONFIG"
+	config_get_bool enabled main enabled 0
+	[ "$enabled" -eq "1" ] || return 1
+	# A start that could not write /etc/dae/api.dae never reached procd, and
+	# the daemon must not be reported as running.
+	[ "$START_FAILED" = "0" ] || return 1
+	return 0
+}
+
+# dae parses the listener address itself and wants a numeric IP: a host name
+# makes it refuse to start. "localhost" is the one name worth accepting, so it
+# is mapped to the loopback address here.
+normalize_listen() {
+	local listen="$1" host port
+
+	case "$listen" in
+		*:*)
+			host="${listen%:*}"
+			port="${listen##*:}"
+			;;
+		*)
+			echo "$listen"
+			return
+			;;
+	esac
+
+	case "$host" in
+		localhost) host="127.0.0.1" ;;
+	esac
+
+	echo "$host:$port"
+}
+
+# The listener address has to survive dae's own check: a numeric address and a
+# port in 1..65535. A wrong address is reported here, instead of leaving dae
+# to fail with a message nobody reads.
+check_listen() {
+	local listen="$1" host port bracketed=0
+
+	host="${listen%:*}"
+	port="${listen##*:}"
+	if [ "$host" = "$listen" ]; then
+		echo "the address carries no port"
+		return 1
+	fi
+
+	case "$port" in
+		''|*[!0-9]*)
+			echo "the port is not a number"
+			return 1
+			;;
+	esac
+	if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+		echo "the port is out of range"
+		return 1
+	fi
+
+	# dae splits "host:port" itself, so an IPv6 address has to be bracketed:
+	# "[::1]:9527" is one address, "::1:9527" is seven colons it cannot read.
+	case "$host" in
+		\[*)
+			bracketed=1
+			host="${host#\[}"
+			host="${host%%\]*}"
+			;;
+	esac
+
+	case "$host" in
+		'')
+			echo "the address has no host"
+			return 1
+			;;
+		*:*)
+			if [ "$bracketed" -ne 1 ]; then
+				echo "an IPv6 listener needs brackets, as in [::1]:9527"
+				return 1
+			fi
+			case "$host" in
+				*[!0-9a-fA-F:]*)
+					echo "the host is not a numeric address"
+					return 1
+					;;
+			esac
+			;;
+		*)
+			case "$host" in
+				*[!0-9.]*)
+					echo "the host is not a numeric address"
+					return 1
+					;;
+			esac
+			;;
+	esac
+
+	return 0
+}
+
+# The listener needs a secret whatever it is bound to. dae refuses to start
+# without one unless the listener is loopback and anonymous access is allowed
+# explicitly, and the panel authenticates either way. A secret that is missing
+# is generated once and written back, so the panel works right after the first
+# start.
+# These values end up inside quoted strings in dae's configuration. They are
+# only ever set by root, but a value with a quote or a newline would still
+# corrupt the file it is written to, so the character set is checked instead
+# of trusting the caller.
+valid_secret() {
+	case "$1" in
+		''|*[!A-Za-z0-9._+/-]*) return 1 ;;
+	esac
+	return 0
+}
+
+write_api_section() {
+	local listen secret write ui reason content
+
+	listen="$1"; secret="$2"; write="$3"; ui="$UI_PATH"
+
+	listen="$(normalize_listen "$listen")"
+	if ! reason="$(check_listen "$listen")"; then
+		logger -t dae "invalid api listener '$listen': $reason"
+		return 1
+	fi
+
+	if [ -z "$secret" ]; then
+		# hex from /dev/urandom: a minimal busybox has neither base64
+		# nor od, and hex needs no quoting in the configuration file.
+		secret="$(head -c 32 /dev/urandom | md5sum | cut -d' ' -f1)"
+		if [ -z "$secret" ]; then
+			logger -t dae "no api secret and no random source; set dae.main.api_secret by hand"
+			return 1
+		fi
+		# The secret has to survive a reboot, or the next start generates
+		# a different one and every panel session and saved secret stops
+		# working. The api file alone is not enough: it is rewritten on
+		# every start. A write that fails is fatal, because a daemon that
+		# comes up with a secret nobody can read is useless.
+		if ! uci -q set "$CONFIG.main.api_secret=$secret" || ! uci -q commit "$CONFIG"; then
+			logger -t dae "cannot save the generated api secret to $CONFIG; set $CONFIG.main.api_secret by hand"
+			return 1
+		fi
+		logger -t dae "generated an api secret; read it with: uci show $CONFIG"
+	fi
+
+	# The secret and the panel path end up inside quoted strings in dae's
+	# configuration; a stray quote or newline would break the file, so they
+	# are checked before anything is written.
+	if ! valid_secret "$secret"; then
+		logger -t dae "invalid api secret (allowed: A-Za-z0-9 . _ + / -), refusing to start"
+		return 1
+	fi
+	content="$(
+		echo "api {"
+		echo "  enabled: true"
+		echo "  listen: '$listen'"
+		echo "  secret: '$secret'"
+		[ "$write" = "1" ] && echo "  config_write: true"
+		# The panel is a separate package. Point at it only when it is there.
+		if [ -n "$ui" ] && [ -d "$ui" ]; then
+			echo "  ui: '$ui'"
+		fi
+		echo "}"
+	)"
+
+	# The file is rewritten on every start, but the overlay does not need a
+	# write when nothing changed: the secret, the listener and the switch are
+	# what it holds, and none of them moves on a plain restart.
+	mkdir -p "$(dirname "$API_FILE")"
+	if [ ! -f "$API_FILE" ] || [ "$content" != "$(cat "$API_FILE")" ]; then
+		# Written under umask 077, so the file that holds the secret never
+		# exists with a wider mode, not even for a moment.
+		( umask 077; printf '%s\n' "$content" > "$API_FILE.new" ) || {
+			rm -f "$API_FILE.new"
+			logger -t dae "cannot write $API_FILE"
+			return 1
+		}
+		mv -f "$API_FILE.new" "$API_FILE" || {
+			rm -f "$API_FILE.new"
+			logger -t dae "cannot replace $API_FILE"
+			return 1
+		}
+		chmod 600 "$API_FILE"
+	fi
+
+	# The managed layout needs the entry file to include the api file.
+	if [ -f /etc/dae/config.dae ] && ! grep -q "api.dae" /etc/dae/config.dae; then
+		logger -t dae "warning: /etc/dae/config.dae does not include api.dae, so the native API stays off"
+	fi
+}
+
+stop_service() {
+	# The api file is left in place. Deleting it only to write it again on the
+	# next start costs an overlay write and a delete per restart, and it buys
+	# nothing: the secret it holds is also in /etc/config/dae, and the file is
+	# 0600 either way. A start still rewrites it when the values changed.
+	redirects_restore
+}
+
+# A daemon that was killed outright never runs stop_service, so the state file
+# and the disabled redirects it left behind outlive it. procd restarts the
+# daemon and start_service writes the file again with the original values, so
+# the window is short; but the window is not always closed. When the daemon
+# stays down, the redirects stay off for the whole system. boot() runs before
+# anything else at startup, so this is where the leftovers are cleared: with no
+# running daemon nothing needs them switched off.
+# S99 runs before the WAN is up: pppd brings pppoe-wan up a few seconds later,
+# and dae attaches its eBPF programs to the interfaces the moment it starts.
+# Started that early it hooks br-lan while the default route does not exist yet,
+# and every packet it hands back to the LAN fails with "network is unreachable" —
+# the whole LAN loses its internet, not just the proxied part. Observed on the
+# first reboot after the upgrade: dae at 08:11:12, pppoe-wan at 08:11:20, and
+# from 08:11:42 on the LAN had no connectivity at all until dae was stopped.
+#
+# So at boot the daemon is only brought up once the uplink is usable: the
+# interface named in the configuration has to exist, and the default route has
+# to be there. The second half matters as much as the first: pppd creates
+# pppoe-wan before the session is established, and with "auto" that route is
+# exactly what dae picks. The wait is bounded, because a router whose uplink
+# never comes up must still end up with a running dae once the operator fixes
+# it by hand.
+wan_interface() {
+	config_interface wan_interface
+}
+
+# Whether the kernel has a default route yet. /proc/net/route is read instead
+# of "ip route" so the check does not depend on which ip tool the image ships.
+uplink_ready() {
+	awk '$2 == "00000000" { found = 1 } END { exit !found }' /proc/net/route 2>/dev/null
+}
+
+# Waits, with a bound, for the uplink to be usable: the default route has to
+# be there, and a named device has to exist as well. "auto" (and any other
+# name) means dae needs an uplink; an empty value means a device without a WAN
+# (see the README), where there is nothing to wait for.
+wait_uplink() {
+	local device="$1" tries=30 i=0
+
+	while [ "$i" -lt "$tries" ]; do
+		if uplink_ready && { [ -z "$device" ] || [ -d "/sys/class/net/$device" ]; }; then
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1
+	done
+	return 1
+}
+
+boot() {
+	local enabled device
+
+	config_load "$CONFIG"
+	config_get_bool enabled main enabled 0
+	if [ "$enabled" -ne "1" ]; then
+		redirects_restore
+		return 0
+	fi
+
+	device="$(wan_interface)"
+	case "$device" in
+		'')
+			# The single-NIC layout: no WAN, so there is no uplink to wait
+			# for.
+			;;
+		auto)
+			# dae resolves "auto" to the interface of the default route
+			# itself, so only the route has to be waited for.
+			wait_uplink "" ;;
+		*)
+			wait_uplink "$device" ;;
+	esac
+
+	start "$@"
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONFIG"
+}

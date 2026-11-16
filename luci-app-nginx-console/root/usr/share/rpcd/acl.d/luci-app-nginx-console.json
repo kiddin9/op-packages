@@ -1,0 +1,26 @@
+{
+	"luci-app-nginx-console": {
+		"description": "Access to the nginx console: a read grant gets the read-only commands, a write grant also gets the commands that change the configuration",
+		"read": {
+			"file": {
+				"/usr/libexec/nginx-console": [ "exec" ],
+				"/etc/nginx/conf.d": [ "list" ],
+				"/etc/nginx/conf.d/*": [ "read", "list" ],
+				"/etc/nginx/certs": [ "list" ],
+				"/etc/nginx/certs/*": [ "read", "list" ],
+				"/etc/ssl/acme": [ "list" ],
+				"/etc/ssl/acme/*": [ "read", "list" ],
+				"/etc/acme": [ "list" ],
+				"/etc/acme/*": [ "read", "list" ],
+				"/etc/luci-uploads": [ "list" ],
+				"/etc/luci-uploads/*": [ "read", "list" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/usr/libexec/nginx-console-write": [ "exec" ],
+				"/tmp/nginx-console.pending.*": [ "write", "read", "remove" ]
+			}
+		}
+	}
+}

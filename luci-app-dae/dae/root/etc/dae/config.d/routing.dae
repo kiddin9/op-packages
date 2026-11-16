@@ -1,0 +1,6 @@
+routing {
+  dip(geoip:private) -> direct
+  dip(224.0.0.0/3, 'ff00::/8') -> direct
+  domain(geosite:cn) -> direct
+  fallback: direct
+}

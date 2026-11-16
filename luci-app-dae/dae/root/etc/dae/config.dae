@@ -1,0 +1,8 @@
+# The entry file. It only holds one include block; the modules live in
+# config.d/ and the api section is written by the init script from UCI.
+#
+# The panel writes through the native API only in this layout, so keep it.
+include {
+    config.d/*.dae
+    api.dae
+}

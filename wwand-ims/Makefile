@@ -22,11 +22,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
 PKG_VERSION:=0.2.0_pre3
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
-PKG_SOURCE_VERSION:=58b626743f5f7ca5cf1093ad6daad2ac53113833
+PKG_SOURCE_VERSION:=9a4bba4fbefd91b239ab38f78681f1d48aa6af6b
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only

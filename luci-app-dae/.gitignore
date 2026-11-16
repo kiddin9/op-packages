@@ -1,0 +1,9 @@
+out/
+.DS_Store
+
+# The daemon and the panel are fetched from their releases, never committed.
+dae/assets/
+doona/assets/
+
+# Review reports and other local notes stay on this machine.
+docs/

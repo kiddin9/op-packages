@@ -1,0 +1,14 @@
+# sha256 of the daemon archives published by szwjp/dae.
+#
+# The release publishes a .dgst next to every archive, but a digest that ships
+# beside the archive only proves the two agree: if a release is replaced, both
+# are replaced. These values live in this repository instead, and the build
+# refuses an archive that does not match one of them.
+#
+# Bump this file and DAE_BINARY_TAG in .github/workflows/build.yml in the same
+# commit. The build fails when the tag here and the workflow's tag differ.
+tag v2026.11.14-nativeapi-r15
+
+e8b46936fdc6c50d4de4a193f63e0e62ea82bda38ba0855a6ed49d4dc4ddad07  dae-linux-x86_64.tar.xz
+ea6aae4bd870a240bf69f54d2ad18f740c1f3798db82e1629697f5e2a1eb5c34  dae-linux-arm64.tar.xz
+9dcb596269ec56a7e7c3beff4097df6fd89aaa39f655db3c26f4a50244026be3  dae-linux-riscv64_rva23u64.tar.xz

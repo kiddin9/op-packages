@@ -1,0 +1,10 @@
+{
+	"luci-app-dae-read": {
+		"description": "Grant read-only access to the dae service state",
+		"read": {
+			"ubus": {
+				"dae": [ "status", "geo_status" ]
+			}
+		}
+	}
+}

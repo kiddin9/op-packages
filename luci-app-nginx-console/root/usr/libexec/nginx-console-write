@@ -1,0 +1,54 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# nginx-console-write - write backend for luci-app-nginx-console.
+#
+# Everything that changes the nginx configuration goes through this entry
+# point: editing and adding server sections, installing and removing
+# conf.d fragments, restoring a backup, installing uploaded certificates and
+# managing the htpasswd users.
+#
+# The read-only commands live in nginx-console, which is the only path the
+# read ACL grants exec on, so granting read access does not hand out the
+# ability to rewrite the configuration.
+#
+# Every write is a transaction: back up, write, run `nginx -t`, roll back
+# when the test fails, and reload only after the test passed.
+#
+# Every command prints exactly one JSON object on stdout and exits 0, so the
+# caller never has to interpret exit codes.
+
+. /usr/libexec/nginx-console-lib.sh
+
+AUTH_MODE=rw
+
+# A staged file can hold a plain text password.  The page writes it 0600, but a
+# pre-existing file keeps whatever mode it had (open(2) only applies the mode
+# when creating), so it is tightened here before anything reads it.
+for staged in /tmp/nginx-console.pending.*; do
+	[ -f "$staged" ] && chmod 0600 "$staged" 2>/dev/null
+done
+
+# Commands that read staged input take that file's path as their last argument
+# ($3 for server-save/add, $2 for fragment/upload, $3 for auth).  The staging
+# path is validated in set_pending(); the page deletes its own file, and the
+# removal below is only a backstop for a path this run adopted.
+case "$1" in
+	server-save)    cmd_server_save "$2" "$3" ;;
+	server-add)     cmd_server_add "$2" "$3" ;;
+	server-delete)  cmd_server_delete "$2" ;;
+	frag-save)      cmd_frag_save "$2" "$3" ;;
+	frag-delete)    cmd_frag_delete "$2" ;;
+	backup-restore) cmd_backup_restore "$2" ;;
+	upload)         cmd_upload "$2" "$3" ;;
+	auth)           cmd_auth "$2" "$3" "$4" ;;
+	*)              json_fail unknown_command ;;
+esac
+
+# Nothing of a finished transaction is left behind: the staged form input and
+# the rollback snapshot both have a lifetime of one command.  Dated copies for
+# manual recovery live in $BACKUP_DIR instead.
+[ -n "$PENDING_PATH" ] && rm -f "$PENDING_PATH" 2>/dev/null
+rm -f "$SNAPSHOT" 2>/dev/null
+
+exit 0

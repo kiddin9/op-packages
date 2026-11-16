@@ -1,0 +1,14 @@
+{
+	"admin/services/nginx-console": {
+		"title": "Nginx 控制台",
+		"order": 62,
+		"action": {
+			"type": "view",
+			"path": "nginx-console/main"
+		},
+		"depends": {
+			"acl": [ "luci-app-nginx-console" ],
+			"uci": { "nginx": true }
+		}
+	}
+}

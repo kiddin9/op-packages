@@ -1,0 +1,5 @@
+# Build output of scripts/build-local.sh and of the CI workflow.
+dist/
+
+# macOS
+.DS_Store

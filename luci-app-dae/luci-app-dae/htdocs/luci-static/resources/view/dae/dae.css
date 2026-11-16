@@ -1,0 +1,411 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+
+/* dae — page styles for the LuCI side of the engine.
+   Translucent surfaces so the page follows whatever light or dark theme LuCI
+   is using, plus the few components the page builds itself: tabs, status
+   cards, the API secret row and the geo data table. */
+
+.dae-page {
+	--dae-accent-rgb: 0, 122, 255;
+	--dae-accent: rgba(var(--dae-accent-rgb), 0.9);
+
+	--dae-card-bg: rgba(128, 128, 128, 0.04);
+	--dae-card-border: rgba(128, 128, 128, 0.14);
+	--dae-field-bg: rgba(128, 128, 128, 0.05);
+	--dae-hover: rgba(128, 128, 128, 0.08);
+	--dae-muted: rgba(74, 86, 106, 0.62);
+	--dae-radius: 14px;
+	--dae-radius-sm: 9px;
+	--dae-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+		"Hiragino Sans GB", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+	--dae-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", monospace;
+
+	font-family: var(--dae-font);
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+
+.dae-page,
+.dae-page * {
+	box-sizing: border-box;
+}
+
+/* LuCI themes (Argon/Bootstrap) set #view>div:first-child and .cbi-map to
+   flex; force block so the card layout behaves identically across themes. */
+.cbi-map.dae-page {
+	display: block !important;
+}
+
+.dae-page [hidden] {
+	display: none !important;
+}
+
+/* ---------- header ---------- */
+
+.dae-header {
+	margin: 4px 0 16px;
+}
+
+.dae-header h2 {
+	margin: 0;
+	padding: 0;
+	/* Same size as a card title: the page title sits above the tabs, not
+	   above the whole theme, and the large heading dwarfed the content. */
+	font-size: 15px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	line-height: 1.3;
+	background: transparent !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+}
+
+.dae-header-sub {
+	margin: 8px 0 0;
+	color: var(--dae-muted);
+	font-size: 13px;
+	line-height: 1.55;
+	max-width: 720px;
+}
+
+/* This view's tabs take the place of LuCI's page-title tab; :has keeps the
+   rule scoped to the mounted view instead of leaking to the next page when the
+   stylesheet stays in the document. */
+body:has(.dae-page) #tabmenu {
+	display: none !important;
+}
+
+/* ---------- tabs ---------- */
+
+.dae-tabs {
+	display: inline-flex;
+	gap: 2px;
+	padding: 3px;
+	margin: 0 0 18px;
+	border-radius: var(--dae-radius-sm);
+	background: var(--dae-field-bg);
+	border: 1px solid var(--dae-card-border);
+}
+
+.dae-tab {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	color: var(--dae-muted);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 7px 16px;
+	border-radius: 7px;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dae-tab:hover {
+	color: inherit;
+	background: var(--dae-hover);
+}
+
+.dae-tab--active,
+.dae-tab--active:hover {
+	color: rgb(var(--dae-accent-rgb));
+	background: var(--dae-card-bg);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- buttons ---------- */
+
+/* Every control on the page uses the accent colour of the theme's action
+   buttons (the blue outlined "Open panel"/"Stop" pair) instead of mixing blue
+   and grey. The theme paints .cbi-button from --on-color, so overriding that
+   one variable plus the border keeps the same look in light and dark mode. */
+.dae-page .cbi-button {
+	--on-color: var(--primary-color-high, var(--dae-accent));
+	color: var(--on-color);
+	border-color: var(--on-color);
+}
+
+/* ---------- cards ---------- */
+
+.dae-card {
+	margin: 0 0 18px;
+	padding: 16px 18px;
+	background: var(--dae-card-bg);
+	border: 1px solid var(--dae-card-border);
+	border-radius: var(--dae-radius);
+}
+
+.dae-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.dae-card-head-main {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	min-width: 0;
+}
+
+.dae-card-title {
+	margin: 0;
+	padding: 0;
+	font-size: 15px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	background: none !important;
+	box-shadow: none !important;
+}
+
+.dae-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+/* The panel is served by dae, so the link does nothing while it is stopped. */
+.dae-actions .dae-disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* ---------- status badge ---------- */
+
+.dae-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	border: 1px solid transparent;
+}
+
+.dae-badge--run {
+	color: #1f7a37;
+	background: rgba(52, 199, 89, 0.14);
+	border-color: rgba(52, 199, 89, 0.35);
+}
+
+.dae-badge--idle {
+	color: #a05c00;
+	background: rgba(255, 149, 0, 0.13);
+	border-color: rgba(255, 149, 0, 0.32);
+}
+
+.dae-badge--stop {
+	color: #b3261e;
+	background: rgba(255, 59, 48, 0.12);
+	border-color: rgba(255, 59, 48, 0.3);
+}
+
+/* Autostart is not the same fact as running or enabled: the Startup page
+   turns it off by dropping the rc.d link, so it has a badge of its own. */
+.dae-badge--boot {
+	color: var(--dae-muted);
+	background: var(--dae-card-bg);
+	border-color: var(--dae-card-border);
+}
+
+.dae-badge--boot-off {
+	color: #a05c00;
+	background: rgba(255, 149, 0, 0.1);
+	border-color: rgba(255, 149, 0, 0.28);
+}
+
+/* ---------- meta rows ---------- */
+
+.dae-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 28px;
+	margin-top: 14px;
+}
+
+.dae-meta-item {
+	display: inline-flex;
+	gap: 8px;
+	align-items: baseline;
+	font-size: 13px;
+	min-width: 0;
+}
+
+.dae-meta-label {
+	color: var(--dae-muted);
+}
+
+.dae-note {
+	margin: 12px 0 0;
+	color: var(--dae-muted);
+	font-size: 12.5px;
+	line-height: 1.55;
+}
+
+/* The listener editor. dae binds its API listener at startup, so the value is
+   saved by the rpcd backend, which restarts the service and rolls back to the
+   previous address when the new bind fails. */
+.dae-listen {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 16px;
+	padding-top: 14px;
+	border-top: 1px solid var(--dae-card-border);
+}
+
+.dae-listen-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.dae-listen .dae-note {
+	margin: 0;
+}
+
+.dae-listen-input {
+	width: 320px;
+	max-width: 100%;
+	font-family: var(--dae-mono);
+	font-size: 13px;
+}
+
+.dae-listen .cbi-button {
+	flex: 0 0 auto;
+}
+
+/* The panel-writes switch. dae keeps the whole configuration read-only until
+   its api section allows writes, so the state and its one control sit in the
+   same row. */
+.dae-write {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 16px;
+	padding-top: 14px;
+	border-top: 1px solid var(--dae-card-border);
+}
+
+.dae-write-text {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+	flex: 1 1 260px;
+}
+
+.dae-write-state {
+	font-size: 13px;
+}
+
+/* The label and the state line of this block are read at a glance, so they
+   use the theme's brightest text colour instead of the muted/accent pair. */
+.dae-write .dae-meta-label,
+.dae-write .dae-write-state {
+	color: var(--text-color-highest, #fff);
+}
+
+.dae-write .dae-note {
+	margin: 0;
+}
+
+.dae-status-msg {
+	margin: 0;
+	min-height: 1.4em;
+	color: var(--dae-muted);
+	font-size: 13px;
+}
+
+/* ---------- API secret ---------- */
+
+.dae-secret-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-top: 12px;
+}
+
+.dae-secret {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	padding: 6px 10px;
+	border-radius: var(--dae-radius-sm);
+	background: var(--dae-field-bg);
+	border: 1px solid var(--dae-card-border);
+	font-family: var(--dae-mono);
+	font-size: 12.5px;
+}
+
+/* ---------- geo data ---------- */
+
+.dae-geo-table {
+	width: 100%;
+	margin-top: 14px;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.dae-geo-table th,
+.dae-geo-table td {
+	text-align: left;
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--dae-card-border);
+}
+
+.dae-geo-table th {
+	color: var(--dae-muted);
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.dae-geo-table tr:last-child td {
+	border-bottom: 0;
+}
+
+.dae-geo-table td:first-child {
+	font-family: var(--dae-mono);
+	font-size: 12.5px;
+}
+
+.dae-log {
+	margin: 12px 0 0;
+	padding: 10px 12px;
+	max-height: 220px;
+	overflow: auto;
+	border-radius: var(--dae-radius-sm);
+	background: var(--dae-field-bg);
+	border: 1px solid var(--dae-card-border);
+	font-family: var(--dae-mono);
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+/* The page is usable on a phone: the buttons wrap and the table scrolls. */
+@media screen and (max-width: 600px) {
+	.dae-card-head {
+		align-items: flex-start;
+	}
+
+	.dae-actions {
+		width: 100%;
+	}
+
+	.dae-geo-table {
+		display: block;
+		overflow-x: auto;
+	}
+}

@@ -1,0 +1,17 @@
+dns {
+  upstream {
+    alidns: 'udp://dns.alidns.com:53'
+    googledns: 'tcp+udp://dns.google:53'
+  }
+  # The panel adds the first DNS rule inside these blocks. dae requires both
+  # lists to name a fallback, so they are written here; the panel inserts a rule
+  # before the closing brace of the list it edits.
+  routing {
+    request {
+      fallback: asis
+    }
+    response {
+      fallback: accept
+    }
+  }
+}

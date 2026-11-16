@@ -1,0 +1,26 @@
+{
+	"luci-app-dae-admin": {
+		"description": "Grant control over the dae service",
+		"read": {
+			"ubus": {
+				"dae": [
+					"status",
+					"secret",
+					"geo_status"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"dae": [
+					"start",
+					"stop",
+					"restart",
+					"set_listen",
+					"set_write",
+					"geo_update"
+				]
+			}
+		}
+	}
+}

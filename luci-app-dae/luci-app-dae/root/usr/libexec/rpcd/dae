@@ -1,0 +1,666 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# rpcd backend of the dae LuCI page.
+#
+# The panel is served by dae itself from /usr/share/doona, so this backend does
+# not proxy it. It reports the state of the service, starts and stops the
+# daemon, hands out the API secret, and drives the manual geo data update.
+
+. /lib/functions.sh
+. /lib/functions/network.sh
+. /usr/share/libubox/jshn.sh
+
+# rpcd execs this script with an environment that is not guaranteed to carry
+# the usual search path; every command the user starts goes through it.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+CONFIG=dae
+# Waits are seconds, not tries: the settle below costs two seconds of its own,
+# and the LuCI RPC call behind the page times out after 20 seconds by default.
+WAIT_START=12
+# The manual geo update runs as a background job: the files are up to tens of
+# megabytes and would blow that timeout.
+GEO_SCRIPT=/usr/bin/dae-geo-update
+GEO_STATE=/var/run/dae-geo-update.state
+GEO_LOG=/var/log/dae-geo-update.log
+# Held by the spawned script through an inherited descriptor; see geo_update.
+GEO_START_LOCK=/var/run/dae-geo-update.start.lock
+GEO_DIR=/usr/share/v2ray
+UI_PATH=/usr/share/doona
+DEFAULT_LISTEN=0.0.0.0:9527
+LAN_NETWORK=lan
+
+emit_result() {
+	ok=$1
+	message=$2
+	[ "$ok" = true ] && ok=1 || ok=0
+	json_init
+	json_add_boolean ok "$ok"
+	json_add_string message "$message"
+	json_dump
+}
+
+service_running() {
+	case "$(/etc/init.d/dae status 2>/dev/null)" in
+		running*) return 0 ;;
+	esac
+	return 1
+}
+
+# The pid procd has for the instance, or empty when no instance runs. Reading
+# the pid instead of the status words makes the wait below reliable: a restart
+# that leaves the old process in place for a moment still reports the old pid.
+service_pid() {
+	local pid
+
+	pid="$(ubus call service list '{"name":"dae"}' 2>/dev/null |
+		jsonfilter -e '@.dae.instances.dae.pid' 2>/dev/null)"
+	case "$pid" in
+		''|*[!0-9]*) echo "" ;;
+		*) echo "$pid" ;;
+	esac
+}
+
+# Whether something listens on the given TCP port. /proc/net/tcp is read
+# because the image may carry neither ss nor netstat; the state column is 0A
+# for LISTEN and the local address ends in the port as four hex digits.
+port_listening() {
+	local port="$1" hex
+
+	case "$port" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	# No proc support: the pid check is all there is, do not block on it.
+	[ -r /proc/net/tcp ] || return 0
+	hex="$(printf '%04X' "$port")"
+	cat /proc/net/tcp /proc/net/tcp6 2>/dev/null |
+		awk -v suffix=":$hex" '$2 ~ suffix"$" && $4 == "0A" { found = 1 } END { exit !found }'
+}
+
+# The port the API is configured for, for the listener check below.
+configured_port() {
+	local listen
+	config_load "$CONFIG"
+	config_get listen main api_listen "$DEFAULT_LISTEN"
+	printf '%s' "${listen##*:}"
+}
+
+wait_state() {
+	local want="$1" tries="$2" i=0
+
+	while [ "$i" -lt "$tries" ]; do
+		if [ "$want" = running ]; then
+			service_running && return 0
+		else
+			service_running || return 0
+		fi
+		i=$((i + 1))
+		[ "$i" -lt "$tries" ] && sleep 1
+	done
+
+	return 1
+}
+
+# Waits until the instance runs under a pid other than the one it had before
+# the restart. A failed start leaves the old pid gone and no new one, and a
+# start that dies at once leaves no pid either, so both are reported as a
+# failure instead of as a success that the next status call contradicts.
+wait_new_instance() {
+	local before="$1" budget="$2" port="$3" deadline pid
+
+	deadline=$(( $(date +%s) + budget ))
+	while [ "$(date +%s)" -lt "$deadline" ]; do
+		pid="$(service_pid)"
+		if [ -n "$pid" ] && [ "$pid" != "$before" ]; then
+			# Up is not the same as usable: the daemon binds its listener
+			# a moment later, and procd respawns one that dies at once.
+			sleep 2
+			if [ "$(service_pid)" = "$pid" ] &&
+				{ [ -z "$port" ] || port_listening "$port"; }; then
+				return 0
+			fi
+		fi
+		sleep 1
+	done
+
+	return 1
+}
+
+# Every IPv4 address the daemon may be reached at, most useful first.
+#
+# The API answers a wildcard bind only for an IP literal in the Host header, so
+# a page opened by name cannot build the address from the browser's own host.
+# The addresses are listed instead, with the one of the LAN first, and the page
+# picks the candidate it can actually reach.
+listen_addresses() {
+	local lan_device device address found=" " count=0
+
+	lan_device="$(network_get_device device "$LAN_NETWORK" 2>/dev/null && echo "$device")"
+	if [ -n "$lan_device" ]; then
+		address="$(network_get_ipaddr address "$LAN_NETWORK" 2>/dev/null && echo "$address")"
+		case "$address" in
+			''|*[!0-9.]*) address= ;;
+		esac
+		if [ -n "$address" ]; then
+			printf '%s ' "$address"
+			found="$found$address "
+			count=$((count + 1))
+		fi
+	fi
+
+	# Then everything else that is up and carries an IPv4 address.
+	for device in /sys/class/net/*; do
+		[ -e "$device" ] || continue
+		device="$(basename "$device")"
+		[ "$device" = "lo" ] && continue
+		[ "$(cat "/sys/class/net/$device/operstate" 2>/dev/null)" = "up" ] || continue
+
+		address="$(ip -4 -o addr show dev "$device" 2>/dev/null |
+			awk '$3 == "inet" { sub(/\/.*/, "", $4); print $4; exit }')"
+		case "$address" in
+			''|*[!0-9.]*) continue ;;
+		esac
+
+		case "$found" in
+			*" $address "*) continue ;;
+		esac
+
+		printf '%s ' "$address"
+		found="$found$address "
+		count=$((count + 1))
+		[ "$count" -ge 8 ] && break
+	done
+
+	printf '\n'
+}
+
+status() {
+	local enabled boot listen port panel_available running addresses lan write panel_host
+
+	config_load "$CONFIG"
+	config_get_bool enabled main enabled 0
+	config_get listen main api_listen "$DEFAULT_LISTEN"
+	config_get panel_host main panel_host ""
+	# The switch the panel's writes depend on: dae refuses every configuration
+	# write without it, and the panel then shows the whole configuration as
+	# read-only.
+	config_get_bool write main api_write 0
+
+	port="$(listen_port "$listen")"
+	case "$port" in
+		''|*[!0-9]*) port=0 ;;
+	esac
+
+	if service_running; then running=1; else running=0; fi
+	# Autostart needs both: the UCI switch (the init script refuses to start
+	# without it) and the rc.d link (the Startup page disables the service by
+	# removing the links, without touching the UCI bit).
+	if [ "$enabled" -eq 1 ] && [ -e /etc/rc.d/S99dae ]; then boot=1; else boot=0; fi
+	if [ -r "$UI_PATH/index.html" ]; then panel_available=1; else panel_available=0; fi
+	addresses="$(listen_addresses)"
+	lan="${addresses%% *}"
+
+	json_init
+	json_add_boolean enabled "$enabled"
+	json_add_boolean boot_enabled "$boot"
+	json_add_boolean running "$running"
+	json_add_boolean write "$write"
+	json_add_string listen "$listen"
+	json_add_string panel_host "$panel_host"
+	json_add_int port "$port"
+	json_add_boolean panel_available "$panel_available"
+	json_add_string lan_address "$lan"
+	json_add_array lan_addresses
+	for lan in $addresses; do
+		json_add_string "" "$lan"
+	done
+	json_close_array
+	json_dump
+}
+
+listen_port() {
+	echo "${1##*:}"
+}
+
+secret() {
+	local secret
+
+	config_load "$CONFIG"
+	config_get secret main api_secret ""
+
+	json_init
+	json_add_string secret "$secret"
+	json_dump
+}
+
+# enabled=1 is persisted before the daemon is started: the init script refuses
+# to start a disabled service, and a start that is not saved would come back
+# disabled after a reboot.
+set_enabled() {
+	uci -q set "$CONFIG.main.enabled=1" || return 1
+	uci -q commit "$CONFIG" || return 1
+	return 0
+}
+
+start() {
+	if ! set_enabled; then
+		emit_result false settings_write_failed
+		return 1
+	fi
+	# Starting from this page means "run it from now on": the rc.d links are
+	# what rc.common runs at boot, and the UCI enabled bit alone starts
+	# nothing after a reboot. Turning the autostart off is the Startup page's
+	# job (it runs /etc/init.d/dae disable), not a second switch here.
+	/etc/init.d/dae enable >/dev/null 2>&1
+	/etc/init.d/dae start >/dev/null 2>&1
+	if wait_new_instance "" "$WAIT_START" "$(configured_port)"; then
+		emit_result true started
+	else
+		emit_result false start_failed
+	fi
+}
+
+stop() {
+	/etc/init.d/dae stop >/dev/null 2>&1
+	if wait_state stopped 15; then
+		emit_result true stopped
+	else
+		emit_result false stop_failed
+	fi
+}
+
+restart() {
+	local pid
+
+	# Restarting is not enabling: a service the operator disabled stays
+	# disabled, and the restart then simply fails to bring it up.
+	pid="$(service_pid)"
+	/etc/init.d/dae restart >/dev/null 2>&1
+	if wait_new_instance "$pid" "$WAIT_START" "$(configured_port)"; then
+		emit_result true restarted
+	else
+		emit_result false restart_failed
+	fi
+}
+
+# Parse the panel address a user types into the host and port dae needs.
+# Sets PANEL_PROBLEM (empty on success), PANEL_HOST and PANEL_PORT. It runs in
+# the caller's shell, not a command substitution, so those assignments survive.
+# The bind address stays an implementation detail: loopback stays loopback, any
+# other host (LAN IP, router name) binds the wildcard so the typed URL works.
+parse_panel_url() {
+	PANEL_PROBLEM=""
+	PANEL_HOST=""
+	PANEL_PORT=""
+	local url="$1" rest host port inner
+
+	case "$url" in
+		http://*) rest="${url#http://}" ;;
+		https://*) PANEL_PROBLEM=https_unsupported; return ;;
+		*://*) PANEL_PROBLEM=scheme_unsupported; return ;;
+		*) rest="$url" ;;
+	esac
+	rest="${rest%%/*}"
+	rest="${rest%%\?*}"
+	rest="${rest%%#*}"
+	case "$rest" in
+		*:*) host="${rest%:*}"; port="${rest##*:}" ;;
+		*) PANEL_PROBLEM=no_port; return ;;
+	esac
+	case "$port" in
+		''|*[!0-9]*) PANEL_PROBLEM=port_not_number; return ;;
+	esac
+	if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+		PANEL_PROBLEM=port_out_of_range
+		return
+	fi
+	case "$host" in
+		'') PANEL_PROBLEM=no_host; return ;;
+		\[*\])
+			inner="${host#\[}"
+			inner="${inner%%\]*}"
+			case "$inner" in
+				''|*[!0-9a-fA-F:]*) PANEL_PROBLEM=host_not_numeric; return ;;
+			esac
+			;;
+		*:*) PANEL_PROBLEM=ipv6_needs_brackets; return ;;
+		*)
+			case "$host" in
+				*[!A-Za-z0-9.-]*) PANEL_PROBLEM=host_not_numeric; return ;;
+			esac
+			;;
+	esac
+	PANEL_HOST="$host"
+	PANEL_PORT="$port"
+}
+
+# Save the panel address and apply it by restarting dae, because the API
+# listener is bound at startup. A new address that does not come up rolls back
+# to the previous one, so a typo cannot leave the panel unreachable.
+set_listen() {
+	local raw value old_listen old_host bind host port problem
+
+	raw="$(cat 2>/dev/null)"
+	value="$(printf '%s' "$raw" | jsonfilter -e '@.url' 2>/dev/null)"
+	value="$(printf '%s' "$value" | tr -d '\r\n')"
+	if [ -z "$value" ]; then
+		emit_result false listen_invalid
+		return 1
+	fi
+
+	parse_panel_url "$value"
+	problem="$PANEL_PROBLEM"
+	if [ -n "$problem" ]; then
+		logger -t dae "set_listen rejected $value: $problem" 2>/dev/null
+		emit_result false listen_invalid
+		return 1
+	fi
+	host="$PANEL_HOST"
+	port="$PANEL_PORT"
+
+	case "$host" in
+		localhost|127.*|\[::1\]) bind="127.0.0.1:$port" ;;
+		*) bind="0.0.0.0:$port" ;;
+	esac
+
+	config_load "$CONFIG"
+	config_get old_listen main api_listen "$DEFAULT_LISTEN"
+	config_get old_host main panel_host ""
+	if [ "$bind" = "$old_listen" ] && [ "$host" = "$old_host" ]; then
+		emit_result true listen_unchanged
+		return 0
+	fi
+
+	# A port another service already listens on would make dae fail to bind, but
+	# the port check after a restart cannot tell which process owns it. Refuse it
+	# up front; the current daemon owns the old port.
+	if [ "$port" != "${old_listen##*:}" ] && port_listening "$port"; then
+		emit_result false listen_in_use
+		return 1
+	fi
+
+	uci -q set "$CONFIG.main.api_listen=$bind" || {
+		emit_result false settings_write_failed
+		return 1
+	}
+	uci -q set "$CONFIG.main.panel_host=$host" || {
+		emit_result false settings_write_failed
+		return 1
+	}
+	uci -q commit "$CONFIG" || {
+		emit_result false settings_write_failed
+		return 1
+	}
+
+	if ! service_running; then
+		emit_result true listen_saved_stopped
+		return 0
+	fi
+	# A host-only change (router name instead of LAN IP) keeps the same bind:
+	# the new URL is display state and needs no restart.
+	if [ "$bind" = "$old_listen" ]; then
+		emit_result true listen_saved
+		return 0
+	fi
+
+	pid="$(service_pid)"
+	/etc/init.d/dae restart >/dev/null 2>&1
+	if wait_new_instance "$pid" "$WAIT_START" "$port"; then
+		emit_result true listen_saved
+		return 0
+	fi
+
+	# The new address did not come up: put the previous bind and host back and
+	# start into it. A stop first forces the init script to rewrite
+	# /etc/dae/api.dae; a crash-looping instance keeps the old file otherwise.
+	/etc/init.d/dae stop >/dev/null 2>&1
+	uci -q set "$CONFIG.main.api_listen=$old_listen" || {
+		emit_result false listen_rollback_failed
+		return 1
+	}
+	uci -q set "$CONFIG.main.panel_host=$old_host" || {
+		emit_result false listen_rollback_failed
+		return 1
+	}
+	uci -q commit "$CONFIG" || {
+		emit_result false listen_rollback_failed
+		return 1
+	}
+	/etc/init.d/dae start >/dev/null 2>&1
+	if wait_new_instance "" "$WAIT_START" "${old_listen##*:}"; then
+		emit_result false listen_restart_failed
+	else
+		emit_result false listen_rollback_failed
+	fi
+	return 1
+}
+
+# Whether the panel may change the configuration. dae reads this switch only
+# at startup: the api section is restart-required, so the value is saved and
+# the service restarted in one step. Without it every configuration page of
+# doona is read-only, which is why the LuCI page offers the switch.
+set_write() {
+	local raw value pid
+
+	# rpcd hands the call's parameters to an exec backend on stdin. jsonfilter
+	# is the normal way to read them; the case below keeps the switch working
+	# on an image that has none, since the only parameter is one boolean.
+	raw="$(cat 2>/dev/null)"
+	value="$(printf '%s' "$raw" | jsonfilter -e '@.value' 2>/dev/null)"
+	if [ -z "$value" ]; then
+		case "$raw" in
+			*'"value":true'*|*'"value":1'*) value=1 ;;
+			*'"value":false'*|*'"value":0'*) value=0 ;;
+		esac
+	fi
+	case "$value" in
+		true|1) value=1 ;;
+		false|0) value=0 ;;
+		*)
+			emit_result false invalid_operation
+			return 1
+			;;
+	esac
+
+	uci -q set "$CONFIG.main.api_write=$value" || {
+		emit_result false settings_write_failed
+		return 1
+	}
+	uci -q commit "$CONFIG" || {
+		emit_result false settings_write_failed
+		return 1
+	}
+
+	# The switch only takes effect in a new process: the init script rewrites
+	# /etc/dae/api.dae on every start, so editing the file by hand does not
+	# survive a restart either.
+	pid="$(service_pid)"
+	/etc/init.d/dae restart >/dev/null 2>&1
+	if ! wait_new_instance "$pid" "$WAIT_START" "$(configured_port)"; then
+		emit_result false restart_failed
+		return 1
+	fi
+
+	if [ "$value" = 1 ]; then
+		emit_result true writes_enabled
+	else
+		emit_result true writes_disabled
+	fi
+}
+
+# ---- the geo data update ----------------------------------------------------
+#
+# The update itself is /usr/bin/dae-geo-update, installed by the dae package.
+# It runs as a background job and records its progress in $GEO_STATE, because a
+# download of tens of megabytes outlives the RPC timeout.
+
+geo_state_read() {
+	GEO_STATE_VALUE=idle
+	GEO_PID=""
+	GEO_STARTED=0
+	GEO_FINISHED=0
+	GEO_MESSAGE=""
+
+	[ -f "$GEO_STATE" ] || return 0
+
+	while IFS='=' read -r key value; do
+		case "$key" in
+			state) GEO_STATE_VALUE="$value" ;;
+			pid) GEO_PID="$value" ;;
+			started) GEO_STARTED="$value" ;;
+			finished) GEO_FINISHED="$value" ;;
+			message) GEO_MESSAGE="$value" ;;
+		esac
+	done < "$GEO_STATE"
+
+	case "$GEO_STATE_VALUE" in
+		running|ok|failed) ;;
+		*) GEO_STATE_VALUE=idle ;;
+	esac
+	case "$GEO_STARTED" in ''|*[!0-9]*) GEO_STARTED=0 ;; esac
+	case "$GEO_FINISHED" in ''|*[!0-9]*) GEO_FINISHED=0 ;; esac
+
+	# A run that was killed outright never wrote its final state. The pid it
+	# recorded is what tells a live run from a stale record.
+	if [ "$GEO_STATE_VALUE" = running ]; then
+		case "$GEO_PID" in
+			''|*[!0-9]*)
+				GEO_STATE_VALUE=failed
+				GEO_MESSAGE=interrupted
+				;;
+			*)
+				kill -0 "$GEO_PID" 2>/dev/null || {
+					GEO_STATE_VALUE=failed
+					GEO_MESSAGE=interrupted
+				}
+				;;
+		esac
+	fi
+}
+
+# Stat of one geo file, as a jshn object under the open array.
+json_geo_file() {
+	local name="$1" file="$GEO_DIR/$1" size modified
+
+	if [ -f "$file" ]; then
+		size="$(wc -c < "$file" 2>/dev/null | tr -d ' ')"
+		modified="$(date -r "$file" +%s 2>/dev/null)"
+	else
+		size=""
+		modified=""
+	fi
+
+	json_add_object ""
+	json_add_string name "$name"
+	if [ -n "$size" ]; then
+		json_add_boolean present 1
+		json_add_int size "$size"
+		case "$modified" in ''|*[!0-9]*) modified=0 ;; esac
+		json_add_int modified "$modified"
+	else
+		json_add_boolean present 0
+		json_add_int size 0
+		json_add_int modified 0
+	fi
+	json_close_object
+}
+
+geo_status() {
+	local log line old_ifs
+
+	geo_state_read
+
+	json_init
+	json_add_string state "$GEO_STATE_VALUE"
+	json_add_int started "$GEO_STARTED"
+	json_add_int finished "$GEO_FINISHED"
+	json_add_string message "$GEO_MESSAGE"
+	json_add_array files
+	json_geo_file geoip.dat
+	json_geo_file geosite.dat
+	json_close_array
+	# The log is handed over as one entry per line: a single string with
+	# newlines in it depends on how the JSON writer escapes control
+	# characters, and an array does not.
+	log="$(tail -n 20 "$GEO_LOG" 2>/dev/null)"
+	json_add_array log
+	old_ifs="$IFS"
+	IFS='
+'
+	for line in $log; do
+		json_add_string "" "$line"
+	done
+	IFS="$old_ifs"
+	json_close_array
+	json_dump
+}
+
+geo_update() {
+	geo_state_read
+
+	if [ "$GEO_STATE_VALUE" = running ]; then
+		emit_result false geo_busy
+		return 1
+	fi
+	if [ ! -x "$GEO_SCRIPT" ]; then
+		emit_result false geo_unavailable
+		return 1
+	fi
+
+	# The state file is only written once the script is running, so two calls
+	# arriving together both saw "idle" and both spawned a script; the second
+	# one was then silently dropped by the script's own lock while the reply
+	# still said "started". This lock closes that window: the script inherits
+	# the open descriptor, so the lock stays held for its whole lifetime and
+	# a second call fails here with a truthful "busy".
+	exec 8>"$GEO_START_LOCK" 2>/dev/null || {
+		emit_result false geo_unavailable
+		return 1
+	}
+	if ! flock -n 8; then
+		emit_result false geo_busy
+		return 1
+	fi
+
+	# No wait here: the script takes the lock, writes its state and does the
+	# work on its own. The page polls geo_status for the progress.
+	#
+	# The update has to outlive this process: rpcd exits as soon as the reply
+	# is written. setsid puts it in a session of its own (busybox has it, and
+	# ImmortalWrt does not ship nohup); without it the daemonising shell would
+	# take the child down with it on some images. Descriptor 8 is inherited on
+	# purpose; the script uses descriptor 9 for its own lock.
+	if command -v setsid >/dev/null 2>&1; then
+		setsid "$GEO_SCRIPT" </dev/null >/dev/null 2>&1 &
+	else
+		"$GEO_SCRIPT" </dev/null >/dev/null 2>&1 &
+	fi
+	emit_result true geo_started
+}
+
+# rpcd runs an exec backend in a fixed protocol: it asks the script for its
+# methods with the "list" argument and reaches a method with "call <method>".
+case "$1" in
+list)
+	echo '{"status":{},"secret":{},"start":{},"stop":{},"restart":{},"set_listen":{"url":""},"set_write":{"value":0},"geo_status":{},"geo_update":{}}'
+	;;
+call)
+	case "$2" in
+		status) status ;;
+		secret) secret ;;
+		start) start ;;
+		stop) stop ;;
+		restart) restart ;;
+		set_listen) set_listen ;;
+		set_write) set_write ;;
+		geo_status) geo_status ;;
+		geo_update) geo_update ;;
+		*) emit_result false invalid_operation ;;
+	esac
+	;;
+*)
+	exit 2
+	;;
+esac

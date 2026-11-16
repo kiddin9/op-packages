@@ -1,0 +1,17 @@
+{
+	"admin/services/dae": {
+		"title": "dae",
+		"order": 30,
+		"action": {
+			"type": "firstchild"
+		}
+	},
+	"admin/services/dae/panel": {
+		"title": "Panel",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "dae/panel"
+		}
+	}
+}

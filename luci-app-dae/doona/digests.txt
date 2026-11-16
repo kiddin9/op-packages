@@ -1,0 +1,8 @@
+# sha256 of the doona archive this package republishes.
+#
+# The archive comes from szwjp/doona's release, which publishes a .dgst beside
+# every asset; that only proves the two agree, so the value pinned here is the
+# one the build checks. Bump this file together with doona/Makefile's version.
+tag v0.1.0-rc.18
+
+4226b003e512e3516ab0df9cb9d8aecd21e41f3b5de34e103c4baa2f2f5a8df9  doona-0.1.0-rc.18.tar.gz

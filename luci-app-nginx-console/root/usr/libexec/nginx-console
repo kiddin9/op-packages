@@ -1,0 +1,37 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# nginx-console - read-only backend for luci-app-nginx-console.
+#
+# This entry point only serves the commands that cannot change anything:
+# status, test, logs, certs, backups list, auth list and audit.  Everything
+# that writes lives in nginx-console-write, so a session that is only
+# granted the read ACL cannot reach it - rpcd checks the exec permission of
+# the path it is asked to run, and this path is not in the write ACL.
+#
+# Every command prints exactly one JSON object on stdout and exits 0, so the
+# caller never has to interpret exit codes.
+
+. /usr/libexec/nginx-console-lib.sh
+
+# cmd_auth serves both the read-only listing and the writes; in this entry
+# point only the listing is allowed.
+AUTH_MODE=ro
+
+case "$1" in
+	status)         cmd_status ;;
+	test)           cmd_test ;;
+	logs)           cmd_logs "$2" "$3" ;;
+	certs)          cmd_certs ;;
+	backups)        cmd_backups "$2" ;;
+	auth)           cmd_auth "$2" "$3" ;;
+	audit)          cmd_audit ;;
+	*)              json_fail unknown_command ;;
+esac
+
+# Nothing of a finished transaction is left behind: the staged form input and
+# the rollback snapshot both have a lifetime of one command.  Dated copies for
+# manual recovery live in $BACKUP_DIR instead.
+rm -f "$PENDING" "$SNAPSHOT" 2>/dev/null
+
+exit 0
