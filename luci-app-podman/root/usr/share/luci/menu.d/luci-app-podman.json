@@ -1,0 +1,166 @@
+{
+	"admin/podman": {
+		"title": "Podman",
+		"order": 60,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-podman"
+			]
+		}
+	},
+	"admin/podman/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "podman/overview"
+		}
+	},
+	"admin/podman/containers": {
+		"title": "Containers",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "podman/containers"
+		}
+	},
+	"admin/podman/container/*": {
+		"action": {
+			"type": "view",
+			"path": "podman/container"
+		}
+	},
+	"admin/podman/pods": {
+		"title": "Pods",
+		"order": 25,
+		"action": {
+			"type": "view",
+			"path": "podman/pods"
+		}
+	},
+	"admin/podman/pod/*": {
+		"action": {
+			"type": "view",
+			"path": "podman/pod"
+		}
+	},
+	"admin/podman/images": {
+		"title": "Images",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "podman/images"
+		}
+	},
+	"admin/podman/networks": {
+		"title": "Networks",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "podman/networks"
+		}
+	},
+	"admin/podman/volumes": {
+		"title": "Volumes",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "podman/volumes"
+		}
+	},
+	"admin/podman/secrets": {
+		"title": "Secrets",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "podman/secrets"
+		}
+	},
+	"admin/podman/stream/logs/*": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "container_logs"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/podman/stream/top/*": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "container_top"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/podman/stream/stats/*": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "container_stats"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/podman/stream/pull": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "image_pull"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/podman/stream/pod_top/*": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "pod_top"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/podman/stream/pod_stats/*": {
+		"action": {
+			"type": "function",
+			"module": "luci.controller.podman",
+			"function": "pod_stats"
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	}
+}

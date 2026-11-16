@@ -1,0 +1,103 @@
+#!/usr/bin/env ucode
+
+'use strict';
+
+import { popen, writefile, unlink } from 'fs';
+import * as podman_socket from 'luci.podman_socket'; // ucode-lsp disable
+import { validate_int, validate_name, require_param } from 'luci.podman_validate'; // ucode-lsp disable
+
+function die(msg) {
+	warn(`${msg}\n`);
+	exit(1);
+}
+
+// Volume export/import here shells out to the local `podman` CLI, which can
+// only reach a Podman daemon running on the same host. When the user has
+// configured a remote TCP Podman, refuse upfront rather than failing weirdly.
+if (podman_socket.is_remote())
+	die(`Volume operations are not supported with a remote Podman (${podman_socket.get_dest()}); the CLI helper requires a local daemon.`);
+
+// --- Main ---
+
+let action = ARGV[0];
+
+if (action === 'volume_export') {
+	let volumeName = ARGV[1];
+	let err = require_param('volumeName', volumeName) || validate_name(volumeName);
+	if (err) die(err);
+
+	// volume export outputs a tar stream - use podman CLI directly
+	let escaped = replace(volumeName, /'/g, "'\\''");
+	let p = popen(`/usr/bin/podman volume export '${escaped}'`, 'r');
+	if (!p)
+		die('Failed to run podman volume export');
+
+	let chunk;
+	while ((chunk = p.read(65536)) != null && length(chunk) > 0)
+		print(chunk);
+	p.close();
+}
+else if (action === 'volume_import') {
+	let volumeName = ARGV[1];
+	let compressed = ARGV[2];
+	let volumeData = ARGV[3];
+
+	let err = require_param('volumeName', volumeName) || validate_name(volumeName)
+	       || require_param('volumeData', volumeData)
+	       || require_param('compressed', compressed) || validate_int(compressed);
+	if (err) die(err);
+
+	// Validate base64 content
+	if (!match(volumeData, /^[A-Za-z0-9+\/]*={0,2}$/) || (length(volumeData) % 4) !== 0)
+		die('Invalid Base64 content');
+
+	let decoded = b64dec(volumeData);
+	if (decoded == null)
+		die('Failed to decode import data');
+
+	// Decompress if needed
+	if (compressed === '1') {
+		let tp = popen('mktemp /tmp/podman_import_XXXXXX', 'r');
+		let tmppath = tp ? trim(tp.read('all') || '') : '';
+		if (tp) tp.close();
+		if (!tmppath)
+			die('Failed to create temp file');
+
+		writefile(tmppath, decoded);
+
+		let p = popen(`gunzip -c '${tmppath}'`, 'r');
+		decoded = p ? p.read('all') : null;
+		if (p) p.close();
+		unlink(tmppath);
+
+		if (!decoded)
+			die('Failed to decompress import data');
+	}
+
+	// Ensure volume exists
+	let escaped = replace(volumeName, /'/g, "'\\''");
+	let p = popen(`/usr/bin/podman volume exists '${escaped}' 2>/dev/null; echo $?`, 'r');
+	let rc = p ? trim(p.read('all') || '') : '';
+	if (p) p.close();
+
+	if (rc !== '0') {
+		p = popen(`/usr/bin/podman volume create '${escaped}' 2>/dev/null`, 'r');
+		if (p) { p.read('all'); p.close(); }
+	}
+
+	// Import via stdin pipe
+	p = popen(`/usr/bin/podman volume import '${escaped}' -`, 'w');
+	if (!p)
+		die('Failed to start volume import');
+	p.write(decoded);
+	let exit_code = p.close();
+
+	if (exit_code) {
+		// Cleanup on failure
+		popen(`/usr/bin/podman volume rm '${escaped}' 2>/dev/null`, 'r')?.close();
+		die('Import failed');
+	}
+}
+else {
+	die(`Unknown action: ${action}`);
+}

@@ -1,45 +1,52 @@
---[[
-LuCI - Lua Configuration Interface
-]]--
+-- luci-app-hermes — CBI Model (18.06 compat)
+local sys = require "luci.sys"
 
-local taskd = require "luci.model.tasks"
-local hermes_model = require "luci.model.hermes"
-local m, s, o
+m = Map("hermes", "Hermes Agent",
 
-m = taskd.docker_map("hermes", "hermes", "/usr/libexec/istorec/hermes.sh",
-	translate("Hermes"),
-	translate("The self-improving AI agent that runs on your server. Layered memory that accumulates across sessions, a cron scheduler that fires while you're offline, and a skills system that saves reusable procedures automatically.")
-		.. translate("Official website:") .. ' <a href=\"https://get-hermes.ai/\" target=\"_blank\">https://get-hermes.ai/</a>')
+	translate("Python-based AI Agent Gateway for OpenWrt routers."))
 
-s = m:section(SimpleSection, translate("Service Status"), translate("Hermes status:"))
-s:append(Template("hermes/status"))
+-- Status panel
+m:section(SimpleSection).template = "hermes/status"
 
-s = m:section(TypedSection, "main", translate("Setup"), translate("The following parameters will only take effect during installation or upgrade:"))
+-- Basic settings
+s = m:section(NamedSection, "main", "hermes", translate("Basic Settings"))
 s.addremove = false
 s.anonymous = true
 
-o = s:option(Value, "port", translate("Port") .. "<b>*</b>")
-o.default = "8787"
+o = s:option(Flag, "enabled", translate("Enable Service"))
+o.rmempty = false
+
+o = s:option(Value, "port", translate("Gateway Port"))
 o.datatype = "port"
-
-local blocks = hermes_model.blocks()
-
-o = s:option(Value, "data_path", translate("Data path") .. "<b>*</b>")
+o.default = "3000"
 o.rmempty = false
-o.datatype = "string"
-local data_paths, data_default = hermes_model.find_paths(blocks, "data")
-for _, val in pairs(data_paths) do
-  o:value(val, val)
-end
-o.default = data_default
 
-o = s:option(Value, "workspace_path", translate("Workspace path") .. "<b>*</b>")
+o = s:option(ListValue, "bind", translate("Listen Interface"))
+o:value("lan", "LAN")
+o:value("loopback", "Loopback")
+o:value("all", translate("All Interfaces"))
+o.default = "lan"
+
+o = s:option(Value, "pty_port", translate("PTY Port"))
+o.datatype = "port"
+o.default = "3001"
 o.rmempty = false
-o.datatype = "string"
-local ws_paths, ws_default = hermes_model.find_paths(blocks, "workspace")
-for _, val in pairs(ws_paths) do
-  o:value(val, val)
-end
-o.default = ws_default
+
+-- API settings
+s2 = m:section(NamedSection, "main", "hermes", translate("API Settings"))
+s2.addremove = false
+s2.anonymous = true
+
+o = s2:option(Value, "api_endpoint", translate("API Endpoint"))
+o.default = "https://api.boos.lat/v1"
+o.rmempty = false
+
+o = s2:option(Value, "api_key", translate("API Key"))
+o.password = true
+o.rmempty = true
+
+o = s2:option(Value, "model", translate("Model"))
+o.default = "opus4.6"
+o.rmempty = false
 
 return m

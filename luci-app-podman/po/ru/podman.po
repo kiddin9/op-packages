@@ -1,0 +1,1093 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-podman\n"
+"PO-Revision-Date: 2026-05-03 11:05+0000\n"
+"Last-Translator:\n"
+"Language-Team: Russian <https://github.com/openwrt/luci/tree/master/modules/luci-base/po/ru>\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid ""
+"Start script missing\n"
+"\n"
+"Click to generate"
+msgstr "Скрипт запуска отсутствует\n\nНажмите для создания"
+
+msgid "%d check(s) failed:"
+msgstr "%d проверок не удалось:"
+
+msgid "%d updated, %d failed:"
+msgstr "%d обновлено, %d не удалось:"
+
+msgid "%s created successfully"
+msgstr "%s успешно создан"
+
+msgid "%s: %d/%d"
+msgstr "%s: %d/%d"
+
+msgid "(none)"
+msgstr "(нет)"
+
+msgid "-- Select %s --"
+msgstr "-- Выберите %s --"
+
+msgid "1-253 characters: letters, numbers, underscore (_), hyphen (-) only"
+msgstr "1-253 символа: только буквы, цифры, подчёркивание (_) и дефис (-)"
+
+msgid "512m, 1g, or -1 for unlimited"
+msgstr "512m, 1g или -1 для неограниченно"
+
+msgid "API Version"
+msgstr "Версия API"
+
+msgid "Add the container to an existing pod. Network, hostname and port mappings come from the pod's infra container."
+msgstr "Добавить контейнер в существующий под. Сеть, имя хоста и сопоставления портов берутся из infra-контейнера пода."
+
+msgid "All images updated successfully"
+msgstr "Все образы успешно обновлены"
+
+msgid "All volumes exported successfully"
+msgstr "Все тома успешно экспортированы"
+
+msgid "Allocate TTY (-t)"
+msgstr "Выделить TTY (-t)"
+
+msgid "Allocate container IP from this range"
+msgstr "Выделить IP контейнера из этого диапазона"
+
+msgid "Always"
+msgstr "Всегда"
+
+msgid "Apply Updates"
+msgstr "Применить обновления"
+
+msgid "Are you sure to delete the records?"
+msgstr "Вы уверены, что хотите удалить записи?"
+
+msgid "Are you sure to remove container?"
+msgstr "Вы уверены, что хотите удалить контейнер?"
+
+msgid "Are you sure to remove integration?"
+msgstr "Вы уверены, что хотите удалить интеграцию?"
+
+msgid "Auto Remove (--rm)"
+msgstr "Автоудаление (--rm)"
+
+msgid "Auto Update"
+msgstr "Автообновление"
+
+msgid "Auto-Update"
+msgstr "Автообновление"
+
+msgid "Automatically configure OpenWrt network interface, bridge, and firewall zone. <strong>Highly recommended</strong> for proper container networking on OpenWrt."
+msgstr "Автоматически настроить сетевой интерфейс OpenWrt, мост и зону брандмауэра. <strong>Настоятельно рекомендуется</strong> для правильной работы сети контейнеров на OpenWrt."
+
+msgid "Automatically start the container after it is created"
+msgstr "Автоматически запускать контейнер после создания"
+
+msgid "Automatically update container when newer image is available. Adds label: io.containers.autoupdate=registry"
+msgstr "Автоматически обновлять контейнер при наличии нового образа. Добавляет метку: `io.containers.autoupdate=registry`"
+
+msgid "Basic Information"
+msgstr "Основная информация"
+
+msgid "Block I/O"
+msgstr "Блочный ввод/вывод"
+
+msgid "Boot"
+msgstr "Загрузка"
+
+msgid "Bridge Interface Name"
+msgstr "Имя интерфейса моста"
+
+msgid "CPU"
+msgstr "ЦП"
+
+msgid "CPU Limit"
+msgstr "Ограничение ЦП"
+
+msgid "CPU Set"
+msgstr "Набор CPU"
+
+msgid "CPU Shares Weight"
+msgstr "Вес долей ЦП"
+
+msgid "CPU Usage"
+msgstr "Использование ЦП"
+
+msgid "CPU shares (relative weight). 0 = use default."
+msgstr "Доли ЦП (относительный вес). 0 = использовать по умолчанию."
+
+msgid "CPUs the pod is allowed to run on (e.g., \"0-3\" or \"0,2\")"
+msgstr "CPU, на которых разрешено выполнять под (например, \"0-3\" или \"0,2\")"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Check"
+msgstr "Проверить"
+
+msgid "Check %d containers for updates?"
+msgstr "Проверить %d контейнеров на обновления?"
+
+msgid "Check Complete"
+msgstr "Проверка завершена"
+
+msgid "Check for Updates"
+msgstr "Проверить обновления"
+
+msgid "Check for updates: %s/%s"
+msgstr "Проверка обновлений: %s/%s"
+
+msgid "Choose firewall zone for this network."
+msgstr "Выберите зону брандмауэра для этой сети."
+
+msgid "Clean Up Now"
+msgstr "Очистить сейчас"
+
+msgid "Cleaning up old images..."
+msgstr "Очистка старых образов..."
+
+msgid "Cleanup / Prune"
+msgstr "Очистка / Удаление неиспользуемого"
+
+msgid "Cleanup Complete"
+msgstr "Очистка завершена"
+
+msgid "Cleanup Unused Resources"
+msgstr "Очистка неиспользуемых ресурсов"
+
+msgid "Cleanup successful!"
+msgstr "Очистка успешна!"
+
+msgid "Clear logs"
+msgstr "Очистить логи"
+
+msgid "Click icon to repair"
+msgstr "Нажмите значок для восстановления"
+
+msgid "Click to disconnect"
+msgstr "Нажмите для отключения"
+
+msgid "Click to enable/disable"
+msgstr "Нажмите для включения/отключения"
+
+msgid "Click to reveal/hide value"
+msgstr "Нажмите для отображения/скрытия значения"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Comma-separated list of supplementary group IDs"
+msgstr "Список дополнительных идентификаторов групп через запятую"
+
+msgid "Comma-separated ports to expose (e.g., 6052, 8080/udp)"
+msgstr "Порты для публикации через запятую (например, 6052, 8080/udp)"
+
+msgid "Command"
+msgstr "Команда"
+
+msgid "Command to run (space-separated)"
+msgstr "Команда для запуска (разделённая пробелами)"
+
+msgid "Configuration"
+msgstr "Конфигурация"
+
+msgid "Configure resource limits for this container."
+msgstr "Настройте ограничения ресурсов для этого контейнера."
+
+msgid "Confirm"
+msgstr "Подтвердить"
+
+msgid "Connect"
+msgstr "Подключить"
+
+msgid "Connect to"
+msgstr "Подключить к"
+
+msgid "Connected successfully to %s"
+msgstr "Успешно подключено к %s"
+
+msgid "Connecting container to network"
+msgstr "Подключение контейнера к сети"
+
+msgid "Console"
+msgstr "Консоль"
+
+msgid "Container"
+msgstr "Контейнер"
+
+msgid "Container Name"
+msgstr "Имя контейнера"
+
+msgid "Container image has no tag - cannot update"
+msgstr "Образ контейнера не имеет тега - невозможно обновить"
+
+msgid "Container image to use"
+msgstr "Образ контейнера для использования"
+
+msgid "Container is not running"
+msgstr "Контейнер не запущен"
+
+msgid "Container updated successfully"
+msgstr "Контейнер успешно обновлён"
+
+msgid "Containers"
+msgstr "Контейнеры"
+
+msgid "Containers in pod %s"
+msgstr "Контейнеры в поде %s"
+
+msgid "Containers updated successfully"
+msgstr "Контейнеры успешно обновлены"
+
+msgid "Containers updated successfully."
+msgstr "Контейнеры успешно обновлены."
+
+msgid "Create"
+msgstr "Создать"
+
+msgid "Create %s"
+msgstr "Создать %s"
+
+msgid "Create Command"
+msgstr "Команда создания"
+
+msgid "Create Infra Container"
+msgstr "Создать infra-контейнер"
+
+msgid "Create new zone (will be named: podman_<network-name>)"
+msgstr "Создать новую зону (будет названа: podman_<имя-сети>)"
+
+msgid "Created"
+msgstr "Создано"
+
+msgid "Creating %s"
+msgstr "Создание %s"
+
+msgid "Creating auto-start configuration for %s"
+msgstr "Создание конфигурации автозапуска для %s"
+
+msgid "DNS Search Domains"
+msgstr "Домены поиска DNS"
+
+msgid "DNS Servers"
+msgstr "DNS-серверы"
+
+msgid "DNS search domains for the infra container"
+msgstr "Домены поиска DNS для infra-контейнера"
+
+msgid "DNS servers for the infra container (shared with all pod containers)"
+msgstr "DNS-серверы для infra-контейнера (общие для всех контейнеров пода)"
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "Deleting records: %d/%d"
+msgstr "Удаление записей: %d/%d"
+
+msgid "Deleting records: %s/%s"
+msgstr "Удаление записей: %s/%s"
+
+msgid "Destination"
+msgstr "Назначение"
+
+msgid "Device"
+msgstr "Устройство"
+
+msgid "Disabled"
+msgstr "Отключено"
+
+msgid "Disabling init script"
+msgstr "Отключение скрипта инициализации"
+
+msgid "Disconnect container from network"
+msgstr "Отключить контейнер от сети"
+
+msgid "Disconnected from %s"
+msgstr "Отключено от %s"
+
+msgid "Dnsmasq"
+msgstr "Dnsmasq"
+
+msgid "Driver"
+msgstr "Драйвер"
+
+msgid "Driver-specific options (comma-separated, e.g., type=tmpfs,o=size=100m)"
+msgstr "Опции драйвера (разделённые запятыми, например, type=tmpfs,o=size=100m)"
+
+msgid "Enable IPv6"
+msgstr "Включить IPv6"
+
+msgid "Enable IPv6 networking"
+msgstr "Включить сеть IPv6"
+
+msgid "Enabling init script"
+msgstr "Включение скрипта инициализации"
+
+msgid "Enter secret data (password, token, key, etc.)"
+msgstr "Введите секретные данные (пароль, токен, ключ и т.д.)"
+
+msgid "Entrypoint"
+msgstr "Точка входа"
+
+msgid "Environment Variables"
+msgstr "Переменные окружения"
+
+msgid "Ephemeral (--rm flag)"
+msgstr "Эфемерный (флаг --rm)"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Error: %s"
+msgstr "Ошибка: %s"
+
+msgid "Existing physical interface to use as parent. Required for macvlan/ipvlan networks."
+msgstr "Существующий физический интерфейс для использования в качестве родительского. Требуется для сетей macvlan/ipvlan."
+
+msgid "Expecting: %s"
+msgstr "Ожидается: %s"
+
+msgid "Export"
+msgstr "Экспорт"
+
+msgid "Exporting selected volumes: %d/%d"
+msgstr "Экспорт выбранных томов: %d/%d"
+
+msgid "Expose Ports"
+msgstr "Открываемые порты"
+
+msgid "Failed to create container"
+msgstr "Не удалось создать контейнер"
+
+msgid "Fetching information..."
+msgstr "Получение информации..."
+
+msgid "Find updateable containers"
+msgstr "Найти контейнеры с доступными обновлениями"
+
+msgid "Firewall Zone"
+msgstr "Зона брандмауэра"
+
+msgid "Gateway"
+msgstr "Шлюз"
+
+msgid "Generate"
+msgstr "Сгенерировать"
+
+msgid "Graph Root"
+msgstr "Корень графа"
+
+msgid "Health"
+msgstr "Состояние"
+
+msgid "Hostname"
+msgstr "Имя хоста"
+
+msgid "Hostname for the pod (defaults to pod name)"
+msgstr "Имя хоста для пода (по умолчанию — имя пода)"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "IP Address"
+msgstr "IP-адрес"
+
+msgid "IP Range (CIDR)"
+msgstr "Диапазон IP (CIDR)"
+
+msgid "IPv4 Gateway"
+msgstr "Шлюз IPv4"
+
+msgid "IPv4 Subnet (CIDR)"
+msgstr "Подсеть IPv4 (CIDR)"
+
+msgid "IPv4 gateway address"
+msgstr "Адрес шлюза IPv4"
+
+msgid "IPv4 subnet in CIDR notation"
+msgstr "Подсеть IPv4 в нотации CIDR"
+
+msgid "Image"
+msgstr "Образ"
+
+msgid "Image ID"
+msgstr "ID образа"
+
+msgid "Image is already up-to-date"
+msgstr "Образ уже актуален"
+
+msgid "Image pulled successfully"
+msgstr "Образ успешно загружен"
+
+msgid "Images"
+msgstr "Образы"
+
+msgid "Import"
+msgstr "Импорт"
+
+msgid "Import from archive: %s"
+msgstr "Импорт из архива: %s"
+
+msgid "Importing volume..."
+msgstr "Импорт тома..."
+
+msgid "Info"
+msgstr "Инфо"
+
+msgid "Information"
+msgstr "Информация"
+
+msgid "Infra Image"
+msgstr "Infra-образ"
+
+msgid "Init Script"
+msgstr "Скрипт инициализации"
+
+msgid "Inspect"
+msgstr "Проверить"
+
+msgid "Int"
+msgstr "Целое число"
+
+msgid "Interactive"
+msgstr "Интерактивный"
+
+msgid "Interface"
+msgstr "Интерфейс"
+
+msgid "Internal Network"
+msgstr "Внутренняя сеть"
+
+msgid "Labels"
+msgstr "Метки"
+
+msgid "Labels in key=value format, one per line"
+msgstr "Метки в формате key=value, по одной на строку"
+
+msgid "Leave empty to auto-generate"
+msgstr "Оставьте пустым для автогенерации"
+
+msgid "Links"
+msgstr "Ссылки"
+
+msgid "Linux namespaces shared between containers in the pod. Default matches `podman pod create`."
+msgstr "Пространства имён Linux, общие для контейнеров пода. По умолчанию соответствует `podman pod create`."
+
+msgid "Load"
+msgstr "Загрузить"
+
+msgid "Load System diagnostics"
+msgstr "Загрузить системную диагностику"
+
+msgid "Loading init script"
+msgstr "Загрузка скрипта инициализации"
+
+msgid "Loading..."
+msgstr "Загрузка..."
+
+msgid "Logs"
+msgstr "Логи"
+
+msgid "Manage podman %s"
+msgstr "Управление podman %s"
+
+msgid "Memory"
+msgstr "Память"
+
+msgid "Memory %"
+msgstr "Память %"
+
+msgid "Memory + Swap Limit"
+msgstr "Память + Ограничение Swap"
+
+msgid "Memory Limit"
+msgstr "Ограничение памяти"
+
+msgid "Memory Usage"
+msgstr "Использование памяти"
+
+msgid "Memory limit (e.g., 512m, 1g)"
+msgstr "Ограничение памяти (например, 512м, 1г)"
+
+msgid "Memory limit (e.g., 512m, 1g). -1 = unlimited, 0 = use default."
+msgstr "Ограничение памяти (например, 512m, 1g). -1 = неограниченно, 0 = использовать по умолчанию."
+
+msgid "Memory limit for the pod (e.g., 512m, 1g)"
+msgstr "Лимит памяти для пода (например, 512m, 1g)"
+
+msgid "Mode"
+msgstr "Режим"
+
+msgid "Mount Options"
+msgstr "Опции монтирования"
+
+msgid "Mountpoint"
+msgstr "Точка монтирования"
+
+msgid "Mounts"
+msgstr "Монтирования"
+
+msgid "Must be between 0 and 262144"
+msgstr "Должно быть между 0 и 262144"
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Name for the network"
+msgstr "Имя для сети"
+
+msgid "Name of the bridge interface (e.g., podman0, mynet0). Leave empty to use: &lt;network-name&gt;0. Note: If the generated name conflicts with an existing interface, OpenWrt will auto-increment it."
+msgstr "Имя интерфейса моста (например, podman0, mynet0). Оставьте пустым для использования: &lt;имя-сети&gt;0. Примечание: Если сгенерированное имя конфликтует с существующим интерфейсом, OpenWrt автоматически увеличит его."
+
+msgid "Name updated successfully"
+msgstr "Имя успешно обновлено"
+
+msgid "Network"
+msgstr "Сеть"
+
+msgid "Network I/O"
+msgstr "Сетевой ввод/вывод"
+
+msgid "Network Mode"
+msgstr "Сетевой режим"
+
+msgid "Network Name"
+msgstr "Имя сети"
+
+msgid "Network driver"
+msgstr "Сетевой драйвер"
+
+msgid "Network namespace for the pod. Containers in the pod share this network."
+msgstr "Сетевое пространство имён для пода. Контейнеры в поде используют общую сеть."
+
+msgid "Networks"
+msgstr "Сети"
+
+msgid "Never"
+msgstr "Никогда"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "No %s selected"
+msgstr "%s не выбрано"
+
+msgid "No containers in this pod"
+msgstr "В этом поде нет контейнеров"
+
+msgid "No containers with auto-update label found."
+msgstr "Контейнеры с меткой автообновления не найдены."
+
+msgid "No new updates available."
+msgstr "Новые обновления недоступны."
+
+msgid "No suitable interfaces found"
+msgstr "Подходящие интерфейсы не найдены"
+
+msgid "No unused resources found"
+msgstr "Неиспользуемые ресурсы не найдены"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0)"
+msgstr "Количество ЦП (например, 0.5, 1.0, 2.0)"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0). Leave empty for unlimited."
+msgstr "Количество ЦП (например, 0.5, 1.0, 2.0). Оставьте пустым для неограниченно."
+
+msgid "Number of CPUs available to the pod (e.g., 0.5, 1.0, 2.0)"
+msgstr "Количество CPU, доступных поду (например, 0.5, 1.0, 2.0)"
+
+msgid "Number of lines"
+msgstr "Количество строк"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Old image still used by other containers"
+msgstr "Старый образ ещё используется другими контейнерами"
+
+msgid "On Failure"
+msgstr "При ошибке"
+
+msgid "One per line, format: host:container[/protocol]"
+msgstr "По одному на строку, формат: хост:контейнер[/протокол]"
+
+msgid "One per line, format: key=value"
+msgstr "По одному на строку, формат: key=value"
+
+msgid "One per line. Format: source:destination[:options]. Options: ro, rw, Z, z"
+msgstr "По одному на строку. Формат: источник:назначение[:опции]. Опции: ro, rw, Z, z"
+
+msgid "OpenWrt integration exists\n\nClick to remove"
+msgstr "Интеграция OpenWrt существует\n\nНажмите для удаления"
+
+msgid "OpenWrt integration incomplete"
+msgstr "Интеграция с OpenWrt неполная"
+
+msgid "OpenWrt integration requires subnet to be specified"
+msgstr "Интеграция с OpenWrt требует указания подсети"
+
+msgid "Override the image used for the infra container"
+msgstr "Переопределить образ, используемый для infra-контейнера"
+
+msgid "PIDs"
+msgstr "PID"
+
+msgid "Parent Interface"
+msgstr "Родительский интерфейс"
+
+msgid "Parent interface is required for macvlan/ipvlan networks"
+msgstr "Родительский интерфейс требуется для сетей macvlan/ipvlan"
+
+msgid "Part of a pod (\"%s\")"
+msgstr "Часть пода (\"%s\")"
+
+msgid "Pausing pod"
+msgstr "Приостановка пода"
+
+msgid "Pod"
+msgstr "Под"
+
+msgid "Pod Name"
+msgstr "Имя пода"
+
+msgid "Podman Version"
+msgstr "Версия Podman"
+
+msgid "Pods"
+msgstr "Поды"
+
+msgid "Port Mappings"
+msgstr "Маппинг портов"
+
+msgid "Ports"
+msgstr "Порты"
+
+msgid "Privileged"
+msgstr "Привилегированный"
+
+msgid "Privileged Mode"
+msgstr "Привилегированный режим"
+
+msgid "Processes"
+msgstr "Процессы"
+
+msgid "Pull Image"
+msgstr "Загрузить образ"
+
+msgid "Pull did not return an image ID - pull may have failed"
+msgstr "Загрузка не вернула ID образа - возможно, загрузка не удалась"
+
+msgid "Pulling %s"
+msgstr "Загрузка %s"
+
+msgid "Read: %s / Write: %s"
+msgstr "Чтение: %s / Запись: %s"
+
+msgid "Refreshing %s..."
+msgstr "Обновление %s..."
+
+msgid "Registries"
+msgstr "Реестры"
+
+msgid "Registry"
+msgstr "Реестр"
+
+msgid "Reload"
+msgstr "Перезагрузить"
+
+msgid "Remove OpenWrt integration"
+msgstr "Удалить интеграцию с OpenWrt"
+
+msgid "Remove all unused images (not just dangling)"
+msgstr "Удалить все неиспользуемые образы (не только висячие)"
+
+msgid "Remove container"
+msgstr "Удалить контейнер"
+
+msgid "Remove unused volumes"
+msgstr "Удалить неиспользуемые тома"
+
+msgid "Removed: %s"
+msgstr "Удалено: %s"
+
+msgid "Removing unused resources, please wait..."
+msgstr "Удаление неиспользуемых ресурсов, пожалуйста, подождите..."
+
+msgid "Repository"
+msgstr "Репозиторий"
+
+msgid "Required for shared network namespace. Disable only if you know you do not need it."
+msgstr "Требуется для общего сетевого пространства имён. Отключайте только если уверены, что это не нужно."
+
+msgid "Resources"
+msgstr "Ресурсы"
+
+msgid "Restart Policy"
+msgstr "Политика перезапуска"
+
+msgid "Restart container"
+msgstr "Перезапустить контейнер"
+
+msgid "Restart policy updated successfully"
+msgstr "Политика перезапуска успешно обновлена"
+
+msgid "Restarting pod"
+msgstr "Перезапуск пода"
+
+msgid "Restrict external access to the network"
+msgstr "Ограничить внешний доступ к сети"
+
+msgid "Run Root"
+msgstr "Корень запуска"
+
+msgid "Saving resource"
+msgstr "Сохранение ресурса"
+
+msgid "Secret"
+msgstr "Секрет"
+
+msgid "Secret Data"
+msgstr "Секретные данные"
+
+msgid "Secret Name"
+msgstr "Имя секрета"
+
+msgid "Secret name can only contain letters, numbers, underscores, and hyphens"
+msgstr "Имя секрета может содержать только буквы, цифры, подчёркивания и дефисы"
+
+msgid "Secrets"
+msgstr "Секреты"
+
+msgid "Security Notice:"
+msgstr "Уведомление о безопасности:"
+
+msgid "Select containers to update"
+msgstr "Выберите контейнеры для обновления"
+
+msgid "Select network for the new container. User-created networks provide better isolation and DNS resolution between containers."
+msgstr "Выберите сеть для нового контейнера. Пользовательские сети обеспечивают лучшую изоляцию и разрешение DNS между контейнерами."
+
+msgid "Select what to clean up:"
+msgstr "Выберите, что очистить:"
+
+msgid "Sensitive data is hidden for security reasons."
+msgstr "Конфиденциальные данные скрыты по соображениям безопасности."
+
+msgid "Setup OpenWrt Integration"
+msgstr "Настроить интеграцию с OpenWrt"
+
+msgid "Shared Namespaces"
+msgstr "Общие пространства имён"
+
+msgid "Shares network with another container"
+msgstr "Использует общую сеть с другим контейнером"
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "Since"
+msgstr "С"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Socket Path"
+msgstr "Путь к сокету"
+
+msgid "Source"
+msgstr "Источник"
+
+msgid "Space freed: %s"
+msgstr "Освобождено места: %s"
+
+msgid "Start after creation"
+msgstr "Запустить после создания"
+
+msgid "Start container"
+msgstr "Запустить контейнер"
+
+msgid "Start on boot"
+msgstr "Запускать при загрузке"
+
+msgid "Start script disabled"
+msgstr "Скрипт запуска отключён"
+
+msgid "Start stream"
+msgstr "Начать поток"
+
+msgid "Started"
+msgstr "Запущено"
+
+msgid "Started At"
+msgstr "Запущено в"
+
+msgid "Starting pod"
+msgstr "Запуск пода"
+
+msgid "Statistics"
+msgstr "Статистика"
+
+msgid "Stats"
+msgstr "Статистика"
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "Stop container"
+msgstr "Остановить контейнер"
+
+msgid "Stop stream"
+msgstr "Остановить поток"
+
+msgid "Stopping pod"
+msgstr "Остановка пода"
+
+msgid "Subnet"
+msgstr "Подсеть"
+
+msgid "Supplementary Groups"
+msgstr "Дополнительные группы"
+
+msgid "System Diagnostics"
+msgstr "Системная диагностика"
+
+msgid "TTY"
+msgstr "TTY"
+
+msgid "Tag"
+msgstr "Тег"
+
+msgid "The sensitive data to store securely"
+msgstr "Конфиденциальные данные для безопасного хранения"
+
+msgid "To enable auto-update for a container, add the label: io.containers.autoupdate=registry"
+msgstr "Для включения автообновления контейнера добавьте метку: `io.containers.autoupdate=registry`"
+
+msgid "Total"
+msgstr "Всего"
+
+msgid "Total memory limit (memory + swap). -1 = unlimited, 0 = use default."
+msgstr "Общее ограничение памяти (память + swap). -1 = неограниченно, 0 = использовать по умолчанию."
+
+msgid "Type"
+msgstr "Тип"
+
+msgid "Unknown"
+msgstr "Неизвестно"
+
+msgid "Unless Stopped"
+msgstr "Пока не остановлен"
+
+msgid "Until"
+msgstr "До"
+
+msgid "Update"
+msgstr "Обновить"
+
+msgid "Update Resources"
+msgstr "Обновить ресурсы"
+
+msgid "Update name"
+msgstr "Обновить имя"
+
+msgid "Update restart policy"
+msgstr "Обновить политику перезапуска"
+
+msgid "Updating Images"
+msgstr "Обновление образов"
+
+msgid "Updating container"
+msgstr "Обновление контейнера"
+
+msgid "Upload failed: %s"
+msgstr "Загрузка не удалась: %s"
+
+msgid "Uploading file..."
+msgstr "Загрузка файла..."
+
+msgid "User"
+msgstr "Пользователь"
+
+msgid "User and group to run as (UID:GID)"
+msgstr "Пользователь и группа для запуска (UID:GID)"
+
+msgid "Value"
+msgstr "Значение"
+
+msgid "Variable"
+msgstr "Переменная"
+
+msgid "Volume"
+msgstr "Том"
+
+msgid "Volume Name"
+msgstr "Имя тома"
+
+msgid "Volume driver to use"
+msgstr "Драйвер тома для использования"
+
+msgid "Volume imported successfully"
+msgstr "Том успешно импортирован"
+
+msgid "Volume name. Leave empty to auto-generate."
+msgstr "Имя тома. Оставьте пустым для автогенерации."
+
+msgid "Volumes"
+msgstr "Тома"
+
+msgid "Working Directory"
+msgstr "Рабочая директория"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "default"
+msgstr "по умолчанию"
+
+msgid "non-empty value"
+msgstr "непустое значение"
+
+msgid "running"
+msgstr "запущен"
+
+msgid "total"
+msgstr "всего"
+
+msgid "Are you sure to remove pod?"
+msgstr "Действительно удалить под?"
+
+msgid "Cgroup parent"
+msgstr "Родитель cgroup"
+
+msgid "CID"
+msgstr "CID"
+
+msgid "CPU %"
+msgstr "ЦП %"
+
+msgid "CPU period"
+msgstr "Период CPU"
+
+msgid "CPU quota"
+msgstr "Квота CPU"
+
+msgid "CPU set"
+msgstr "Набор CPU"
+
+msgid "CPU shares"
+msgstr "Доли CPU"
+
+msgid "DNS options"
+msgstr "Параметры DNS"
+
+msgid "DNS search"
+msgstr "Поиск DNS"
+
+msgid "DNS servers"
+msgstr "DNS-серверы"
+
+msgid "Exit policy"
+msgstr "Политика выхода"
+
+msgid "Extra hosts"
+msgstr "Дополнительные хосты"
+
+msgid "Host network"
+msgstr "Сеть хоста"
+
+msgid "Infra container"
+msgstr "Infra-контейнер"
+
+msgid "Memory limit"
+msgstr "Лимит памяти"
+
+msgid "Net I/O"
+msgstr "Сетевой I/O"
+
+msgid "Pause pod"
+msgstr "Приостановить под"
+
+msgid "Pod is not running"
+msgstr "Под не запущен"
+
+msgid "Remove pod"
+msgstr "Удалить под"
+
+msgid "Restart policy"
+msgstr "Политика перезапуска"
+
+msgid "Restart pod"
+msgstr "Перезапустить под"
+
+msgid "Shared namespaces"
+msgstr "Общие пространства имён"
+
+msgid "Start pod"
+msgstr "Запустить под"
+
+msgid "Static IPv4"
+msgstr "Статический IPv4"
+
+msgid "Static MAC"
+msgstr "Статический MAC"
+
+msgid "Stop pod"
+msgstr "Остановить под"
+
+msgid "Unlimited"
+msgstr "Без ограничений"
+
+msgid "Unpause pod"
+msgstr "Возобновить под"
+
+msgid "Stopping container"
+msgstr "Остановка контейнера"
+
+msgid "Stop failed: %s"
+msgstr "Ошибка остановки: %s"
+
+msgid "Removing container"
+msgstr "Удаление контейнера"
+
+msgid "Remove failed: %s"
+msgstr "Ошибка удаления: %s"
+
+msgid "Creating container"
+msgstr "Создание контейнера"
+
+msgid "Create failed: %s"
+msgstr "Ошибка создания: %s"
+
+msgid "Starting container"
+msgstr "Запуск контейнера"
+
+msgid "Start failed: %s"
+msgstr "Ошибка запуска: %s"
+
+msgid "Reinstating init script"
+msgstr "Восстановление скрипта инициализации"
+
+msgid "Init script reinstate failed: %s"
+msgstr "Ошибка восстановления скрипта инициализации: %s"
+
+msgid "Updated to %s"
+msgstr "Обновлено до %s"
+
+msgid "Update image: %d/%d - %s"
+msgstr "Обновление образа: %d/%d - %s"
+
+msgid "Removed old image %s"
+msgstr "Старый образ %s удалён"
+
+msgid "Done."
+msgstr "Готово."
+
+msgid "Pause container"
+msgstr "Приостановить контейнер"
+
+msgid "Unpause container"
+msgstr "Возобновить контейнер"

@@ -1,11 +1,29 @@
 {
 	"luci-app-hermes": {
-		"description": "Grant UCI access for luci-app-hermes",
+		"description": "Grant access for luci-app-hermes",
 		"read": {
-			"uci": [ "hermes" ]
+			"uci": ["hermes"],
+			"ubus": {
+				"service": ["list"],
+				"file": ["exec", "read", "stat"]
+			},
+			"file": {
+				"/usr/share/hermes/luci-helper": ["exec"],
+				"/etc/init.d/hermes": ["exec"],
+				"/usr/share/hermes/VERSION": ["read"],
+				"/tmp/hermes-setup.log": ["read"],
+				"/tmp/hermes-setup.exit": ["read"]
+			}
 		},
 		"write": {
-			"uci": [ "hermes" ]
+			"uci": ["hermes"],
+			"ubus": {
+				"file": ["exec", "write"]
+			},
+			"file": {
+				"/usr/share/hermes/luci-helper": ["exec"],
+				"/etc/init.d/hermes": ["exec"]
+			}
 		}
 	}
 }

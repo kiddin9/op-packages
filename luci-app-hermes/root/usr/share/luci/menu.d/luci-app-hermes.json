@@ -1,0 +1,14 @@
+{
+	"admin/services/hermes": {
+		"title": "Hermes Agent",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "hermes"
+		},
+		"depends": {
+			"acl": ["luci-app-hermes"],
+			"uci": { "hermes": true }
+		}
+	}
+}

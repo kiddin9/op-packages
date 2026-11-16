@@ -1,0 +1,1090 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-podman\n"
+"PO-Revision-Date: 2026-05-03 11:05+0000\n"
+"Last-Translator:\n"
+"Language-Team: Dutch <https://github.com/openwrt/luci/tree/master/modules/luci-base/po/nl>\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "%d check(s) failed:"
+msgstr "%d controle(s) mislukt:"
+
+msgid "%d updated, %d failed:"
+msgstr "%d bijgewerkt, %d mislukt:"
+
+msgid "%s created successfully"
+msgstr "%s succesvol aangemaakt"
+
+msgid "%s: %d/%d"
+msgstr "%s: %d/%d"
+
+msgid "(none)"
+msgstr "(geen)"
+
+msgid "-- Select %s --"
+msgstr "-- Selecteer %s --"
+
+msgid "1-253 characters: letters, numbers, underscore (_), hyphen (-) only"
+msgstr "1-253 tekens: alleen letters, cijfers, laag streepje (_) en koppelteken (-)"
+
+msgid "512m, 1g, or -1 for unlimited"
+msgstr "512m, 1g of -1 voor onbeperkt"
+
+msgid "API Version"
+msgstr "API-versie"
+
+msgid "Add the container to an existing pod. Network, hostname and port mappings come from the pod's infra container."
+msgstr "Container toevoegen aan een bestaande pod. Netwerk, hostnaam en poort-mappings komen van de infra-container van de pod."
+
+msgid "All images updated successfully"
+msgstr "Alle images succesvol bijgewerkt"
+
+msgid "All volumes exported successfully"
+msgstr "Alle volumes succesvol geëxporteerd"
+
+msgid "Allocate TTY (-t)"
+msgstr "TTY toewijzen (-t)"
+
+msgid "Allocate container IP from this range"
+msgstr "Container IP toewijzen uit dit bereik"
+
+msgid "Always"
+msgstr "Altijd"
+
+msgid "Apply Updates"
+msgstr "Updates toepassen"
+
+msgid "Are you sure to delete the records?"
+msgstr "Records verwijderen?"
+
+msgid "Are you sure to remove container?"
+msgstr "Container verwijderen?"
+
+msgid "Are you sure to remove integration?"
+msgstr "Integratie verwijderen?"
+
+msgid "Auto Remove (--rm)"
+msgstr "Automatisch verwijderen (--rm)"
+
+msgid "Auto Update"
+msgstr "Automatisch bijwerken"
+
+msgid "Auto-Update"
+msgstr "Automatisch bijwerken"
+
+msgid "Automatically configure OpenWrt network interface, bridge, and firewall zone. <strong>Highly recommended</strong> for proper container networking on OpenWrt."
+msgstr "Automatisch OpenWrt netwerkinterface, bridge en firewallzone configureren. <strong>Ten zeerste aanbevolen</strong> voor correct container-netwerkgebruik op OpenWrt."
+
+msgid "Automatically start the container after it is created"
+msgstr "De container automatisch starten nadat deze is aangemaakt"
+
+msgid "Automatically update container when newer image is available. Adds label: io.containers.autoupdate=registry"
+msgstr "Container automatisch bijwerken wanneer een nieuwer image beschikbaar is. Voegt label toe: io.containers.autoupdate=registry"
+
+msgid "Basic Information"
+msgstr "Basis informatie"
+
+msgid "Block I/O"
+msgstr "Blok I/O"
+
+msgid "Boot"
+msgstr "Opstarten"
+
+msgid "Bridge Interface Name"
+msgstr "Bridge interfacenaam"
+
+msgid "CPU"
+msgstr "CPU"
+
+msgid "CPU Limit"
+msgstr "CPU-limiet"
+
+msgid "CPU Set"
+msgstr "CPU-set"
+
+msgid "CPU Shares Weight"
+msgstr "CPU shares gewicht"
+
+msgid "CPU Usage"
+msgstr "CPU-gebruik"
+
+msgid "CPU shares (relative weight). 0 = use default."
+msgstr "CPU-aandelen (relatief gewicht). 0 = standaard."
+
+msgid "CPUs the pod is allowed to run on (e.g., \"0-3\" or \"0,2\")"
+msgstr "CPU's waarop de pod mag draaien (bijv. \"0-3\" of \"0,2\")"
+
+msgid "Cancel"
+msgstr "Annuleren"
+
+msgid "Check"
+msgstr "Controleren"
+
+msgid "Check %d containers for updates?"
+msgstr "%d containers controleren op updates?"
+
+msgid "Check Complete"
+msgstr "Controle voltooid"
+
+msgid "Check for Updates"
+msgstr "Controleren op updates"
+
+msgid "Check for updates: %s/%s"
+msgstr "Controleren op updates: %s/%s"
+
+msgid "Choose firewall zone for this network."
+msgstr "Firewallzone kiezen voor dit netwerk."
+
+msgid "Clean Up Now"
+msgstr "Nu opruimen"
+
+msgid "Cleaning up old images..."
+msgstr "Oude images opruimen..."
+
+msgid "Cleanup / Prune"
+msgstr "Opruimen / Prune"
+
+msgid "Cleanup Complete"
+msgstr "Opruimen voltooid"
+
+msgid "Cleanup Unused Resources"
+msgstr "Ongebruikte bronnen opruimen"
+
+msgid "Cleanup successful!"
+msgstr "Opruimen succesvol!"
+
+msgid "Clear logs"
+msgstr "Logboeken wissen"
+
+msgid "Click icon to repair"
+msgstr "Klik op het pictogram om te repareren"
+
+msgid "Click to disconnect"
+msgstr "Klikken om te verbreken"
+
+msgid "Click to enable/disable"
+msgstr "Klikken om in/uit te schakelen"
+
+msgid "Click to reveal/hide value"
+msgstr "Klik om waarde te tonen/verbergen"
+
+msgid "Close"
+msgstr "Sluiten"
+
+msgid "Comma-separated list of supplementary group IDs"
+msgstr "Door komma's gescheiden lijst van aanvullende groeps-ID's"
+
+msgid "Comma-separated ports to expose (e.g., 6052, 8080/udp)"
+msgstr "Door komma's gescheiden poorten om te exposeren (bijv. 6052, 8080/udp)"
+
+msgid "Command"
+msgstr "Opdracht"
+
+msgid "Command to run (space-separated)"
+msgstr "Uit te voeren opdracht (spatie-gescheiden)"
+
+msgid "Configuration"
+msgstr "Configuratie"
+
+msgid "Configure resource limits for this container."
+msgstr "Resourcelimieten configureren voor deze container."
+
+msgid "Confirm"
+msgstr "Bevestigen"
+
+msgid "Connect"
+msgstr "Verbinden"
+
+msgid "Connect to"
+msgstr "Verbinden met"
+
+msgid "Connected successfully to %s"
+msgstr "Succesvol verbonden met %s"
+
+msgid "Connecting container to network"
+msgstr "Container verbinden met netwerk"
+
+msgid "Console"
+msgstr "Console"
+
+msgid "Container"
+msgstr "Container"
+
+msgid "Container Name"
+msgstr "Container naam"
+
+msgid "Container image has no tag - cannot update"
+msgstr "Container-image heeft geen tag - kan niet bijwerken"
+
+msgid "Container image to use"
+msgstr "Te gebruiken container image"
+
+msgid "Container is not running"
+msgstr "Container is niet actief"
+
+msgid "Container updated successfully"
+msgstr "Container succesvol bijgewerkt"
+
+msgid "Containers"
+msgstr "Containers"
+
+msgid "Containers in pod %s"
+msgstr "Containers in pod %s"
+
+msgid "Containers updated successfully"
+msgstr "Containers succesvol bijgewerkt"
+
+msgid "Containers updated successfully."
+msgstr "Containers succesvol bijgewerkt."
+
+msgid "Create"
+msgstr "Aanmaken"
+
+msgid "Create %s"
+msgstr "%s aanmaken"
+
+msgid "Create Command"
+msgstr "Aanmaakcommando"
+
+msgid "Create Infra Container"
+msgstr "Infra-container aanmaken"
+
+msgid "Create new zone (will be named: podman_<network-name>)"
+msgstr "Nieuwe zone aanmaken (naam wordt: podman_<netwerknaam>)"
+
+msgid "Created"
+msgstr "Aangemaakt"
+
+msgid "Creating %s"
+msgstr "Aanmaken van %s"
+
+msgid "Creating auto-start configuration for %s"
+msgstr "Automatische start configuratie aanmaken voor %s"
+
+msgid "DNS Search Domains"
+msgstr "DNS-zoekdomeinen"
+
+msgid "DNS Servers"
+msgstr "DNS-servers"
+
+msgid "DNS search domains for the infra container"
+msgstr "DNS-zoekdomeinen voor de infra-container"
+
+msgid "DNS servers for the infra container (shared with all pod containers)"
+msgstr "DNS-servers voor de infra-container (gedeeld met alle containers in de pod)"
+
+msgid "Delete"
+msgstr "Verwijderen"
+
+msgid "Deleting records: %d/%d"
+msgstr "Records verwijderen: %d/%d"
+
+msgid "Deleting records: %s/%s"
+msgstr "Records verwijderen: %s/%s"
+
+msgid "Destination"
+msgstr "Bestemming"
+
+msgid "Device"
+msgstr "Apparaat"
+
+msgid "Disabled"
+msgstr "Uitgeschakeld"
+
+msgid "Disabling init script"
+msgstr "Init-script uitschakelen"
+
+msgid "Disconnect container from network"
+msgstr "Container verbreken van netwerk"
+
+msgid "Disconnected from %s"
+msgstr "Verbroken van %s"
+
+msgid "Dnsmasq"
+msgstr "Dnsmasq"
+
+msgid "Driver"
+msgstr "Driver"
+
+msgid "Driver-specific options (comma-separated, e.g., type=tmpfs,o=size=100m)"
+msgstr "Driver-specifieke opties (komma-gescheiden, bijv. type=tmpfs,o=size=100m)"
+
+msgid "Enable IPv6"
+msgstr "IPv6 inschakelen"
+
+msgid "Enable IPv6 networking"
+msgstr "IPv6-netwerkgebruik inschakelen"
+
+msgid "Enabling init script"
+msgstr "Init-script inschakelen"
+
+msgid "Enter secret data (password, token, key, etc.)"
+msgstr "Voer geheime gegevens in (wachtwoord, token, sleutel, etc.)"
+
+msgid "Entrypoint"
+msgstr "Entrypoint"
+
+msgid "Environment Variables"
+msgstr "Omgevingsvariabelen"
+
+msgid "Ephemeral (--rm flag)"
+msgstr "Efemeer (--rm vlag)"
+
+msgid "Error"
+msgstr "Fout"
+
+msgid "Error: %s"
+msgstr "Fout: %s"
+
+msgid "Existing physical interface to use as parent. Required for macvlan/ipvlan networks."
+msgstr "Bestaande fysieke interface om als parent te gebruiken. Vereist voor macvlan/ipvlan netwerken."
+
+msgid "Expecting: %s"
+msgstr "Verwacht: %s"
+
+msgid "Export"
+msgstr "Exporteren"
+
+msgid "Exporting selected volumes: %d/%d"
+msgstr "Exporteren van geselecteerde volumes: %d/%d"
+
+msgid "Expose Ports"
+msgstr "Poorten blootstellen"
+
+msgid "Failed to create container"
+msgstr "Aanmaken van container mislukt"
+
+msgid "Fetching information..."
+msgstr "Informatie ophalen..."
+
+msgid "Find updateable containers"
+msgstr "Bijwerkbare containers zoeken"
+
+msgid "Firewall Zone"
+msgstr "Firewallzone"
+
+msgid "Gateway"
+msgstr "Gateway"
+
+msgid "Generate"
+msgstr "Genereren"
+
+msgid "Graph Root"
+msgstr "Grafiek-root"
+
+msgid "Health"
+msgstr "Gezondheid"
+
+msgid "Hostname"
+msgstr "Hostnaam"
+
+msgid "Hostname for the pod (defaults to pod name)"
+msgstr "Hostnaam voor de pod (standaard: pod-naam)"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "IP Address"
+msgstr "IP-adres"
+
+msgid "IP Range (CIDR)"
+msgstr "IP-bereik (CIDR)"
+
+msgid "IPv4 Gateway"
+msgstr "IPv4 Gateway"
+
+msgid "IPv4 Subnet (CIDR)"
+msgstr "IPv4 Subnet (CIDR)"
+
+msgid "IPv4 gateway address"
+msgstr "IPv4 gateway-adres"
+
+msgid "IPv4 subnet in CIDR notation"
+msgstr "IPv4-subnet in CIDR-notatie"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Image ID"
+msgstr "Image-ID"
+
+msgid "Image is already up-to-date"
+msgstr "Image is al up-to-date"
+
+msgid "Image pulled successfully"
+msgstr "Image succesvol opgehaald"
+
+msgid "Images"
+msgstr "Images"
+
+msgid "Import"
+msgstr "Importeren"
+
+msgid "Import from archive: %s"
+msgstr "Importeren uit archief: %s"
+
+msgid "Importing volume..."
+msgstr "Volume importeren..."
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Information"
+msgstr "Informatie"
+
+msgid "Infra Image"
+msgstr "Infra-image"
+
+msgid "Init Script"
+msgstr "Init-script"
+
+msgid "Inspect"
+msgstr "Inspecteren"
+
+msgid "Int"
+msgstr "Geh"
+
+msgid "Interactive"
+msgstr "Interactief"
+
+msgid "Interface"
+msgstr "Interface"
+
+msgid "Internal Network"
+msgstr "Intern netwerk"
+
+msgid "Labels"
+msgstr "Labels"
+
+msgid "Labels in key=value format, one per line"
+msgstr "Labels in sleutel=waarde formaat, één per regel"
+
+msgid "Leave empty to auto-generate"
+msgstr "Leeg laten voor automatisch genereren"
+
+msgid "Links"
+msgstr "Links"
+
+msgid "Linux namespaces shared between containers in the pod. Default matches `podman pod create`."
+msgstr "Linux-namespaces gedeeld tussen de containers in de pod. Standaard komt overeen met `podman pod create`."
+
+msgid "Load"
+msgstr "Laden"
+
+msgid "Load System diagnostics"
+msgstr "Systeemdiagnostiek laden"
+
+msgid "Loading init script"
+msgstr "Init-script laden"
+
+msgid "Loading..."
+msgstr "Laden..."
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Manage podman %s"
+msgstr "Podman %s beheren"
+
+msgid "Memory"
+msgstr "Geheugen"
+
+msgid "Memory %"
+msgstr "Geheugen %"
+
+msgid "Memory + Swap Limit"
+msgstr "Geheugen + Swap limiet"
+
+msgid "Memory Limit"
+msgstr "Geheugenlimiet"
+
+msgid "Memory Usage"
+msgstr "Geheugengebruik"
+
+msgid "Memory limit (e.g., 512m, 1g)"
+msgstr "Geheugenlimiet (bijv. 512m, 1g)"
+
+msgid "Memory limit (e.g., 512m, 1g). -1 = unlimited, 0 = use default."
+msgstr "Geheugenlimiet (bijv. 512m, 1g). -1 = onbeperkt, 0 = standaard."
+
+msgid "Memory limit for the pod (e.g., 512m, 1g)"
+msgstr "Geheugenlimiet voor de pod (bijv. 512m, 1g)"
+
+msgid "Mode"
+msgstr "Modus"
+
+msgid "Mount Options"
+msgstr "Mount-opties"
+
+msgid "Mountpoint"
+msgstr "Mountpoint"
+
+msgid "Mounts"
+msgstr "Mounts"
+
+msgid "Must be between 0 and 262144"
+msgstr "Moet tussen 0 en 262144 zijn"
+
+msgid "Name"
+msgstr "Naam"
+
+msgid "Name for the network"
+msgstr "Naam voor het netwerk"
+
+msgid "Name of the bridge interface (e.g., podman0, mynet0). Leave empty to use: &lt;network-name&gt;0. Note: If the generated name conflicts with an existing interface, OpenWrt will auto-increment it."
+msgstr "Naam van de bridge interface (bijv. podman0, mynet0). Leeg laten voor: &lt;netwerknaam&gt;0. Let op: Bij conflict met een bestaande interface zal OpenWrt dit automatisch ophogen."
+
+msgid "Name updated successfully"
+msgstr "Naam succesvol bijgewerkt"
+
+msgid "Network"
+msgstr "Netwerk"
+
+msgid "Network I/O"
+msgstr "Netwerk I/O"
+
+msgid "Network Mode"
+msgstr "Netwerkmodus"
+
+msgid "Network Name"
+msgstr "Netwerknaam"
+
+msgid "Network driver"
+msgstr "Netwerkdriver"
+
+msgid "Network namespace for the pod. Containers in the pod share this network."
+msgstr "Netwerk-namespace voor de pod. Containers in de pod delen dit netwerk."
+
+msgid "Networks"
+msgstr "Netwerken"
+
+msgid "Never"
+msgstr "Nooit"
+
+msgid "No"
+msgstr "Nee"
+
+msgid "No %s selected"
+msgstr "Geen %s geselecteerd"
+
+msgid "No containers in this pod"
+msgstr "Geen containers in deze pod"
+
+msgid "No containers with auto-update label found."
+msgstr "Geen containers met auto-update label gevonden."
+
+msgid "No new updates available."
+msgstr "Geen nieuwe updates beschikbaar."
+
+msgid "No suitable interfaces found"
+msgstr "Geen geschikte interfaces gevonden"
+
+msgid "No unused resources found"
+msgstr "Geen ongebruikte bronnen gevonden"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0)"
+msgstr "Aantal CPU's (bijv. 0.5, 1.0, 2.0)"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0). Leave empty for unlimited."
+msgstr "Aantal CPU's (bijv. 0.5, 1.0, 2.0). Leeg laten voor onbeperkt."
+
+msgid "Number of CPUs available to the pod (e.g., 0.5, 1.0, 2.0)"
+msgstr "Aantal CPU's beschikbaar voor de pod (bijv. 0.5, 1.0, 2.0)"
+
+msgid "Number of lines"
+msgstr "Aantal regels"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Old image still used by other containers"
+msgstr "Oude image wordt nog gebruikt door andere containers"
+
+msgid "On Failure"
+msgstr "Bij fout"
+
+msgid "One per line, format: host:container[/protocol]"
+msgstr "Één per regel, formaat: host:container[/protocol]"
+
+msgid "One per line, format: key=value"
+msgstr "Eén per regel, formaat: sleutel=waarde"
+
+msgid "One per line. Format: source:destination[:options]. Options: ro, rw, Z, z"
+msgstr "Één per regel. Formaat: bron:bestemming[:opties]. Opties: ro, rw, Z, z"
+
+msgid "OpenWrt integration exists\n\nClick to remove"
+msgstr "OpenWrt-integratie bestaat\n\nKlik om te verwijderen"
+
+msgid "OpenWrt integration incomplete"
+msgstr "OpenWrt-integratie onvolledig"
+
+msgid "OpenWrt integration requires subnet to be specified"
+msgstr "OpenWrt-integratie vereist opgave van een subnet"
+
+msgid "Override the image used for the infra container"
+msgstr "Image overschrijven die voor de infra-container wordt gebruikt"
+
+msgid "PIDs"
+msgstr "PIDs"
+
+msgid "Parent Interface"
+msgstr "Parent-interface"
+
+msgid "Parent interface is required for macvlan/ipvlan networks"
+msgstr "Parent-interface is vereist voor macvlan/ipvlan netwerken"
+
+msgid "Part of a pod (\"%s\")"
+msgstr "Onderdeel van pod \"%s\""
+
+msgid "Pausing pod"
+msgstr "Pod wordt gepauzeerd"
+
+msgid "Pod"
+msgstr "Pod"
+
+msgid "Pod Name"
+msgstr "Pod-naam"
+
+msgid "Podman Version"
+msgstr "Podman-versie"
+
+msgid "Pods"
+msgstr "Pods"
+
+msgid "Port Mappings"
+msgstr "Poort-mappings"
+
+msgid "Ports"
+msgstr "Poorten"
+
+msgid "Privileged"
+msgstr "Privileged"
+
+msgid "Privileged Mode"
+msgstr "Privileged-modus"
+
+msgid "Processes"
+msgstr "Processen"
+
+msgid "Pull Image"
+msgstr "Image ophalen"
+
+msgid "Pull did not return an image ID - pull may have failed"
+msgstr "Pull heeft geen image-ID geretourneerd - pull is mogelijk mislukt"
+
+msgid "Pulling %s"
+msgstr "%s ophalen"
+
+msgid "Read: %s / Write: %s"
+msgstr "Lezen: %s / Schrijven: %s"
+
+msgid "Refreshing %s..."
+msgstr "Vernieuwen van %s..."
+
+msgid "Registries"
+msgstr "Registries"
+
+msgid "Registry"
+msgstr "Registry"
+
+msgid "Reload"
+msgstr "Herladen"
+
+msgid "Remove OpenWrt integration"
+msgstr "OpenWrt-integratie verwijderen"
+
+msgid "Remove all unused images (not just dangling)"
+msgstr "Alle ongebruikte images verwijderen (niet alleen dangling)"
+
+msgid "Remove container"
+msgstr "Container verwijderen"
+
+msgid "Remove unused volumes"
+msgstr "Ongebruikte volumes verwijderen"
+
+msgid "Removed: %s"
+msgstr "Verwijderd: %s"
+
+msgid "Removing unused resources, please wait..."
+msgstr "Ongebruikte bronnen verwijderen, even geduld..."
+
+msgid "Repository"
+msgstr "Repository"
+
+msgid "Required for shared network namespace. Disable only if you know you do not need it."
+msgstr "Vereist voor gedeeld netwerk-namespace. Alleen uitschakelen als u weet dat dit niet nodig is."
+
+msgid "Resources"
+msgstr "Bronnen"
+
+msgid "Restart Policy"
+msgstr "Herstartbeleid"
+
+msgid "Restart container"
+msgstr "Container opnieuw starten"
+
+msgid "Restart policy updated successfully"
+msgstr "Herstartbeleid succesvol bijgewerkt"
+
+msgid "Restarting pod"
+msgstr "Pod wordt herstart"
+
+msgid "Restrict external access to the network"
+msgstr "Externe toegang tot het netwerk beperken"
+
+msgid "Run Root"
+msgstr "Run-root"
+
+msgid "Saving resource"
+msgstr "Resource opslaan"
+
+msgid "Secret"
+msgstr "Geheim (Secret)"
+
+msgid "Secret Data"
+msgstr "Geheime gegevens"
+
+msgid "Secret Name"
+msgstr "Geheim naam"
+
+msgid "Secret name can only contain letters, numbers, underscores, and hyphens"
+msgstr "Geheim naam mag alleen letters, cijfers, underscores en koppeltekens bevatten"
+
+msgid "Secrets"
+msgstr "Geheimen"
+
+msgid "Security Notice:"
+msgstr "Veiligheidswaarschuwing:"
+
+msgid "Select containers to update"
+msgstr "Containers selecteren om bij te werken"
+
+msgid "Select network for the new container. User-created networks provide better isolation and DNS resolution between containers."
+msgstr "Netwerk selecteren voor de nieuwe container. Door gebruikers aangemaakte netwerken bieden betere isolatie en DNS-resolutie tussen containers."
+
+msgid "Select what to clean up:"
+msgstr "Selecteer wat op te ruimen:"
+
+msgid "Sensitive data is hidden for security reasons."
+msgstr "Gevoelige gegevens zijn verborgen om veiligheidsredenen."
+
+msgid "Setup OpenWrt Integration"
+msgstr "OpenWrt-integratie instellen"
+
+msgid "Shared Namespaces"
+msgstr "Gedeelde namespaces"
+
+msgid "Shares network with another container"
+msgstr "Deelt netwerk met een andere container"
+
+msgid "Show"
+msgstr "Tonen"
+
+msgid "Since"
+msgstr "Vanaf"
+
+msgid "Size"
+msgstr "Grootte"
+
+msgid "Socket Path"
+msgstr "Socket-pad"
+
+msgid "Source"
+msgstr "Bron"
+
+msgid "Space freed: %s"
+msgstr "Ruimte vrijgemaakt: %s"
+
+msgid "Start after creation"
+msgstr "Starten na aanmaak"
+
+msgid "Start container"
+msgstr "Container starten"
+
+msgid "Start on boot"
+msgstr "Starten bij opstarten"
+
+msgid "Start script disabled"
+msgstr "Startscript uitgeschakeld"
+
+msgid "Start script missing\n\nClick to generate"
+msgstr "Opstartscript ontbreekt\n\nKlik om te genereren"
+
+msgid "Start stream"
+msgstr "Stream starten"
+
+msgid "Started"
+msgstr "Gestart"
+
+msgid "Started At"
+msgstr "Gestart om"
+
+msgid "Starting pod"
+msgstr "Pod wordt gestart"
+
+msgid "Statistics"
+msgstr "Statistieken"
+
+msgid "Stats"
+msgstr "Statistieken"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Stop container"
+msgstr "Container stoppen"
+
+msgid "Stop stream"
+msgstr "Stream stoppen"
+
+msgid "Stopping pod"
+msgstr "Pod wordt gestopt"
+
+msgid "Subnet"
+msgstr "Subnet"
+
+msgid "Supplementary Groups"
+msgstr "Aanvullende groepen"
+
+msgid "System Diagnostics"
+msgstr "Systeemdiagnose"
+
+msgid "TTY"
+msgstr "TTY"
+
+msgid "Tag"
+msgstr "Tag"
+
+msgid "The sensitive data to store securely"
+msgstr "De gevoelige gegevens om veilig op te slaan"
+
+msgid "To enable auto-update for a container, add the label: io.containers.autoupdate=registry"
+msgstr "Voeg het label toe om automatisch bijwerken in te schakelen: io.containers.autoupdate=registry"
+
+msgid "Total"
+msgstr "Totaal"
+
+msgid "Total memory limit (memory + swap). -1 = unlimited, 0 = use default."
+msgstr "Totale geheugenlimiet (geheugen + swap). -1 = onbeperkt, 0 = standaard."
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Unknown"
+msgstr "Onbekend"
+
+msgid "Unless Stopped"
+msgstr "Unless Stopped"
+
+msgid "Until"
+msgstr "Tot"
+
+msgid "Update"
+msgstr "Bijwerken"
+
+msgid "Update Resources"
+msgstr "Bronnen bijwerken"
+
+msgid "Update name"
+msgstr "Naam bijwerken"
+
+msgid "Update restart policy"
+msgstr "Herstartbeleid bijwerken"
+
+msgid "Updating Images"
+msgstr "Images bijwerken"
+
+msgid "Updating container"
+msgstr "Container bijwerken"
+
+msgid "Upload failed: %s"
+msgstr "Upload mislukt: %s"
+
+msgid "Uploading file..."
+msgstr "Bestand uploaden..."
+
+msgid "User"
+msgstr "Gebruiker"
+
+msgid "User and group to run as (UID:GID)"
+msgstr "Gebruiker en groep (UID:GID)"
+
+msgid "Value"
+msgstr "Waarde"
+
+msgid "Variable"
+msgstr "Variabele"
+
+msgid "Volume"
+msgstr "Volume"
+
+msgid "Volume Name"
+msgstr "Volume naam"
+
+msgid "Volume driver to use"
+msgstr "Te gebruiken volumedriver"
+
+msgid "Volume imported successfully"
+msgstr "Volume succesvol geïmporteerd"
+
+msgid "Volume name. Leave empty to auto-generate."
+msgstr "Volumenaam. Leeg laten voor automatisch genereren."
+
+msgid "Volumes"
+msgstr "Volumes"
+
+msgid "Working Directory"
+msgstr "Werkmap"
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "default"
+msgstr "standaard"
+
+msgid "non-empty value"
+msgstr "niet-lege waarde"
+
+msgid "running"
+msgstr "actief"
+
+msgid "total"
+msgstr "totaal"
+
+msgid "Are you sure to remove pod?"
+msgstr "Weet u zeker dat u de pod wilt verwijderen?"
+
+msgid "Cgroup parent"
+msgstr "Cgroup-parent"
+
+msgid "CID"
+msgstr "CID"
+
+msgid "CPU %"
+msgstr "CPU %"
+
+msgid "CPU period"
+msgstr "CPU-periode"
+
+msgid "CPU quota"
+msgstr "CPU-quotum"
+
+msgid "CPU set"
+msgstr "CPU-set"
+
+msgid "CPU shares"
+msgstr "CPU-shares"
+
+msgid "DNS options"
+msgstr "DNS-opties"
+
+msgid "DNS search"
+msgstr "DNS-zoek"
+
+msgid "DNS servers"
+msgstr "DNS-servers"
+
+msgid "Exit policy"
+msgstr "Exit-beleid"
+
+msgid "Extra hosts"
+msgstr "Extra hosts"
+
+msgid "Host network"
+msgstr "Host-netwerk"
+
+msgid "Infra container"
+msgstr "Infra-container"
+
+msgid "Memory limit"
+msgstr "Geheugenlimiet"
+
+msgid "Net I/O"
+msgstr "Netwerk-I/O"
+
+msgid "Pause pod"
+msgstr "Pod pauzeren"
+
+msgid "Pod is not running"
+msgstr "Pod is niet actief"
+
+msgid "Remove pod"
+msgstr "Pod verwijderen"
+
+msgid "Restart policy"
+msgstr "Herstartbeleid"
+
+msgid "Restart pod"
+msgstr "Pod herstarten"
+
+msgid "Shared namespaces"
+msgstr "Gedeelde namespaces"
+
+msgid "Start pod"
+msgstr "Pod starten"
+
+msgid "Static IPv4"
+msgstr "Statische IPv4"
+
+msgid "Static MAC"
+msgstr "Statische MAC"
+
+msgid "Stop pod"
+msgstr "Pod stoppen"
+
+msgid "Unlimited"
+msgstr "Onbeperkt"
+
+msgid "Unpause pod"
+msgstr "Pod hervatten"
+
+msgid "Stopping container"
+msgstr "Container wordt gestopt"
+
+msgid "Stop failed: %s"
+msgstr "Stoppen mislukt: %s"
+
+msgid "Removing container"
+msgstr "Container wordt verwijderd"
+
+msgid "Remove failed: %s"
+msgstr "Verwijderen mislukt: %s"
+
+msgid "Creating container"
+msgstr "Container wordt aangemaakt"
+
+msgid "Create failed: %s"
+msgstr "Aanmaken mislukt: %s"
+
+msgid "Starting container"
+msgstr "Container wordt gestart"
+
+msgid "Start failed: %s"
+msgstr "Starten mislukt: %s"
+
+msgid "Reinstating init script"
+msgstr "Init-script wordt hersteld"
+
+msgid "Init script reinstate failed: %s"
+msgstr "Herstellen van init-script mislukt: %s"
+
+msgid "Updated to %s"
+msgstr "Bijgewerkt naar %s"
+
+msgid "Update image: %d/%d - %s"
+msgstr "Image bijwerken: %d/%d - %s"
+
+msgid "Removed old image %s"
+msgstr "Oude image %s verwijderd"
+
+msgid "Done."
+msgstr "Klaar."
+
+msgid "Pause container"
+msgstr "Container pauzeren"
+
+msgid "Unpause container"
+msgstr "Container hervatten"

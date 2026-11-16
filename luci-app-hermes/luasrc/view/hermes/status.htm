@@ -1,30 +1,86 @@
-<%
-local util  = require "luci.util"
-local container_status = util.trim(util.exec("/usr/libexec/istorec/hermes.sh status"))
-local container_install = (string.len(container_status) > 0)
-local container_running = container_status == "running"
+<%#
+ luci-app-hermes — Status Panel (18.06 compat)
 -%>
-<div class="cbi-value">
-    <label class="cbi-value-title"><%:Status%></label>
-    <div class="cbi-value-field">
-        <% if container_running then %>
-        <button class="cbi-button cbi-button-success" disabled="true"><%:Hermes is running%></button>
-        <% else %>
-        <button class="cbi-button cbi-button-negative" disabled="true"><%:Hermes is not running%></button>
-        <% end %>
-    </div>
+
+<style>
+.hm-panel{margin:0 0 20px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.hm-panel .hdr{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:10px 16px;font-size:14px;font-weight:600}
+.hm-panel table{width:100%;border-collapse:collapse}
+.hm-panel td{padding:8px 16px;border-bottom:1px solid #f2f2f2;font-size:13px}
+.hm-panel tr:last-child td{border-bottom:none}
+.hm-panel td:first-child{width:120px;color:#888;font-weight:500}
+.hm-badge{display:inline-block;padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600}
+.hm-badge-run{background:#e8f5e9;color:#2e7d32}
+.hm-badge-stop{background:#ffebee;color:#c62828}
+.hm-badge-start{background:#fff8e1;color:#f57f17}
+.hm-badge-off{background:#f5f5f5;color:#9e9e9e}
+.hm-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px}
+.hm-actions .btn{padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer}
+</style>
+
+<div class="hm-panel">
+	<div class="hdr">🤖 Hermes Agent Service Status</div>
+	<table>
+		<tr><td><%:Status%></td><td id="hm-st-status"><span class="hm-badge hm-badge-off">Loading...</span></td></tr>
+		<tr><td><%:Gateway%></td><td id="hm-st-gw">-</td></tr>
+		<tr><td><%:Config PTY%></td><td id="hm-st-pty">-</td></tr>
+		<tr><td>Python</td><td id="hm-st-python">-</td></tr>
+		<tr><td>Hermes</td><td id="hm-st-hermes">-</td></tr>
+		<tr><td><%:Plugin%></td><td id="hm-st-plugin">-</td></tr>
+		<tr><td><%:Model%></td><td id="hm-st-model">-</td></tr>
+		<tr><td><%:Memory%></td><td id="hm-st-mem">-</td></tr>
+		<tr><td><%:Uptime%></td><td id="hm-st-up">-</td></tr>
+	</table>
 </div>
-<%
-if container_running then
-    local port = util.trim(util.exec("/usr/libexec/istorec/hermes.sh port"))
-    if port == "" then
-        port = "8787"
-    end
--%>
-<div class="cbi-value cbi-value-last">
-    <label class="cbi-value-title">&nbsp;</label>
-    <div class="cbi-value-field">
-    <input type="button" class="btn cbi-button cbi-button-apply" name="start" value="<%:Open Hermes%>" onclick="window.open('http://'+location.hostname+':<%=port%>/', '_blank')">
-    </div>
+
+<div class="hm-actions">
+	<button class="btn cbi-button cbi-button-action" onclick="hmCtl('start')"><%:Start%></button>
+	<button class="btn cbi-button cbi-button-action" onclick="hmCtl('stop')"><%:Stop%></button>
+	<button class="btn cbi-button cbi-button-action" onclick="hmCtl('restart')"><%:Restart%></button>
 </div>
-<% end %>
+
+<script type="text/javascript">
+//<![CDATA[
+(function(){
+	var apiUrl='<%=luci.dispatcher.build_url("admin","services","hermes","status_api")%>';
+	var ctlUrl='<%=luci.dispatcher.build_url("admin","services","hermes","service_ctl")%>';
+
+	function fmtMem(kb){
+		kb=parseInt(kb)||0;
+		if(kb<=0)return'-';
+		if(kb>=1024)return(kb/1024).toFixed(1)+' MB';
+		return kb+' KB';
+	}
+
+	function update(){
+		(new XHR()).get(apiUrl,null,function(x){
+			try{
+				var d=JSON.parse(x.responseText);
+				var st=document.getElementById('hm-st-status');
+				if(d.enabled!=='1')st.innerHTML='<span class="hm-badge hm-badge-off">Disabled</span>';
+				else if(d.gateway_running)st.innerHTML='<span class="hm-badge hm-badge-run">Running</span>';
+				else if(d.gateway_starting)st.innerHTML='<span class="hm-badge hm-badge-start">Starting...</span>';
+				else st.innerHTML='<span class="hm-badge hm-badge-stop">Stopped</span>';
+				document.getElementById('hm-st-gw').textContent=d.gateway_running?'✅ :'+d.port:'⏹ Stopped';
+				document.getElementById('hm-st-pty').textContent=d.pty_running?'✅ :'+d.pty_port:'⏹ Stopped';
+				document.getElementById('hm-st-python').textContent=d.python_version||'Not installed';
+				document.getElementById('hm-st-hermes').textContent=d.hermes_version||'Not installed';
+				document.getElementById('hm-st-plugin').textContent=d.plugin_version||'-';
+				document.getElementById('hm-st-model').textContent=d.active_model||'-';
+				document.getElementById('hm-st-mem').textContent=fmtMem(d.memory_kb);
+				document.getElementById('hm-st-up').textContent=d.uptime||'-';
+			}catch(e){}
+		});
+	}
+
+	window.hmCtl=function(action){
+		(new XHR()).get(ctlUrl+'?action='+action,null,function(){
+			setTimeout(update,2500);
+		});
+	};
+
+	update();
+	setInterval(update,5000);
+})();
+//]]>
+</script>
