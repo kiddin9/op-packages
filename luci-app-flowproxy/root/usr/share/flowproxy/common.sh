@@ -506,7 +506,7 @@ _apply_dnsmasq_config() {
 setup_dns() {
 	local enabled=$(uci -q get "$UCI_CONFIG.global.enabled")
 	local dns_proxy_enabled=$(uci -q get "$UCI_CONFIG.global.dns_proxy_enabled")
-	local proxy_server_dns_port=$(uci -q get "$UCI_CONFIG.global.proxy_server_dns_port"); proxy_server_dns_port="${proxy_server_dns_port:-5353}"
+	local proxy_server_dns_port=$(uci -q get "$UCI_CONFIG.global.proxy_server_dns_port"); proxy_server_dns_port="${proxy_server_dns_port:-53}"
 	local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
 
 	# Only apply DNS proxy if BOTH main service and DNS proxy are enabled

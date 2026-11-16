@@ -141,7 +141,17 @@ local function parse_version_token(ver_str)
         local epoch = os.time({ year = y, month = m, day = d, hour = 0, min = 0, sec = 0 }) or 0
         return string.format("%02d.%02d.%04d", m, d, y), epoch, num_str, iso
     end
-    return ver_str, 0, ver_str, ""
+    local yyyy3, mm3, dd3 = ver_str:match("(20%d%d)(%d%d)(%d%d)")
+    if yyyy3 and mm3 and dd3 then
+        local y, m, d = tonumber(yyyy3), tonumber(mm3), tonumber(dd3)
+        if m >= 1 and m <= 12 and d >= 1 and d <= 31 then
+            local num_str = string.format("%04d%02d%02d", y, m, d)
+            local iso = string.format("%04d-%02d-%02dT00:00:00Z", y, m, d)
+            local epoch = os.time({ year = y, month = m, day = d, hour = 0, min = 0, sec = 0 }) or 0
+            return string.format("%02d.%02d.%04d", m, d, y), epoch, num_str, iso
+        end
+    end
+    return "", 0, "", ""
 end
 
 local function normalize_date_str(date_str, filename)
@@ -624,36 +634,6 @@ local function url_decode(s)
     end))
 end
 
-local function parse_version_txt(raw)
-    raw = trim(raw or "")
-    if raw == "" or raw:match("^<!DOCTYPE") or raw:match("^<html") then
-        return nil
-    end
-    local clean = raw:gsub("[\r\n]+", ",")
-    local parts = {}
-    for p in clean:gmatch("([^,]+)") do
-        parts[#parts + 1] = trim(p)
-    end
-    if #parts == 0 then
-        return nil
-    end
-    local ver_str, ver_epoch, ver_num, ver_iso = parse_version_token(parts[1])
-    if ver_str == "" then
-        return nil
-    end
-    local fnotice = (#parts >= 2) and parts[#parts] or "0"
-    local now_ts = os.time() or 0
-    local is_formal = (fnotice == "1") or (ver_epoch > 0 and (now_ts - 172800) > ver_epoch)
-    return {
-        version = ver_str,
-        epoch = ver_epoch,
-        ver_num = ver_num,
-        date_iso = ver_iso,
-        fnotice = fnotice,
-        notice = is_formal
-    }
-end
-
 local function parse_directory_json(raw, dir_url, sha256_map)
     local obj = jsonc.parse(raw)
     if not obj or type(obj) ~= "table" then
@@ -818,48 +798,15 @@ local function parse_directory_html(html, dir_url, sha256_map)
     return items
 end
 
-local function build_gpsysupgrade_fallback_items(dir_url, subpath, ver_info, dev_info)
-    if not ver_info or not ver_info.version or ver_info.version == "" then
-        return nil
-    end
-    local v = ver_info.version
-    local t_dash = (dev_info and dev_info.target or ""):gsub("/", "-")
-    local b_norm = (dev_info and dev_info.board_dir) or subpath:match("([^/]+)$") or ""
-    local items = {}
-
-    if subpath == "x86_64" or b_norm == "x86_64" then
-        local efi_name = "kwrt-" .. v .. "-x86-64-generic-squashfs-combined-efi.img.gz"
-        local bios_name = "kwrt-" .. v .. "-x86-64-generic-squashfs-combined.img.gz"
-        items[#items + 1] = { name = efi_name, url = dir_url .. "/" .. efi_name, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-        items[#items + 1] = { name = bios_name, url = dir_url .. "/" .. bios_name, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    elseif subpath == "x86_32" or b_norm == "x86_generic" then
-        local efi_name = "kwrt-" .. v .. "-x86-generic-squashfs-combined-efi.img.gz"
-        local bios_name = "kwrt-" .. v .. "-x86-generic-squashfs-combined.img.gz"
-        items[#items + 1] = { name = efi_name, url = dir_url .. "/" .. efi_name, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-        items[#items + 1] = { name = bios_name, url = dir_url .. "/" .. bios_name, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    elseif b_norm:match("phicomm_k3$") or b_norm:match("rt%-ac88u$") then
-        local fn = "kwrt-" .. v .. "-" .. t_dash .. "-" .. b_norm .. "-squashfs.trx"
-        items[#items + 1] = { name = fn, url = dir_url .. "/" .. fn, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    elseif t_dash:match("sunxi") then
-        local fn = "kwrt-" .. v .. "-" .. t_dash .. "-" .. b_norm .. "-squashfs-sdcard.img.gz"
-        items[#items + 1] = { name = fn, url = dir_url .. "/" .. fn, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    elseif t_dash:match("rockchip") or b_norm:match("rpi%-") then
-        local fn = "kwrt-" .. v .. "-" .. t_dash .. "-" .. b_norm .. "-squashfs-sysupgrade.img.gz"
-        items[#items + 1] = { name = fn, url = dir_url .. "/" .. fn, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    elseif t_dash ~= "" and b_norm ~= "" then
-        local fn = "kwrt-" .. v .. "-" .. t_dash .. "-" .. b_norm .. "-squashfs-sysupgrade.bin"
-        items[#items + 1] = { name = fn, url = dir_url .. "/" .. fn, size = 0, sha256 = "", date_iso = ver_info.date_iso }
-    end
-
-    return (#items > 0) and items or nil
-end
-
-local function build_release_from_items(items, dir_url, resolved_subpath, ver_info, dev_info)
+local function build_release_from_items(items, dir_url, resolved_subpath, dev_info)
     local sys_ver = (dev_info and dev_info.system_version) or get_system_version()
     local _, _, sys_ver_num = parse_version_token(sys_ver)
 
     for _, item in ipairs(items) do
         local vtag, vepoch, vnum, viso = parse_version_token(item.name)
+        if vtag == "" and item.date_iso and item.date_iso ~= "" then
+            vtag, vepoch, vnum, viso = parse_version_token(item.date_iso)
+        end
         if (not item.date_iso or item.date_iso == "") and viso ~= "" then
             item.date_iso = viso
         end
@@ -883,29 +830,23 @@ local function build_release_from_items(items, dir_url, resolved_subpath, ver_in
     end)
 
     local newest = items[1]
-    local latest_ver = (ver_info and ver_info.version ~= "") and ver_info.version
-        or ((newest and newest.version_tag ~= "") and newest.version_tag or "")
-    local latest_ver_num = (ver_info and ver_info.ver_num ~= "") and ver_info.ver_num
-        or ((newest and newest.version_num ~= "") and newest.version_num or "")
-    local latest_epoch = (ver_info and ver_info.epoch and ver_info.epoch > 0) and ver_info.epoch
-        or ((newest and newest.version_epoch) or 0)
+    local latest_ver = (newest and newest.version_tag ~= "") and newest.version_tag or ""
+    local latest_ver_num = (newest and newest.version_num ~= "") and newest.version_num or ""
+    local latest_epoch = (newest and newest.version_epoch) or 0
 
     local latest_date = ""
     for _, item in ipairs(items) do
-        if item.date_iso and item.date_iso ~= "" then
-            if latest_date == "" or item.date_iso > latest_date then
-                latest_date = item.date_iso
+        if latest_ver_num == "" or item.version_num == latest_ver_num then
+            if item.date_iso and item.date_iso ~= "" then
+                if latest_date == "" or item.date_iso > latest_date then
+                    latest_date = item.date_iso
+                end
             end
         end
     end
-    if latest_date == "" and ver_info and ver_info.date_iso then
-        latest_date = ver_info.date_iso
-    end
 
     local is_formal = true
-    if ver_info and ver_info.notice ~= nil then
-        is_formal = ver_info.notice
-    elseif latest_epoch > 0 then
+    if latest_epoch > 0 then
         is_formal = ((os.time() or 0) - 172800) > latest_epoch
     end
 
@@ -966,36 +907,30 @@ end
 local function try_fetch_firmware_dir(dir_url, timeout, subpath_label, dev_info)
     dir_url = dir_url:gsub("/+$", "")
 
-    local ver_raw = http_get(dir_url .. "/version.txt", math.min(timeout, 6))
-    local ver_info = parse_version_txt(ver_raw)
-
     local raw = http_get(dir_url .. "/", timeout, "Accept: application/json, text/html;q=0.9")
-    local items = nil
-
-    if raw and trim(raw) ~= "" then
-        local sha256_map = {}
-        if raw:lower():find("sha256sums", 1, true) then
-            local sha_raw = http_get(dir_url .. "/sha256sums", math.min(timeout, 5))
-            sha256_map = parse_sha256sums(sha_raw)
-        end
-
-        local trimmed = trim(raw)
-        if trimmed:sub(1, 1) == "{" or trimmed:sub(1, 1) == "[" then
-            items = parse_directory_json(trimmed, dir_url, sha256_map)
-        else
-            items = parse_directory_html(raw, dir_url, sha256_map)
-        end
+    if not raw or trim(raw) == "" then
+        return nil
     end
 
-    if (not items or #items == 0) and ver_info then
-        items = build_gpsysupgrade_fallback_items(dir_url, subpath_label, ver_info, dev_info)
+    local sha256_map = {}
+    if raw:lower():find("sha256sums", 1, true) then
+        local sha_raw = http_get(dir_url .. "/sha256sums", math.min(timeout, 5))
+        sha256_map = parse_sha256sums(sha_raw)
+    end
+
+    local items = nil
+    local trimmed = trim(raw)
+    if trimmed:sub(1, 1) == "{" or trimmed:sub(1, 1) == "[" then
+        items = parse_directory_json(trimmed, dir_url, sha256_map)
+    else
+        items = parse_directory_html(raw, dir_url, sha256_map)
     end
 
     if not items or #items == 0 then
         return nil
     end
 
-    return build_release_from_items(items, dir_url, subpath_label, ver_info, dev_info)
+    return build_release_from_items(items, dir_url, subpath_label, dev_info)
 end
 
 local function fetch_dl_openwrt_firmware(dev_info, timeout)
@@ -1219,41 +1154,19 @@ end
 function action_sysversion_check()
     local dev_info = detect_device_info()
     local install_epoch = get_install_epoch()
-    local subpath = (dev_info.candidates and dev_info.candidates[1]) or ""
-    if subpath == "" then
-        json_resp({ code = 1 })
-        return
-    end
 
-    local ver_raw = http_get(FIRMWARE_BASE_URL .. "/" .. subpath .. "/version.txt", 5)
-    local ver_info = parse_version_txt(ver_raw)
-    if ver_info then
-        local fake_latest = {
-            release_name = ver_info.version,
-            tag_name = ver_info.version,
-            published_at = ver_info.date_iso
-        }
-        local has_new = evaluate_update_status(fake_latest, dev_info, install_epoch)
-        json_resp({
-            code = 0,
-            update = has_new,
-            notice = has_new and ver_info.notice or false,
-            now_version = dev_info.system_version,
-            version = ver_info.version
-        })
-        return
-    end
-
-    local latest = try_fetch_firmware_dir(FIRMWARE_BASE_URL .. "/" .. subpath, 6, subpath, dev_info)
+    local latest = fetch_dl_openwrt_firmware(dev_info, 6)
     if not latest then
         json_resp({ code = 1 })
         return
     end
+
     local has_new = evaluate_update_status(latest, dev_info, install_epoch)
     json_resp({
         code = 0,
         update = has_new,
-        notice = has_new and latest.notice or false,
+        notice = has_new,
+        is_formal = latest.notice,
         now_version = dev_info.system_version,
         version = latest.release_name
     })

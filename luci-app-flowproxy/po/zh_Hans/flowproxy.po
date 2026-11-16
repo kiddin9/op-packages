@@ -271,3 +271,15 @@ msgstr "自动检测"
 msgid "The proxy server IP address must be within a local interface subnet (%s)."
 msgstr "代理服务器 IP 地址必须在本地网络接口的子网网段之内 (%s)。"
 
+msgid "Watchdog Status"
+msgstr "监控状态"
+
+msgid "not enabled"
+msgstr "未启用"
+
+msgid "not running"
+msgstr "未运行"
+
+msgid "running - degraded direct fallback"
+msgstr "运行中 - 已降级直连"
+

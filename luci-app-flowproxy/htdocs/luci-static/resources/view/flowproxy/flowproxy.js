@@ -114,7 +114,7 @@ return L.view.extend({
                 var dcontent = [];
                 if (status.dns_running == 1) {
                     var ip = status.proxy_server_ip_addr || '-';
-                    var port = status.proxy_server_dns_port || '5353';
+                    var port = status.proxy_server_dns_port || '53';
                     dcontent.push(E('span', { 'style': 'color: green; font-weight: bold;' }, [ _('running') ]));
                     dcontent.push(' (' + ip + ':');
                     dcontent.push(E('span', { 'style': 'color: #FF9800; font-weight: bold;' }, [ port ]));
@@ -123,6 +123,26 @@ return L.view.extend({
                     dcontent.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('stopped') ]));
                 }
                 L.dom.content(dnsEl, dcontent);
+            }
+
+            var wdEl = container.querySelector('#watchdog-status');
+            if (wdEl) {
+                var wcontent = [];
+                if (status.monitor_enabled != 1) {
+                    wcontent.push(E('span', { 'style': 'color: #888;' }, [ _('not enabled') ]));
+                } else if (!isRunning) {
+                    wcontent.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('stopped') ]));
+                } else if (status.watchdog_running == 1 && isDegraded) {
+                    wcontent.push(E('span', { 'style': 'color: #FF9800; font-weight: bold;' }, [ _('running - degraded direct fallback') ]));
+                } else if (status.watchdog_running == 1) {
+                    var wip = status.proxy_server_ip_addr || '-';
+                    var interval = status.monitor_interval || 5;
+                    wcontent.push(E('span', { 'style': 'color: green; font-weight: bold;' }, [ _('running') ]));
+                    wcontent.push(' (' + wip + ' / ' + interval + 's)');
+                } else {
+                    wcontent.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('not running') ]));
+                }
+                L.dom.content(wdEl, wcontent);
             }
         }, this));
     },
@@ -193,6 +213,10 @@ return L.view.extend({
         o = s.taboption('settings', form.DummyValue, '_dns_status', _('DNS Redirection'));
         o.rawhtml = true;
         o.cfgvalue = function() { return '<div id="dns-status" style="display:inline-block;">-</div>'; };
+
+        o = s.taboption('settings', form.DummyValue, '_watchdog_status', _('Watchdog Status'));
+        o.rawhtml = true;
+        o.cfgvalue = function() { return '<div id="watchdog-status" style="display:inline-block;">-</div>'; };
 
         s.taboption('settings', form.Flag, 'enabled', _('Enable FlowProxy')).rmempty = false;
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
@@ -319,7 +343,7 @@ return L.view.extend({
         };
 
         o = s.taboption('settings', form.Value, 'proxy_server_dns_port', _('Proxy server DNS port'));
-        o.datatype = 'port'; o.default = '5353'; o.rmempty = false;
+        o.datatype = 'port'; o.default = '53'; o.rmempty = false;
 
         o = s.taboption('settings', form.ListValue, 'interface', _('Proxy server interface'));
         o.value('auto', _('Auto detect'));

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-modem-manager-next
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Dante <dante@seckv.com>
@@ -14,7 +14,6 @@ LUCI_DEPENDS:=+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
 	+kmod-usb-net +kmod-usb-serial +kmod-usb-serial-option \
 	+kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether +sms-tool
 LUCI_PKGARCH:=all
-PKG_PROVIDES:=luci-app-modem-manager
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/modem-manager
