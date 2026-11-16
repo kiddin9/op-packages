@@ -119,7 +119,8 @@ function toData(r, ip) {
 		disk_used:    (r && r.disk_used)   || 0,
 		disk_total:   (r && r.disk_total)  || 0,
 		preferred:    (r && r.prefer_iface) ? [r.prefer_iface] : [],
-		vnstat_total: (r && r.vnstat_total) || null
+		vnstat_total: (r && r.vnstat_total) || null,
+		phone:        (r && r.phone)       || null
 	};
 }
 
@@ -276,6 +277,82 @@ function createStatusCard(status, ip) {
 		E('div', { class: 'netstat-center-title' }, _('IP')),
 		E('div', { class: 'netstat-center-ip' }, ip || 'N/A'),
 	]);
+}
+
+// ─── Phone port card (RJ11 on the AW1000, only sent when fxsd is installed) ──
+const PHONE_SVG =
+	'<svg viewBox="0 0 200 170" xmlns="http://www.w3.org/2000/svg">' +
+	'<g class="shake">' +
+	'<path class="cord" d="M36 66 C 8 92, 14 132, 40 150"/>' +
+	'<path class="body" d="M44 84 Q48 66 72 66 L128 66 Q152 66 156 84 L168 146 Q170 158 156 158 L44 158 Q30 158 32 146 Z"/>' +
+	'<rect class="body" x="46" y="58" width="16" height="10" rx="3"/>' +
+	'<rect class="body" x="138" y="58" width="16" height="10" rx="3"/>' +
+	'<g class="key">' +
+	'<circle cx="82" cy="96" r="5"/><circle cx="100" cy="96" r="5"/><circle cx="118" cy="96" r="5"/>' +
+	'<circle cx="82" cy="112" r="5"/><circle cx="100" cy="112" r="5"/><circle cx="118" cy="112" r="5"/>' +
+	'<circle cx="82" cy="128" r="5"/><circle cx="100" cy="128" r="5"/><circle cx="118" cy="128" r="5"/>' +
+	'<circle cx="82" cy="144" r="5"/><circle cx="100" cy="144" r="5"/><circle cx="118" cy="144" r="5"/>' +
+	'</g>' +
+	'<path class="handset" d="M26 52 Q26 30 50 30 L150 30 Q174 30 174 52 L174 58 Q174 66 164 66 L142 66 Q132 66 132 56 L132 48 L68 48 L68 56 Q68 66 58 66 L36 66 Q26 66 26 58 Z"/>' +
+	'</g>' +
+	'<g class="waves">' +
+	'<path d="M178 18 q12 12 0 26"/><path d="M188 10 q20 20 0 42"/>' +
+	'<path d="M22 18 q-12 12 0 26"/><path d="M12 10 q-20 20 0 42"/>' +
+	'</g></svg>';
+
+const PHONE_OFFHOOK = ['dialtone', 'digits', 'calling', 'talking', 'busy'];
+
+// Kept here rather than in netstat.css: netstat_dark.css pulls that file in with
+// a plain @import, which browsers keep cached across package updates.
+const PHONE_CSS = `
+.netstat-box.is-phone { flex: 0.8 1 0 !important; align-items: center !important; }
+.ns-phone-art { color: var(--ns-status-up) !important; }
+.netstat-box.is-down .ns-phone-art { color: var(--ns-status-down) !important; opacity: 0.7; }
+.ns-phone-art svg { display: block; width: 46px; height: 40px; overflow: visible; margin: 2px auto 4px; }
+.ns-phone-art .body, .ns-phone-art .handset { fill: currentColor; }
+.ns-phone-art .key { fill: var(--ns-bg); }
+.ns-phone-art .cord, .ns-phone-art .waves path { fill: none; stroke: currentColor; stroke-width: 6; stroke-linecap: round; }
+.ns-phone-art .waves path { opacity: 0; }
+.ns-phone-art .handset { transition: transform 0.45s cubic-bezier(.3, 1.4, .5, 1); transform-origin: 100px 52px; }
+.is-offhook .ns-phone-art .handset { transform: translate(-6px, -34px) rotate(-14deg); }
+.is-ringing .ns-phone-art .shake { animation: ns-phone-shake 0.18s infinite; transform-origin: 100px 120px; }
+.is-ringing .ns-phone-art .waves path { animation: ns-phone-wave 1s infinite; }
+.is-ringing .ns-phone-art .waves path:nth-child(2) { animation-delay: 0.2s; }
+@keyframes ns-phone-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes ns-phone-wave { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .is-ringing .ns-phone-art .shake { animation: none; }
+  .is-ringing .ns-phone-art .waves path { animation: none; opacity: 1; }
+}
+@media (max-width: 900px) {
+  .netstat-box.is-phone { flex: 1 1 100% !important; order: 6 !important; }
+}
+@media (max-width: 600px) {
+  .netstat-box.is-phone { order: 7 !important; }
+}`;
+
+function updatePhoneCard(card, phone) {
+	const lifted  = phone.on && (phone.offhook || PHONE_OFFHOOK.includes(phone.state));
+	const ringing = phone.on && phone.state === 'ringing';
+	card.className = 'netstat-box is-phone ' + (phone.on ? 'is-up' : 'is-down') +
+		(lifted ? ' is-offhook' : '') + (ringing ? ' is-ringing' : '');
+	patchText(card, '.netstat-center-status', !phone.on ? _('Off') :
+		ringing ? _('Ringing') : phone.state === 'talking' ? _('In call') : _('On'));
+}
+
+function createPhoneCard(phone) {
+	if (!document.getElementById('ns-phone-css'))
+		document.head.appendChild(E('style', { id: 'ns-phone-css' }, PHONE_CSS));
+
+	const art = E('div', { class: 'ns-phone-art' });
+	art.innerHTML = PHONE_SVG;
+	const card = E('div', { class: 'netstat-box is-phone' }, [
+		art,
+		E('div', { class: 'netstat-center-status' }),
+		E('div', { class: 'netstat-label' }, _('phone'))
+	]);
+	updatePhoneCard(card, phone);
+	return card;
 }
 
 // ─── Inline SVG icons ─────────────────────────────────────────────────────────
@@ -456,6 +533,9 @@ function updateContainer(container, data, dt) {
 		patchText(center, '.netstat-center-ip',     data.ip || 'N/A');
 	}
 
+	const phoneCard = container.querySelector('.is-phone');
+	if (phoneCard && data.phone) updatePhoneCard(phoneCard, data.phone);
+
 	// totals
 	const totals = container.querySelectorAll('.is-total');
 	if (totals[0]) {
@@ -594,11 +674,12 @@ return baseclass.extend({
 			createTempCard(data.cpu_temp != null ? data.cpu_temp : null,
 				formatUptime(data.uptime || 0)),
 			createStatusCard(data.status || 'Disconnected', data.ip),
+			data.phone ? createPhoneCard(data.phone) : null,
 			createInfoCard(data.mem_pct || 0, data.mem_used || 0, data.mem_total || 0,
 				data.disk_pct || 0, data.disk_used || 0, data.disk_total || 0),
 			createStatBox(_('downloaded'), totalRx[0], totalRx[1], 'is-total is-downloaded'),
 			createStatBox(_('uploaded'),   totalTx[0], totalTx[1], 'is-total is-uploaded'),
-		]);
+		].filter(Boolean));
 
 		const container = E('div', { class: 'stats-grid netstat-wrap' }, row);
 		_container = container;

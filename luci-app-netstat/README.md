@@ -1,149 +1,128 @@
 <div align="center">
 
+<img src="images/luci-app-netstat.png" alt="luci-app-netstat: live dashboard and usage history in LuCI" width="900">
+
 # luci-app-netstat
 
-**Live traffic rates and vnStat usage history for any OpenWrt router, in LuCI.**
+**Live traffic rates and usage history for any OpenWrt router, right inside LuCI.**
 
 [![Release](https://img.shields.io/github/v/release/nooblk-98/luci-app-netstat?style=flat-square)](https://github.com/nooblk-98/luci-app-netstat/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/nooblk-98/luci-app-netstat/build.yml?branch=main&style=flat-square&label=build)](https://github.com/nooblk-98/luci-app-netstat/actions/workflows/build.yml)
+[![Downloads](https://img.shields.io/github/downloads/nooblk-98/luci-app-netstat/total?style=flat-square)](https://github.com/nooblk-98/luci-app-netstat/releases)
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20%7C%2025.x-00b5e2?style=flat-square&logo=openwrt&logoColor=white)](https://openwrt.org)
-[![vnStat](https://img.shields.io/badge/requires-vnstat2-orange?style=flat-square)](https://humdi.net/vnstat/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](Makefile)
 
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Configuration](#configuration) • [How it works](#how-it-works) • [Troubleshooting](#troubleshooting)
-
-![Network Usage tab in dark mode](images/usage-dark.png)
+[Features](#features) • [Screenshots](#screenshots) • [Installation](#installation) • [Usage](#usage) • [Settings](#settings) • [Troubleshooting](#troubleshooting)
 
 </div>
 
-luci-app-netstat adds a live traffic dashboard to the LuCI status page and a **Netstat** page with daily and monthly usage charts. Live rates come straight from the kernel, and history comes from [vnStat 2](https://humdi.net/vnstat/).
-
-It works on any OpenWrt router: there are no hard-coded interface names, device paths or board-specific files. The uplink is found from the routing table, and vnStat is set up to track your interfaces automatically.
+luci-app-netstat adds a live traffic dashboard to the LuCI **Status** page and a **Netstat** page with daily and monthly usage charts. It works on any OpenWrt router: it finds your internet connection automatically and starts recording usage history without any setup.
 
 ## Features
 
-- **Live dashboard on Status → Overview:**
-  - download and upload rates with sparklines, peaks and trend arrows;
-  - total downloaded and uploaded;
-  - internet status and public IP, as seen through Passwall or any other proxy;
-  - CPU temperature, uptime, RAM and storage.
-- **Usage history:** daily or monthly charts per interface, read from `vnstat --json`.
-- **Automatic interface detection:** follows the device that holds the default route (PPPoE, DHCP, LTE/5G modems, VPNs, DSA ports), or the interface you choose.
-- **Zero-config vnStat:** interfaces are added to vnStat as they come up, so there is nothing to set up by hand.
-- **Follows your theme:** uses LuCI's standard sections and tabs, so it matches any theme in light or dark mode, including live switching.
-- **Lightweight:** shell, Lua and plain JavaScript only; packages are architecture-independent.
+- **Live dashboard** on Status → Overview, refreshed every two seconds:
+  - download and upload speed with sparklines, peaks and trend arrows
+  - total downloaded and uploaded
+  - internet status and public IP, including through Passwall or another proxy
+  - CPU temperature, uptime, RAM and storage
+  - phone port status on routers with an RJ11 phone port (AW1000 with fxsd): on, off, ringing or in call
+- **Usage history:** daily or monthly download and upload charts per interface, powered by [vnStat 2](https://humdi.net/vnstat/).
+- **Automatic detection:** follows whatever connection holds the default route (PPPoE, DHCP, LTE/5G modem, VPN), or the interface you pick.
+- **No setup needed:** interfaces are added to usage tracking as they come up.
+- **Matches your theme** in light and dark mode, including live switching.
+- **Lightweight:** one small package that works on every router architecture.
+
+## Screenshots
+
+<img src="images/status-widget.png" alt="Live dashboard on the LuCI status page">
+
+<table>
+  <tr>
+    <td width="50%"><img src="images/usage-light.png" alt="Network Usage tab in light mode"></td>
+    <td width="50%"><img src="images/usage-dark.png" alt="Network Usage tab in dark mode"></td>
+  </tr>
+  <tr>
+    <td align="center">Usage history, light mode</td>
+    <td align="center">Usage history, dark mode</td>
+  </tr>
+</table>
 
 ## Installation
 
-### Requirements
+**Requirements:** OpenWrt **24.10** or **25.x** with LuCI. vnStat 2 (`vnstat2`) is installed automatically.
 
-- OpenWrt **24.10** or **25.x** with LuCI
-- **`vnstat2`** (vnStat 2.x): installed automatically as a dependency. The old vnStat 1.x `vnstat` package is not supported.
+1. Download the package for your OpenWrt version from the [latest release](https://github.com/nooblk-98/luci-app-netstat/releases/latest):
+   - OpenWrt **25.x**: the `.apk` file
+   - OpenWrt **24.10**: the `.ipk` file
+2. Copy it to the router (for example to `/tmp`) and install it:
 
-### From a release
+   ```bash
+   # OpenWrt 25.x
+   apk update
+   apk add --allow-untrusted /tmp/luci-app-netstat-*.apk
 
-Download the package for your OpenWrt version from the [latest release](https://github.com/nooblk-98/luci-app-netstat/releases/latest), copy it to the router and install it:
+   # OpenWrt 24.10
+   opkg update
+   opkg install /tmp/luci-app-netstat_*_all.ipk
+   ```
 
-```bash
-# OpenWrt 25.x (apk)
-apk update
-apk add --allow-untrusted luci-app-netstat-*.apk
-
-# OpenWrt 24.10 (opkg)
-opkg update
-opkg install luci-app-netstat_*_all.ipk
-```
-
-### Build from source
-
-Add the package to an OpenWrt buildroot or SDK that has the `luci` and `packages` feeds:
-
-```bash
-git clone https://github.com/nooblk-98/luci-app-netstat.git package/luci-app-netstat
-make menuconfig   # LuCI → Applications → luci-app-netstat
-make package/luci-app-netstat/compile
-```
+3. Reload LuCI in your browser. The dashboard appears on **Status → Overview**.
 
 > [!IMPORTANT]
-> **Upgrading from 1.1.x?** That version used vnStat 1.x. Remove both packages, install `vnstat2`, then install the new package:
+> **Upgrading from 1.1.x?** That version used vnStat 1.x. Remove both packages first, then install the new package as above:
 >
 > ```bash
 > /etc/init.d/vnstat stop
 > apk del luci-app-netstat vnstat       # or: opkg remove luci-app-netstat vnstat
 > ```
 >
-> To keep your history, set `DatabaseDir` in `/etc/vnstat.conf` to the folder that holds your old 1.x files (often `/etc/vnstat`) **before** vnStat 2 starts. It imports them on first start.
+> To keep your old history, set `DatabaseDir` in `/etc/vnstat.conf` to the folder that holds the old files (often `/etc/vnstat`) **before** vnStat 2 starts for the first time. It imports them automatically.
 
 ## Usage
 
-### Live dashboard
+**Status → Overview** shows the live dashboard. Use **Hide** to collapse it.
 
-Open **Status → Overview**. The Netstat widget refreshes every two seconds.
-
-![Live dashboard widget](images/status-widget.png)
-
-### Usage history
-
-Open **Tools → Netstat**:
+**Tools → Netstat** has three tabs:
 
 | Tab | What it shows |
 |---|---|
-| **Network Usage** | Daily or monthly download/upload for the tracked interface, with totals |
-| **Settings** | Traffic backend, default view, interface, vnStat database info and reset |
+| **Network Usage** | Daily or monthly download and upload for the tracked interface, with totals |
+| **Settings** | What to track and how totals are counted, plus the usage database and a reset button |
 | **About** | Project links, licence and support |
 
-<table>
-  <tr>
-    <td><img src="images/usage-light.png" alt="Network Usage tab in light mode"></td>
-    <td><img src="images/settings.png" alt="Settings tab"></td>
-  </tr>
-</table>
+## Settings
 
-## Configuration
+<img src="images/settings.png" alt="Netstat settings tab">
 
-Settings live in `/etc/config/netstats` and can be changed from the **Settings** tab:
-
-| Option | Default | Description |
+| Setting | Default | What it does |
 |---|---|---|
-| `prefer` | `''` | Interface to track. Empty means auto (the default-route device). Accepts a device (`eth1`) or a logical interface (`wan`). |
-| `backend` | `normal` | Downloaded/uploaded totals on the dashboard: `normal` counts since boot; `vnstat` shows this month from vnStat. Live rates always come from `/proc/net/dev`. |
-| `mode` | `daily` | Default view on the Network Usage tab: `daily` or `monthly`. |
-| `vnstat_autoadd` | `1` | Set to `0` to stop the app from adding interfaces to vnStat. |
+| **Traffic Backend** | Normal | *Normal* counts the dashboard's downloaded/uploaded totals since boot. *vnStat* shows this month's totals instead. Live speeds are always real time. |
+| **View Mode** | Daily | Whether the Network Usage tab opens on daily or monthly usage. |
+| **Preferred Interface** | Auto detect | The interface to track. Auto follows your internet connection; you can pick a device (`eth1`) or a network (`wan`). |
+
+The same settings can be changed from the command line through `/etc/config/netstats`:
 
 ```bash
-uci set netstats.@config[0].backend='vnstat'
+uci set netstats.@config[0].backend='vnstat'   # or 'normal'
 uci commit netstats
 ```
 
-## How it works
-
-| Piece | Source |
-|---|---|
-| Live rates and since-boot totals | `/proc/net/dev` |
-| Uplink detection | `/proc/net/route` and `/proc/net/ipv6_route`; logical names resolved through `ubus` (netifd) |
-| History and monthly totals | `vnstat --json` and `vnstat --dbiflist` |
-| Public IP | `api.ipify.org` via `curl` or `uclient-fetch`, refreshed every 5 minutes |
-
-OpenWrt starts `vnstatd` with `--noadd`, so out of the box it tracks only the interfaces listed in `/etc/config/vnstat`. This package fills that list for you:
-
-- `/etc/hotplug.d/iface/90-netstat-vnstat` adds each interface's device when it comes up.
-- `/etc/uci-defaults/50_luci-netstat` does the same once at install for interfaces that are already up.
-- You can run `/usr/libexec/netstat-vnstat-track` by hand at any time.
-
 ## Troubleshooting
 
-**"No data available" on the Network Usage tab**
-vnStat writes to its database every few minutes, so a newly tracked interface takes a short while to show data. Check what is tracked with `vnstat --dbiflist 1`.
-
 > [!WARNING]
-> OpenWrt's default vnStat database location, `/var/lib/vnstat`, is in RAM, so **history is lost on every reboot**. Set `DatabaseDir` in `/etc/vnstat.conf` to persistent storage (for example `/etc/vnstat`, or a USB disk to avoid flash wear), then run `service vnstat restart`. The Settings tab shows the current location.
+> By default OpenWrt keeps vnStat's database in RAM (`/var/lib/vnstat`), so **usage history is lost on every reboot**. Set `DatabaseDir` in `/etc/vnstat.conf` to permanent storage, such as `/etc/vnstat` or a USB disk to spare the flash, then run `service vnstat restart`. The Settings tab shows where the database is now.
 
-**The dashboard still looks or behaves like the old version after an upgrade**
-LuCI caches view scripts in the browser until LuCI itself is updated. Clear the browser cache for the router, or open the page in a private window.
+**"No data available" on the Network Usage tab**
+vnStat saves usage every few minutes, so a newly tracked interface takes a short while to show data. You can list the tracked interfaces with `vnstat --dbiflist 1`.
+
+**The dashboard looks the same after an upgrade**
+Your browser is still using the old cached files. Clear the cache for the router's address, or open LuCI in a private window.
 
 **The IP card shows a private address**
-This is the WAN device's local address, shown until the public-IP lookup succeeds. The lookup needs internet access from the router itself; with Passwall, enable *localhost proxy* to see the proxied IP.
+That's your router's local WAN address. It's shown until the public IP lookup succeeds, which needs internet access from the router itself. With Passwall, enable *localhost proxy* to see the proxied IP.
+
+**Something else?**
+Open an [issue](https://github.com/nooblk-98/luci-app-netstat/issues) with your OpenWrt version and a screenshot.
 
 ## Credits
 
-Originally created by [SMALLPROGRAM](https://github.com/smallprogram); maintained by [nooblk-98](https://github.com/nooblk-98). Bug reports and ideas are welcome in [Issues](https://github.com/nooblk-98/luci-app-netstat/issues).
+Originally created by [SMALLPROGRAM](https://github.com/smallprogram), maintained by [nooblk-98](https://github.com/nooblk-98).

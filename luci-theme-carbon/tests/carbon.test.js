@@ -81,6 +81,39 @@ test('byte formatting', () => {
 	assert.deepEqual(Array.from(C.fmt.bytes(null)), ['—', '']);
 });
 
+test('device speeds use per-MAC counter deltas with correct directions and actual elapsed time', () => {
+	const tracker = new (load().DeviceRates)();
+	const sample = (data) => ({ interval: 30, columns: ['tx_bytes', 'mac', 'rx_bytes'], data });
+	assert.equal(tracker.update(sample([[100, 'AA:11:22:33:44:55', 200]]), 1000).rates.size, 0);
+	const r = tracker.update(sample([[400, 'aa:11:22:33:44:55', 1700], [50, '00:11:22:33:44:66', 100]]), 31000);
+	assert.deepEqual(JSON.parse(JSON.stringify(r.rates.get('aa:11:22:33:44:55'))), { down: 50, up: 10 });
+	assert.equal(r.rates.has('00:11:22:33:44:66'), false, 'new records need a baseline');
+	assert.equal(tracker.update(sample([[400, 'aa:11:22:33:44:55', 1700]]), 61000).rates.get('aa:11:22:33:44:55').down, 0);
+});
+
+test('counter reset, missing device, failed read, suspend and changed interval do not show false device speeds', () => {
+	const tracker = new (load().DeviceRates)();
+	const sample = (n, interval = 30) => ({ interval, columns: ['mac', 'rx_bytes', 'tx_bytes'], data: [['00:11:22:33:44:55', n, n]] });
+	tracker.update(sample(1000), 0);
+	assert.equal(tracker.update(sample(10), 30000).rates.size, 0, 'reset');
+	assert.equal(tracker.update({ ...sample(20), data: [] }, 60000).rates.size, 0, 'missing');
+	assert.equal(tracker.update(sample(30), 90000).rates.size, 0, 'reappearing');
+	assert.equal(tracker.update(null, 120000), null);
+	assert.equal(tracker.update(sample(100), 150000).rates.size, 0, 'first read after error');
+	assert.equal(tracker.update(sample(1000), 400000).rates.size, 0, 'suspend');
+	assert.equal(tracker.update(sample(1100, 60), 460000).rates.size, 0, 'cadence changed');
+	assert.equal(tracker.update(sample(NaN), 520000), null);
+	assert.equal(tracker.update(sample(Number.MAX_SAFE_INTEGER + 1), 550000), null);
+});
+
+test('early reads do not move the device-speed baseline or invent short-window spikes', () => {
+	const tracker = new (load().DeviceRates)();
+	const sample = (n) => ({ interval: 30, columns: ['mac', 'rx_bytes', 'tx_bytes'], data: [['00:11:22:33:44:55', n, n]] });
+	tracker.update(sample(0), 0);
+	assert.equal(tracker.update(sample(100), 5000).rates.size, 0);
+	assert.equal(tracker.update(sample(300), 30000).rates.get('00:11:22:33:44:55').down, 10);
+});
+
 test('language matching maps LuCI codes to the installed catalogue', () => {
 	const C = load();
 	const options = [{ code: 'en' }, { code: 'zh_cn' }, { code: 'zh_tw' }, { code: 'pt_br' }];

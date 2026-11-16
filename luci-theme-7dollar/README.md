@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="OpenWrt" src="https://img.shields.io/badge/OpenWrt-23.05%20%7C%2024.10%20%7C%2025.12-D97757?style=flat-square">
-  <img alt="Size" src="https://img.shields.io/badge/size-48%20KB-8A7F72?style=flat-square">
+  <img alt="Size" src="https://img.shields.io/badge/size-49%20KB-8A7F72?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-5B6F9A?style=flat-square">
 </p>
 
@@ -49,7 +49,7 @@ LuCI 原有功能全部保留，只调整了显示方式。
 - **5 套配色**：陶土、青瓷、雾蓝、暮紫、石墨，均有浅色和深色，可跟随系统设置
 - **应用卡片（可选）**：默认关闭。开启后，首页列出正在运行的插件，适用于任意插件。常见插件会额外显示一项关键信息，例如 OpenClash 代理模式（可直接切换）、PassWall 当前节点、文件共享剩余空间。信息只从插件配置中读取，不调用插件接口
 - **自适应布局**：在手机、平板和页面缩放时自动调整排版
-- **轻量**：不加载外部字体，不发起外部请求；CSS 16 KB（gzip），安装包 48 KB
+- **轻量**：不加载外部字体，不发起外部请求；CSS 16 KB（gzip），安装包 49 KB
 - **兼容原生页面**：LuCI 功能保持不变，原生图标统一为主题风格
 - **信息分层**：Wi‑Fi、接口和状态页默认只显示常用信息，MAC、BSSID、数据包数等内容点击「详情」查看
 
@@ -80,7 +80,7 @@ LuCI 原有功能全部保留，只调整了显示方式。
 
 适用于 23.05 / 24.10。25.x 请使用方法二。
 
-1. 下载安装包：[luci-theme-7dollar_1.0.16-r1_all.ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.16-r1_all.ipk)（历史版本见 [Releases](https://github.com/itsmaiGe/luci-theme-7dollar/releases)）
+1. 下载安装包：[luci-theme-7dollar_1.0.17-r1_all.ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.17-r1_all.ipk)（历史版本见 [Releases](https://github.com/itsmaiGe/luci-theme-7dollar/releases)）
 2. 在浏览器中打开路由器后台（通常为 `192.168.1.1`），输入密码登录
 3. 打开 **系统 → 软件包 → 上传软件包…**，选择下载的文件，点击 **上传**，再点击 **安装**
 4. 刷新页面（Windows 按 <kbd>F5</kbd>，Mac 按 <kbd>⌘ R</kbd>）
@@ -208,9 +208,9 @@ install.sh / uninstall.sh        安装 / 卸载脚本
 - Optional Apps card (off by default): lists whatever plugins are running. Popular ones get one line that matters (OpenClash proxy-mode switch, PassWall node, file-sharing free space…), read from their config, never from their API.
 - Native LuCI pages restyled, icons included
 - Status pages (Wi‑Fi, interfaces, overview) show the essentials; MACs, BSSIDs, packet counts and the like sit behind *Details*
-- Responsive and zoom-friendly; no external fonts or requests; 48 KB package
+- Responsive and zoom-friendly; no external fonts or requests; 49 KB package
 
-**Install**: upload [the ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.16-r1_all.ipk) via *System → Software → Upload Package* (23.05 / 24.10), or run over SSH on any version (picks the ipk or the [apk](https://github.com/itsmaiGe/luci-theme-7dollar/tree/main/dist) automatically):
+**Install**: upload [the ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.17-r1_all.ipk) via *System → Software → Upload Package* (23.05 / 24.10), or run over SSH on any version (picks the ipk or the [apk](https://github.com/itsmaiGe/luci-theme-7dollar/tree/main/dist) automatically):
 
 ```sh
 wget -qO- https://raw.githubusercontent.com/itsmaiGe/luci-theme-7dollar/main/install.sh | sh

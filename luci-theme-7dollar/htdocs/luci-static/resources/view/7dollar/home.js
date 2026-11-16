@@ -81,6 +81,7 @@ return view.extend({
 		const software = td.software(menu);
 
 		this.s = {
+			inBytes: conf.rate_unit == 'byte',
 			down: new Array(N).fill(0), up: new Array(N).fill(0),
 			last: null, cpu: td.cpuStat(stat), cpuPct: null, wan: wan, wifi: wifi || { radios: {}, aps: [] }, info: info, board: board,
 			clients: [], ping: null, apps: apps, hasWifi: !!(wifi && Object.keys(wifi.radios).length), mode: mode
@@ -269,6 +270,8 @@ return view.extend({
 
 		if (!ok) {
 			this.set('td-proto', T('没有连接', 'Not connected'));
+			[ 'td-wanip', 'td-dns', 'td-wanup', 'td-ping' ].forEach(id => this.set(id, '—'));   // not the last connection's values
+			this.set('td-lat', T('未连接', 'Offline'));
 			return;
 		}
 
@@ -402,7 +405,7 @@ return view.extend({
 			const rx = Math.max(0, (d.rx - this.s.last.rx) / dt), tx = Math.max(0, (d.tx - this.s.last.tx) / dt);
 			this.s.down.push(rx); this.s.down.shift();
 			this.s.up.push(tx); this.s.up.shift();
-			const [ dv, du ] = td.rate(rx), [ uv, uu ] = td.rate(tx);
+			const [ dv, du ] = td.rate(rx, this.s.inBytes), [ uv, uu ] = td.rate(tx, this.s.inBytes);
 			this.set('td-down', dv); this.set('td-down-u', du);
 			this.set('td-up', uv); this.set('td-up-u', uu);
 			this.drawChart();
@@ -493,13 +496,14 @@ return view.extend({
 
 	pingGateway() {
 		const w = this.s.wan;
-		if (!w || !w.gw || !/^[0-9.]+$/.test(w.gw)) {
+		if (!w || !w.up || !w.gw || !/^[0-9.]+$/.test(w.gw)) {
 			this.set('td-lat', w && w.up ? T('已连接', 'Connected') : T('未连接', 'Offline'));
 			return Promise.resolve();
 		}
 		/* a gateway that never answers ping (many ISP modems) is retried every few minutes, not every 30 s */
 		if (this.s.miss >= 3 && this.ticks % 18) return Promise.resolve();
 		return L.resolveDefault(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', w.gw ]), {}).then(r => {
+			if (!this.s.wan || !this.s.wan.up || this.s.wan.gw != w.gw) return;   // the connection changed while we waited
 			const m = String((r || {}).stdout || '').match(/time[=<]([\d.]+)/);
 			const v = m ? (+m[1] < 1 ? '<1' : Math.round(+m[1])) + ' ms' : null;
 			this.s.miss = v ? 0 : (this.s.miss || 0) + 1;
@@ -537,7 +541,7 @@ return view.extend({
 	/* OpenClash's proxy mode, switched through its own switch_rule_mode call */
 	ocSwitch(seg) {
 		let mode = seg.dataset.oc;
-		const mark = m => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m == m));
+		const mark = m => seg.querySelectorAll('button').forEach(b => td.press(b, b.dataset.m == m));
 		mark(mode);
 		seg.addEventListener('click', ev => {
 			const b = ev.target.closest('button[data-m]');

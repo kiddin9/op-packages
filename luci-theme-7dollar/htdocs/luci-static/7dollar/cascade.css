@@ -169,6 +169,7 @@ kbd{font:11px var(--sans);padding:1px 6px;border:1px solid var(--line);border-ra
 .td-pop-box{width:min(560px,100%);max-height:70vh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line-soft);border-radius:18px;box-shadow:var(--shadow-pop);overflow:hidden;animation:td-rise var(--base) var(--ease)}
 /* exits get their own keyframes: reusing td-fade/td-rise would not restart the finished entrance */
 .td-pop.td-out,.td-toast.td-out{animation:td-out var(--fast) var(--ease) both}
+.td-pop.td-out{pointer-events:none}
 .td-out .td-pop-box{animation:td-sink var(--fast) var(--ease) both}
 @keyframes td-out{to{opacity:0}}
 @keyframes td-sink{to{opacity:0;transform:translateY(6px)}}
@@ -662,7 +663,7 @@ body.modal-overlay-active .modal{transform:none;transition-duration:var(--base)}
 .td-node.bad .ic{background:var(--bad-soft);color:var(--bad)}
 .td-node .ic svg{width:24px;height:24px}
 .td-node b{font-weight:500;margin-top:10px;font-size:14px;max-width:100%;overflow-wrap:anywhere}
-.td-node small{color:var(--ink-3);font-size:12.5px}
+.td-node small{color:var(--ink-3);font-size:12.5px;max-width:100%;overflow-wrap:anywhere}
 .td-link{flex:1 1 0;min-width:18px;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:clamp(6px,2.6cqi,12px)}
 .td-link .t{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:17px}
 .td-link .ln{position:relative;width:100%;height:2px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 11px)}
@@ -671,7 +672,7 @@ body.modal-overlay-active .modal{transform:none;transition-duration:var(--base)}
 .td-link.down .ln i{display:none}
 .td-link.down .ln{background:repeating-linear-gradient(90deg,var(--bad) 0 6px,transparent 6px 11px);opacity:.6}
 @keyframes td-flow{from{left:0;opacity:0}15%,85%{opacity:1}to{left:calc(100% - 8px);opacity:0}}
-@container (max-width:430px){.td-link .t{visibility:hidden}.td-node small{display:none}}
+@container (max-width:430px){.td-link .t{visibility:hidden}}
 .td-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px 8px;margin:22px 0 0;padding-top:18px;border-top:1px solid var(--line-soft)}
 .td-facts dt{font-size:12.5px;color:var(--ink-3);font-weight:400}
 .td-facts dd{font-size:14.5px;margin:3px 0 0;overflow-wrap:anywhere;color:var(--ink)}

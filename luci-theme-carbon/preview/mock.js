@@ -132,6 +132,12 @@
 			{ interface: 'guest', up: false, proto: 'static', device: 'br-guest', 'ipv4-address': [], route: [] }
 		]),
 		devStats: () => wait({ rx_bytes: Math.round(rx), tx_bytes: Math.round(tx) }),
+		deviceTraffic: () => wait({
+			interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'],
+			data: LEASES.slice(0, 9).map((l, i) => [l.macaddr,
+				Math.floor((Date.now() - t0) / 5000) * (9 - i) * 180000,
+				Math.floor((Date.now() - t0) / 5000) * (9 - i) * 12000])
+		}),
 		/* kernel devices (luci-rpc getNetworkDevices): physical ports show up in the traffic picker */
 		netDevices: () => wait([
 			['lo', true, { loopback: true }], ['eth0', true], ['wan', true], ['lan1', true], ['lan2', true], ['lan3', false], ['lan4', true],

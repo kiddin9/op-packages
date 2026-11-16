@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.9.0_pre49
-PKG_RELEASE:=95
+PKG_VERSION:=1.9.0_pre50
+PKG_RELEASE:=96
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=25e69856de205e6be33acbaba5a7657e89089de5
+PKG_SOURCE_VERSION:=844b15e01892f6804d411036ef499061987205cb
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -415,7 +415,18 @@ define Package/wwand-mbim/install
 	$(INSTALL_DATA) $(WWAND_UCODE)/atcmd_mbim.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/atcmd_mbim_lazy.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim.uc $(1)$(UCDIR)/codec/
-	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/*.uc $(1)$(UCDIR)/codec/mbim_schema/
+	# The service schemas by name, like every other module here. They are
+	# loaded by name at run time (wwand.codec.mbim_schema.<service>), so one
+	# missing from this list is an import failure on a live modem — which is
+	# what tools/check-packaging.py in the wwand tree is run for at every
+	# version bump.
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/basic_connect.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/compal.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/fibocom.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/ms_basic_connect_ext.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/ms_voice_ext.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/qmi_passthrough.uc $(1)$(UCDIR)/codec/mbim_schema/
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/quectel.uc $(1)$(UCDIR)/codec/mbim_schema/
 endef
 
 # ---------------------------------------------------------------------------

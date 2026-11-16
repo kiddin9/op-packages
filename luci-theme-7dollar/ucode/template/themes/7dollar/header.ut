@@ -13,7 +13,7 @@
 	const mode = (conf.mode in [ 'light', 'dark', 'auto' ]) ? conf.mode : 'auto';
 	const zh = !!match(dispatcher.lang ?? '', /^zh/);
 	const T = (z, e) => zh ? z : e;
-	const ver = '1.0.16';
+	const ver = '1.0.17';
 	const hostname = striptags(boardinfo.hostname ?? 'OpenWrt');
 	const model = striptags(boardModel(boardinfo));
 	const sprite = `${media}/icons.svg`;
@@ -39,6 +39,10 @@
 		{% if (css): %}
 		<style title="text/css">{{ css }}</style>
 		{% endif %}
+		{# LuCI adds ?v= to every script it loads, taken from the first luci.js tag on the page. Its own
+		   value does not change when only the theme does (same firmware build date, a newer theme),
+		   so browsers kept mixing old and new theme files. This inert tag puts our version in. #}
+		<script type="text/plain" src="{{ resource }}/luci.js?v={{ version.luciversion }}-{{ pkgs_update_time ?? 0 }}-{{ ver }}"></script>
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
 		<script src="{{ resource }}/cbi.js?v={{ version.luciversion }}"></script>
 	</head>

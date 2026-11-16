@@ -134,6 +134,79 @@ test('side-router discovery works without DHCP and distinguishes neighbours, gat
 	}
 });
 
+test('device speeds preserve leases, handle missing data and pause when hidden', async () => {
+	const mock = fs.readFileSync(path.join(ROOT, 'preview', 'mock.js'), 'utf8');
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	const page = await context.newPage();
+	try {
+		await page.route('**/preview/mock.js', (route) => route.fulfill({ contentType: 'text/javascript', body: mock + '\n(' + (() => {
+			window.trafficReads = 0;
+			window.trafficFail = false;
+			window.CarbonPreview.provider.deviceTraffic = async () => {
+				window.trafficReads++;
+				if (window.trafficFail) throw new Error('collector unavailable');
+				return { interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'], data: [
+					['A6:83:E7:2C:91:0F', window.trafficReads * 10240, window.trafficReads * 5120],
+					['00:11:22:33:44:99', 99999999, 99999999]
+				] };
+			};
+		}).toString() + ')();' }));
+		await page.clock.install();
+		await page.goto(base + '/src/preview/index.html?lang=en');
+		await dashboardReady(page);
+		const phone = page.locator('.cb-clients li').filter({ hasText: 'iPhone-15-Pro' });
+		const laptop = page.locator('.cb-clients li').filter({ hasText: 'MacBook-Air' });
+		assert.match(await phone.textContent(), /DHCP lease · 10h 33m left/);
+		assert.equal(await phone.locator('.cb-device-rates').textContent(), '↓ —↑ —');
+		const count = await page.textContent('.cb-count');
+		await page.clock.runFor(5100);
+		assert.match(await phone.locator('.cb-device-rates').textContent(), /↓ [\d.]+ KB\/s↑ [\d.]+ [KB]+\/s/);
+		assert.equal(await laptop.locator('.cb-device-rates').textContent(), '↓ —↑ —');
+		assert.equal(await page.textContent('.cb-count'), count, 'historical traffic cannot create devices');
+		assert.match(await phone.textContent(), /DHCP lease · 10h 33m left/);
+		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+		await page.screenshot({ path: path.join(SHOTS, 'device-speeds-phone.png'), fullPage: true });
+		await page.evaluate(() => {
+			Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+			document.dispatchEvent(new Event('visibilitychange'));
+		});
+		const reads = await page.evaluate(() => window.trafficReads);
+		await page.clock.runFor(20000);
+		assert.equal(await page.evaluate(() => window.trafficReads), reads);
+		await page.evaluate(() => {
+			Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+			document.dispatchEvent(new Event('visibilitychange'));
+		});
+		await page.clock.runFor(5000);
+		assert.equal(await phone.locator('.cb-device-rates').textContent(), '↓ —↑ —', 'resume establishes a fresh baseline');
+		await page.clock.runFor(5000);
+		assert.match(await phone.locator('.cb-device-rates').textContent(), /KB\/s/);
+		await page.evaluate(() => { window.trafficFail = true; });
+		await page.clock.runFor(5000);
+		assert.equal(await phone.locator('.cb-device-rates').textContent(), '↓ —↑ —');
+		assert.match(await page.textContent('.cb-device-rate-note'), /Unavailable/);
+		const failedReads = await page.evaluate(() => window.trafficReads);
+		await page.clock.runFor(55000);
+		assert.equal(await page.evaluate(() => window.trafficReads), failedReads, 'failed sources back off for a minute');
+		assert.match(await phone.textContent(), /DHCP lease/);
+	} finally { await context.close(); }
+});
+
+test('firmware without a traffic collector keeps the device list without misleading zero speeds', async () => {
+	const mock = fs.readFileSync(path.join(ROOT, 'preview', 'mock.js'), 'utf8');
+	const context = await browser.newContext();
+	const page = await context.newPage();
+	try {
+		await page.route('**/preview/mock.js', (route) => route.fulfill({ contentType: 'text/javascript',
+			body: mock + '\nwindow.CarbonPreview.provider.deviceTraffic = async () => { throw new Error("unsupported"); };' }));
+		await page.goto(base + '/src/preview/index.html?lang=en');
+		await dashboardReady(page);
+		assert.equal(await page.locator('.cb-device-rate-note').isVisible(), false);
+		assert.equal(await page.locator('.cb-device-rates:visible').count(), 0);
+		assert.match(await page.textContent('.cb-clients'), /DHCP lease/);
+	} finally { await context.close(); }
+});
+
 test('navigation regression page passes at phone width', async () => {
 	const { page, context } = await open('/src/tests/navigation.html', { width: 390, height: 844 });
 	await page.waitForFunction(() => /^(PASS|FAIL)/.test(document.title));
@@ -303,6 +376,84 @@ test('DiskMan partition bar stays inside its card on desktop and phone', async (
 		assert.ok(r.inside, `${width}px: segments fit the row`);
 		assert.ok(r.clipped, `${width}px: long labels ellipsize`);
 		await context.close();
+	}
+});
+
+/* Styling fixture for LuCI ui.Dropdown's closed/open DOM states. The menu
+   stays inside its table cell, including plugins without .cbi-value-field. */
+function tableDropdownFixture(mount, tag, field, appearance) {
+	const row = tag === 'table' ? 'tr' : 'div';
+	const cell = tag === 'table' ? 'td' : 'div';
+	return `<!doctype html><html data-darkmode="${appearance === 'dark'}"><head><meta charset="utf-8">
+		<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+		</head><body data-page="admin-system-diskman-disks"><main id="maincontent" style="padding:24px">
+		<div class="cbi-section"><${tag} class="table cbi-section-table">
+		<${row} class="tr"><${cell} class="td">/dev/nvme0n1p1 · /boot</${cell}></${row}>
+		<${row} class="tr"><${cell} class="td${field ? ' cbi-value-field' : ''}">
+		<div id="mount-device" class="cbi-dropdown" tabindex="0"><ul>
+		<li selected="" placeholder="" display="0" data-value="">-- Please choose --</li>
+		<li data-value="/dev/sda1">/dev/sda1</li><li data-value="/dev/sdb1">/dev/sdb1</li>
+		</ul><span class="open">▾</span></div>
+		</${cell}></${row}></${tag}></div>
+		<div class="cbi-section"><h3>Create</h3><div class="cbi-section-node">RAID</div></div>
+		</main></body></html>`;
+}
+
+test('table dropdown options escape the last row and remain clickable', async () => {
+	for (const mount of ['src', 'min']) {
+		for (const width of [1280, 390]) {
+			for (const appearance of ['light', 'dark']) {
+				for (const [tag, field] of [['table', false], ['div', true]]) {
+					const label = `${mount} ${width}px ${appearance} ${tag}`;
+					const { page, context } = await open('/src/preview/index.html', { width, height: 800, appearance });
+					try {
+						await page.setContent(tableDropdownFixture(mount, tag, field, appearance), { waitUntil: 'load' });
+						const closed = await page.locator('.table').boundingBox();
+						await page.locator('#mount-device').evaluate((sb) => {
+							const ul = sb.querySelector('ul');
+							const preview = ul.cloneNode(true);
+							preview.className = 'preview';
+							const height = sb.offsetHeight;
+							// These are the DOM changes made by LuCI's openDropdown().
+							sb.setAttribute('open', '');
+							sb.closest('.cbi-value-field')?.classList.add('cbi-dropdown-open');
+							ul.className = 'dropdown';
+							ul.style.top = height + 'px';
+							ul.style.maxHeight = '300px';
+							sb.insertBefore(preview, ul);
+							ul.addEventListener('click', (event) => { sb.dataset.clicked = event.target.dataset.value; });
+						});
+						const options = await page.locator('ul.dropdown > li[data-value]:not([placeholder])').evaluateAll((items) => items.map((el) => {
+							const rect = el.getBoundingClientRect();
+							return {
+								value: el.dataset.value,
+								belowTable: rect.top > el.closest('.table').getBoundingClientRect().bottom,
+								clickable: el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))
+							};
+						}));
+						assert.equal(options.length, 2, label);
+						for (const option of options) {
+							assert.ok(option.belowTable, `${label}: ${option.value} exercises overflow beyond the table`);
+							assert.ok(option.clickable, `${label}: ${option.value} must be visible and receive pointer events`);
+						}
+						await page.locator('ul.dropdown > li[data-value="/dev/sdb1"]').click({ timeout: 2000 });
+						assert.equal(await page.locator('#mount-device').getAttribute('data-clicked'), '/dev/sdb1', label);
+						if (mount === 'src' && tag === 'table')
+							await page.screenshot({ path: path.join(SHOTS, `diskman-dropdown-${appearance}-${width}.png`) });
+						await page.locator('#mount-device').evaluate((sb) => {
+							sb.querySelector('.preview').remove();
+							sb.removeAttribute('open');
+							sb.closest('.cbi-value-field')?.classList.remove('cbi-dropdown-open');
+							const ul = sb.querySelector('ul');
+							ul.className = '';
+							ul.removeAttribute('style');
+						});
+						assert.deepEqual(await page.locator('.table').boundingBox(), closed, `${label}: closing preserves the table layout`);
+						assert.equal(await page.locator('.table').evaluate((el) => getComputedStyle(el).overflow), width > 760 ? 'hidden' : 'visible', `${label}: closed table keeps its original clipping`);
+					} finally { await context.close(); }
+				}
+			}
+		}
 	}
 });
 

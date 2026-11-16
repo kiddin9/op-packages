@@ -55,6 +55,9 @@
 	max-width: 60%;
 }
 .cb-card-link { font-size: 13px; font-weight: 500; white-space: nowrap; }
+.cb-device-rate-note { margin: -4px 0 12px; color: var(--cb-text-2); font-size: 12px; }
+.cb-device-rates { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; color: var(--cb-text-2); }
+.cb-device-rate { font-family: var(--cb-mono); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* hero */
 .cb-hero {

@@ -107,7 +107,7 @@ return baseclass.extend({
 		if (items.length < 2) return;
 
 		/* everyday pages first; the rest wait behind "More" unless one of them is open */
-		const pill = (p, cls) => `<a href="${L.url(p.path)}" class="${p === current ? 'on' : cls || ''}">${esc(p.title)}</a>`;
+		const pill = (p, cls) => `<a href="${L.url(p.path)}" ${p === current ? 'class="on" aria-current="page"' : `class="${cls || ''}"`}>${esc(p.title)}</a>`;
 		const rest = items.filter(p => g.pages.indexOf(p.path) < 0);
 		const fold = rest.length > 1 && rest.indexOf(current) < 0;
 		box.innerHTML = (fold ? items.filter(p => rest.indexOf(p) < 0) : items).map(p => pill(p)).join('')
@@ -171,9 +171,10 @@ return baseclass.extend({
 	openSearch() {
 		if (document.querySelector('.td-pop:not(.td-out)')) return;
 
-		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true">
+		const from = document.activeElement;
+		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('搜索', 'Search'))}">
 			<div class="td-pop-box">
-				<label class="td-pop-in">${icon('search')}<input type="search" placeholder="${esc(T('搜索功能或设置，例如“端口转发”', 'Search pages and settings'))}" autocomplete="off"><kbd>Esc</kbd></label>
+				<label class="td-pop-in">${icon('search')}<input type="search" aria-label="${esc(T('搜索功能或设置', 'Search pages and settings'))}" placeholder="${esc(T('搜索功能或设置，例如“端口转发”', 'Search pages and settings'))}" autocomplete="off"><kbd>Esc</kbd></label>
 				<div class="td-pop-list"></div>
 			</div></div>`);
 		document.body.appendChild(pop);
@@ -194,14 +195,15 @@ return baseclass.extend({
 			if (on) on.scrollIntoView({ block: 'nearest' });
 		};
 
-		const close = () => td.leave(pop);
+		/* closing hands the keyboard back to whatever opened the search */
+		const close = pop._close = () => { td.leave(pop); if (from && from.focus) from.focus() };
 
 		input.addEventListener('input', () => { sel = 0; draw() });
 		input.addEventListener('keydown', ev => {
 			if (ev.key == 'ArrowDown') { sel = Math.min(sel + 1, shown.length - 1); draw(); ev.preventDefault() }
 			else if (ev.key == 'ArrowUp') { sel = Math.max(sel - 1, 0); draw(); ev.preventDefault() }
 			else if (ev.key == 'Enter' && shown[sel]) { location.href = L.url(shown[sel].path) }
-			else if (ev.key == 'Escape') close();
+			else if (ev.key == 'Tab') ev.preventDefault();   // the arrows move through the results; Tab must not wander to the page behind
 		});
 		list.addEventListener('mousemove', ev => {
 			const a = ev.target.closest('a[data-i]');
@@ -220,9 +222,9 @@ return baseclass.extend({
 
 		const rest = (this.groups || []).filter(g => g.mob === false || g.id == 'system');
 		const body = rest.map(g => `<div class="grp">${esc(g.label)}</div>` +
-			g.list.map(p => `<a href="${L.url(p.path)}" class="${this.current === p ? 'on' : ''}">${icon(g.id == 'apps' ? td.appIcon(p.path) : g.icon)}<span>${esc(p.title)}</span></a>`).join('')).join('');
+			g.list.map(p => `<a href="${L.url(p.path)}"${this.current === p ? ' class="on" aria-current="page"' : ''}>${icon(g.id == 'apps' ? td.appIcon(p.path) : g.icon)}<span>${esc(p.title)}</span></a>`).join('')).join('');
 
-		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true"><div class="td-pop-box">
+		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('更多', 'More'))}"><div class="td-pop-box">
 			<div class="td-pop-list">${body}</div>
 			<div class="td-sheet-tools">
 				<button class="btn" type="button" data-act="search">${icon('search')}${esc(T('搜索', 'Search'))}</button>
@@ -249,6 +251,10 @@ return baseclass.extend({
 			const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((ev.target || {}).tagName || '') || (ev.target || {}).isContentEditable;
 			if ((ev.key == 'k' || ev.key == 'K') && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); this.openSearch() }
 			else if (ev.key == '/' && !typing && !document.body.classList.contains('modal-overlay-active')) { ev.preventDefault(); this.openSearch() }
+			else if (ev.key == 'Escape') {   // closes the search or the phone sheet, whichever is open
+				const pop = document.querySelector('.td-pop:not(.td-out)');
+				if (pop) (pop._close || (() => td.leave(pop)))();
+			}
 		});
 	},
 

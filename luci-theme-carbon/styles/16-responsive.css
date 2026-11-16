@@ -147,7 +147,10 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 		text-overflow: ellipsis;
 		word-wrap: break-word;
 	}
-	.table .td.cbi-dropdown-open { overflow: visible; }
+	/* Plugin cells may contain a dropdown without LuCI's .cbi-value-field,
+	   so they never receive the .cbi-dropdown-open helper class. */
+	.table .td.cbi-dropdown-open,
+	.table .td:has(.cbi-dropdown[open]) { overflow: visible; }
 	.table .tr:hover > .td { background: transparent !important; }
 	.tr.table-titles,
 	.cbi-section-table-titles,

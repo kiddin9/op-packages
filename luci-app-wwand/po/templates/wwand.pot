@@ -1187,7 +1187,7 @@ msgstr ""
 msgid "Interface"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/rpc.js:92
+#: htdocs/luci-static/resources/wwand/rpc.js:47
 msgid ""
 "Interface %s is bound to the SIM card in use. Switching takes it down; it "
 "stays down until its next start, which switches back to its card. Switch "

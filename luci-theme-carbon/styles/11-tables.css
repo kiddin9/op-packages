@@ -15,6 +15,9 @@ table { border-collapse: collapse; border-spacing: 0; }
 	position: relative;
 	overflow: hidden;
 }
+/* LuCI keeps dropdown menus inside the cell; let an open menu extend beyond
+   the last row without changing the rounded clipping of closed tables. */
+.table:has(.cbi-dropdown[open]) { overflow: visible; }
 .thead { display: table-header-group; }
 .tbody { display: table-row-group; }
 .tr { display: table-row; }

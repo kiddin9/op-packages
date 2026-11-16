@@ -56,6 +56,8 @@ return view.extend({
 				<h3 class="td-sect-t">${esc(T('首页卡片', 'Home cards'))}</h3>
 				<p class="td-sect-d">${esc(T('“网络连接”卡片始终显示。', 'The Connection card is always shown.'))}</p>
 				<div class="td-rows">${cards}</div>
+				<div class="td-row"><div class="lb"><b>${esc(T('速率单位', 'Speed unit'))}</b></div>
+					<div class="td-seg" id="td-units"><button type="button" data-m="bit">Mbps</button><button type="button" data-m="byte">MB/s</button></div></div>
 			</section>
 
 			<div class="td-hint">${icon('info')}<span>${esc(T('换回原主题：系统 → 通用 → 语言和界面', 'Switch back: System → General → Language and Style'))}</span></div>
@@ -65,6 +67,7 @@ return view.extend({
 
 		root.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => this.update({ palette: b.dataset.pick })));
 		root.querySelectorAll('#td-modes button').forEach(b => b.addEventListener('click', () => this.update({ mode: b.dataset.m })));
+		root.querySelectorAll('#td-units button').forEach(b => b.addEventListener('click', () => this.update({ rate_unit: b.dataset.m })));
 		root.querySelectorAll('[data-card]').forEach(b => b.addEventListener('click', () => {
 			const k = b.dataset.card, field = td.OPT_IN.indexOf(k) > -1 ? 'shown_cards' : 'hidden_cards';
 			const list = td.words(this.conf[field]), i = list.indexOf(k);
@@ -85,9 +88,10 @@ return view.extend({
 
 	sync() {
 		const c = this.conf;
-		this.root.querySelectorAll('.td-pal').forEach(b => b.classList.toggle('on', b.dataset.pick == c.palette));
-		this.root.querySelectorAll('#td-modes button').forEach(b => b.classList.toggle('on', b.dataset.m == c.mode));
-		this.root.querySelectorAll('[data-card]').forEach(b => b.classList.toggle('on', td.cardOn(c, b.dataset.card)));
+		this.root.querySelectorAll('.td-pal').forEach(b => td.press(b, b.dataset.pick == c.palette));
+		this.root.querySelectorAll('#td-modes button').forEach(b => td.press(b, b.dataset.m == c.mode));
+		this.root.querySelectorAll('#td-units button').forEach(b => td.press(b, b.dataset.m == c.rate_unit));
+		this.root.querySelectorAll('[data-card]').forEach(b => td.press(b, td.cardOn(c, b.dataset.card)));
 	},
 
 	update(patch) {

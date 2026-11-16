@@ -16,7 +16,6 @@ own() { if $TAR --version | grep -q GNU; then echo "--format=gnu --owner=0 --gro
 
 # ---- data ----
 D=$TMP/data
-sh scripts/check-jsmin.sh
 sh scripts/stage.sh "$D"
 SIZE=$(du -sk "$D" | cut -f1)
 

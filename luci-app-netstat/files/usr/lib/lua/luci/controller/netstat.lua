@@ -196,8 +196,28 @@ function getNetdevStats()
         end
     end
 
+    -- ── RJ11 phone port (fxsd on the AW1000), left out when not installed ─────
+    local phone = nil
+    if nfs.access("/usr/sbin/fxsd") then
+        local st = {}
+        local sf = io.open("/var/run/fxsd.state", "r")
+        if sf then
+            for line in sf:lines() do
+                local k, v = line:match("^(%w+)=(.*)$")
+                if k then st[k] = v end
+            end
+            sf:close()
+        end
+        uci:unload("fxs")
+        local on = os.execute("pidof fxsd >/dev/null 2>&1") == 0
+            and uci:get("fxs", "main", "enabled") ~= "0"
+            and (st.state or "stopped") ~= "stopped"
+        phone = { on = on, state = st.state or "stopped", offhook = st.offhook == "1" }
+    end
+
     luci.http.prepare_content("application/json")
     luci.http.write_json({ stats = stats, ip = ip, ip_source = ip_source,
+                           phone = phone,
                            status = status,
                            prefer_iface = prefer_iface,
                            vnstat_total = vnstat_total,

@@ -32,7 +32,7 @@ const callInfo = rpc.declare({ object: 'system', method: 'info' });
 const callServices = rpc.declare({ object: 'service', method: 'list', expect: { '': {} } });
 const callMounts = rpc.declare({ object: 'luci', method: 'getMountPoints', expect: { result: [] } });
 
-const DEFAULTS = { palette: 'clay', mode: 'auto', hidden_cards: '', shown_cards: '' };
+const DEFAULTS = { palette: 'clay', mode: 'auto', hidden_cards: '', shown_cards: '', rate_unit: 'bit' };
 const OPT_IN = [ 'apps' ];   // cards that are off until switched on (they show plugin information)
 
 const words = s => String(s || '').split(/[\s,]+/).filter(Boolean);
@@ -306,6 +306,12 @@ function motion(name) {
 }
 
 /* Exits mirror entrances: fade (and sink) out, then go. */
+/* A toggle button's state, for the eye (class) and for screen readers (aria-pressed) alike. */
+function press(el, on) {
+	el.classList.toggle('on', on);
+	el.setAttribute('aria-pressed', on);
+}
+
 function leave(el) {
 	if (el.classList.contains('td-out')) return;
 	el.classList.add('td-out');
@@ -338,7 +344,17 @@ function toast(msg) {
 
 /* ---------------- formatting ---------------- */
 
-function rate(bytesPerSec) {
+/* Live speed as [ number, unit ]: bits per second like broadband plans (Mbps), or bytes per
+ * second like download tools (MB/s) when the user picked that. */
+function rate(bytesPerSec, inBytes) {
+	if (inBytes) {
+		const n = Math.max(0, bytesPerSec);
+		if (n >= 1073741824) return [ (n / 1073741824).toFixed(2), 'GB/s' ];
+		if (n >= 1048576) return [ (n / 1048576).toFixed(n >= 104857600 ? 0 : 1), 'MB/s' ];
+		if (n >= 1024) return [ (n / 1024).toFixed(0), 'KB/s' ];
+		return [ n.toFixed(0), 'B/s' ];
+	}
+
 	const bits = Math.max(0, bytesPerSec * 8);
 	if (bits >= 1e9) return [ (bits / 1e9).toFixed(2), 'Gbps' ];
 	if (bits >= 1e6) return [ (bits / 1e6).toFixed(bits >= 1e8 ? 0 : 1), 'Mbps' ];
@@ -684,7 +700,7 @@ return baseclass.extend({
 	PALETTES: PALETTES, OPT_IN: OPT_IN, words: words, cardOn: cardOn,
 	esc: esc, icon: icon, html: html,
 	loadMenu: loadMenu, flatten: flatten, realNode: realNode, menuHas: menuHas, software: software, grouped: grouped, appIcon: appIcon, service: service,
-	loadSettings: loadSettings, saveSettings: saveSettings, applyLook: applyLook, toast: toast, motion: motion, leave: leave,
+	loadSettings: loadSettings, saveSettings: saveSettings, applyLook: applyLook, toast: toast, motion: motion, leave: leave, press: press,
 	rate: rate, bytes: bytes, duration: duration, signal: signal, quality: quality, bandName: bandName, connName: connName,
 	readFile: readFile, temperature: temperature, wifiInfo: wifiInfo, clients: clients, wan: wan, ports: ports, dnsName: dnsName, netdev: netdev, cpuStat: cpuStat,
 	board: () => L.resolveDefault(callBoard(), {}),
