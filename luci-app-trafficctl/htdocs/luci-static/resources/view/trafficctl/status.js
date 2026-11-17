@@ -112,6 +112,11 @@ var callMacfilterRemove = rpc.declare({
 	params: ['ip']
 });
 
+// rpcd takes an int argument as a signed 32-bit number and refuses the whole
+// call (Invalid argument) for anything larger. A rate typed beyond that is
+// sent as this, so the backend answers with its own range message.
+var RPC_INT_MAX = 2147483647;
+
 var callRatelimit = rpc.declare({
 	object: 'luci.trafficctl',
 	method: 'ratelimit',
@@ -206,6 +211,20 @@ var callConfigGet = rpc.declare({
 	method: 'config_get'
 });
 
+// Names for LAN destinations (#172): the manual aliases and the DHCP leases,
+// v4 and v6. Both are reads of files the router already keeps; no DNS query.
+var callNamesList = rpc.declare({
+	object: 'luci.trafficctl',
+	method: 'names_list',
+	expect: { result: [] }
+});
+
+var callDHCPLeases = rpc.declare({
+	object: 'luci-rpc',
+	method: 'getDHCPLeases',
+	expect: { '': {} }
+});
+
 var RATE_PRESETS = [
 	{v:'0',      l: _('Off')},
 	{v:'1000',   l:_('1 Mbit/s')},
@@ -258,15 +277,15 @@ function fmtBytes(b) {
 	return (b/1073741824).toFixed(2) + ' GB';
 }
 // The Bytes / TCP / UDP columns show a LIFETIME total accumulated on the
-// router by trafficctl-totals.sh, not the live conntrack sums they used to
+// router by `trafficctl totals`, not the live conntrack sums they used to
 // show. conntrack only accounts for flows that still exist, so the old numbers
 // collapsed to absurdities like "2 bytes" the moment a device went briefly
 // idle — that is issue #26.
 //
 // A negative total means the router cannot answer, which is not the same as
-// zero: under flow offload the byte source becomes nftables counter maps keyed
-// by address alone, which cannot split TCP from UDP. Printing 0 there would be
-// a confident wrong answer, i.e. the very failure this change removes.
+// zero: a total carried over from a release that read nftables counter maps
+// keyed by address alone has no TCP/UDP split. Printing 0 there would be a
+// confident wrong answer, i.e. the very failure this change removes.
 function renderTotalCell(cell, total, liveVal, since, pending, degraded) {
 	while (cell.firstChild) {
 		cell.removeChild(cell.firstChild);
@@ -283,7 +302,7 @@ function renderTotalCell(cell, total, liveVal, since, pending, degraded) {
 	// than the implausibly small live values that prompted issue #26.
 	if (degraded) {
 		cell.appendChild(E('span', { 'class': 'tc-c-err tc-fw-bold' }, '⚠'));
-		cell.title = _('Not counted: flow offload is active and this router cannot provide the nftables counters trafficctl uses in that mode, so the kernel byte counters stop updating for offloaded connections. Any total here would be far too low. See Settings → Flow Offload.');
+		cell.title = _('Not counted: flow offload is active and the flowtable has no counter, so the kernel byte counters stop updating for offloaded connections. Any total here would be far too low. See Settings → Flow Offload.');
 		return;
 	}
 	if (total == null || total < 0) {
@@ -788,7 +807,7 @@ function renderFullGraph(history, limitKbit, width, height) {
 // LAN bridges and the VPN tunnels, and who is responsible for it.
 //
 // Every number here comes from a source that already existed — per-interface
-// kernel counters (trafficctl-ifaces.sh) and the per-device speed map the
+// kernel counters (`trafficctl ifaces`) and the per-device speed map the
 // summary table is already computing — so nothing new is collected or stored
 // on the router.
 
@@ -1085,6 +1104,88 @@ function rdnsResolve(st, addrs, lookup, paint, clock) {
 	return Promise.resolve(addrs.length ? lookup(addrs) : {}).then(done, function() { done(null); });
 }
 
+// ── Names for private destinations (#172) ───────────────────────────────────
+//
+// A private (LAN) destination is never sent to rDNS: the upstream resolver
+// cannot know it, and a PTR query for it only leaks the LAN layout. Most such
+// hosts are known to the router anyway, by a manual alias or a DHCP lease, so
+// the host cell takes the name from there, and shows the bare address when
+// neither has one. The sources are re-read at most every LOCAL_NAMES_TTL ms,
+// not on every device poll.
+var LOCAL_NAMES_TTL = 60000;
+
+// ip -> name. aliases: names_list() rows; leases: luci-rpc getDHCPLeases;
+// leases4Raw: /tmp/dhcp.leases, the fallback when that call is not available.
+// The first source to name an address wins: alias, DHCPv4, DHCPv6.
+function localNames(aliases, leases, leases4Raw) {
+	var m = {};
+	function put(ip, name) {
+		ip = String(ip || '').split('/')[0].toLowerCase();
+		if (!ip || !name || name === '*' || m[ip] !== undefined) return;
+		m[ip] = String(name);
+	}
+	(aliases || []).forEach(function(a) { if (a) put(a.ip, a.name); });
+	var l = leases || {};
+	(l.dhcp_leases || []).forEach(function(x) { if (x) put(x.ipaddr, x.hostname); });
+	String(leases4Raw || '').split('\n').forEach(function(line) {
+		var p = line.trim().split(/\s+/);
+		if (p.length >= 4) put(p[2], p[3]);
+	});
+	(l.dhcp6_leases || []).forEach(function(x) {
+		if (!x) return;
+		put(x.ip6addr, x.hostname);
+		(x.ip6addrs || []).forEach(function(a) { put(a, x.hostname); });
+	});
+	return m;
+}
+
+function localName(m, dst) {
+	return (m && dst && m[String(dst).toLowerCase()]) || null;
+}
+
+// get(now) is a promise of the ip -> name map. fetch() is called only when the
+// map is older than LOCAL_NAMES_TTL, and never twice at once; a failed fetch
+// keeps the previous map and is not retried before the TTL either.
+function localNamesCache(fetch) {
+	var st = { map: {}, at: null, busy: null };
+	return {
+		get: function(now) {
+			if (st.busy) return st.busy;
+			if (st.at !== null && now - st.at < LOCAL_NAMES_TTL) return Promise.resolve(st.map);
+			st.busy = Promise.resolve().then(fetch).then(function(m) {
+				if (m) st.map = m;
+			}, function() {}).then(function() {
+				st.at = now;
+				st.busy = null;
+				return st.map;
+			});
+			return st.busy;
+		}
+	};
+}
+
+// What the host cell of a connection shows: { text, kind }, kind one of
+// name (the backend's), local (alias or lease), resolving (rDNS pending),
+// ip (a private destination nobody named) or none.
+function hostLabel(r, rdnsMode, local) {
+	var dst = r.dst || '';
+	if (r.host) return { text: r.host, kind: 'name' };
+	var n = localName(local, dst);
+	if (n) return { text: n, kind: 'local' };
+	if (rdnsMode && !PRIVATE_RE.test(dst)) return { text: '', kind: 'resolving' };
+	if (dst && PRIVATE_RE.test(dst)) return { text: dst, kind: 'ip' };
+	return { text: '—', kind: 'none' };
+}
+
+// The note under the connection table while rDNS is off: public destinations
+// get no hostname then, and the switch for it sits in the toolbar above.
+function rdnsHint(rdnsOn) {
+	return E('span', { 'class': 'tc-rdns-hint' + (rdnsOn ? ' tc-hidden' : '') }, [
+		' ' + _('Hostnames of public destinations are not looked up.') + ' ',
+		E('a', { 'href': '#tm-rdns', 'class': 'tc-link tc-rdns-hint-link' }, _('Turn on rDNS'))
+	]);
+}
+
 // ── Rate-limit targets that are not a single device ─────────────────────────
 //
 // A limit can be placed on a block of addresses ("10.0.20.0/24") or on the
@@ -1192,7 +1293,7 @@ function oifCell(r) {
 	return cell;
 }
 
-function buildTable(conns, sortCol, sortDir, rdnsMode, hiddenCols) {
+function buildTable(conns, sortCol, sortDir, rdnsMode, hiddenCols, local) {
 	var allCols = [
 		{ key:'proto',   label: _('Proto'),    num:false },
 		{ key:'dst',     label: _('Dst IP'),   num:false },
@@ -1228,13 +1329,15 @@ function buildTable(conns, sortCol, sortDir, rdnsMode, hiddenCols) {
 			           'class':'tc-link', 'onclick': 'event.stopPropagation()' }, dst)
 			: '';
 
+		var hl = hostLabel(r, rdnsMode, local);
 		var hostCell = E('div', { 'class': 'td', 'data-dst': dst });
-		if (r.host) {
-			hostCell.textContent = r.host;
-		} else if (rdnsMode && !PRIVATE_RE.test(dst)) {
+		if (hl.kind === 'resolving') {
 			hostCell.innerHTML = '<span class="tc-c-faint" style="font-style:italic">' + _('resolving…') + '</span>';
+		} else if (hl.kind === 'ip') {
+			hostCell.appendChild(E('span', { 'class': 'tc-c-faint tc-mono' }, hl.text));
 		} else {
-			hostCell.textContent = '—';
+			hostCell.textContent = hl.text;
+			if (hl.kind === 'local') hostCell.title = _('Name from this router: device alias or DHCP lease');
 		}
 
 		var cellMap = {
@@ -1883,6 +1986,7 @@ return view.extend({
 	_pollMode:     null,
 	_onPopState:   null,
 	_rdns:         rdnsState(),
+	_localNames:   null,
 	_sortCol:    'bytes',
 	_sortDir:    'desc',
 	_sumCol:     'name',
@@ -1924,6 +2028,15 @@ return view.extend({
 			}
 		});
 		devices.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+		// Names for the private destinations of the connection table. The
+		// lease file read above stands in for DHCPv4 if luci-rpc is denied.
+		self._localNames = localNamesCache(function() {
+			return Promise.all([
+				callNamesList().catch(function() { return []; }),
+				callDHCPLeases().catch(function() { return {}; })
+			]).then(function(r) { return localNames(r[0], r[1], leasesRaw); });
+		});
 
 		var savedIp = opts.lastIp || '__all__';
 
@@ -2079,7 +2192,11 @@ return view.extend({
 		});
 		var rdnsCheck = mkToggle('tm-rdns', _('rDNS'), opts.rdns, function() {
 			var o = loadOpts(); o.rdns = this.checked; saveOpts(o); updateUrlParams(o);
+			var on = this.checked;
+			Array.prototype.forEach.call(connsDiv.querySelectorAll('.tc-rdns-hint'),
+				function(h) { h.classList.toggle('tc-hidden', on); });
 		});
+		rdnsCheck.title = _('Look up hostnames of public destinations by reverse DNS');
 		var extStatsCheck = mkToggle('tm-extended', _('Extended'), opts.extendedStats, function() {
 			var o = loadOpts(); o.extendedStats = this.checked; saveOpts(o); updateUrlParams(o);
 			extStatsDiv.classList.toggle('tc-hidden', !this.checked);
@@ -2145,7 +2262,7 @@ return view.extend({
 			defaultsSaveBtn.disabled = true;
 			defaultsSaveStatus.textContent = _('Saving…');
 			defaultsSaveStatus.style.color = 'var(--tc-muted)';
-			callConfigSet(null, null, null, null, poll, win).then(function(res) {
+			callConfigSet(undefined, undefined, undefined, undefined, poll, win).then(function(res) {
 				var ok = res && res.ok;
 				defaultsSaveStatus.textContent = ok ? '✓' : ('✗ ' + ((res && res.msg) || ''));
 				defaultsSaveStatus.style.color = ok ? 'var(--tc-ok)' : 'var(--tc-err)';
@@ -2744,8 +2861,7 @@ return view.extend({
 			if (_rateSelected !== 'custom') return _rateSelected;
 			var n = parseFloat(customInput.value);
 			if (!n || n <= 0) return '0';
-			if (_customUnit === 'mbit') return String(Math.round(n * 1000));
-			return String(Math.round(n));
+			return String(Math.min(Math.round(_customUnit === 'mbit' ? n * 1000 : n), RPC_INT_MAX));
 		}
 
 		// Empty string means symmetric — never 0, which the backend would have
@@ -2754,7 +2870,7 @@ return view.extend({
 			if (upRow.classList.contains('tc-hidden')) return '';
 			var n = parseFloat(upInput.value);
 			if (!n || n <= 0) return '';
-			return String(_upUnit === 'mbit' ? Math.round(n * 1000) : Math.round(n));
+			return String(Math.min(Math.round(_upUnit === 'mbit' ? n * 1000 : n), RPC_INT_MAX));
 		}
 
 		// How the pending action is described. Naming one figure when the
@@ -2781,7 +2897,7 @@ return view.extend({
 			if (all && kbit !== '0') {
 				setStatus(statusDiv, 'loading',
 					_('Limiting') + ' ' + ip + ' → ' + rateLabel(kbit, kbitUp) + ' (' + scope + ')…');
-				callRatelimit(ip, parseInt(kbit), name, scope, kbitUp ? parseInt(kbitUp) : null).then(function(res) {
+				callRatelimit(ip, parseInt(kbit), name, scope, kbitUp ? parseInt(kbitUp) : undefined).then(function(res) {
 					setStatus(statusDiv, (res && res.ok) ? 'action' : 'error', (res && res.msg) || '?');
 					runQuery();
 				}).catch(function(e) { setStatus(statusDiv, 'error', '✗ '+e.message); });
@@ -2809,7 +2925,7 @@ return view.extend({
 			} else if (mode === 'shaper') {
 				setStatus(statusDiv, 'loading', _('Shaping') + ' → ' + rateLabel(kbit, kbitUp) + '…');
 				callRatelimit(ip, 0, name)
-					.then(function() { return callShapeAdd(ip, parseInt(kbit), name, kbitUp ? parseInt(kbitUp) : null); })
+					.then(function() { return callShapeAdd(ip, parseInt(kbit), name, kbitUp ? parseInt(kbitUp) : undefined); })
 					.then(function(res) {
 						setStatus(statusDiv, (res && res.ok) ? 'action' : 'error', (res && res.msg) || '?');
 						runQuery();
@@ -2818,7 +2934,7 @@ return view.extend({
 			} else {
 				setStatus(statusDiv, 'loading', _('Limiting') + ' → ' + rateLabel(kbit, kbitUp) + '…');
 				callShapeRemove(ip, name)
-					.then(function() { return callRatelimit(ip, parseInt(kbit), name, '', kbitUp ? parseInt(kbitUp) : null); })
+					.then(function() { return callRatelimit(ip, parseInt(kbit), name, '', kbitUp ? parseInt(kbitUp) : undefined); })
 					.then(function(res) {
 						setStatus(statusDiv, (res && res.ok) ? 'action' : 'error', (res && res.msg) || '?');
 						runQuery();
@@ -3128,10 +3244,10 @@ return view.extend({
 						time: now
 					};
 
-					// Lifetime totals, accumulated by trafficctl-totals.sh.
-					// The proto fields arrive as -1 when the router cannot
-					// measure them (nft counters under flow offload), and that
-					// -1 is carried through untouched so the cell can say so
+					// Lifetime totals, accumulated by `trafficctl totals`.
+					// The proto fields arrive as -1 when the router has no
+					// split for them (a total from the old nft counter maps),
+					// and that -1 is carried through untouched so the cell can say so
 					// instead of printing a zero nobody can explain.
 					var tcpT = (d.bytes_tcp_total == null) ? -1 : Number(d.bytes_tcp_total);
 					var udpT = (d.bytes_udp_total == null) ? -1 : Number(d.bytes_udp_total);
@@ -3187,7 +3303,11 @@ return view.extend({
 			var proto = (o.proto && o.proto !== 'all') ? o.proto : '';
 			pollStart();
 
-			callDevice(ip, proto).then(function(data) {
+			Promise.all([
+				callDevice(ip, proto),
+				self._localNames.get(Date.now())
+			]).then(function(res) {
+				var data = res[0], local = res[1];
 				if (!data || data.error) {
 					pollEnd((data && data.error) || _('Unknown error'));
 					return;
@@ -3303,7 +3423,7 @@ return view.extend({
 						connsDiv.appendChild(E('p',{'style':'color:var(--tc-faint);font-size:11px;margin-top:6px'},
 							groups.length + ' ' + _('groups from') + ' ' + data.connections.length + ' ' + _('connections') + '. ' + _('Click header to sort.')));
 					} else {
-						tbl = buildTable(data.connections, self._sortCol, self._sortDir, o.rdns, self._connHiddenCols);
+						tbl = buildTable(data.connections, self._sortCol, self._sortDir, o.rdns, self._connHiddenCols, local);
 						Array.prototype.forEach.call(tbl.querySelectorAll('.th'), function(th) {
 							th.addEventListener('click', function() {
 								var col = th.getAttribute('data-col');
@@ -3317,14 +3437,23 @@ return view.extend({
 							});
 						});
 						connsDiv.appendChild(E('div',{'style':'overflow-x:auto'},[tbl]));
-						connsDiv.appendChild(E('p',{'style':'color:var(--tc-faint);font-size:11px;margin-top:6px'},
-							data.connections.length + ' ' + _('connections') + '. ' + _('Click header to sort.')));
+						var hint = rdnsHint(!!o.rdns);
+						hint.querySelector('a').addEventListener('click', function(ev) {
+							ev.preventDefault();
+							var cb = rdnsCheck.querySelector('input');
+							rdnsCheck.scrollIntoView({ block: 'center' });
+							cb.focus();
+						});
+						connsDiv.appendChild(E('p',{'style':'color:var(--tc-faint);font-size:11px;margin-top:6px'}, [
+							data.connections.length + ' ' + _('connections') + '. ' + _('Click header to sort.'),
+							hint
+						]));
 
 						if (o.rdns) {
 							var seen = {}, dsts = [];
 							data.connections.forEach(function(c) {
 								var dst = c.dst || '';
-								if (!dst || seen[dst] || PRIVATE_RE.test(dst)) return;
+								if (!dst || seen[dst] || PRIVATE_RE.test(dst) || localName(local, dst)) return;
 								seen[dst] = true;
 								dsts.push(dst);
 								var shown = rdnsShown(self._rdns, dst);
@@ -3461,17 +3590,17 @@ return view.extend({
 				statsDiv.lastChild.addEventListener('click', function() { self._tableFilter = null; renderSummary(rows); });
 			}
 
-			// Says once, in words, what the ⚠ in every byte cell means. The
-			// Flow Offload banner above already explains the mode, but on this
-			// hardware its reassurance — that trafficctl switches to nftables
-			// counters — is exactly what does not hold.
+			// Says once, in words, what the ⚠ in every byte cell means, and
+			// what to do about it: on fw4 without a flowtable counter (22.03)
+			// no nft rule can count offloaded packets, so the fix is on the
+			// operator's side.
 			if (rows.some(function(r) { return r._total_degraded; })) {
 				statsDiv.appendChild(E('div', {
 					'style': 'margin-top:8px;padding:6px 8px;border-left:3px solid var(--tc-err);' +
 						'background:rgba(211,84,0,0.10);font-size:11px'
 				}, [
 					E('strong', {}, '⚠ ' + _('Byte totals unavailable on this router.')),
-					document.createTextNode(' ' + _('Flow offload is active and the kernel does not support the nftables counter maps trafficctl uses in that mode, so byte counters stop updating for offloaded connections. Speeds and totals would be far too low, so they are not shown. Disabling hardware offload in Settings → Flow Offload restores them.'))
+					document.createTextNode(' ' + _('Flow offload is active and the flowtable has no counter (firewall4 on OpenWrt 22.03), so byte counters stop updating for offloaded connections. Speeds and totals would be far too low, so they are not shown. Turn flow offloading off in Settings → Flow Offload, or upgrade to OpenWrt 23.05 or later, to restore them.'))
 				]));
 			}
 
@@ -3959,10 +4088,10 @@ return view.extend({
 					para(bold(_('How to get full functionality without disabling offload:'))),
 					para([_('The flowtable') + ' ',
 						E('code', {}, 'counter'),
-						' ' + _('flag (Linux 5.7+, set automatically by fw4/nftables) periodically syncs ' +
+						' ' + _('flag (Linux 5.7+) periodically syncs ' +
 						  'hardware byte counts back to conntrack — trafficctl detects this and all features work normally.')]),
-					para(_('If your current firmware uses fw3 (iptables) or ships a kernel older than 5.7, ' +
-						  'a router with modern OpenWrt and fw4 support will have this working out of the box.')),
+					para(_('firewall4 on OpenWrt 22.03 does not set this flag; from 23.05 on it does, ' +
+						  'so upgrading the firmware restores full functionality.')),
 					docLinks,
 				]);
 			} else if (mode === 'software-counter') {
@@ -3970,11 +4099,9 @@ return view.extend({
 				// accurate graphs, which is why this was cosmetic rather than
 				// misleading — but it is a different mechanism, and the
 				// counter flag is exactly the detail someone opens this banner
-				// to understand. Saying "measured via nftables counters" here
-				// describes a path that is NOT producing the numbers on this
-				// router: with the flag set, the flowtable syncs offloaded
-				// byte counts back to conntrack and tctl_pick_byte_source
-				// stays on conntrack.
+				// to understand: with the flag set, the flowtable syncs
+				// offloaded byte counts back to conntrack, which is why the
+				// numbers are accurate here and frozen in plain 'software'.
 				bg     = 'rgba(243,156,18,0.10)';
 				border = '#f39c12';
 				icon   = 'ℹ️';
@@ -3986,7 +4113,7 @@ return view.extend({
 						E('code', {}, 'counter'),
 						' ' + _('flag (Linux 5.7+, set automatically by fw4), so offloaded byte counts are ' +
 						  'synced back to conntrack. Speed and totals come from conntrack as usual and ' +
-						  'are accurate — the nftables counter fallback is not needed on this router.')]),
+						  'are accurate.')]),
 					para(_('Traffic shaping and blocking are not affected.')),
 					docLinks,
 				]);
@@ -3998,8 +4125,15 @@ return view.extend({
 					para(bold(_('Software flow offloading is active.'))),
 					para(_('The kernel fast-paths established connections through a flowtable, ' +
 						  'bypassing conntrack byte updates for higher throughput.')),
-					para(_('Speed is measured via nftables counters installed at a higher priority ' +
-						  '(before the flowtable), so graphs are accurate.')),
+					para([_('The flowtable has no') + ' ',
+						E('code', {}, 'counter'),
+						' ' + _('flag (firewall4 on OpenWrt 22.03 does not set one), so offloaded connections ' +
+						  'are not counted at all: per-device speeds and totals are not shown.')]),
+					para(bold(_('To restore speed monitoring:'))),
+					E('ul', {'class': 'tc-offload-ul'}, [
+						E('li', {}, _('Disable flow offload in LuCI → Network → Firewall → General Settings.')),
+						E('li', {}, _('Or upgrade to OpenWrt 23.05 or later, whose firewall4 sets the flag.')),
+					]),
 					para(_('Traffic shaping and blocking are not affected.')),
 					docLinks,
 				]);
@@ -4128,7 +4262,7 @@ return view.extend({
 				cutPanel.appendChild(E('div', {'class': 'tc-cut__row'}, [
 					E('span', {'class': 'tc-cut__icon'}, '⊘'),
 					E('span', {'class': 'tc-c-muted'},
-						_('Global internet cut needs nftables (fw4). This router is running iptables.'))
+						_('Global internet cut needs nftables (fw4), and nft cannot list its tables on this router.'))
 				]));
 				return;
 			}

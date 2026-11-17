@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="UniWRT">
+  <defs>
+    <linearGradient id="u-bg" x1="6" y1="2" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f8dff"/>
+      <stop offset=".55" stop-color="#006fff"/>
+      <stop offset="1" stop-color="#0052d4"/>
+    </linearGradient>
+    <linearGradient id="u-sheen" x1="24" y1="0" x2="24" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- tile -->
+  <rect width="48" height="48" rx="12" fill="url(#u-bg)"/>
+  <rect x="1" y="1" width="46" height="46" rx="11" fill="none" stroke="#ffffff" stroke-opacity=".14"/>
+  <rect width="48" height="20" rx="12" fill="url(#u-sheen)"/>
+
+  <!-- U mark -->
+  <path d="M16 16 v9.5 a8 8 0 0 0 16 0 V16" stroke="#ffffff" stroke-width="4.6" stroke-linecap="round"/>
+
+  <!-- signal beacon above the right stem -->
+  <circle cx="32" cy="9.6" r="2.5" fill="#ffffff"/>
+  <path d="M26.8 6.4 a7.4 7.4 0 0 1 10.4 0" stroke="#ffffff" stroke-opacity=".78" stroke-width="2.1" stroke-linecap="round"/>
+</svg>

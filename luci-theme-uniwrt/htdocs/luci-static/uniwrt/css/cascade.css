@@ -1,0 +1,1282 @@
+/* ============================================================================
+   UniWRT Portal — cascade.css
+   A modern network-controller-style standalone LuCI theme.  Light/base layer.
+   Dark-mode overrides live in dark.css (injected, media-toggled).
+   (c) 2025-2026 ox1d3x3 — Apache-2.0
+   ========================================================================== */
+
+/* ----------------------------------------------------------------- tokens */
+:root {
+  /* brand / accent (overridden inline from UCI config) */
+  --u-accent:        #006fff;
+  --u-accent-soft:   rgba(0,111,255,.12);
+
+  /* surfaces (light) */
+  --u-bg:            #f4f5f6;
+  --u-surface:       #ffffff;
+  --u-surface-2:     #f9fafa;
+  --u-rail:          #16181c;
+  --u-rail-hover:    #26292e;
+  --u-rail-active:   rgba(0,111,255,.18);
+
+  /* text */
+  --u-text:          #1c1e21;
+  --u-text-2:        #50565e;
+  --u-text-3:        #808893;
+  --u-rail-text:     #c2c6cb;
+  --u-rail-text-2:   #808893;
+
+  /* lines / borders */
+  --u-line:          #e3e6e9;
+  --u-line-2:        #eef0f1;
+
+  /* status */
+  --u-ok:            #38cc65;
+  --u-warn:          #f5a623;
+  --u-crit:          #f0383b;
+
+  /* geometry */
+  --u-radius:        12px;
+  --u-radius-sm:     8px;
+  --u-radius-xs:     6px;
+  --u-rail-w:        248px;
+  --u-rail-w-min:    66px;
+  --u-top-h:         56px;
+  --u-font-size:     14px;
+
+  --u-shadow-1:      0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  --u-shadow-2:      0 4px 12px rgba(16,24,40,.10), 0 2px 4px rgba(16,24,40,.06);
+  --u-shadow-pop:    0 8px 28px rgba(16,24,40,.18);
+
+  --u-font:          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --u-mono:          ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --u-ease:          cubic-bezier(.4,0,.2,1);
+}
+
+/* --------------------------------------------------------------- reset/base */
+* { box-sizing: border-box; }
+
+html { font-size: var(--u-font-size); }
+
+body {
+  margin: 0;
+  font-family: var(--u-font);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--u-text);
+  background: var(--u-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: var(--u-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1,h2,h3,h4,h5 { font-weight: 600; line-height: 1.25; color: var(--u-text); }
+
+img { max-width: 100%; }
+
+::selection { background: var(--u-accent-soft); }
+
+/* slim scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #c2c6cb transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: #c8ccd1; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #aeb3b9; background-clip: content-box; }
+
+/* =========================================================== SHELL: rail */
+.u-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--u-rail-w);
+  background: var(--u-rail);
+  color: var(--u-rail-text);
+  display: flex;
+  flex-direction: column;
+  z-index: 60;
+  transition: width .22s var(--u-ease), transform .24s var(--u-ease);
+  overflow: hidden;
+}
+[data-rail="collapsed"] .u-rail { width: var(--u-rail-w-min); cursor: e-resize; }
+
+.u-rail-head {
+  display: flex; align-items: center; gap: 10px;
+  height: var(--u-top-h);
+  padding: 0 48px 0 14px;   /* right space for the absolutely-positioned pin */
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.u-brand { display: flex; align-items: center; gap: 11px; color: #fff; min-width: 0; flex: 1; }
+.u-brand:hover { text-decoration: none; }
+.u-brand-mark { width: 30px; height: 30px; flex: 0 0 auto; color: var(--u-accent); }
+.u-brand-text { display: flex; flex-direction: column; min-width: 0; }
+.u-brand-name { font-weight: 700; font-size: .98rem; letter-spacing: .02em; line-height: 1.1; }
+.u-brand-host { font-size: .72rem; color: var(--u-rail-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* collapsed: only the centred logo remains in the head (the pin travels) */
+[data-rail="collapsed"] .u-rail-head { justify-content: center; padding: 0; }
+[data-rail="collapsed"] .u-brand { flex: 0 0 auto; gap: 0; }
+[data-rail="collapsed"] .u-brand-text { display: none; }
+
+/* The expand/collapse pin is positioned absolutely against the rail so it can
+   TRAVEL: expanded it sits top-right of the head; collapsed it docks at the
+   bottom of the rail (well clear of the logo). Both anchors are calc() lengths
+   on the same properties, so the bottom<->top journey interpolates as one
+   seamless animation, coordinated with the rail width transition, plus a 180°
+   rotation of the chevron along the way. */
+.u-rail-pin {
+  position: absolute;
+  top: 14px; left: calc(100% - 42px);      /* expanded: top-right of the head */
+  width: 28px; height: 28px; border: 0; cursor: pointer; z-index: 2;
+  box-sizing: border-box; padding: 0; min-width: 0;  /* immune to global button padding: exactly square */
+  background: transparent; color: var(--u-rail-text-2); border-radius: var(--u-radius-xs);
+  display: grid; place-items: center;
+  transition: top .26s var(--u-ease), left .26s var(--u-ease),
+              background .15s, color .15s;
+}
+.u-rail-pin svg { width: 18px; height: 18px; display: block; transition: transform .26s var(--u-ease); }
+.u-rail-pin:hover { background: var(--u-rail-hover); color: #fff; }
+[data-rail="collapsed"] .u-rail-pin {
+  top: calc(var(--u-top-h) + 8px);         /* collapsed: docked right under the logo */
+  left: calc(50% - 14px);                  /* centred in the narrow rail */
+  background: var(--u-rail-hover);
+  border: 1px solid rgba(255,255,255,.08);
+}
+/* rotate only the chevron, keeping the button box axis-aligned (a rotated
+   rounded box renders with blurry/skewed edges on some GPUs) */
+[data-rail="collapsed"] .u-rail-pin svg { transform: rotate(180deg); }
+[data-rail="collapsed"] .u-rail a, [data-rail="collapsed"] .u-rail button { cursor: pointer; }
+
+/* the category switcher exists in the DOM on every page but is only shown
+   as the icon column while the rail is collapsed; expanded uses the classic
+   accordion tree in .u-rail-nav */
+.u-rail-modes { display: none; }
+/* collapsed rail: all top-level category icons, centered, labels hidden */
+/* top padding clears the pin slot docked under the logo */
+[data-rail="collapsed"] .u-rail-modes { display: flex; flex-direction: column; padding: 46px 0 6px; align-items: center; gap: 6px; }
+[data-rail="collapsed"] .u-mode-tab {
+  position: relative; justify-content: center; gap: 0;
+  width: 44px; height: 40px; padding: 0; border-radius: 10px;
+}
+[data-rail="collapsed"] .u-mode-tab .nav-icon { width: 20px; height: 20px; opacity: 1; }
+[data-rail="collapsed"] .u-mode-tab.active::before {
+  content: ""; position: absolute; left: -11px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--u-accent);
+}
+[data-rail="collapsed"] .u-mode-label { display: none; }
+.u-mode-tab {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--u-radius-sm);
+  font-size: .82rem; font-weight: 600; color: var(--u-rail-text-2); cursor: pointer;
+}
+.u-mode-tab .nav-icon { width: 18px; height: 18px; flex: 0 0 auto; opacity: .9; }
+.u-mode-tab > span, .u-mode-tab { white-space: nowrap; }
+.u-mode-tab:hover { background: var(--u-rail-hover); color: #fff; text-decoration: none; }
+.u-mode-tab.active { background: var(--u-rail-active); color: #fff; }
+
+.u-rail-nav { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 6px 12px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
+
+.u-nav-group { display: flex; flex-direction: column; gap: 2px; }
+
+.u-nav-item {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 11px; border-radius: var(--u-radius-sm);
+  color: var(--u-rail-text); font-size: .875rem; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: background .14s, color .14s;
+}
+.u-nav-item:hover { background: var(--u-rail-hover); color: #fff; text-decoration: none; }
+.u-nav-item.open  { color: #fff; }
+/* with every section expanded, only the current one stays highlighted */
+.u-all-open > .u-nav-item.open:not(.current):not(:hover) { color: var(--u-rail-text); }
+.u-nav-item .nav-icon { width: 19px; height: 19px; flex: 0 0 auto; opacity: .9; }
+.u-nav-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.u-nav-arrow { width: 15px; height: 15px; flex: 0 0 auto; transition: transform .2s var(--u-ease); opacity: .65; }
+.u-nav-item.open .u-nav-arrow { transform: rotate(90deg); }
+
+/* When collapsed the accordion tree is hidden entirely and the icon column
+   above takes its place. Do NOT add label/arrow hiding rules here: the mobile
+   off-canvas rail re-shows .u-rail-nav while data-rail may still be
+   "collapsed", and unscoped child rules would strip its labels and submenus. */
+[data-rail="collapsed"] .u-rail-nav { display: none; }
+
+/* submenu */
+.u-nav-sub {
+  position: relative;
+  display: none; flex-direction: column; gap: 1px;
+  margin: 2px 0 4px 16px; padding-left: 12px;
+  border-left: 1.5px solid rgba(255,255,255,.08);
+}
+.u-nav-sub.open { display: flex; }
+.u-nav-sub .u-nav-item { padding: 7px 11px; font-size: .82rem; color: var(--u-rail-text-2); }
+.u-nav-sub .u-nav-item:hover { color: #fff; }
+.u-nav-sub .u-nav-item.active { color: #fff; }
+
+/* sliding active indicator inside a submenu */
+.u-nav-slider {
+  position: absolute; left: -1.5px; width: 2px; border-radius: 2px;
+  background: var(--u-accent); opacity: 0;
+  transition: top .22s var(--u-ease), height .22s var(--u-ease), opacity .2s;
+  pointer-events: none;
+}
+
+
+/* ============================================================= SHELL: topbar */
+.u-top {
+  position: fixed; top: 0; right: 0; left: var(--u-rail-w);
+  height: var(--u-top-h);
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 18px;
+  background: rgba(255,255,255,.86);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--u-line);
+  z-index: 50;
+  transition: left .22s var(--u-ease);
+}
+[data-rail="collapsed"] .u-top { left: var(--u-rail-w-min); }
+
+.u-burger { display: none; width: 38px; height: 38px; border: 0; background: transparent; cursor: pointer; color: var(--u-text-2); border-radius: var(--u-radius-sm); }
+.u-burger svg { width: 22px; height: 22px; }
+.u-burger:hover { background: var(--u-surface-2); }
+
+.u-top-title { font-size: 1.05rem; font-weight: 650; color: var(--u-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u-top-spacer { flex: 1 1 auto; }
+
+.u-iconbtn {
+  width: 38px; height: 38px; flex: 0 0 auto;
+  display: grid; place-items: center; border: 0; cursor: pointer;
+  background: transparent; color: var(--u-text-2); border-radius: var(--u-radius-sm);
+  transition: background .15s, color .15s;
+}
+.u-iconbtn svg { width: 19px; height: 19px; }
+.u-iconbtn:hover { background: var(--u-surface-2); color: var(--u-text); text-decoration: none; }
+.u-logout:hover { color: var(--u-crit); }
+
+/* theme toggle shows only the icon matching current mode */
+.u-ico-auto, .u-ico-light, .u-ico-dark { display: none; }
+html[data-theme="auto"]  .u-ico-auto,
+html[data-theme="light"] .u-ico-light,
+html[data-theme="dark"]  .u-ico-dark { display: block; }
+
+/* live status chips */
+.u-stats { display: flex; align-items: center; gap: 6px; margin-right: 6px; }
+.u-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+  background: var(--u-surface-2); color: var(--u-text-2); border: 1px solid var(--u-line);
+  white-space: nowrap;
+}
+.u-chip .indicator-icon, .u-chip svg { width: 13px; height: 13px; opacity: .8; }
+.u-chip .indicator-value { font-variant-numeric: tabular-nums; }
+.u-chip[data-level="ok"]     { color: var(--u-ok); }
+.u-chip[data-level="warn"]   { color: var(--u-warn); }
+.u-chip[data-level="crit"]   { color: var(--u-crit); }
+.u-chip[data-level="active"] { color: var(--u-accent); }
+.u-chip[data-level="busy"]   { color: var(--u-accent); }
+
+/* LuCI system indicators (ui.showIndicator -> #indicators): the clickable
+   "Unsaved Changes" badge, poll Refreshing/Paused, etc. Styled to match the
+   status chips. data-style is set by LuCI core; data-clickable gets a hand. */
+.u-indicators { display: inline-flex; align-items: center; gap: 6px; }
+.u-indicators:empty { display: none; }
+.u-indicators [data-indicator] {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+  background: var(--u-surface-2); color: var(--u-text-2); border: 1px solid var(--u-line);
+  white-space: nowrap;
+}
+.u-indicators [data-indicator][data-style="active"] {
+  background: var(--u-accent); border-color: var(--u-accent); color: #fff;
+}
+.u-indicators [data-indicator="uci-changes"] {
+  background: var(--u-warn); border-color: var(--u-warn); color: #fff;
+}
+.u-indicators [data-indicator][data-style="inactive"] { opacity: .65; }
+.u-indicators [data-indicator][data-clickable] { cursor: pointer; }
+.u-indicators [data-indicator][data-clickable]:hover { filter: brightness(1.08); }
+
+/* ============================================================= SHELL: subnav */
+.u-subnav {
+  position: fixed; top: var(--u-top-h); right: 0; left: var(--u-rail-w);
+  display: none; align-items: center; gap: 2px;
+  height: 46px; padding: 0 18px;
+  background: var(--u-surface);
+  border-bottom: 1px solid var(--u-line);
+  z-index: 45; overflow-x: auto; transition: left .22s var(--u-ease);
+}
+[data-rail="collapsed"] .u-subnav { left: var(--u-rail-w-min); }
+.u-subnav.active { display: flex; }
+.u-subnav-tab {
+  position: relative; z-index: 1;
+  padding: 7px 14px; border-radius: var(--u-radius-sm);
+  font-size: .84rem; font-weight: 600; color: var(--u-text-3);
+  white-space: nowrap; cursor: pointer;
+}
+.u-subnav-tab:hover { color: var(--u-text); text-decoration: none; }
+.u-subnav-tab.active { color: var(--u-accent); }
+.u-subnav-slider {
+  position: absolute; bottom: 0; height: 2.5px; border-radius: 2px;
+  background: var(--u-accent); opacity: 0;
+  transition: left .22s var(--u-ease), width .22s var(--u-ease), opacity .2s;
+}
+
+/* =============================================================== SHELL: main */
+.u-main {
+  margin-left: var(--u-rail-w);
+  padding: calc(var(--u-top-h) + 22px) 26px 0;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  transition: margin-left .22s var(--u-ease);
+}
+[data-rail="collapsed"] .u-main { margin-left: var(--u-rail-w-min); }
+body.u-has-subnav .u-main { padding-top: calc(var(--u-top-h) + 46px + 22px); }
+
+/* Fill the available width — no narrow centred column (content should use the
+   whole page; tables and info panels stretch, inputs keep their own max-width) */
+.u-content { flex: 1 1 auto; width: 100%; max-width: none; margin: 0; animation: u-fade .26s var(--u-ease); }
+@keyframes u-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+body.page-leaving .u-content { opacity: 0; transition: opacity .16s; }
+
+/* =============================================================== SHELL: footer */
+.u-footer {
+  margin-left: var(--u-rail-w);
+  padding: 22px 26px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: .78rem; color: var(--u-text-3);
+  transition: margin-left .22s var(--u-ease);
+}
+[data-rail="collapsed"] .u-footer { margin-left: var(--u-rail-w-min); }
+.u-credit { font-weight: 600; color: var(--u-text-2); }
+.u-credit:hover { color: var(--u-accent); }
+.u-foot-sep { opacity: .5; }
+
+/* =============================================================== SHELL: scrim */
+.u-scrim {
+  position: fixed; inset: 0; background: rgba(8,10,14,.45);
+  opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; z-index: 55;
+}
+.u-scrim.show { opacity: 1; visibility: visible; }
+
+/* ================================================================ LOGIN PAGE */
+.u-login-body { background:
+    radial-gradient(1200px 600px at 80% -10%, var(--u-accent-soft), transparent 60%),
+    var(--u-bg);
+  min-height: 100vh; }
+.u-login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.u-login-card {
+  width: 100%; max-width: 380px; padding: 38px 34px 28px;
+  background: var(--u-surface); border: 1px solid var(--u-line);
+  border-radius: 18px; box-shadow: var(--u-shadow-pop); text-align: center;
+  animation: u-rise .4s var(--u-ease);
+}
+@keyframes u-rise { from { opacity: 0; transform: translateY(14px) scale(.99); } to { opacity: 1; transform: none; } }
+.u-login-logo { width: 56px; height: 56px; color: var(--u-accent); margin-bottom: 14px; }
+.u-login-title { margin: 0; font-size: 1.4rem; }
+.u-login-sub { margin: 6px 0 22px; color: var(--u-text-3); font-size: .9rem; }
+.u-login-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.u-field { display: flex; flex-direction: column; gap: 6px; }
+.u-field-label { font-size: .78rem; font-weight: 600; color: var(--u-text-2); }
+.u-login-form input[type="text"], .u-login-form input[type="password"] {
+  width: 100%; padding: 11px 13px; font-size: .95rem; font-family: inherit;
+  border: 1.5px solid var(--u-line); border-radius: var(--u-radius-sm);
+  background: var(--u-surface-2); color: var(--u-text); transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.u-login-form input:focus { outline: 0; border-color: var(--u-accent); background: var(--u-surface); box-shadow: 0 0 0 3px var(--u-accent-soft); }
+.u-login-btn {
+  margin-top: 6px; padding: 12px; border: 0; border-radius: var(--u-radius-sm);
+  background: var(--u-accent); color: #fff; font-size: .95rem; font-weight: 650; cursor: pointer;
+  font-family: inherit; transition: background .15s, transform .08s;
+  box-shadow: 0 4px 14px var(--u-accent-soft);
+}
+.u-login-btn:hover { filter: brightness(1.06); }
+.u-login-btn:active { transform: translateY(1px); }
+.u-login-error {
+  margin-bottom: 16px; padding: 10px 13px; border-radius: var(--u-radius-sm);
+  background: rgba(240,56,59,.1); color: var(--u-crit); font-size: .84rem; font-weight: 600;
+  border: 1px solid rgba(240,56,59,.25);
+}
+.u-login-ver { margin: 22px 0 0; font-size: .72rem; color: var(--u-text-3); }
+.u-theme-float { position: fixed; top: 18px; right: 18px; z-index: 10; background: var(--u-surface); border: 1px solid var(--u-line); box-shadow: var(--u-shadow-1); }
+
+/* ============================================================================
+   LuCI WIDGET LAYER — restyle CBI / form markup to match the controller look
+   ========================================================================== */
+
+/* page title comes from the topbar; hide the duplicate in-content H2 title of
+   the first map but keep descriptions */
+#maincontent > .cbi-map > h2,
+#maincontent > .cbi-section > h2,
+#maincontent > h2.content { display: none; }
+#maincontent > h2 + .cbi-map-descr,
+.cbi-map-descr { color: var(--u-text-3); font-size: .9rem; margin: 0 0 18px; }
+
+/* cards: maps & sections */
+.cbi-map, .cbi-section, .cbi-section-node-tabbed, fieldset.cbi-section {
+  border: 0; margin: 0 0 18px; padding: 0; background: none;
+}
+.cbi-section, fieldset.cbi-section, .cbi-section-node > .cbi-section {
+  background: var(--u-surface);
+  border: 1px solid var(--u-line);
+  border-radius: var(--u-radius);
+  box-shadow: var(--u-shadow-1);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+.cbi-section > h3, .cbi-section legend, fieldset.cbi-section > legend,
+.cbi-section-node > h3, .panel-title {
+  font-size: 1rem; font-weight: 650; color: var(--u-text);
+  margin: 0 0 4px; padding: 0; border: 0; float: none; width: auto;
+}
+.cbi-section > .cbi-section-descr, .cbi-section-descr {
+  color: var(--u-text-3); font-size: .85rem; margin: 0 0 16px;
+}
+.cbi-section-node { margin: 0; }
+
+/* form rows */
+.cbi-value {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 0; margin: 0; border-bottom: 1px solid var(--u-line-2);
+}
+.cbi-value:last-child, .cbi-value:last-of-type { border-bottom: 0; }
+.cbi-value-title {
+  flex: 0 0 250px; max-width: 250px;
+  font-weight: 600; font-size: .86rem; color: var(--u-text-2);
+  padding-top: 2px; text-align: left;
+}
+.cbi-value-field { flex: 1 1 300px; min-width: 0; }
+.cbi-value-description {
+  flex-basis: 100%; margin: 4px 0 0;
+  font-size: .78rem; color: var(--u-text-3);
+}
+.cbi-value-field .cbi-value-description { flex-basis: auto; margin-left: 8px; }
+
+/* inputs */
+input[type="text"], input[type="password"], input[type="search"],
+input[type="number"], input[type="email"], input[type="url"], input[type="date"],
+input[type="time"], textarea, select, .cbi-input-text, .cbi-input-password,
+.cbi-input-select {
+  font-family: inherit; font-size: .9rem; color: var(--u-text);
+  background: var(--u-surface-2);
+  border: 1.5px solid var(--u-line);
+  border-radius: var(--u-radius-sm);
+  padding: 8px 11px; max-width: 100%;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input:focus, textarea:focus, select:focus, .cbi-input-text:focus {
+  outline: 0; border-color: var(--u-accent); background-color: var(--u-surface);
+  box-shadow: 0 0 0 3px var(--u-accent-soft);
+}
+input[type="text"], input[type="password"], .cbi-input-text, .cbi-input-password { width: 100%; max-width: 560px; }
+textarea { width: 100%; max-width: 100%; font-family: var(--u-mono); font-size: .82rem; line-height: 1.5; }
+select, .cbi-input-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: auto; min-width: 200px; max-width: 560px;
+  padding-right: 30px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23808893' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 15px;
+}
+select::-ms-expand { display: none; }   /* kill the legacy IE/Edge arrow box */
+
+/* Neutralise the class-less wrapper LuCI wraps a bare <select> in
+   (<div id="cbid...." data-idref="...">) so it never paints a second box
+   behind the control — this was the "square box overlapping the select". */
+.cbi-value-field > div[id^="cbid."]:not([class]),
+.cbi-value-field > div[id^="cbid."][data-idref]:not([class]) {
+  display: inline-block; border: 0; background: none; padding: 0; margin: 0;
+  box-shadow: none; min-width: 0; max-width: 100%;
+}
+.cbi-value-field > div[id^="cbid."]:not([class]) > select { vertical-align: top; }
+
+/* ------------------------------------------------ LuCI dropdown widget
+   ui.Dropdown / ui.Combobox / ui.ComboButton (and every zone, network and
+   device picker built on them). LuCI's JS only toggles attributes — the
+   theme must supply the mechanics:
+     closed  : only items marked [display] (the current selection) are shown
+     [open]  : the <ul> gains .dropdown and floats below/above as a panel
+               (LuCI sets its top/max-height to fit), a ul.preview copy keeps
+               the closed look in place
+     multiple: each item carries a <form> with a checkbox, shown only while
+               the list is open
+   Without these rules a closed multi-select shows every option plus raw
+   checkboxes, and an opened list pushes the form down instead of floating. */
+.cbi-dropdown {
+  position: relative; display: inline-flex; align-items: center;
+  max-width: 560px; min-width: 0; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+/* input look for real dropdowns; split buttons keep their button styling */
+.cbi-dropdown:not(.btn):not(.cbi-button) {
+  min-height: 38px; background: var(--u-surface-2); border: 1.5px solid var(--u-line);
+  border-radius: var(--u-radius-sm); padding: 0 8px 0 11px; color: var(--u-text);
+}
+/* in forms, size like the native selects next to them (bigger, consistent target) */
+.cbi-value-field .cbi-dropdown:not(.btn):not(.cbi-button) { min-width: 200px; }
+.cbi-dropdown:focus, .cbi-dropdown[open] { outline: 0; border-color: var(--u-accent); box-shadow: 0 0 0 3px var(--u-accent-soft); }
+.cbi-dropdown[disabled] { opacity: .55; cursor: not-allowed; pointer-events: none; }
+
+/* closed state: one row showing the selection */
+.cbi-dropdown > ul {
+  display: flex; align-items: center; flex: 1 1 auto; min-width: 0; gap: 6px;
+  margin: 0; padding: 0; list-style: none; overflow: hidden;
+}
+.cbi-dropdown > ul > li {
+  display: none; align-items: center; gap: 6px; min-width: 0;
+  padding: 7px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit;
+}
+.cbi-dropdown > ul > li[display] { display: flex; }
+.cbi-dropdown > ul > li[display]:not([display="0"]) { padding-left: 8px; border-left: 1px solid var(--u-line); }
+.cbi-dropdown > ul > li > form { display: none; margin: 0; padding: 0; pointer-events: none; }
+.cbi-dropdown[multiple] > ul > li > label { display: flex; align-items: center; gap: 4px; cursor: inherit; }
+.cbi-dropdown > ul > li img { max-height: 1.4em; width: auto; vertical-align: middle; }
+.cbi-dropdown > ul > li .hide-open { display: initial; }
+.cbi-dropdown > ul > li .hide-close { display: none; }
+.cbi-dropdown > ul.preview { display: none; }
+.cbi-dropdown[open] > ul.preview { display: flex; }
+.cbi-dropdown[empty] > ul { max-width: 1px; }
+.cbi-dropdown[empty] > ul > li { display: block; }
+
+/* trailing "···" (more selected / placeholder) and "▾" toggle */
+.cbi-dropdown > .open, .cbi-dropdown > .more {
+  flex: 0 0 auto; display: flex; align-items: center; padding: 0 3px;
+  line-height: 1; color: var(--u-text-3);
+}
+.cbi-dropdown > .more,
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li[placeholder] { display: none; }
+.cbi-dropdown[multiple][more] > .more,
+.cbi-dropdown[multiple][empty] > .more { display: flex; }
+.cbi-dropdown > .toggle { color: var(--u-text-3); }
+
+/* open state: the list floats as a panel */
+.cbi-dropdown[open] > ul.dropdown {
+  display: block; position: absolute; left: -1.5px; z-index: 1100;
+  min-width: calc(100% + 3px); width: max-content; max-width: min(92vw, 520px);
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--u-surface); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius-sm); box-shadow: var(--u-shadow-pop);
+  padding: 5px; margin-top: 4px; cursor: default;
+}
+.cbi-dropdown[open] > ul.dropdown > li {
+  display: flex; padding: 8px 11px; border-radius: var(--u-radius-xs); cursor: pointer; overflow: visible;
+}
+.cbi-dropdown[open] > ul.dropdown > li[display]:not([display="0"]) { border-left: 0; padding-left: 11px; }
+.cbi-dropdown[optional][open] > ul.dropdown > li[placeholder] { display: flex; color: var(--u-text-3); }
+.cbi-dropdown[multiple][open] > ul.dropdown > li > form { display: flex; align-items: center; }
+.cbi-dropdown[open] > ul.dropdown > li .hide-open { display: none; }
+.cbi-dropdown[open] > ul.dropdown > li .hide-close { display: initial; }
+.cbi-dropdown[open] > ul.dropdown > li.focus,
+.cbi-dropdown[open] > ul.dropdown > li:hover { background: var(--u-accent-soft); }
+.cbi-dropdown[open] > ul.dropdown > li[selected] { background: var(--u-accent-soft); color: var(--u-accent); font-weight: 600; }
+.cbi-dropdown[open] > ul.dropdown > li[unselectable] { opacity: .6; cursor: default; }
+.cbi-dropdown[open] > ul.dropdown > li > input.create-item-input:first-child:last-child { width: 100%; }
+
+/* split buttons (Save & Apply ▾): one action plus a divided arrow */
+.cbi-dropdown.btn, .cbi-dropdown.cbi-button { padding: 0 10px 0 16px; }
+.cbi-dropdown.btn > ul:not(.dropdown) > li, .cbi-dropdown.cbi-button > ul:not(.dropdown) > li { padding-left: 0; border-left: 0; }
+.cbi-dropdown.btn > .more, .cbi-dropdown.cbi-button > .more { display: none; }
+.cbi-dropdown.btn > .open, .cbi-dropdown.cbi-button > .open {
+  align-self: stretch; margin-left: 10px; padding: 0 0 0 10px; color: inherit; opacity: .9;
+  border-left: 1px solid currentColor;
+}
+.cbi-dropdown.btn[open] > ul.dropdown > li, .cbi-dropdown.cbi-button[open] > ul.dropdown > li { color: var(--u-text); font-weight: 500; }
+
+/* checkboxes rendered as iOS-style slide on/off switches */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  position: relative; flex: 0 0 auto; box-sizing: border-box;
+  width: 40px; height: 22px; margin: 0; padding: 0; border: 0;
+  border-radius: 999px; background: #cdd2d8; cursor: pointer; vertical-align: middle;
+  transition: background .22s var(--u-ease);
+}
+input[type="checkbox"]::before {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .22s var(--u-ease);
+}
+input[type="checkbox"]:checked { background: var(--u-accent); }
+input[type="checkbox"]:checked::before { transform: translateX(18px); }
+input[type="checkbox"]:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--u-accent-soft); }
+input[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
+
+/* keep radios as radios */
+input[type="radio"] { width: 17px; height: 17px; accent-color: var(--u-accent); cursor: pointer; vertical-align: -3px; }
+
+/* multi-select dropdown list checkboxes stay compact (a toggle would break the list) */
+.cbi-dropdown ul input[type="checkbox"] {
+  appearance: auto; -webkit-appearance: auto; -moz-appearance: auto;
+  width: 16px; height: 16px; border-radius: 4px; background: none;
+  accent-color: var(--u-accent);
+}
+.cbi-dropdown ul input[type="checkbox"]::before { content: none; }
+
+.cbi-checkbox, .cbi-radio { display: inline-flex; align-items: center; gap: 6px; }
+.cbi-checkbox > label:empty { display: none; }   /* hide the empty FlagValue label so it doesn't add a gap */
+
+/* dynamic lists */
+.cbi-dynlist { display: inline-flex; flex-direction: column; gap: 6px; min-width: 210px; max-width: 560px; }
+/* LuCI 24.10+ removes an entry only when the click lands inside the item's
+   ::after box (it measures that pseudo-element's width), so the "×" below is
+   functional, not decoration. 23.05 removes on any click on the item. */
+.cbi-dynlist > .item {
+  position: relative; display: flex; align-items: center; gap: 8px; min-height: 32px;
+  background: var(--u-accent-soft); color: var(--u-text);
+  border-radius: var(--u-radius-xs); padding: 5px 2.4em 5px 10px; font-size: .85rem;
+  overflow-wrap: anywhere;
+}
+.cbi-dynlist > .item > span { pointer-events: none; }
+.cbi-dynlist > .item::after {
+  content: "×"; position: absolute; top: 0; right: 0; bottom: 0; width: 2em;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 600; line-height: 1; color: var(--u-text-3);
+  border-radius: 0 var(--u-radius-xs) var(--u-radius-xs) 0; cursor: pointer;
+}
+.cbi-dynlist > .item:hover::after { color: var(--u-crit); background: rgba(240,56,59,.10); }
+.cbi-dynlist > .item:focus-visible { outline: 0; box-shadow: 0 0 0 2px var(--u-accent); }
+.cbi-dynlist > .item.dragging { opacity: .5; }
+.cbi-dynlist > .item.drag-over,
+.cbi-dynlist > .add-item > .drag-over { box-shadow: inset 0 2px 0 var(--u-accent); }
+.cbi-dynlist[disabled] > .item::after { display: none; }
+.cbi-dynlist > .add-item { display: flex; gap: 6px; align-items: center; }
+.cbi-dynlist > .add-item > input, .cbi-dynlist > .add-item > .cbi-dropdown { flex: 1 1 auto; min-width: 0; }
+.cbi-dynlist > .add-item > .cbi-dropdown { width: 100%; max-width: none; }
+.cbi-dynlist > .add-item > button { flex: 0 0 auto; }
+
+/* ----------------------------------------------------------------- buttons */
+.btn, .cbi-button, button, input[type="submit"], input[type="button"], input[type="reset"] {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-family: inherit; font-size: .86rem; font-weight: 600; line-height: 1;
+  padding: 9px 16px; border-radius: var(--u-radius-sm);
+  border: 1.5px solid var(--u-line); background: var(--u-surface); color: var(--u-text);
+  cursor: pointer; text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s, transform .08s;
+  position: relative; overflow: hidden;
+}
+.btn:hover, .cbi-button:hover, button:hover, input[type="submit"]:hover {
+  border-color: #c9ced4; background: var(--u-surface-2); text-decoration: none; transform: translateY(-1px);
+}
+.btn:active, .cbi-button:active, button:active { transform: translateY(0); }
+
+/* subtle ripple on press */
+.btn::after, .cbi-button::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(circle, currentColor 10%, transparent 11%);
+  background-position: center; background-repeat: no-repeat; transform: scale(12); opacity: 0;
+  transition: transform .4s, opacity .7s;
+}
+.btn:active::after, .cbi-button:active::after { transform: scale(0); opacity: .14; transition: 0s; }
+
+.cbi-button-positive, .cbi-button-save, .cbi-button-apply, .cbi-button-add,
+.btn.cbi-button-positive { background: var(--u-accent); border-color: var(--u-accent); color: #fff; box-shadow: 0 3px 10px var(--u-accent-soft); }
+.cbi-button-positive:hover, .cbi-button-save:hover, .cbi-button-apply:hover, .cbi-button-add:hover { filter: brightness(1.07); border-color: var(--u-accent); background: var(--u-accent); color: #fff; }
+.cbi-button-negative, .cbi-button-remove, .cbi-button-reset.cbi-button-negative { background: var(--u-crit); border-color: var(--u-crit); color: #fff; }
+.cbi-button-negative:hover, .cbi-button-remove:hover { filter: brightness(1.06); background: var(--u-crit); border-color: var(--u-crit); color: #fff; }
+.cbi-button-action, .cbi-button-edit { background: var(--u-accent-soft); border-color: transparent; color: var(--u-accent); }
+.cbi-button-action:hover, .cbi-button-edit:hover { background: var(--u-accent); color: #fff; border-color: var(--u-accent); }
+.cbi-button-neutral, .cbi-button-reset, .cbi-button-link { background: var(--u-surface); }
+button[disabled], .btn[disabled], .cbi-button[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* page action footer (Save & Apply / Reset) */
+.cbi-page-actions, .node-main-login .cbi-page-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-top: 18px; padding: 16px 22px; background: var(--u-surface);
+  border: 1px solid var(--u-line); border-radius: var(--u-radius);
+  box-shadow: var(--u-shadow-1); position: sticky; bottom: 14px; z-index: 20;
+}
+
+/* --------------------------------------------------------------- tables */
+.table, table.cbi-section-table, .cbi-section-table, table {
+  width: 100%; border-collapse: collapse; font-size: .86rem;
+}
+.table .tr, table tr { border-bottom: 1px solid var(--u-line-2); }
+.table .tr.table-titles, .table .tr.cbi-section-table-titles,
+thead .tr, thead tr, .tr.cbi-section-table-titles {
+  border-bottom: 1.5px solid var(--u-line); background: none;
+}
+.th, .td, table th, table td { padding: 10px 12px; text-align: left; vertical-align: middle; }
+.th, table th, .table-titles .th {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--u-text-3);
+}
+.td, table td { color: var(--u-text); }
+.table .tr:hover, table tbody tr:hover { background: var(--u-surface-2); }
+.tr.placeholder .td, .td.cbi-section-table-cell[colspan] { color: var(--u-text-3); }
+.cbi-rowstyle-1, .cbi-rowstyle-2 { background: none; }
+
+/* status / overview legend tables that LuCI renders */
+.cbi-section-table .th.cbi-section-table-cell { white-space: nowrap; }
+
+/* -------------------------------------------------------------- tab content */
+/* ---------------------------------------------------------- in-page tabs
+   CBI form tab bar (System -> General/Logging/Time Sync, etc). LuCI toggles
+   data-tab-active + the cbi-tab/cbi-tab-disabled classes via its own JS; the
+   theme styles the bar in place and hides inactive panels. The panel hide rule
+   must match BOTH [data-tab] and [data-tab-title] so it never hits individual
+   form fields (which can carry data-tab-title alone). No !important: LuCI's
+   dependency engine needs to read fields across all tabs during page load. */
+.cbi-tabmenu {
+  display: flex; flex-wrap: wrap; gap: 4px; list-style: none;
+  margin: 0 0 18px; padding: 5px;
+  background: var(--u-surface-2); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius); overflow-x: auto;
+}
+.cbi-tabmenu li { margin: 0; list-style: none; flex: 0 0 auto; }
+.cbi-tabmenu li a {
+  display: block; padding: 8px 16px; border-radius: var(--u-radius-sm);
+  font-size: .85rem; font-weight: 600; line-height: 1.1; white-space: nowrap;
+  color: var(--u-text-2); text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.cbi-tabmenu li a:hover { color: var(--u-text); background: rgba(0,111,255,.08); text-decoration: none; }
+.cbi-tabmenu li.cbi-tab a {            /* active tab */
+  background: var(--u-accent); color: #fff;
+  box-shadow: 0 1px 3px rgba(0,111,255,.35);
+}
+.cbi-tabmenu li.cbi-tab-disabled a { color: var(--u-text-3); }   /* inactive */
+.cbi-tabmenu li[data-errors] a { box-shadow: inset 0 0 0 1.5px var(--u-crit); }
+
+.cbi-section-node-tabbed { margin-top: 4px; }
+.cbi-tabcontainer { padding: 0; }
+
+/* Hide inactive tab panels. LuCI marks the active panel with data-tab-active.
+   Match both the attribute form (panels carry data-tab + data-tab-title) and
+   the .cbi-tabcontainer class form used by some LuCI builds. Require both
+   [data-tab] and [data-tab-title] on the attribute form so individual form
+   fields (which can carry data-tab-title alone) are never hidden. */
+[data-tab][data-tab-title]:not([data-tab-active="true"]),
+.cbi-tabcontainer:not([data-tab-active="true"]) { display: none; }
+[data-tab][data-tab-title][data-tab-active="true"],
+.cbi-tabcontainer[data-tab-active="true"] { display: block; animation: u-fade .2s var(--u-ease); }
+
+/* ------------------------------------------------------------------ alerts */
+.alert-message {
+  padding: 13px 16px; border-radius: var(--u-radius); margin: 0 0 18px;
+  border: 1px solid var(--u-line); background: var(--u-surface); color: var(--u-text);
+  box-shadow: var(--u-shadow-1); border-left: 4px solid var(--u-accent);
+}
+.alert-message h4 { margin: 0 0 4px; font-size: .92rem; }
+.alert-message.warning { border-left-color: var(--u-warn); background: rgba(245,166,35,.07); }
+.alert-message.error, .alert-message.danger { border-left-color: var(--u-crit); background: rgba(240,56,59,.07); }
+.alert-message.success, .alert-message.notice { border-left-color: var(--u-ok); background: rgba(56,204,101,.07); }
+
+/* notifications popup */
+.notification, #notification-card { border-radius: var(--u-radius); box-shadow: var(--u-shadow-pop); }
+
+/* --------------------------------------------------------------- code / logs */
+/* Light theme keeps these on a light surface so they don't read as a jarring
+   black box; dark.css darkens them for dark mode. */
+pre, code, .cbi-section pre, #syslog, textarea#syslog {
+  font-family: var(--u-mono); font-size: .8rem; line-height: 1.55;
+  background: var(--u-surface-2); color: var(--u-text);
+  border: 1px solid var(--u-line); border-radius: var(--u-radius-sm);
+  padding: 14px 16px; overflow: auto;
+}
+code { padding: 1px 6px; border-radius: 4px; }
+#syslog, textarea#syslog { width: 100%; min-height: 360px; resize: vertical; }
+
+/* spinner */
+.spinning, .cbi-button-loading { position: relative; }
+.spinning::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+  border: 2px solid var(--u-accent-soft); border-top-color: var(--u-accent);
+  border-radius: 50%; animation: u-spin .7s linear infinite; vertical-align: -2px;
+}
+@keyframes u-spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- modals
+   LuCI shows package-manager output, attended-sysupgrade, Save & Apply review,
+   reboot, and most app dialogs via ui.showModal() -> #modal_overlay (a direct
+   child of <body>). It MUST be a fixed, full-viewport, centered overlay above
+   the rail (z-index 60); otherwise it renders in normal flow at the bottom-left
+   behind the rail and is unreadable. */
+#modal_overlay {
+  position: fixed; inset: 0; display: none; overflow: auto;
+  z-index: 1000; background: rgba(8,10,14,.5);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+body.modal-overlay-active { overflow: hidden; }
+body.modal-overlay-active #modal_overlay {
+  display: grid; place-items: center; padding: 28px 16px;
+}
+#modal_overlay > .modal,
+.modal, .cbi-modal {
+  width: 100%; max-width: 680px; margin: auto; box-sizing: border-box;
+  max-height: calc(100vh - 56px); overflow: auto;
+  background: var(--u-surface); color: var(--u-text);
+  border-radius: var(--u-radius); box-shadow: var(--u-shadow-pop);
+  border: 1px solid var(--u-line); padding: 22px 24px;
+}
+#modal_overlay > .modal.cbi-modal-large { max-width: 920px; }
+.modal h4, .modal h5 { margin: 0 0 12px; }
+.modal pre {
+  max-height: 60vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+.modal .button-row, .modal .right, .modal .left {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+  padding-top: 14px; border-top: 1px solid var(--u-line);
+}
+.modal .right { justify-content: flex-end; }
+
+/* UCI changes review (opened from the "Unsaved Changes" badge / Save & Apply):
+   LuCI renders a monospace change list with <ins> additions, <del> removals
+   and <var> modifications, plus a colour legend. */
+.uci-change-list, #changes .uci-change-list {
+  display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .8rem; line-height: 1.55; padding: 12px 14px; margin: 8px 0;
+  background: var(--u-surface-2); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius-sm); overflow: auto; max-height: 50vh; white-space: pre-wrap;
+}
+.uci-change-list ins, .uci-change-legend-label ins {
+  display: block; text-decoration: none; padding: 0 6px; border-radius: 4px;
+  background: rgba(56,204,101,.14); color: var(--u-ok);
+  border-left: 3px solid var(--u-ok);
+}
+.uci-change-list del, .uci-change-legend-label del {
+  display: block; text-decoration: none; padding: 0 6px; border-radius: 4px;
+  background: rgba(240,56,59,.12); color: var(--u-crit);
+  border-left: 3px solid var(--u-crit);
+}
+.uci-change-list var, .uci-change-legend-label var {
+  display: block; font-style: normal; padding: 0 6px; border-radius: 4px;
+  background: var(--u-surface); border-left: 3px solid var(--u-text-3);
+}
+.uci-change-list var ins, .uci-change-list var del { border-left: 0; display: inline; padding: 0 3px; }
+.uci-change-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 2px; font-size: .78rem; }
+.uci-change-legend-label { display: inline-flex; align-items: center; gap: 6px; color: var(--u-text-2); }
+.uci-change-legend-label > ins, .uci-change-legend-label > del, .uci-change-legend-label > var {
+  display: inline-block; width: 16px; height: 16px; padding: 0; text-align: center; line-height: 16px;
+}
+
+/* open dropdown list must float above the sticky top bar / sub-nav */
+.cbi-dropdown[open] > ul.dropdown { z-index: 1100; }
+
+/* "Add section" row on map pages */
+.cbi-section-create {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 12px 0 2px; margin-top: 6px; border-top: 1px solid var(--u-line);
+}
+.cbi-section-create > * { margin: 0; }
+
+/* sortable table headers: pointer + direction arrow (set by LuCI's table.js) */
+.th[data-sortable-row], th[data-sortable-row],
+.th[data-sortable], th[data-sortable] { cursor: pointer; user-select: none; }
+.th[data-sort-direction="asc"]::after  { content: " \2191"; color: var(--u-accent); }
+.th[data-sort-direction="desc"]::after { content: " \2193"; color: var(--u-accent); }
+
+/* accessibility / speed: honour the user's reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------ keyboard focus
+   The theme's own controls are custom-styled, so give them one consistent,
+   high-contrast focus ring instead of relying on the browser default (which is
+   easy to miss against the dark rail). Only :focus-visible, so mouse users
+   never see it. */
+.u-nav-item:focus-visible,
+.u-mode-tab:focus-visible,
+.u-brand:focus-visible,
+.u-rail-pin:focus-visible,
+.u-burger:focus-visible,
+.u-iconbtn:focus-visible,
+.u-credit:focus-visible {
+  outline: 2px solid var(--u-accent);
+  outline-offset: 2px;
+  border-radius: var(--u-radius-xs);
+}
+.u-subnav-tab:focus-visible,
+.u-action:focus-visible,
+.btn:focus-visible, .cbi-button:focus-visible,
+button:focus-visible, a.cbi-button:focus-visible {
+  outline: 2px solid var(--u-accent);
+  outline-offset: 2px;
+}
+/* skip-to-content affordance for keyboard users */
+.u-skip {
+  position: absolute; left: -9999px; top: 8px; z-index: 1200;
+  padding: 10px 16px; border-radius: var(--u-radius-sm);
+  background: var(--u-accent); color: #fff; font-weight: 600; text-decoration: none;
+}
+.u-skip:focus { left: 8px; }
+
+/* -------------------------------------------------- previously-missing bits */
+
+/* tooltips (cbi-tooltip popup + dotted-underline trigger) */
+.cbi-tooltip-container, [data-tooltip] { position: relative; cursor: help; }
+.cbi-tooltip {
+  position: absolute; z-index: 1100; left: 0; top: 100%; margin-top: 6px;
+  max-width: 360px; padding: 8px 11px; border-radius: var(--u-radius-sm);
+  background: var(--u-surface); color: var(--u-text); border: 1px solid var(--u-line);
+  box-shadow: var(--u-shadow-2); font-size: .8rem; line-height: 1.4;
+  white-space: normal; opacity: 0; visibility: hidden; transition: opacity .15s var(--u-ease);
+}
+.cbi-tooltip-container:hover > .cbi-tooltip,
+[data-tooltip]:hover > .cbi-tooltip { opacity: 1; visibility: visible; }
+/* The shared [data-tooltip] popup lives directly under <body>: LuCI positions
+   it with inline top/left and shows it with an inline opacity:1, then removes
+   the style again. It must therefore never be visibility:hidden, parks
+   off-screen while it has no inline position, and never takes the pointer —
+   it is plain text, and a validation tip must not cover the controls (on
+   phones it otherwise sits over the dialog's tab bar). */
+body > .cbi-tooltip {
+  visibility: visible; top: 0; left: -10000px; margin-top: 4px; pointer-events: none;
+  transition: opacity .15s var(--u-ease);
+}
+body > .cbi-tooltip.error   { border-color: var(--u-crit); }
+body > .cbi-tooltip.success { border-color: var(--u-ok); }
+[data-tooltip] { text-decoration: underline dotted; text-underline-offset: 2px; }
+
+/* progress bars (memory / flash on overview, attended-sysupgrade) */
+.cbi-progressbar {
+  position: relative; height: 20px; border-radius: 999px; overflow: hidden;
+  background: var(--u-surface-2); border: 1px solid var(--u-line);
+}
+.cbi-progressbar > div {
+  height: 100%; background: var(--u-accent);
+  transition: width .4s var(--u-ease);
+}
+.cbi-progressbar::after {
+  content: attr(title); position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 600; color: var(--u-text);
+  /* the label sits over both the filled (accent) and unfilled (track) parts,
+     so give it a halo in the surface colour to stay legible over either */
+  text-shadow: 0 0 3px var(--u-surface), 0 0 3px var(--u-surface), 0 0 2px var(--u-surface);
+}
+
+/* interface badges (Network / Status pages) */
+.ifacebadge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: var(--u-radius-sm);
+  background: var(--u-surface-2); border: 1px solid var(--u-line);
+  font-size: .8rem; color: var(--u-text-2);
+}
+.ifacebadge img { width: 16px; height: 16px; opacity: .8; }
+.ifacebadge.large { padding: 6px 10px; }
+
+/* firewall zone badges */
+.zonebadge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+  border: 1px solid var(--u-line); color: var(--u-text);
+}
+.zonebadge strong { font-weight: 700; }
+.zonebadge > em { font-style: normal; color: var(--u-text-3); }
+
+/* validation: invalid inputs + value/section errors */
+.cbi-input-invalid, .cbi-value-error input, input.cbi-input-invalid,
+.cbi-value-error select, .cbi-value-error textarea {
+  border-color: var(--u-crit) !important;
+  box-shadow: 0 0 0 3px rgba(240,56,59,.14) !important;
+}
+.cbi-value-description.error, .cbi-section-error, .cbi-value-error .cbi-value-description {
+  color: var(--u-crit);
+}
+.cbi-section-error {
+  margin: 10px 0; padding: 10px 14px; border-radius: var(--u-radius-sm);
+  background: rgba(240,56,59,.08); border: 1px solid rgba(240,56,59,.35); color: var(--u-crit);
+}
+.cbi-section-error ul { margin: 4px 0 0 18px; }
+
+/* control groups (diagnostics ping/traceroute/nslookup rows, button rows) */
+.control-group {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0;
+}
+.control-group > * { margin: 0; }
+
+/* interface status boxes (Network -> Interfaces) */
+.network-status-table {
+  display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;
+}
+.ifacebox {
+  display: inline-flex; flex-direction: column; min-width: 220px; flex: 1 1 220px;
+  border: 1px solid var(--u-line); border-radius: var(--u-radius);
+  background: var(--u-surface); box-shadow: var(--u-shadow-1); overflow: hidden;
+}
+.ifacebox .ifacebox-head {
+  padding: 8px 12px; font-weight: 600; text-align: center;
+  background: var(--u-surface-2); border-bottom: 1px solid var(--u-line); color: var(--u-text);
+}
+.ifacebox .ifacebox-head.active { background: var(--u-accent); color: #fff; }
+.ifacebox .ifacebox-body { padding: 12px; font-size: .82rem; color: var(--u-text-2); }
+
+/* file browser widget */
+.cbi-filebrowser {
+  border: 1px solid var(--u-line); border-radius: var(--u-radius-sm);
+  background: var(--u-surface); box-shadow: var(--u-shadow-1);
+}
+.cbi-filebrowser ul { list-style: none; margin: 0; padding: 6px; }
+.cbi-filebrowser li > a { display: block; padding: 6px 10px; border-radius: var(--u-radius-xs); }
+.cbi-filebrowser li > a:hover { background: var(--u-surface-2); text-decoration: none; }
+
+/* badges / labels */
+
+/* generic spacing helpers LuCI uses */
+.right { text-align: right; margin-left: auto; }
+.cbi-value-helpicon img { opacity: .6; }
+hr { border: 0; border-top: 1px solid var(--u-line); margin: 18px 0; }
+
+/* ============================================================ OVERVIEW grid */
+.u-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-bottom: 18px; }
+
+/* Overview: three status cards of equal height in one row, then
+   Live Throughput beside Clients; both collapse on narrow screens */
+.u-ov-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.u-ov-cards > .u-card { display: flex; flex-direction: column; margin: 0; min-width: 0; }
+.u-ov-cards > .u-card > :not(.u-card-head) { flex: 1 1 auto; }
+.u-ov-live { grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); align-items: start; }
+.u-ov-live > .u-card { margin: 0; min-width: 0; }
+.u-ov-cards + .u-card { margin-bottom: 18px; }   /* Quick Actions: same gap as the rows around it */
+@media (max-width: 1150px) { .u-ov-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .u-ov-live { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px)  { .u-ov-cards { grid-template-columns: minmax(0, 1fr); } }
+.u-card {
+  background: var(--u-surface); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius); box-shadow: var(--u-shadow-1); padding: 18px 20px;
+  /* perf: animate only the composited transform; shadow snaps (no paint anim).
+     contain keeps the 5s live-data updates inside the card from reflowing the page. */
+  transition: transform .18s var(--u-ease);
+  contain: layout style;
+}
+.u-card:hover { box-shadow: var(--u-shadow-2); transform: translateY(-2px); }
+.u-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.u-card-ico { width: 34px; height: 34px; border-radius: var(--u-radius-sm); display: grid; place-items: center; background: var(--u-accent-soft); color: var(--u-accent); flex: 0 0 auto; }
+.u-card-ico svg { width: 18px; height: 18px; }
+.u-card-title { font-size: .82rem; font-weight: 650; color: var(--u-text-2); }
+.u-card-metric { font-size: 1.8rem; font-weight: 700; color: var(--u-text); line-height: 1; font-variant-numeric: tabular-nums; }
+.u-card-sub { font-size: .78rem; color: var(--u-text-3); margin-top: 6px; }
+.u-meter { height: 7px; border-radius: 4px; background: var(--u-line); overflow: hidden; margin-top: 12px; }
+/* fill is full-width and scaled: transform is GPU-composited, so the live
+   5s metric updates no longer force a layout pass on every refresh */
+.u-meter > i { display: block; height: 100%; width: 100%; border-radius: 4px; background: var(--u-accent);
+  transform-origin: left center; transform: scaleX(0); transition: transform .5s var(--u-ease); }
+.u-meter.ok > i { background: var(--u-ok); } .u-meter.warn > i { background: var(--u-warn); } .u-meter.crit > i { background: var(--u-crit); }
+.u-kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--u-line-2); font-size: .85rem; }
+.u-kv:last-child { border-bottom: 0; }
+.u-kv .k { color: var(--u-text-3); } .u-kv .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.u-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: 1px; }
+.u-dot.up { background: var(--u-ok); } .u-dot.down { background: var(--u-crit); }
+
+/* storage card rows */
+.u-store-row { margin: 12px 0 0; }
+.u-store-row:first-child { margin-top: 4px; }
+.u-store-top { display: flex; justify-content: space-between; gap: 10px; font-size: .82rem; margin-bottom: 5px; }
+.u-store-top > span:first-child { color: var(--u-text-2); font-weight: 600; }
+.u-store-num { color: var(--u-text-3); font-variant-numeric: tabular-nums; }
+.u-store-row .u-meter { margin-top: 0; }
+
+/* live throughput split */
+.u-thru { display: flex; gap: 12px; margin-top: 4px; }
+.u-thru-col {
+  flex: 1 1 0; text-align: center; padding: 14px 8px;
+  border: 1px solid var(--u-line); border-radius: var(--u-radius-sm); background: var(--u-surface-2);
+}
+.u-thru-head { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: .76rem; font-weight: 600; color: var(--u-text-3); }
+.u-thru-head svg { width: 13px; height: 13px; }
+.u-thru-col:first-child .u-thru-head svg { color: var(--u-ok); }
+.u-thru-col:last-child  .u-thru-head svg { color: var(--u-accent); }
+.u-thru-val { font-size: 1.6rem; font-weight: 700; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.u-thru-unit { font-size: .72rem; color: var(--u-text-3); }
+
+/* throughput stats table (peak / 24h / since restart) */
+.u-tp-stats { margin-top: 14px; border-top: 1px solid var(--u-line); padding-top: 4px; }
+.u-tp-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 6px 0; font-size: .82rem; }
+.u-tp-row + .u-tp-row { border-top: 1px solid var(--u-line); }
+.u-tp-label { color: var(--u-text-2); font-weight: 600; }
+.u-tp-down, .u-tp-up { font-variant-numeric: tabular-nums; text-align: right; min-width: 86px; color: var(--u-text); }
+.u-tp-headrow { padding-bottom: 2px; }
+.u-tp-headrow .u-tp-down, .u-tp-headrow .u-tp-up { color: var(--u-text-3); font-size: .72rem; font-weight: 600; }
+.u-tp-headrow .u-tp-down { color: var(--u-ok); }
+.u-tp-headrow .u-tp-up { color: var(--u-accent); }
+.u-tp-row + .u-tp-headrow { border-top: 0; }
+
+/* quick actions launchpad */
+.u-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 4px; }
+.u-action {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  padding: 16px 10px; border-radius: var(--u-radius-sm);
+  border: 1px solid var(--u-line); background: var(--u-surface-2);
+  color: var(--u-text-2); text-decoration: none; transition: border-color .15s var(--u-ease), background .15s var(--u-ease), transform .12s var(--u-ease);
+}
+.u-action:hover { border-color: var(--u-accent); background: var(--u-accent-soft); color: var(--u-accent); text-decoration: none; transform: translateY(-2px); }
+.u-action-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--u-surface); border: 1px solid var(--u-line); color: var(--u-accent); }
+.u-action:hover .u-action-ico { border-color: var(--u-accent); }
+.u-action-ico svg { width: 19px; height: 19px; }
+.u-action-label { font-size: .78rem; font-weight: 600; }
+
+/* ================================================================ RESPONSIVE */
+@media (max-width: 920px) {
+  /* the off-canvas mobile rail always shows the full tree, regardless of the
+     desktop collapsed preference */
+  [data-rail="collapsed"] .u-rail-nav { display: block; }
+  [data-rail="collapsed"] .u-rail-modes { display: none; }
+
+  :root { --u-rail-w: 270px; }
+  /* the shadow belongs to the OPEN drawer only — on the closed, off-screen
+     rail its blur bleeds ~30px onto the page as a dark band down the left */
+  .u-rail { transform: translateX(-100%); box-shadow: none; }
+  .u-rail.open { transform: translateX(0); box-shadow: var(--u-shadow-pop); }
+  [data-rail] .u-top, [data-rail] .u-subnav, [data-rail] .u-main, [data-rail] .u-footer { left: 0; margin-left: 0; }
+  .u-top { left: 0; }
+  .u-subnav { left: 0; }
+  .u-main, .u-footer { margin-left: 0; }
+  .u-burger { display: grid; place-items: center; }
+  .u-rail-pin { display: none; }
+  .u-main { padding-left: 16px; padding-right: 16px; }
+  .u-stats { display: none; }
+}
+@media (max-width: 600px) {
+  .cbi-value-title { flex-basis: 100%; max-width: 100%; }
+  .cbi-section, fieldset.cbi-section { padding: 16px; }
+  .u-main { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ================================================================ NETWORK MAP
+   view/uniwrt/netmap.js — Internet -> router -> networks -> devices.
+   Cards are plain HTML in a CSS grid; the connecting lines are one SVG
+   overlay measured from the cards. Live traffic is a CSS dash animation
+   (GPU-composited, no JS per frame) that stops when idle, when the user
+   asks for reduced motion, or when animation is turned off in settings. */
+.u-nm-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 16px; }
+.u-nm-summary { font-size: .92rem; font-weight: 600; color: var(--u-text-2); }
+.u-nm-legend { display: flex; align-items: center; gap: 6px; font-size: .76rem; color: var(--u-text-3); }
+.u-nm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--u-line); margin-left: 8px; }
+.u-nm-dot-on { background: var(--u-ok); }
+
+.u-nm-tree {
+  position: relative; display: grid; align-items: center;
+  grid-template-columns: 172px minmax(190px, 230px) minmax(0, 1fr);
+  column-gap: 52px; row-gap: 18px; padding: 4px 0 8px;
+}
+.u-nm-links { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.u-nm-wire { fill: none; stroke: var(--u-line); stroke-width: 2; }
+.u-nm-flow {
+  fill: none; stroke: var(--u-accent); stroke-width: 2.4; stroke-linecap: round;
+  stroke-dasharray: 2 10; animation: u-nm-dash 1.2s linear infinite;
+}
+.u-nm-flow.idle { opacity: 0; animation: none; }
+.u-nm-flow.low  { animation-duration: 2.4s; opacity: .75; }
+.u-nm-flow.mid  { animation-duration: 1.2s; }
+.u-nm-flow.high { animation-duration: .6s; }
+.u-nm-flow.down { opacity: 1; animation: none; stroke: var(--u-text-3); stroke-dasharray: 4 6; stroke-width: 2; }
+@keyframes u-nm-dash { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+.u-nm-paused .u-nm-flow { animation-play-state: paused; }   /* scrolled out of view */
+.u-nm-still .u-nm-flow:not(.idle):not(.down) { animation: none; stroke-dasharray: none; opacity: .55; }
+
+.u-nm-node {
+  position: relative; z-index: 1; min-width: 0;
+  background: var(--u-surface); border: 1px solid var(--u-line); border-radius: var(--u-radius);
+  box-shadow: var(--u-shadow-1); padding: 14px;
+}
+.u-nm-core { grid-column: 1; align-self: center; display: flex; flex-direction: column; gap: 34px; position: relative; z-index: 1; }
+.u-nm-tall > .u-nm-core { align-self: start; margin-top: 12px; }
+.u-nm-inet, .u-nm-router { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 12px; }
+.u-nm-router .u-nm-node-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.u-nm-group { grid-column: 2; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.u-nm-group > .u-nm-node-ico { grid-row: span 2; }
+.u-nm-group > .u-nm-node-rate, .u-nm-group > .u-nm-ports { grid-column: 1 / -1; }
+.u-nm-node.is-down { opacity: .6; }
+.u-nm-node .u-nm-node-ico {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--u-accent-soft); color: var(--u-accent);
+}
+.u-nm-node .u-nm-node-ico svg { width: 21px; height: 21px; }
+.u-nm-inet.is-down .u-nm-node-ico { background: rgba(240,56,59,.12); color: var(--u-crit); }
+.u-nm-node-title { font-size: .98rem; font-weight: 700; color: var(--u-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.u-nm-node-sub { font-size: .8rem; color: var(--u-text-2); white-space: normal; overflow-wrap: anywhere; line-height: 1.3; max-width: 100%; }
+.u-nm-node-rate { font-size: .82rem; font-weight: 650; color: var(--u-accent); font-variant-numeric: tabular-nums; min-height: 1em; }
+.u-nm-group > .u-nm-node-rate { margin-top: 6px; }
+.u-nm-ports { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.u-nm-port {
+  font-size: .74rem; font-weight: 600; padding: 2px 7px; border-radius: 999px;
+  background: var(--u-surface-2); color: var(--u-text-3); border: 1px solid var(--u-line);
+}
+.u-nm-port.is-up { color: var(--u-ok); border-color: rgba(56,204,101,.45); background: rgba(56,204,101,.10); }
+.u-nm-port.is-uplink { color: var(--u-accent); border-color: var(--u-accent); background: var(--u-accent-soft); }
+
+.u-nm-lane {
+  grid-column: 3; position: relative; z-index: 1; align-self: stretch;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; align-content: center;
+  padding: 10px; border-radius: var(--u-radius); background: var(--u-surface-2); border: 1px dashed var(--u-line);
+}
+.u-nm-empty { font-size: .86rem; color: var(--u-text-2); padding: 6px 4px; }
+
+/* device chips (reset the theme's generic button look) */
+.u-nm-client {
+  position: relative; display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+  width: 100%; min-width: 0; padding: 8px 10px; margin: 0; overflow: visible;
+  background: var(--u-surface); color: var(--u-text); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius-sm); box-shadow: none; text-align: left;
+  font: inherit; font-weight: 400; line-height: 1.25; cursor: pointer;
+}
+.u-nm-client:hover { border-color: var(--u-accent); background: var(--u-surface); transform: none; }
+.u-nm-client:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--u-accent-soft); border-color: var(--u-accent); }
+.u-nm-client > .u-nm-ico {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--u-accent-soft); color: var(--u-accent);
+}
+.u-nm-ico svg { width: 19px; height: 19px; display: block; }
+.u-nm-client-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.u-nm-client-name { font-size: .92rem; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.u-nm-client-sub { font-size: .8rem; color: var(--u-text-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; margin-top: 2px; }
+.u-nm-client-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: 0 0 auto; }
+.u-nm-client-rate { font-size: .78rem; font-weight: 650; color: var(--u-accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* activity dot after the device name: static on purpose. A pulsing dot per
+   device cost as much browser work as all the traffic lines together
+   (measured), so "active" is a solid green dot with a soft halo instead. */
+.u-nm-act {
+  display: inline-block; width: 7px; height: 7px; margin-left: .45em;
+  border-radius: 50%; background: var(--u-line); vertical-align: .12em; flex: none;
+}
+.u-nm-act.is-on { background: var(--u-ok); box-shadow: 0 0 0 3px rgba(56, 204, 101, .18); }
+
+/* Wi-Fi signal bars */
+.u-nm-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; margin-top: 4px; }
+.u-nm-bars > i { width: 3px; border-radius: 1px; background: var(--u-line); }
+.u-nm-bars > i:nth-child(1) { height: 4px; } .u-nm-bars > i:nth-child(2) { height: 6px; }
+.u-nm-bars > i:nth-child(3) { height: 8px; } .u-nm-bars > i:nth-child(4) { height: 11px; }
+.u-nm-bars.b1 > i:nth-child(-n+1), .u-nm-bars.b2 > i:nth-child(-n+2),
+.u-nm-bars.b3 > i:nth-child(-n+3), .u-nm-bars.b4 > i:nth-child(-n+4) { background: var(--u-ok); }
+.u-nm-bars.b1 > i:nth-child(1) { background: var(--u-warn); }
+
+/* device panel */
+.u-nm-detail { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
+.u-nm-detail-ico .u-nm-ico { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; background: var(--u-accent-soft); color: var(--u-accent); }
+.u-nm-detail-ico .u-nm-ico svg { width: 30px; height: 30px; }
+.u-nm-detail-info { flex: 1 1 auto; min-width: 0; display: grid; gap: 6px; }
+.u-nm-kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; font-size: .82rem; }
+.u-nm-kv > span:first-child { color: var(--u-text-3); }
+.u-nm-kv > span:last-child { overflow-wrap: anywhere; }
+.u-nm-field { display: grid; gap: 6px; margin: 0 0 14px; }
+.u-nm-field > span { font-size: .8rem; font-weight: 650; color: var(--u-text-2); }
+.u-nm-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.u-nm-icon-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; margin: 0;
+  background: var(--u-surface); color: var(--u-text-2); border: 1px solid var(--u-line);
+  border-radius: var(--u-radius-sm); font: inherit; font-size: .7rem; font-weight: 500; line-height: 1.2;
+  text-align: center; cursor: pointer; box-shadow: none; overflow: visible;
+}
+.u-nm-icon-tile:hover { border-color: var(--u-accent); background: var(--u-surface); color: var(--u-text); transform: none; }
+.u-nm-icon-tile.is-sel { border-color: var(--u-accent); background: var(--u-accent-soft); color: var(--u-accent); font-weight: 650; }
+.u-nm-icon-tile .u-nm-ico svg { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .u-nm-flow:not(.idle):not(.down) { animation: none; stroke-dasharray: none; opacity: .55; }
+}
+/* tablets and phones: one column; lines run down the left edge */
+@media (max-width: 1100px) {
+  .u-nm-tree { grid-template-columns: minmax(0, 1fr); row-gap: 26px; }
+  .u-nm-tree > .u-nm-node, .u-nm-tree > .u-nm-lane, .u-nm-tree > .u-nm-core { grid-column: 1 !important; grid-row: auto !important; }
+  .u-nm-core { gap: 26px; align-self: start; }
+  .u-nm-inet, .u-nm-router { flex-direction: row; text-align: left; align-self: flex-start; min-width: 240px; max-width: 100%; gap: 12px; }
+  .u-nm-inet > .u-nm-node-rate, .u-nm-router > .u-nm-node-sub { margin-left: auto; }
+  .u-nm-lane { margin-left: 22px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+}
+@media (max-width: 600px) {
+  .u-nm-lane { margin-left: 12px; grid-template-columns: minmax(0, 1fr); }
+  .u-nm-detail { flex-direction: column; }
+  .u-nm-kv { grid-template-columns: 105px minmax(0, 1fr); }
+}

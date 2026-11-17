@@ -1,0 +1,139 @@
+{# luci-theme-uniwrt — main page footer template #}
+{%
+  import { readfile, access } from 'fs';
+  import { cursor } from 'uci';
+  const uniwrt_version = trim(readfile('/usr/share/ucode/luci/template/themes/uniwrt/version')) ?? '?';
+  let u_status_bar = '1';
+  let _cfg = cursor();
+  if (access('/etc/config/uniwrt'))
+    u_status_bar = _cfg.get_first('uniwrt', 'global', 'status_bar') ?? '1';
+%}
+{% if (!blank_page): %}
+    </div>
+  </div>
+</main>
+
+<footer class="u-footer">
+  <a class="u-credit" href="https://github.com/ox1d3x3/uniwrt-luci" target="_blank" rel="noopener">OX1d3x3 X UniWRT V{{ uniwrt_version }}</a>
+</footer>
+
+{# luci.js and the L instance come from luci-base's header.ut on every
+   supported release (23.05 / 24.10 / 25.12); loading it again here would
+   replace window.LuCI / window.XHR with a second copy whose poller nothing
+   runs, and download ~120 KB twice per page. #}
+<script>
+  /* L.require() and the view loader add ?v=<resource_version> to every
+     JS URL, and luci-base only changes that on a luci-base upgrade. Tag it
+     with the theme version too, so the browser fetches the new
+     menu/status/view scripts after a theme update instead of serving
+     stale cached ones (a hard reload did not always help). */
+  if (L.env) L.env.resource_version = (L.env.resource_version || '') + {{ sprintf('%J', '-u' + uniwrt_version) }};
+  L.require('menu-uniwrt');
+{% if (u_status_bar == '1'): %}
+  L.require('status-uniwrt');
+{% endif %}
+{% if (join('/', ctx.request_path) == 'admin/system/package-manager'): %}
+  L.require('pkgall-uniwrt');   /* "Upgrade all" on System -> Software */
+{% endif %}
+
+  if (history.scrollRestoration) history.scrollRestoration = 'manual';
+
+  /* a page restored by Back/Forward comes back exactly as it was left —
+     including the fade-out started by the menu's navigation animation */
+  window.addEventListener('pageshow', function(ev) {
+    if (ev.persisted) document.body.classList.remove('page-leaving');
+  });
+
+  /* ---- rail open/close (mobile) + collapse/pin (desktop) ---- */
+  (function(){
+    var rail   = document.getElementById('u-rail');
+    var scrim  = document.getElementById('u-scrim');
+    var burger = document.getElementById('u-burger');
+    var pin    = document.getElementById('u-rail-pin');
+    var html   = document.documentElement;
+
+    function openRail(){ if(rail){rail.classList.add('open');} if(scrim){scrim.classList.add('show');} }
+    function closeRail(){ if(rail){rail.classList.remove('open');} if(scrim){scrim.classList.remove('show');} }
+
+    if (burger) burger.addEventListener('click', function(){
+      rail && rail.classList.contains('open') ? closeRail() : openRail();
+    });
+    if (scrim) scrim.addEventListener('click', closeRail);
+
+    if (pin) {
+      var pinLabels = { collapsed: {{ sprintf('%J', _('Expand menu')) }}, expanded: {{ sprintf('%J', _('Collapse menu')) }} };
+      function syncPinLabel(){
+        var t = pinLabels[html.getAttribute('data-rail') === 'collapsed' ? 'collapsed' : 'expanded'];
+        pin.title = t; pin.setAttribute('aria-label', t);
+      }
+      function setRail(state){
+        html.setAttribute('data-rail', state);
+        try { localStorage.setItem('uniwrt-rail', state); } catch(e){}
+        syncPinLabel();
+      }
+      syncPinLabel();
+      pin.addEventListener('click', function(){
+        setRail(html.getAttribute('data-rail') === 'collapsed' ? 'expanded' : 'collapsed');
+      });
+      /* Collapsed rail is one big expand control: clicking anything inside it
+         (logo or a category icon) re-expands the full menu instead of
+         navigating. Desktop only — on mobile the rail is an off-canvas
+         overlay driven by the burger. */
+      if (rail) rail.addEventListener('click', function(ev){
+        if (html.getAttribute('data-rail') !== 'collapsed') return;
+        if (!window.matchMedia('(min-width: 921px)').matches) return;
+        /* a category icon: expand AND follow the link, so the page loads with
+           that category's sub-options in the open sidebar */
+        var tab = ev.target && ev.target.closest && ev.target.closest('.u-mode-tab');
+        if (tab) { setRail('expanded'); return; }
+        /* logo / arrow / empty rail: just expand */
+        ev.preventDefault();
+        ev.stopPropagation();
+        setRail('expanded');
+      }, true);
+    }
+
+    /* (rail state is restored pre-paint by the header script) */
+  })();
+
+  /* ---- theme toggle: auto -> light -> dark ---- */
+  (function(){
+    var btn = document.getElementById('u-theme-toggle');
+    if (!btn) return;
+    var order = ['auto','light','dark'];
+    var labels = { auto:'Theme: Auto', light:'Theme: Light', dark:'Theme: Dark' };
+    function apply(mode){
+      var d = document.getElementById('u-dark');
+      var m = document.getElementById('u-meta-color');
+      document.documentElement.dataset.theme = mode;
+      if (d) d.media = mode==='dark' ? 'all' : (mode==='light' ? 'not all' : '(prefers-color-scheme: dark)');
+      var dark = mode==='dark' || (mode==='auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (m) m.content = dark ? '#131416' : '#ffffff';
+      btn.title = labels[mode]; btn.setAttribute('aria-label', labels[mode]);
+    }
+    apply(document.documentElement.dataset.theme || 'auto');
+    btn.addEventListener('click', function(){
+      var cur = document.documentElement.dataset.theme || 'auto';
+      var next = order[(order.indexOf(cur)+1) % 3];
+      try { localStorage.setItem('uniwrt-theme', next); } catch(e){}
+      apply(next);
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e){
+      if ((document.documentElement.dataset.theme||'auto') !== 'auto') return;
+      var m = document.getElementById('u-meta-color');
+      if (m) m.content = e.matches ? '#131416' : '#ffffff';
+    });
+  })();
+
+  /* In-page CBI form tabs (System -> General/Logging/Time Sync, etc.) are left
+     in place and styled by cascade.css as a tab bar. LuCI's own ui.tabs JS
+     handles switching by toggling data-tab-active; the theme only needs the
+     correct hide rule, so no JS relocation happens here (relocating broke
+     nested tab groups and tab switching). Dispatcher-tree tabs are still
+     rendered into #u-subnav by menu-uniwrt.js. */
+
+</script>
+{% endif %}
+{% if (js): %}<script>{{ js }}</script>{% endif %}
+</body>
+</html>

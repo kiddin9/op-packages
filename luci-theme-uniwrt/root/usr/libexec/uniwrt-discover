@@ -1,0 +1,43 @@
+#!/bin/sh
+# UniWRT Network Map: learn the IP addresses of devices on an access point.
+#
+# An access point behind a main router never sees DHCP, so it only knows the
+# IP of devices it has talked to. Pinging each address of the LAN makes the
+# kernel resolve it with ARP; devices answer ARP even when they ignore ping,
+# and the answer lands in the neighbour table, which LuCI's host hints read.
+#
+# Takes no arguments. Works only on the subnet of the interface holding the
+# default route, only for /24 or smaller, at most once every 5 minutes, with
+# at most 16 pings in flight, in the background (returns immediately).
+
+STAMP=/tmp/uniwrt-discover.stamp
+now=$(date +%s)
+last=$(cat "$STAMP" 2>/dev/null || echo 0)
+case "$last" in *[!0-9]*|'') last=0 ;; esac
+[ $((now - last)) -lt 300 ] && exit 0
+
+dev=$(ip -4 route show default 2>/dev/null | sed -n 's/.* dev \([^ ]*\).*/\1/p' | head -n 1)
+[ -n "$dev" ] || exit 0
+cidr=$(ip -4 -o addr show dev "$dev" 2>/dev/null | awk '{ print $4; exit }')
+addr=${cidr%/*}; len=${cidr#*/}
+case "$len" in 24|25|26|27|28|29|30) ;; *) exit 0 ;; esac
+case "$addr" in *.*.*.*) ;; *) exit 0 ;; esac
+
+echo "$now" > "$STAMP"
+
+last_octet=${addr##*.}; prefix=${addr%.*}
+size=$((1 << (32 - len)))
+first=$(( (last_octet / size) * size + 1 ))
+end=$(( first + size - 3 ))
+
+(
+	i=$first; n=0
+	while [ "$i" -le "$end" ]; do
+		[ "$i" != "$last_octet" ] && { ping -c 1 -W 1 -q "$prefix.$i" >/dev/null 2>&1 & n=$((n + 1)); }
+		[ "$n" -ge 16 ] && { wait; n=0; }
+		i=$((i + 1))
+	done
+	wait
+) </dev/null >/dev/null 2>&1 &
+
+exit 0

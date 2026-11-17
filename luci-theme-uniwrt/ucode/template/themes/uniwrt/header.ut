@@ -1,0 +1,182 @@
+{#
+ luci-theme-uniwrt — main page header template
+ Network-controller-style standalone LuCI shell for OpenWrt 23.05 / 24.10 / 25.x
+-#}
+
+{%
+  import { readfile, access } from 'fs';
+  import { cursor } from 'uci';
+  import { getuid, getspnam } from 'luci.core';
+
+  const boardinfo = ubus.call('system', 'board');
+  const hostname = striptags(boardinfo?.hostname ?? 'OpenWrt');
+
+  http.prepare_content('text/html; charset=UTF-8');
+
+  /* ---- defaults ---- */
+  let u_mode          = 'auto';
+  let u_accent        = '#006fff';
+  let u_dark_accent   = '#4797ff';
+  let u_status_bar    = '1';
+  let u_font_size     = '14';
+  let u_rail_collapsed= '0';
+  let u_overview      = '1';
+  let u_menu_expanded = '0';
+
+  let cfg = cursor();
+  if (access('/etc/config/uniwrt')) {
+    u_mode           = cfg.get_first('uniwrt', 'global', 'mode')           ?? u_mode;
+    u_accent         = cfg.get_first('uniwrt', 'global', 'accent')         ?? u_accent;
+    u_dark_accent    = cfg.get_first('uniwrt', 'global', 'dark_accent')    ?? u_dark_accent;
+    u_status_bar     = cfg.get_first('uniwrt', 'global', 'status_bar')     ?? u_status_bar;
+    u_font_size      = cfg.get_first('uniwrt', 'global', 'font_size')      ?? u_font_size;
+    u_rail_collapsed = cfg.get_first('uniwrt', 'global', 'rail_collapsed') ?? u_rail_collapsed;
+    u_overview       = cfg.get_first('uniwrt', 'global', 'overview')       ?? u_overview;
+    u_menu_expanded  = cfg.get_first('uniwrt', 'global', 'menu_expanded')  ?? u_menu_expanded;
+  }
+
+  /* ---- validate ----
+     These values are written verbatim into <style> and <script> below, so
+     anything that is not exactly an expected value falls back to its default.
+     /etc/config/uniwrt is root-writable, but the theme must never be the step
+     that turns a bad config value into injected markup. */
+  const u_hex = (v, d) => (type(v) == 'string' && match(v, /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/)) ? v : d;
+  const u_one = (v, allowed, d) => (index(allowed, v) >= 0) ? v : d;
+  u_mode           = u_one(u_mode, [ 'auto', 'light', 'dark' ], 'auto');
+  u_accent         = u_hex(u_accent, '#006fff');
+  u_dark_accent    = u_hex(u_dark_accent, '#4797ff');
+  u_status_bar     = u_one(u_status_bar, [ '0', '1' ], '1');
+  u_font_size      = u_one(u_font_size, [ '12', '13', '14', '15', '16', '17', '18' ], '14');
+  u_rail_collapsed = u_one(u_rail_collapsed, [ '0', '1' ], '0');
+  u_overview       = u_one(u_overview, [ '0', '1' ], '1');
+  u_menu_expanded  = u_one(u_menu_expanded, [ '0', '1' ], '0');
+
+  /* theme version doubles as the static-asset cache token: every release gets
+     fresh URLs, so browsers can never serve a stale stylesheet after upgrade */
+  const uniwrt_version = trim(readfile('/usr/share/ucode/luci/template/themes/uniwrt/version')) ?? '0';
+
+  /* dark.css is injected inline so the theme can switch instantly client-side
+     without a network round-trip (media-attribute toggling, argon/glass style) */
+  const dark_css = readfile('/www/luci-static/uniwrt/css/dark.css') ?? '';
+
+  /* media attribute that decides when the dark stylesheet applies */
+  let dark_media = '(prefers-color-scheme: dark)';
+  if (u_mode == 'dark')  dark_media = 'all';
+  if (u_mode == 'light') dark_media = 'not all';
+-%}
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}" data-rail="{{ u_rail_collapsed == '1' ? 'collapsed' : 'expanded' }}" data-uniwrt-overview="{{ u_overview == '0' ? '0' : '1' }}" data-uniwrt-menu="{{ u_menu_expanded == '1' ? 'expanded' : 'current' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" id="u-meta-color" content="{{ u_mode == 'light' ? '#ffffff' : '#131416' }}">
+  <title>{{ hostname }}{{ node?.title ? ` - ${striptags(node.title)}` : '' }} - LuCI</title>
+  <link rel="icon" href="{{ media }}/img/uniwrt-logo.svg?v={{ uniwrt_version }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ media }}/css/cascade.css?v={{ uniwrt_version }}">
+  <style id="u-dark" media="{{ dark_media }}">{{ dark_css }}</style>
+  <style>
+    :root{
+      --u-font-size:{{ u_font_size }}px;
+      --u-accent:{{ u_accent }};
+      --u-accent-strong:{{ u_accent }};
+    }
+    [data-theme="dark"]{ --u-accent:{{ u_dark_accent }}; }
+    @media (prefers-color-scheme: dark){ html:not([data-theme="light"]){ --u-accent:{{ u_dark_accent }}; } }
+  </style>
+  <script>
+  /* Resolve theme before paint to avoid a flash. Precedence: user override
+     stored in localStorage, otherwise the server-side config default. */
+  (function(){
+    var serverMode={{ u_mode == 'dark' ? '"dark"' : (u_mode == 'light' ? '"light"' : '"auto"') }};
+    var s; try{ s=localStorage.getItem('uniwrt-theme'); }catch(e){}
+    var mode=s||serverMode;
+    var d=document.getElementById('u-dark');
+    var m=document.getElementById('u-meta-color');
+    function isDark(){ return mode==='dark'||(mode==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches); }
+    if(d){ d.media = mode==='dark' ? 'all' : (mode==='light' ? 'not all' : '(prefers-color-scheme: dark)'); }
+    document.documentElement.dataset.theme=mode;
+    if(m) m.content=isDark()?'#131416':'#ffffff';
+    /* restore the persisted rail state BEFORE first paint too, so a locally
+       collapsed rail doesn't flash expanded and shift the layout on load */
+    try{ var r=localStorage.getItem('uniwrt-rail');
+         if(r==='collapsed'||r==='expanded') document.documentElement.setAttribute('data-rail', r); }catch(e){}
+  })();
+  </script>
+  {% if (node?.css): %}<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">{% endif %}
+  {% if (css): %}<style>{{ css }}</style>{% endif %}
+  <script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
+  <script src="{{ resource }}/cbi.js"></script>
+</head>
+<body class="lang_{{ dispatcher.lang }}" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
+
+{% if (!blank_page): %}
+<a class="u-skip" href="#maincontent">{{ _('Skip to main content') }}</a>
+<div class="u-scrim" id="u-scrim"></div>
+
+<aside class="u-rail" id="u-rail">
+  <div class="u-rail-head">
+    <a class="u-brand" href="{{ dispatcher.build_url('admin') }}">
+      <img class="u-brand-mark" src="{{ media }}/img/uniwrt-logo.svg?v={{ uniwrt_version }}" alt="">
+      <span class="u-brand-text">
+        <span class="u-brand-name">UniWRT</span>
+        <span class="u-brand-host">{{ hostname }}</span>
+      </span>
+    </a>
+    <button class="u-rail-pin" id="u-rail-pin" type="button" title="{{ _('Collapse menu') }}" aria-label="{{ _('Collapse menu') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+  </div>
+
+  <div class="u-rail-modes" id="u-rail-modes"></div>
+  <nav class="u-rail-nav" id="u-rail-nav"></nav>
+</aside>
+
+<header class="u-top" id="u-top">
+  <button class="u-burger" id="u-burger" type="button" aria-label="{{ _('Toggle menu') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <div class="u-top-title" id="u-top-title"></div>
+
+  <div class="u-top-spacer"></div>
+
+  {% if (u_status_bar == '1'): %}<div class="u-stats" id="u-stats"></div>{% endif %}
+
+  {# LuCI core (ui.showIndicator) injects system badges here: the clickable
+     "Unsaved Changes" badge, the poll Refreshing/Paused state, etc. The id
+     MUST be "indicators" — every reference theme provides it. #}
+  <div class="u-indicators" id="indicators"></div>
+
+  <button class="u-iconbtn u-theme-toggle" id="u-theme-toggle" type="button" title="{{ _('Toggle theme') }}" aria-label="{{ _('Toggle theme') }}">
+    <svg class="u-ico-auto"  viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7.25"/><path d="M9 1.75A7.25 7.25 0 019 16.25Z" fill="currentColor" stroke="none"/></svg>
+    <svg class="u-ico-light" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.4"/><line x1="9" y1="1" x2="9" y2="3"/><line x1="9" y1="15" x2="9" y2="17"/><line x1="2.9" y1="2.9" x2="4.3" y2="4.3"/><line x1="13.7" y1="13.7" x2="15.1" y2="15.1"/><line x1="1" y1="9" x2="3" y2="9"/><line x1="15" y1="9" x2="17" y2="9"/><line x1="2.9" y1="15.1" x2="4.3" y2="13.7"/><line x1="13.7" y1="4.3" x2="15.1" y2="2.9"/></svg>
+    <svg class="u-ico-dark"  viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 10A7 7 0 017 1.5 7.5 7.5 0 1015.5 10Z"/></svg>
+  </button>
+
+  <a class="u-iconbtn u-logout" id="u-logout" href="{{ dispatcher.build_url('admin/logout') }}" title="{{ _('Logout') }}" aria-label="{{ _('Logout') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </a>
+</header>
+
+<nav class="u-subnav" id="u-subnav"></nav>
+
+<main class="u-main" id="u-main">
+  <div class="u-content" id="content">
+    <div id="maincontent">
+      {% if (getuid() == 0 && getspnam('root')?.pwdp === ''): %}
+      <div class="alert-message warning">
+        <h4>{{ _('No password set!') }}</h4>
+        <p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+        {% if (dispatcher.lookup("admin/system/admin")): %}
+        <div class="right"><a class="btn cbi-button-positive" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <noscript>
+        <div class="alert-message warning">
+          <h4>{{ _('JavaScript required!') }}</h4>
+          <p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+        </div>
+      </noscript>
+{% endif %}

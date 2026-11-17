@@ -1,0 +1,28 @@
+config global 'global'
+	# Theme mode: auto (follow system) | light | dark
+	option mode 'auto'
+	# Accent colour used in light mode
+	option accent '#006fff'
+	# Accent colour used in dark mode
+	option dark_accent '#4797ff'
+	# Show the live status bar (CPU / RAM / throughput / uptime) in the header
+	option status_bar '1'
+	# Show the custom UniWRT overview dashboard menu entry
+	option overview '1'
+	# Base font size in px
+	option font_size '14'
+	# Start with the navigation rail collapsed on desktop
+	option rail_collapsed '0'
+	# Open every section of the side menu, not just the current one
+	option menu_expanded '0'
+	# Network map: refresh interval in seconds (3-60) and live traffic animation
+	option netmap_interval '5'
+	option netmap_animate '1'
+	# Access points: ping-sweep the LAN every 5 min while the map is open to learn device IPs
+	option netmap_discover '1'
+
+# Device names / icons chosen on the Network Map are stored as:
+# config host 'h_aabbccddeeff'
+#	option mac 'AA:BB:CC:DD:EE:FF'
+#	option name 'Living room TV'
+#	option icon 'tv'

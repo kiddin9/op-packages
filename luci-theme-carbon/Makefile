@@ -10,7 +10,7 @@ LUCI_DEPENDS:=+luci-base +curl +ca-bundle +flock
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=1.1.6
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 PKG_LICENSE:=Apache-2.0
 
 # Keep modern CSS/JS intact (csstidy/jsmin do not understand
