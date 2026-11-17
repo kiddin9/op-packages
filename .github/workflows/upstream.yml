@@ -193,6 +193,7 @@ jobs:
         git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
         git_clone https://github.com/lwb1978/luci-app-timewol
+        git_clone https://github.com/ox1d3x3/uniwrt-luci && mv -f uniwrt-luci/luci-theme-uniwrt ./;rm -rf uniwrt-luci
         ) &
         (
         git_clone https://github.com/honwen/luci-app-aliddns
