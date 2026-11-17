@@ -8,7 +8,7 @@ LUCI_EXTRA_DEPENDS:=51ddns-agent (>=0.6.5-r3)
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=0.1.5
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Jinshuan Wang <21hkcloud@gmail.com>
 
