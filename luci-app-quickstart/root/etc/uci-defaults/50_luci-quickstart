@@ -12,7 +12,6 @@ sed -i -E '
   s/\([^()]*\.matches\)!=null\?[^:]*:window\.matchMedia\([^)]*\)\.matches/document.documentElement.dataset.darkmode!=null?document.documentElement.dataset.darkmode==="true":&/
   s/\((Ld)\),[a-zA-Z0-9_$]+\.observe\(document\.body,\{attributes:!0,attributeFilter:\["theme"\]\}\)/(m=>{m.some(r=>\/^data-.*-mode$\/.test(r.attributeName))\&\&\1(),m.some(r=>r.attributeName==="data-darkmode")\&\&Dd()}),wl.observe(document.documentElement,{attributes:!0})/
 
-
   # 3. 去除网络连接卡片中的软件源检测与配置
   s/[a-zA-Z0-9_$]+\.networkInfo/&==="softSourceFailed"?"netSuccess":&/
   s/,"softSourceFailed"|,softSourceFailed:\[[^]]*\]|:[^:?]*==="softSourceFailed"\?"source"//g
