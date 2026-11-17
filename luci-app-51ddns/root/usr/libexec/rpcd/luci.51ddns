@@ -1,0 +1,94 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+
+read_device_identity() {
+	status_identity_state='unavailable'
+	status_device_id=''
+	if [ -L /etc/51ddns/device.id ] || { [ -e /etc/51ddns/device.id ] && [ ! -f /etc/51ddns/device.id ]; }; then
+		return
+	fi
+	if [ ! -e /etc/51ddns/device.id ]; then
+		status_identity_state='empty'
+		return
+	fi
+	status_device_id="$(cat /etc/51ddns/device.id 2>/dev/null)" || return
+	if [ -z "$status_device_id" ]; then
+		status_identity_state='empty'
+	elif [ "${#status_device_id}" -eq 36 ] && printf '%s\n' "$status_device_id" | grep -Eq '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'; then
+		status_identity_state='saved'
+	else
+		status_device_id=''
+	fi
+}
+
+print_status() {
+	status_has_plan=0
+	status_product_name=''
+	status_expires_at=''
+	status_error_code=''
+	status_updated_at=''
+	status_payload=''
+
+	if [ -s /var/lib/51ddns/status.json ]; then
+		status_payload="$(cat /var/lib/51ddns/status.json 2>/dev/null)"
+		if json_load "$status_payload" 2>/dev/null; then
+			json_get_var status_error_code error_code
+			json_get_var status_updated_at updated_at
+			if json_select plan >/dev/null 2>&1; then
+				status_has_plan=1
+				json_get_var status_product_name product_name
+				json_get_var status_expires_at expires_at
+			fi
+		fi
+		json_cleanup
+	fi
+
+	json_init
+	read_device_identity
+	json_add_string identity_state "$status_identity_state"
+	if [ "$status_identity_state" = 'saved' ]; then
+		json_add_string saved_device_id "$status_device_id"
+	fi
+	if [ "$status_has_plan" = 1 ]; then
+		json_add_object plan
+		json_add_string product_name "$status_product_name"
+		json_add_string expires_at "$status_expires_at"
+		json_close_object
+	fi
+	if [ "$status_error_code" = 'device_quota_exceeded' ] && [ -n "$status_updated_at" ]; then
+		json_add_string error_code "$status_error_code"
+		json_add_string updated_at "$status_updated_at"
+		status_router_time="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
+		[ -n "$status_router_time" ] && json_add_string router_time "$status_router_time"
+	fi
+	json_dump
+	json_cleanup
+}
+
+case "$1" in
+	list)
+		echo '{"status":{},"info":{}}'
+		;;
+	call)
+		case "$2" in
+			status)
+				print_status
+				;;
+			info)
+				version="$(/usr/bin/51ddns-agent --version 2>/dev/null | head -n 1)"
+				json_init
+				json_add_string version "$version"
+				json_dump
+				json_cleanup
+				;;
+			*)
+				echo '{"error":"method not found"}'
+				exit 1
+				;;
+		esac
+		;;
+	*)
+		exit 1
+		;;
+esac

@@ -19,7 +19,7 @@ sed -i -E '
   s/get favorites\(\)\{return ([^}]*\.favorites)\}/get favorites(){return \1.filter(y=>!["tool-source","tool-firmware","tool-sandbox"].includes(y))}/
   s/,[a-zA-Z0-9_$]+\("button",\{[^}]*"data-shortcut-restore":""\},[^}]*\("恢复默认八项","Restore eight defaults"\)\),1\)//
 
-  s,admin/store,admin/services/store, 
+  s,admin/store/pages,admin/services/store/pages,g
 
   # 5. 自定义链接支持 / 开头的绝对路径（保存时转为 http://localhost/... 以通过后端校验，展示与跳转时还原为 /...）
   s/!\/\^https\?:\\\/\\\/\/\.test\(([a-zA-Z0-9_$]+\.url)\)/(\/^\\\/(?!\\\/)\/.test(\1)\&\&(\1="http:\/\/localhost"+\1),&)/

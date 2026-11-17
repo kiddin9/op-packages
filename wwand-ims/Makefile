@@ -7,22 +7,31 @@
 # Sources live in https://github.com/ddimension/wwand-ims, two lines like
 # wwand: feed main pins its `main` (vX.Y.0-dev marker -> X.Y.0_preN), feed
 # stable its release tags. Pin with `scripts/bump-source.sh wwand-ims <ref>`.
-# A new module under sipd/ or ue/ needs its install line below.
+# What ships, and under which name, is the source's CMakeLists.txt: a new
+# module is listed there, not here.
 #
-# GPL-2.0-only, and pure ucode + scripts (no compiled code): the NETLINK_XFRM
+# GPL-2.0-only, and pure ucode + scripts (no native code): the NETLINK_XFRM
 # binding sec-agree needs lives in wwand's own native module (wwand_io.so,
 # sub-namespace xfrm), so wwand-ims just DEPENDS on wwand. A future mcfg C tool
 # (mcfg_tools) is GPL-3.0 and ships as a SEPARATE package wwand-ims-mcfg with
-# its own binaries (docs/design.md §7) — nothing GPL-3.0 or compiled is built
-# here. The ucode tree ships as source (the wwand daemon loads the plugin; the
-# sipd init loads the UE modules with `ucode -L`), like wwand-ipa.
+# its own binaries (docs/design.md §7) — nothing GPL-3.0 or native is built
+# here.
+#
+# The UE and sipd modules and the two programs ship PRECOMPILED to bytecode,
+# as wwand's tree does (the source's CMakeLists.txt, wwand's approach): an SDK
+# whose ucode cannot emit it (older than 2026.07.09) ships the sources instead,
+# and so does CONFIG_WWAND_UCODE_SOURCE, wwand's developer switch, which covers this
+# package too. The require()d scripts (plugin, wwandctl ims, sipd_core,
+# sipd_sip, ims_mcfg) are source either way. Bytecode is tied to the ucode
+# revision it was compiled with, as for wwand: the SDK's host ucode compiles
+# it, the same build that compiles wwand.
 #
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre3
-PKG_RELEASE:=5
+PKG_VERSION:=0.2.0_pre5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
@@ -32,7 +41,17 @@ PKG_MIRROR_HASH:=skip
 PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=
 
+# the host ucode is the bytecode compiler (as in wwand/Makefile)
+PKG_BUILD_DEPENDS:=ucode/host
+PKG_CONFIG_DEPENDS:=CONFIG_WWAND_UCODE_SOURCE
+
 include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/cmake.mk
+
+CMAKE_BINARY_SUBDIR:=build
+CMAKE_OPTIONS += \
+	-DUCODE_COMPILER=$(STAGING_DIR_HOSTPKG)/bin/ucode \
+	-DUCODE_PRECOMPILE=$(if $(CONFIG_WWAND_UCODE_SOURCE),OFF,ON)
 
 UCDIR:=/usr/share/ucode/wwand
 IMSLIB:=/usr/share/wwand-ims
@@ -71,32 +90,19 @@ define Package/wwand-ims/conffiles
 /etc/config/wwand_ims
 endef
 
-# pure ucode + scripts: nothing to compile
-define Build/Compile
+# the CMake project has no install rules (cmake.mk's default runs `ninja
+# install`): Package/install copies the laid-out trees from the build directory
+define Build/Install
 endef
 
 define Package/wwand-ims/install
-	# the modem-IMS plugin, loaded by the wwand daemon
-	$(INSTALL_DIR) $(1)$(UCDIR)/plugins $(1)$(UCDIR)/ctl
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/plugins/ims.uc $(1)$(UCDIR)/plugins/
-	# `wwandctl ims` and the MBN helper (installed under the module name)
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ctl/ims.uc  $(1)$(UCDIR)/ctl/ims.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ctl/mcfg.uc $(1)$(UCDIR)/ims_mcfg.uc
-	# the router's own IMS UE + sipd, under their `ucode -L` module names
-	$(INSTALL_DIR) $(1)$(IMSLIB)
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/sipd.uc     $(1)$(IMSLIB)/sipd.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/core.uc     $(1)$(IMSLIB)/sipd_core.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/sip.uc      $(1)$(IMSLIB)/sipd_sip.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/line_ue.uc  $(1)$(IMSLIB)/sipd_line_ue.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/relay.uc    $(1)$(IMSLIB)/sipd_relay.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sipd/profile.uc  $(1)$(IMSLIB)/sipd_profile.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ue/aka.uc        $(1)$(IMSLIB)/ue_aka.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ue/secagree.uc   $(1)$(IMSLIB)/ue_secagree.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ue/reg.uc        $(1)$(IMSLIB)/ue_reg.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ue/call.uc       $(1)$(IMSLIB)/ue_call.uc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ue/regevent.uc   $(1)$(IMSLIB)/ue_regevent.uc
-	# the proven UE driver, run by `wwandctl ims [modem] call <number>`
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/tools/ims-register.uc $(1)$(IMSLIB)/ims-register.uc
+	# the ucode files, laid out by the source's CMakeLists.txt under their
+	# installed names: the plugin, `wwandctl ims` and ims_mcfg into the wwand
+	# tree; sipd, the UE modules and the ims-register driver (run by `wwandctl
+	# ims [modem] call`) into $(IMSLIB), where sipd's `ucode -L` finds them
+	$(INSTALL_DIR) $(1)$(UCDIR) $(1)$(IMSLIB)
+	$(CP) $(CMAKE_BINARY_DIR)/ucode/wwand/* $(1)$(UCDIR)/
+	$(CP) $(CMAKE_BINARY_DIR)/ucode/wwand-ims/* $(1)$(IMSLIB)/
 	# init, setup helper, example config, l3mdev hotplug
 	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/sbin $(1)/etc/config $(1)/etc/hotplug.d/iface
 	$(INSTALL_BIN)  $(PKG_BUILD_DIR)/files/wwand-ims-sipd.init $(1)/etc/init.d/wwand-ims-sipd
