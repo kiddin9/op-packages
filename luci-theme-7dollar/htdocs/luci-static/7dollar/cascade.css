@@ -224,6 +224,9 @@ input:hover,select:hover,textarea:hover,.cbi-dropdown:not(.btn):not(.cbi-button)
 input:focus,select:focus,textarea:focus,.cbi-select.focus,.cbi-select:focus-within,.cbi-dropdown:not(.btn):not(.cbi-button):focus,.cbi-dropdown[open]:not(.btn):not(.cbi-button){outline:0;border-color:var(--accent);box-shadow:0 0 0 4px var(--tint)}
 input[readonly],textarea[readonly]{background:var(--surface-2);color:var(--ink-2)}
 input[disabled],select[disabled],textarea[disabled],.cbi-select[disabled],.cbi-dropdown[disabled]:not(.btn):not(.cbi-button){opacity:.5;pointer-events:none;cursor:default}
+/* a value the browser filled in (saved password) keeps the field's own colours: the browser's
+   highlight cannot be overridden, only put off, so its colour change is delayed for good */
+input:is(:-webkit-autofill,:autofill){-webkit-text-fill-color:var(--ink);caret-color:var(--ink);transition:background-color 0s 99999s,color 0s 99999s}
 input[type=file]{height:auto;border:0;background:none;padding:6px 0;width:auto!important}
 input[type=file]::file-selector-button{font:inherit;font-weight:500;margin-right:10px;padding:7px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 input[type=search]{-webkit-appearance:none;appearance:none}

@@ -2,6 +2,9 @@
 	"luci-app-xkcptun": {
 		"description": "Grant access to LuCI app xkcptun",
 		"read": {
+			"file": {
+				"/usr/bin/xkcp_spy": [ "exec" ]
+			},
 			"ubus": {
 				"service": [ "list" ]
 			},

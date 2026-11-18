@@ -346,13 +346,14 @@ return view.extend({
 		const box = this.$('td-disk');
 		if (!box) return;
 		const info = this.s.info || {};
-		const row = (label, d) => {
+		/* `system info` gives root and tmp in KiB, but swap (like memory) in bytes */
+		const row = (label, d, unit) => {
 			if (!d || !d.total) return '';
 			const used = d.used != null ? d.used : d.total - d.free, pct = Math.round(used / d.total * 100);
-			return `<div class="td-meter"><p><b>${esc(label)}</b><span>${esc(T(`剩余 ${td.bytes((d.avail != null ? d.avail : d.free) * 1024)} / 共 ${td.bytes(d.total * 1024)}`,
-				`${td.bytes((d.avail != null ? d.avail : d.free) * 1024)} free of ${td.bytes(d.total * 1024)}`))}</span></p><div class="td-bar${pct >= 90 ? ' full' : ''}"><i style="width:${pct}%"></i></div></div>`;
+			const free = td.bytes((d.avail != null ? d.avail : d.free) * unit), total = td.bytes(d.total * unit);
+			return `<div class="td-meter"><p><b>${esc(label)}</b><span>${esc(T(`剩余 ${free} / 共 ${total}`, `${free} free of ${total}`))}</span></p><div class="td-bar${pct >= 90 ? ' full' : ''}"><i style="width:${pct}%"></i></div></div>`;
 		};
-		const html = row(T('系统空间', 'System'), info.root) + row(T('临时文件', 'Temporary files'), info.tmp) + row(T('虚拟内存', 'Swap'), info.swap);
+		const html = row(T('系统空间', 'System'), info.root, 1024) + row(T('临时文件', 'Temporary files'), info.tmp, 1024) + row(T('虚拟内存', 'Swap'), info.swap, 1);
 		this.put(box, html);
 	},
 
@@ -396,7 +397,10 @@ return view.extend({
 		const now = Date.now();
 		const w = this.s.wan;
 		const nd = td.netdev(devText);
-		const d = w && nd[w.device];
+		/* Kernel flow offloading hands PPPoE downloads straight to the LAN, past the pppoe device's
+		 * counter; the port underneath still sees every frame. So take the larger of the two. */
+		const d = w && [ w.device, w.port ].map(n => nd[n]).filter(Boolean)
+			.reduce((a, b) => a ? { rx: Math.max(a.rx, b.rx), tx: Math.max(a.tx, b.tx) } : b, null);
 
 		if (info) this.s.info = info;
 

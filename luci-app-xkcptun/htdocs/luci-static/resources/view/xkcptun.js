@@ -14,11 +14,42 @@ const callServiceList = rpc.declare({
 	expect: { '': {} }
 });
 
+function formatBytes(bytes) {
+	if (!bytes || bytes <= 0) return '0 B';
+	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	let i = Math.floor(Math.log(bytes) / Math.log(1024));
+	if (i >= units.length) i = units.length - 1;
+	return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : (i === 1 ? 1 : 2)) + ' ' + units[i];
+}
+
+function formatSpeed(bps) {
+	if (!bps || bps <= 0) return '0 B/s';
+	return formatBytes(bps) + '/s';
+}
+
+function formatUptime(sec) {
+	if (!sec || sec <= 0) return '0s';
+	sec = Math.floor(sec);
+	let m = Math.floor(sec / 60);
+	let s = sec % 60;
+	if (m === 0) return s + 's';
+	let h = Math.floor(m / 60);
+	m = m % 60;
+	if (h === 0) return m + 'm ' + s + 's';
+	return h + 'h ' + m + 'm';
+}
+
 function getServiceStatus() {
-	return L.resolveDefault(callServiceList('xkcptun'), {}).then(function (res) {
+	return Promise.all([
+		L.resolveDefault(callServiceList('xkcptun'), {}),
+		L.resolveDefault(fs.exec_direct('/usr/bin/xkcp_spy', ['-c', 'json']), '')
+	]).then(function (results) {
+		let res = results[0];
+		let spyOut = results[1];
 		let status = {
 			client: null,
-			server: null
+			server: null,
+			stats: null
 		};
 		try {
 			let instances = res['xkcptun']['instances'];
@@ -29,31 +60,132 @@ function getServiceStatus() {
 				status.server = instances['server']['pid'];
 			}
 		} catch (e) {}
+
+		if (typeof spyOut === 'string' && spyOut.trim()) {
+			try {
+				status.stats = JSON.parse(spyOut.trim());
+			} catch (e) {}
+		}
 		return status;
 	});
 }
 
 function renderStatus(status) {
-	let clientBadge = status.client
-		? E('em', {}, [
-			E('span', { 'style': 'color:green;' }, [
-				E('strong', {}, _('RUNNING') + ' (PID ' + status.client + ')')
-			])
-		  ])
-		: E('em', {}, [
-			E('span', { 'style': 'color:grey;' }, [
-				E('strong', {}, _('NOT RUNNING'))
-			])
-		  ]);
+	let stats = status.stats || {};
+	let totalTunnels = stats.num_tunnels || (stats.tunnels ? stats.tunnels.length : 0);
+	let activeConns = stats.active_conns || 0;
+	let totalConns = stats.total_conns || 0;
+	let bytesIn = stats.bytes_in || 0;
+	let bytesOut = stats.bytes_out || 0;
+	let rxRate = stats.rx_rate_bps || 0;
+	let txRate = stats.tx_rate_bps || 0;
 
-	return E('div', { 'class': 'cbi-map' },
-		E('fieldset', { 'class': 'cbi-section' }, [
-			E('p', {}, [
-				E('strong', {}, _('Client Daemon') + ': '),
-				clientBadge
+	let clientRunning = !!status.client;
+	let clientStatusVal = clientRunning ? _('RUNNING') : _('NOT RUNNING');
+	let clientStatusSub = clientRunning ? ('PID: ' + status.client + ' · :9086 就绪') : _('未运行');
+	let clientColor = clientRunning ? '#10b981' : '#6b7280';
+
+	function createKpiCard(title, icon, value, color, subtitle, isHero) {
+		return E('div', {
+			'class': 'xkcp-kpi-card' + (isHero ? ' hero' : ''),
+			'style': 'background: var(--cbi-section-background, #fff); border: 1px solid var(--cbi-border-color, #e5e7eb); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 84px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);'
+		}, [
+			E('div', {
+				'class': 'xkcp-kpi-header',
+				'style': 'display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #6b7280; font-weight: 500;'
+			}, [
+				E('span', { 'class': 'xkcp-kpi-title' }, title),
+				E('span', { 'class': 'xkcp-kpi-icon' }, icon)
+			]),
+			E('div', {
+				'class': 'xkcp-kpi-val',
+				'style': 'font-size: 22px; font-weight: 700; margin-top: 4px; color: ' + color + ';'
+			}, value),
+			E('div', {
+				'class': 'xkcp-kpi-sub',
+				'style': 'font-size: 11px; color: #9ca3af; margin-top: 2px;'
+			}, subtitle)
+		]);
+	}
+
+	let kpiGrid = E('div', {
+		'class': 'xkcp-kpi-grid',
+		'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;'
+	}, [
+		createKpiCard(_('客户端状态'), '🟢', clientStatusVal, clientColor, clientStatusSub, true),
+		createKpiCard(_('加速隧道'), '🚇', String(totalTunnels) + ' ' + _('条'), '#6366f1', _('全链路多路复用')),
+		createKpiCard(_('活跃加速连接'), '⚡', String(activeConns), '#f59e0b', _('累计处理') + ' ' + String(totalConns) + ' ' + _('连接')),
+		createKpiCard(_('下行加速流量'), '📥', formatBytes(bytesOut), '#0891b2', _('实时流速') + ': ' + formatSpeed(txRate)),
+		createKpiCard(_('上行传输流量'), '📤', formatBytes(bytesIn), '#10b981', _('实时流速') + ': ' + formatSpeed(rxRate))
+	]);
+
+	// Collect active sessions across all tunnels
+	let sessionRows = [];
+	if (stats.tunnels && Array.isArray(stats.tunnels)) {
+		stats.tunnels.forEach(function(t) {
+			if (!t.sessions || !Array.isArray(t.sessions)) return;
+			t.sessions.forEach(function(s) {
+				let protoTag = (s.proto || t.proto || 'tcp').toUpperCase();
+				let clientAddr = (s.client_host || '127.0.0.1') + (s.client_port ? ':' + s.client_port : '');
+				let targetAddr = (s.target_host || '127.0.0.1') + (s.target_port ? ':' + s.target_port : '');
+				let rttText = s.rtt_ms ? (s.rtt_ms + ' ms') : '-';
+				let rttColor = (s.rtt_ms && s.rtt_ms < 150) ? '#10b981' : ((s.rtt_ms && s.rtt_ms < 300) ? '#f59e0b' : '#6b7280');
+
+				sessionRows.push(E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td', 'style': 'font-weight: 600;' }, clientAddr),
+					E('td', { 'class': 'td', 'style': 'font-family: monospace;' }, targetAddr),
+					E('td', { 'class': 'td' }, [
+						E('span', {
+							'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: rgba(99, 102, 241, 0.1); color: #6366f1;'
+						}, t.name + ' (' + protoTag + ')')
+					]),
+					E('td', { 'class': 'td' }, formatBytes(s.bytes_out) + (s.tx_rate_bps > 0 ? (' · ' + formatSpeed(s.tx_rate_bps)) : '')),
+					E('td', { 'class': 'td' }, formatBytes(s.bytes_in) + (s.rx_rate_bps > 0 ? (' · ' + formatSpeed(s.rx_rate_bps)) : '')),
+					E('td', { 'class': 'td' }, [
+						E('span', {
+							'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: ' + rttColor + ';'
+						}, rttText)
+					]),
+					E('td', { 'class': 'td', 'style': 'color: #6b7280; font-size: 12px;' }, formatUptime(s.uptime))
+				]));
+			});
+		});
+	}
+
+	let sessionTable;
+	if (sessionRows.length > 0) {
+		sessionTable = E('div', { 'style': 'overflow-x: auto; margin-top: 10px;' }, [
+			E('table', { 'class': 'table', 'style': 'width: 100%; border-collapse: collapse;' }, [
+				E('tr', { 'class': 'tr table-titles' }, [
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('客户端地址')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('目标服务器')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('所属隧道')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('下行加速流量')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('上行传输流量')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('往返时延 (RTT)')),
+					E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('持续时间'))
+				]),
+				sessionRows
 			])
+		]);
+	} else {
+		sessionTable = E('div', {
+			'style': 'text-align: center; padding: 20px 10px; color: #9ca3af; font-size: 13px; border: 1px dashed var(--cbi-border-color, #e5e7eb); border-radius: 6px; margin-top: 10px;'
+		}, _('暂无活跃加速连接（当局域网客户端发起分流流量或端口转发访问时将实时显示）'));
+	}
+
+	return E('div', { 'class': 'cbi-map' }, [
+		kpiGrid,
+		E('div', { 'style': 'margin-top: 8px;' }, [
+			E('h4', { 'style': 'margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: var(--cbi-section-title-color, #374151);' }, [
+				_('此刻正在加速的连接'),
+				' (',
+				String(sessionRows.length),
+				')'
+			]),
+			sessionTable
 		])
-	);
+	]);
 }
 
 const modeProfiles = [

@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-7dollar
-PKG_VERSION:=1.0.17
-PKG_RELEASE:=2
+PKG_VERSION:=1.0.18
+PKG_RELEASE:=3
 
 LUCI_TITLE:=7Dollar — an elegant, lightweight LuCI theme
 LUCI_DESCRIPTION:=A calm, card based LuCI theme with five palettes, light/dark mode, \
