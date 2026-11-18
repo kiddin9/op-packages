@@ -1,12 +1,12 @@
-import fs from "fs";
+import editor from 'hijpass.editor';
 import form from "form";
 import uci from "uci";
 import ui from "ui";
 import { CORE_TYPE, LuciFlied, ShuntTag } from "../../../enum/hijpass";
-import { FilePathUtils } from "../../base/files/paths";
 import { FormUtils } from "../../base/luci/form";
 import { NotificationUtils } from "../../base/luci/notification";
-import { ShuntConfigUtils } from "./config-file";
+import { GeneratedConfigUtils } from "../config/backend";
+import { ConfigPreviewUtils } from "../config/preview";
 
 function makeSelect(id: string, options: { value: string, label: string }[]) {
     const sel = E('select', {id, class: 'cbi-input-select', style: 'width:100%'}) as HTMLSelectElement;
@@ -32,37 +32,22 @@ function canUseAsDnsExit(node: string) {
 
 const ShuntFormUtils = {
     configureConfigEditor: function (o: LuCI.form.TextValue) {
-        o.rows = 30;
-        o.monospace = true;
-        o.load = async function (_: string) {
-            return L.resolveDefault(fs.read(FilePathUtils.getFilePath('shunt_conf')), '');
-        };
-        o.write = async function (sectionId: string, value: string) {
-            const content = (value || '').trim().replace(/\r\n/g, '\n');
-            await fs.write(FilePathUtils.getFilePath('shunt_conf'), content ? content + '\n' : '');
-            uci.set(LuciFlied.CONF_NAME, sectionId, 'shunt_hash', String(FormUtils.simpleHash(content)));
-        };
-        o.remove = async function (sectionId: string) {
-            if (uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE, 'config_type') !== 'tmpl') {
-                await fs.write(FilePathUtils.getFilePath('shunt_conf'), '');
-                uci.set(LuciFlied.CONF_NAME, sectionId, 'shunt_hash', '-1');
-            }
-        };
+        FormUtils.setEditorOptionMembers(o, { resource: 'shunt_conf' }, 'shunt_hash');
         o.rmempty = false;
+        editor.configure(o, 'json', _('Edit Shunt Configuration File'));
     },
 
-    showPreview: function () {
+    showPreview: async function () {
         try {
-            let configJson = ShuntConfigUtils.getShuntConfData()
-            let shuntType = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE, 'type') || CORE_TYPE.XRAY
+            const shunt = uci.sections(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE)[0];
+            if (!shunt) throw new Error(_('shunt section is missing'));
+            let configJson = JSON.stringify(await GeneratedConfigUtils.preview(shunt['.name']), null, 2)
+            let shuntType = shunt.type || CORE_TYPE.XRAY
             ui.showModal(_('Preview Configuration'), [
                 E('div', {'class': 'cbi-section'}, [
                     E('div', {'class': 'cbi-section-descr'},
                         _('Generated %s JSON Configuration').format(shuntType)),
-                    E('pre', {
-                        'style': 'max-height: 500px; overflow: auto; padding: 10px; border-radius: 4px;',
-                        'id': 'config-preview-content'
-                    }, configJson)
+                    ConfigPreviewUtils.render(configJson, _('Preview Configuration'))
                 ]),
                 E('div', {
                     'class': 'right',
@@ -77,8 +62,7 @@ const ShuntFormUtils = {
                         'click': function (ev) {
                             ev.preventDefault();
                             ev.stopPropagation();
-                            let content = document.getElementById('config-preview-content').textContent;
-                            navigator.clipboard.writeText(content).then(function () {
+                            navigator.clipboard.writeText(configJson).then(function () {
                                 NotificationUtils.success(_('Success'), _('Configuration copied to clipboard'), 3000);
                             })
                         }
@@ -228,7 +212,7 @@ const ShuntFormUtils = {
             return form.DynamicList.prototype.load.apply(this, [section_id]);
         };
 
-        o.validate = function (section_id: string, value: string) {
+        o.validate = function (_section_id: string, value: string) {
             if (!value || value === '') {
                 return true;
             }

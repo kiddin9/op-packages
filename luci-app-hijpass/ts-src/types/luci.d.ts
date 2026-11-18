@@ -20,6 +20,7 @@ declare namespace LuCI {
     }
 
     interface L {
+        env: { sessionid: string; cgi_base?: string };
         Poll: LuCI.poll.Poll
         dom: LuCI.dom.DOM
 
@@ -78,7 +79,7 @@ declare namespace LuCI {
 
             cbid(section_id: string): string
 
-            cfgvalue(section_id: string): any
+            cfgvalue(section_id: string, value?: any): any
 
             depends(field: (string | Object.<string, (string | RegExp)>), value?: (string | RegExp)): void
 
@@ -227,11 +228,18 @@ declare namespace LuCI {
 
     declare namespace ui {
         interface UI {
+            ComboButton: new (value: string, choices: Record<string, string[]>, options: {
+                classes: Record<string, string>;
+                click: (event: Event, value: string) => void;
+            }) => { render(): Node };
+            showIndicator(id: string, label: string, handler?: (event: Event) => void): void;
+            hideIndicator(id: string): void;
+            addNotification(title: string | null, content: Node, severity?: string): void;
             changes: {
                 apply(checked?: boolean): void;
             };
 
-            showModal(modal: any, e: any): void;
+            showModal(title: string, children: any, ...classes: string[]): HTMLElement;
 
             hideModal(): void;
 
@@ -265,6 +273,7 @@ declare namespace LuCI {
 
     declare namespace uci {
         interface UCI {
+            unload(config: string): void;
             state: object;
 
             load(config: string): Promise<void>;
@@ -301,6 +310,8 @@ declare namespace LuCI {
 
             write(path: string, content: string): Promise<void>;
 
+            read_direct(path: string, type?: "blob" | "text" | "json"): Promise<any>;
+
             trimmed(path: string): Promise<string>;
 
             read(logFile: any): any;
@@ -312,6 +323,8 @@ declare namespace LuCI {
     declare namespace rpc {
         interface RPC {
             declare(spec: {
+                reject?: boolean;
+                nobatch?: boolean;
                 object: string;
                 method: string;
                 params: string[];
@@ -404,4 +417,27 @@ declare module 'ui' {
 declare module 'network' {
     const u: LuCI.network.Network;
     export default u;
+}
+
+declare module 'hijpass.editor' {
+    type Language = 'json' | 'shell' | 'firewall';
+    const editor: {
+        mount(widget: HTMLElement, language: Language, label: string): void;
+        configure(option: LuCI.form.TextValue, language: Language, label: string): void;
+    };
+    export default editor;
+}
+
+// 与 LuCI 原生应用请求共用实例，文件草稿在确认应用后才上传。
+declare module 'request' {
+    const request: { request(url: string, options?: any): Promise<any> };
+    export default request;
+}
+declare module 'session' {
+    const session: { getLocalData(key: string): any; setLocalData(key: string, value: any): void };
+    export default session;
+}
+declare module 'hijpass.drafts' {
+    const drafts: typeof import('../modules/drafts').default;
+    export default drafts;
 }

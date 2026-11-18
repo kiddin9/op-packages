@@ -368,7 +368,7 @@ ss_statistics_refresh_upload_credentials() {
 	device_credential="$(ss_device_credential_token 2>/dev/null || true)"
 	[ -n "$device_credential" ] || return 1
 	mkdir -p "${request%/*}" || return 1
-	ss_refresh_lock_open_wait "${ss_download_timeout:-10}" || return $?
+	ss_refresh_lock_open_wait "${ss_download_timeout:-30}" || return $?
 
 	printf '{}\n' >"$request" || {
 		ss_refresh_lock_close

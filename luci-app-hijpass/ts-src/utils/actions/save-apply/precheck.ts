@@ -1,8 +1,7 @@
-import { CORE_TYPE, LuciFlied, PROXY_TYPE, normalizeCoreType, ShuntTag } from "../../../enum/hijpass";
+import { CORE_TYPE, LuciFlied, PROXY_TYPE, ShuntTag } from "../../../enum/hijpass";
 import uci from "uci";
 import ui from "ui";
 import { NotificationUtils } from "../../base/luci/notification";
-import { FactoryType } from "../../../core/adapter";
 import { ShuntUtils } from "../../feature/shunt/section";
 import { MAX_PROXY_CHAIN_NODES, ProxyChainUtils } from "../../feature/proxy/chain";
 import { FirewallDnsForwardUtils } from "../../feature/firewall/dns-forward";
@@ -142,10 +141,11 @@ function checkLoadBalanceRefs() {
     const warnings: string[] = [];
 
     sections.forEach((section: any) => {
-        if (section.enabled !== '1' || section.type !== PROXY_TYPE.LOAD_BALANCE) return;
+        if (section.enabled !== '1' || ProxyChainUtils.isCustomProxy(section)
+            || section.type !== PROXY_TYPE.LOAD_BALANCE) return;
 
         const nodeName = ProxyChainUtils.getProxyName(section);
-        const core = normalizeCoreType(section.core);
+        const core = ProxyChainUtils.getProxyCore(section);
         if (core !== CORE_TYPE.SING_BOX && core !== CORE_TYPE.XRAY) {
             warnings.push(_('Load balancing node "%s" has an unsupported backend core').format(nodeName));
         }
@@ -174,7 +174,7 @@ function checkLoadBalanceRefs() {
                     .format(nodeName, memberName));
                 return;
             }
-            if (member.type === PROXY_TYPE.LOAD_BALANCE) {
+            if (!ProxyChainUtils.isCustomProxy(member) && member.type === PROXY_TYPE.LOAD_BALANCE) {
                 warnings.push(_('Load balancing node "%s" cannot contain load balancing member "%s"')
                     .format(nodeName, memberName));
             }
@@ -203,6 +203,7 @@ function checkProxyChainRefs() {
 
     sections.forEach((section: any) => {
         if (section.enabled !== '1'
+            || ProxyChainUtils.isCustomProxy(section)
             || section.type === PROXY_TYPE.LOAD_BALANCE
             || !section.upstream_proxy_node) {
             return;
@@ -320,7 +321,7 @@ function routeRuleRequiresDnsExit(rule: any, shuntType: string, rulesetConvert: 
     }
 
     const ruleDTO = ShuntUtils.parseRuleList(rule);
-    if (shuntType === FactoryType.XRAY) {
+    if (shuntType === CORE_TYPE.XRAY) {
         return ruleDTO.containDomain() || ruleDTO.geoSite.length > 0;
     }
 
@@ -369,12 +370,18 @@ function checkDnsRoutingTargets() {
     const routingTarget = FirewallDnsForwardUtils.getRoutingTarget();
     const routingServer = routingTarget.port ? '127.0.0.1#' + routingTarget.port : '';
     const warnings: string[] = [];
+    const shunt = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE);
+    const hasProxy = uci.sections(LuciFlied.CONF_NAME, LuciFlied.PROXY_NODE_TYPE)
+        .some((section: any) => section.enabled === '1');
+    if (!hasProxy && !(shunt && shunt.enabled !== '0' && shunt.type)) {
+        warnings.push(_('Independent DNS requires an enabled proxy node or shunt service'));
+    }
     [
         ['direct_dns', _('Direct Domain DNS')],
         ['proxy_dns', _('Proxy Domain DNS')],
     ].forEach(([option, label]) => {
         const value = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.DNS_SECTION_TYPE, option);
-        if (!value || value === 'dnsmasq' || value === 'system' || value === 'custom') {
+        if (!value || value === 'dnsmasq' || value === 'custom') {
             return;
         }
         if (!routingTarget.available || value !== routingServer) {
@@ -387,7 +394,7 @@ function checkDnsRoutingTargets() {
 
 function checkXrayRouteProtocols() {
     const shuntType = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE, 'type');
-    if (shuntType !== FactoryType.XRAY) {
+    if (shuntType !== CORE_TYPE.XRAY) {
         return true;
     }
 
@@ -419,7 +426,7 @@ function checkXrayRouteProtocols() {
 
 function checkXrayDnsServerTypes() {
     const shuntType = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE, 'type');
-    if (shuntType !== FactoryType.XRAY) {
+    if (shuntType !== CORE_TYPE.XRAY) {
         return true;
     }
 
@@ -439,7 +446,7 @@ function checkXrayDnsServerTypes() {
 function checkXrayTlsInsecure() {
     const warnings: string[] = [];
     uci.sections(LuciFlied.CONF_NAME, LuciFlied.PROXY_NODE_TYPE, function (section: any) {
-        if (section.enabled !== '1' || normalizeCoreType(section.core) !== FactoryType.XRAY || section.tls_insecure !== '1') {
+        if (section.enabled !== '1' || ProxyChainUtils.getProxyCore(section) !== CORE_TYPE.XRAY || section.tls_insecure !== '1') {
             return;
         }
         if (XRAY_TLS_PROTOCOLS.indexOf(section.type) !== -1) {
@@ -496,7 +503,7 @@ function getSkippedRouteRuleMessage(rule: any, shuntType: string, rulesetConvert
     const ruleName = rule.name || rule['.name'] || _('Unnamed Rule');
     const canConvertGeoRule = rulesetConvert === '1';
 
-    if (shuntType === FactoryType.XRAY) {
+    if (shuntType === CORE_TYPE.XRAY) {
         if (ruleDTO.isEmpty('geo')) {
             return _('Route rule "%s" has no valid match conditions for Xray').format(ruleName);
         }
@@ -509,7 +516,7 @@ function getSkippedRouteRuleMessage(rule: any, shuntType: string, rulesetConvert
         return null;
     }
 
-    if (shuntType === FactoryType.SING_BOX) {
+    if (shuntType === CORE_TYPE.SING_BOX) {
         if (!canConvertGeoRule && ruleDTO.containGeo()) {
             ruleDTO.geoSite = [];
             ruleDTO.geoIp = [];

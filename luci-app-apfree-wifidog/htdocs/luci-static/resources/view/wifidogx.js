@@ -1,10 +1,12 @@
 'use strict';
 'require view';
+'require dom';
 'require ui';
 'require form';
 'require rpc';
 'require uci';
 'require fs';
+'require poll';
 'require tools.widgets as widgets';
 'require tools.github as github';
 'require tools.firewall as fwtool';
@@ -30,13 +32,112 @@ var callGetWanMac = rpc.declare({
 	expect: { result: {} }
 });
 
+function formatUptime(seconds) {
+	seconds = parseInt(seconds, 10) || 0;
+	var days = Math.floor(seconds / 86400);
+	var hours = Math.floor((seconds % 86400) / 3600);
+	var minutes = Math.floor((seconds % 3600) / 60);
+	var secs = seconds % 60;
+
+	var parts = [];
+	if (days > 0) parts.push(days + _('d'));
+	if (hours > 0) parts.push(hours + _('h'));
+	if (minutes > 0) parts.push(minutes + _('m'));
+	if (secs > 0 || parts.length === 0) parts.push(secs + _('s'));
+
+	return parts.join(' ');
+}
+
+function formatOnlineTime(seconds) {
+	seconds = parseInt(seconds, 10) || 0;
+	var hours = Math.floor(seconds / 3600);
+	var minutes = Math.floor((seconds % 3600) / 60);
+	var secs = seconds % 60;
+
+	var parts = [];
+	if (hours > 0) parts.push(hours + _('h'));
+	if (minutes > 0) parts.push(minutes + _('m'));
+	if (secs > 0 || parts.length === 0) parts.push(secs + _('s'));
+
+	return parts.join(' ');
+}
+
+function formatRate(bps) {
+	var n = parseInt(bps, 10) || 0;
+	if (n <= 0) return '-';
+	var units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+	var idx = 0;
+	var value = n;
+	while (value >= 1024 && idx < units.length - 1) {
+		value = value / 1024;
+		idx++;
+	}
+	return value.toFixed(value < 10 ? 2 : (value < 100 ? 1 : 0)) + ' ' + units[idx];
+}
+
+function getAuthModeText(mode) {
+	switch (mode) {
+		case 0: return _('Cloud Auth');
+		case 1: return _('Local Auth');
+		case 2: return _('Bypass Auth');
+		default: return _('Unknown');
+	}
+}
+
 function getServiceStatus() {
-	return L.resolveDefault(callServiceList('wifidogx'), {}).then(function (res) {
+	return Promise.all([
+		L.resolveDefault(callServiceList('wifidogx'), {}),
+		fs.exec('/usr/bin/wdctlx', ['status', 'wifidogx']),
+		fs.exec('/usr/bin/wdctlx', ['status', 'client']),
+		fs.exec('/usr/bin/wdctlx', ['status', 'auth'])
+	]).then(function(results) {
+		var svcRes = results[0];
+		var wdogRes = results[1];
+		var clientRes = results[2];
+		var authRes = results[3];
+
 		var isRunning = false;
+		var pid = null;
 		try {
-			isRunning = res['wifidogx']['instances']['instance1']['running'];
-		} catch (e) { }
-		return isRunning;
+			var inst = svcRes['wifidogx']['instances']['instance1'];
+			isRunning = !!inst['running'];
+			pid = inst['pid'];
+		} catch (e) {}
+
+		var wifidogxData = null;
+		try {
+			if (wdogRes && wdogRes.code === 0 && wdogRes.stdout)
+				wifidogxData = JSON.parse(wdogRes.stdout.trim());
+		} catch (e) {}
+
+		var clientData = null;
+		try {
+			if (clientRes && clientRes.code === 0 && clientRes.stdout)
+				clientData = JSON.parse(clientRes.stdout.trim());
+		} catch (e) {}
+
+		var authData = null;
+		try {
+			if (authRes && authRes.code === 0 && authRes.stdout)
+				authData = JSON.parse(authRes.stdout.trim());
+		} catch (e) {}
+
+		return {
+			isRunning: isRunning,
+			pid: pid,
+			wifidogx: wifidogxData,
+			client: clientData,
+			auth: authData
+		};
+	}).catch(function(err) {
+		return {
+			isRunning: false,
+			pid: null,
+			wifidogx: null,
+			client: null,
+			auth: null,
+			error: err
+		};
 	});
 }
 
@@ -59,17 +160,242 @@ function generateLocationId() {
 	return adminCode + serviceType + sequenceNum;
 }
 
-function renderStatus(isRunning) {
-	var renderHTML = "";
-	var spanTemp = '<em><span style="color:%s"><strong>%s %s</strong></span></em>';
+function renderStatus(status, onRefresh) {
+	var isRunning = !!status.isRunning;
+	var wdata = status.wifidogx || {};
+	var cdata = status.client || {};
+	var adata = status.auth || {};
 
-	if (isRunning) {
-		renderHTML += String.format(spanTemp, 'green', _("apfree-wifidog"), _("running..."));
-	} else {
-		renderHTML += String.format(spanTemp, 'red', _("apfree-wifidog"), _("not running..."));
+	var uptimeStr = wdata.uptime ? formatUptime(wdata.uptime) : '';
+	var versionStr = wdata.wifidogx_version ? ('v' + wdata.wifidogx_version) : '';
+	var pidStr = status.pid ? ('PID ' + status.pid) : '';
+
+	var badgeDetails = [];
+	if (versionStr) badgeDetails.push(versionStr);
+	if (pidStr) badgeDetails.push(pidStr);
+	if (uptimeStr) badgeDetails.push(_('已运行') + ' ' + uptimeStr);
+
+	var svcBadge = E('span', {
+		'class': 'label ' + (isRunning ? 'success' : 'neutral'),
+		'style': 'padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 85%; color: #fff; background-color: ' + (isRunning ? '#28a745' : '#6c757d') + ';'
+	}, isRunning ? (_('运行中') + (badgeDetails.length > 0 ? (' (' + badgeDetails.join(', ') + ')') : '')) : _('未运行'));
+
+	var authModeBadge = null;
+	if (typeof wdata.auth_server_mode !== 'undefined') {
+		authModeBadge = E('span', {
+			'style': 'display: inline-block; padding: 3px 8px; font-size: 12px; font-weight: 600; border-radius: 4px; background: rgba(99, 102, 241, 0.1); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2);'
+		}, getAuthModeText(wdata.auth_server_mode));
 	}
 
-	return renderHTML;
+	var headerBar = E('div', { 'style': 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;' }, [
+		E('div', { 'style': 'display: flex; align-items: center; gap: 12px; flex-wrap: wrap;' }, [
+			E('h3', { 'style': 'margin: 0; font-size: 16px; font-weight: 600;' }, _('服务运行状态')),
+			svcBadge,
+			authModeBadge || ''
+		]),
+		E('div', { 'style': 'color: #888; font-size: 12px;' }, _('每 3 秒自动轮询刷新'))
+	]);
+
+	function createKpiCard(title, icon, value, color, subText, isHero) {
+		return E('div', {
+			'class': 'wdog-kpi-card' + (isHero ? ' hero' : '')
+		}, [
+			E('div', { 'class': 'wdog-kpi-header' }, [
+				E('span', { 'class': 'wdog-kpi-title' }, title),
+				E('span', { 'class': 'wdog-kpi-icon' }, icon)
+			]),
+			E('div', { 'class': 'wdog-kpi-val', 'style': 'color: ' + color + ';' }, value),
+			subText ? E('div', { 'class': 'wdog-kpi-sub' }, subText) : ''
+		]);
+	}
+
+	var onlineCount = cdata.online_client_count || 0;
+	var activeCount = cdata.active_client_count || 0;
+	var clients = (cdata.clients && Array.isArray(cdata.clients)) ? cdata.clients : [];
+
+	var totalDlRate = 0;
+	var totalUlRate = 0;
+	clients.forEach(function(c) {
+		if (c.traffic) {
+			totalDlRate += (c.traffic.incoming_rate || 0) + (c.traffic.incoming_rate_v6 || 0);
+			totalUlRate += (c.traffic.outgoing_rate || 0) + (c.traffic.outgoing_rate_v6 || 0);
+		}
+	});
+
+	// Card 4: Cloud management channel
+	var cloudVal = '-';
+	var cloudColor = '#6c757d';
+	if (isRunning) {
+		if (wdata.is_websocket_connected) {
+			cloudVal = _('WebSocket 已连接');
+			cloudColor = '#6366f1';
+		} else if (wdata.is_mqtt_connected) {
+			cloudVal = _('MQTT 已连接');
+			cloudColor = '#6366f1';
+		} else {
+			cloudVal = _('未连接');
+			cloudColor = '#ef4444';
+		}
+	}
+
+	// Card 5: Auth server heartbeat
+	var authVal = '-';
+	var authColor = '#6c757d';
+	var authSub = _('认证服务器');
+	if (isRunning) {
+		if (adata.auth_online) {
+			authVal = _('在线正常');
+			authColor = '#10b981';
+		} else {
+			authVal = _('离线 / 异常');
+			authColor = '#ef4444';
+		}
+		if (adata.auth_servers && adata.auth_servers.length > 0) {
+			var s0 = adata.auth_servers[0];
+			authSub = s0.host + (s0.ip ? ' (' + s0.ip + ')' : '');
+		} else {
+			authSub = getAuthModeText(wdata.auth_server_mode);
+		}
+	}
+
+	var kpiGrid = E('div', { 'class': 'wdog-kpi-grid' }, [
+		createKpiCard(
+			_('在线认证用户'),
+			'👥',
+			String(onlineCount),
+			'#0891b2',
+			isRunning ? String.format(_('当前活跃在线终端 %d 台'), activeCount) : _('服务未启动'),
+			true
+		),
+		createKpiCard(
+			_('下行实时流速'),
+			'📥',
+			isRunning ? (totalDlRate > 0 ? formatRate(totalDlRate) : '0 B/s') : '-',
+			'#10b981',
+			_('全网认证终端下载总速率')
+		),
+		createKpiCard(
+			_('上行实时流速'),
+			'📤',
+			isRunning ? (totalUlRate > 0 ? formatRate(totalUlRate) : '0 B/s') : '-',
+			'#3b82f6',
+			_('全网认证终端上传总速率')
+		),
+		createKpiCard(
+			_('云端管控通道'),
+			'☁️',
+			cloudVal,
+			cloudColor,
+			_('远程云端长连接通道')
+		),
+		createKpiCard(
+			_('认证服务器心跳'),
+			'🛡️',
+			authVal,
+			authColor,
+			authSub
+		)
+	]);
+
+	// Client table rows
+	var clientRows = [];
+	if (clients.length > 0) {
+		clients.forEach(function(client) {
+			var onlineTime = formatOnlineTime(client.online_time || 0);
+			var isWired = !!client.wired;
+
+			var dl_rate = 0;
+			var ul_rate = 0;
+			if (client.traffic) {
+				dl_rate = (client.traffic.incoming_rate || 0) + (client.traffic.incoming_rate_v6 || 0);
+				ul_rate = (client.traffic.outgoing_rate || 0) + (client.traffic.outgoing_rate_v6 || 0);
+			}
+
+			clientRows.push(E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td', 'style': 'font-weight: 600;' }, client.ip || '-'),
+				E('td', { 'class': 'td', 'style': 'font-family: monospace; font-size: 12px;' }, client.mac || '-'),
+				E('td', { 'class': 'td' }, client.name || '-'),
+				E('td', { 'class': 'td', 'style': 'color: #6b7280; font-size: 12px;' }, onlineTime),
+				E('td', { 'class': 'td' }, [
+					isWired ? E('span', {
+						'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: rgba(59, 130, 246, 0.1); color: #3b82f6;'
+					}, _('有线')) : E('span', {
+						'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: #10b981;'
+					}, _('无线'))
+				]),
+				E('td', { 'class': 'td', 'style': 'font-size: 12px;' }, client.gw_id || '-'),
+				E('td', { 'class': 'td' }, formatRate(dl_rate)),
+				E('td', { 'class': 'td' }, formatRate(ul_rate)),
+				E('td', { 'class': 'td' }, [
+					E('button', {
+						'class': 'cbi-button cbi-button-remove',
+						'style': 'padding: 2px 8px; font-size: 11px;',
+						'click': function(ev) {
+							ev.preventDefault();
+							var target = client.mac || client.ip;
+							if (!target) return;
+							if (confirm(String.format(_('确定要强制下线客户端 %s (%s) 吗？'), client.name || client.ip, client.mac))) {
+								return fs.exec('/usr/bin/wdctlx', ['reset', target]).then(function(res) {
+									if (res.code === 0) {
+										ui.addNotification(null, E('p', {}, String.format(_('客户端 %s 已成功下线'), target)), 'info');
+										if (typeof onRefresh === 'function') onRefresh();
+									} else {
+										ui.addNotification(null, E('p', {}, String.format(_('下线失败：%s'), res.stderr || res.stdout || _('未知错误'))), 'danger');
+									}
+								});
+							}
+						}
+					}, [ _('强制下线') ])
+				])
+			]));
+		});
+	}
+
+	var headerRow = E('tr', { 'class': 'tr table-titles' }, [
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('IP 地址')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('MAC 地址')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('终端名称')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('在线时长')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('连接方式')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('网关标识')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('下行流速')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('上行流速')),
+		E('th', { 'class': 'th', 'style': 'text-align: left;' }, _('操作'))
+	]);
+
+	var tableRows = [ headerRow ];
+	if (clientRows.length > 0) {
+		tableRows = tableRows.concat(clientRows);
+	} else {
+		tableRows.push(E('tr', { 'class': 'tr placeholder' }, [
+			E('td', { 'class': 'td', 'style': 'text-align: center; padding: 25px 10px; color: #9ca3af;', 'colspan': '9' },
+				E('em', {}, _('暂无在线认证终端（当客户端连接并完成 Portal 认证后将实时显示）'))
+			)
+		]));
+	}
+
+	var clientTableWrapper = E('div', { 'style': 'overflow-x: auto; margin-top: 10px;' }, [
+		E('table', { 'class': 'table', 'style': 'width: 100%; border-collapse: collapse;' }, tableRows)
+	]);
+
+	var clientSection = E('div', { 'class': 'cbi-section', 'style': 'margin-top: 25px;' }, [
+		E('h3', { 'style': 'margin: 0 0 6px 0; font-size: 15px; font-weight: 600;' }, [
+			_('在线认证终端列表'),
+			' (',
+			String(clients.length),
+			')'
+		]),
+		E('p', { 'class': 'cbi-section-descr', 'style': 'margin-bottom: 10px;' },
+			_('实时监测当前网关通过 Portal 认证的终端设备、网络流量、在线时长与连接状态。')
+		),
+		clientTableWrapper
+	]);
+
+	return E('div', { 'class': 'wdog-status-panel' }, [
+		headerBar,
+		kpiGrid,
+		clientSection
+	]);
 }
 
 function validateWildcardDomain(section_id, value) {
@@ -102,9 +428,33 @@ return view.extend({
 
 		m = new form.Map('wifidogx', _('ApFree-WiFiDog'));
 		m.description = github.desc('apfree-wifidog offers a stable and secure captive portal solution.', 'liudf0716', 'apfree-wifidog');
+		m.tabbed = true;
 
+		// ===== Tab 1: Service Status Overview =====
+		var s_status = m.section(form.NamedSection, '_status', 'status', _('Service Status'),
+			_('Real-time connection telemetry, client statistics, and authentication status.'));
+		s_status.anonymous = true;
+		s_status.addremove = false;
+		s_status.load = function() { return Promise.resolve(); };
+		s_status.parse = function() { return Promise.resolve(); };
+		s_status.render = function() {
+			var statusDiv = E('div', { 'id': 'wifidogx_service_status', 'style': 'margin-top: 10px;' }, [
+				E('em', { 'class': 'spinning' }, _('Collecting status ...'))
+			]);
+			return Promise.resolve(E('div', {
+				'class': 'cbi-section',
+				'data-tab': 'status',
+				'data-tab-title': _('Service Status')
+			}, [
+				E('div', { 'class': 'cbi-section-descr' },
+					_('Real-time connection telemetry, client statistics, and authentication status.')
+				),
+				statusDiv
+			]));
+		};
 
-		s = m.section(form.NamedSection, 'common', _('Configuration'));
+		// ===== Tab 2: Service Configuration =====
+		s = m.section(form.NamedSection, 'common', 'common', _('Configuration'));
 		s.addremove = false;
 		s.anonymous = true;
 
@@ -976,6 +1326,121 @@ return view.extend({
 		o.datatype = 'string';
 		o.optional = true;
 
-		return m.render();
+		return m.render().then(function(mapNode) {
+			var customStyle = E('style', {}, [
+				'.wdog-kpi-grid {',
+				'    display: grid;',
+				'    grid-template-columns: 1.3fr repeat(4, 1fr);',
+				'    gap: 12px;',
+				'    margin-bottom: 20px;',
+				'}',
+				'.wdog-kpi-card {',
+				'    background: var(--cbi-section-bg, #fff);',
+				'    border: 1px solid var(--cbi-border-color, #e5e7eb);',
+				'    border-radius: 8px;',
+				'    padding: 14px 16px;',
+				'    display: flex;',
+				'    flex-direction: column;',
+				'    justify-content: space-between;',
+				'    min-height: 85px;',
+				'    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);',
+				'    transition: transform 0.15s ease, box-shadow 0.15s ease;',
+				'}',
+				'.wdog-kpi-card:hover {',
+				'    transform: translateY(-2px);',
+				'    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);',
+				'}',
+				'.wdog-kpi-card.hero {',
+				'    background: linear-gradient(135deg, rgba(8, 145, 178, 0.06) 0%, rgba(99, 102, 241, 0.06) 100%);',
+				'    border-color: rgba(8, 145, 178, 0.3);',
+				'}',
+				'.wdog-kpi-header {',
+				'    display: flex;',
+				'    align-items: center;',
+				'    justify-content: space-between;',
+				'    font-size: 13px;',
+				'    color: var(--cbi-descr-color, #666);',
+				'    margin-bottom: 6px;',
+				'    white-space: nowrap;',
+				'}',
+				'.wdog-kpi-title {',
+				'    font-weight: 500;',
+				'}',
+				'.wdog-kpi-icon {',
+				'    font-size: 16px;',
+				'    line-height: 1;',
+				'    opacity: 0.85;',
+				'}',
+				'.wdog-kpi-val {',
+				'    font-size: 24px;',
+				'    font-weight: 700;',
+				'    line-height: 1.2;',
+				'    letter-spacing: -0.3px;',
+				'}',
+				'.wdog-kpi-sub {',
+				'    font-size: 11px;',
+				'    color: #999;',
+				'    margin-top: 3px;',
+				'    white-space: nowrap;',
+				'    overflow: hidden;',
+				'    text-overflow: ellipsis;',
+				'}',
+				'@media screen and (max-width: 1080px) {',
+				'    .wdog-kpi-grid {',
+				'        grid-template-columns: repeat(4, 1fr);',
+				'    }',
+				'    .wdog-kpi-card.hero {',
+				'        grid-column: span 4;',
+				'        background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);',
+				'        border-color: rgba(6, 182, 212, 0.25);',
+				'        padding: 16px 20px;',
+				'    }',
+				'    .wdog-kpi-card.hero .wdog-kpi-val {',
+				'        font-size: 28px;',
+				'    }',
+				'}',
+				'@media screen and (max-width: 720px) {',
+				'    .wdog-kpi-grid {',
+				'        grid-template-columns: repeat(2, 1fr);',
+				'        gap: 10px;',
+				'    }',
+				'    .wdog-kpi-card.hero {',
+				'        grid-column: span 2;',
+				'    }',
+				'    .wdog-kpi-card {',
+				'        padding: 12px;',
+				'        min-height: 76px;',
+				'    }',
+				'    .wdog-kpi-val {',
+				'        font-size: 20px;',
+				'    }',
+				'    .wdog-kpi-header {',
+				'        font-size: 12px;',
+				'    }',
+				'}'
+			].join('\n'));
+			mapNode.appendChild(customStyle);
+
+			function updateStatusView() {
+				return getServiceStatus().then(function(status) {
+					var view = document.getElementById('wifidogx_service_status');
+					if (view) {
+						dom.content(view, renderStatus(status, updateStatusView));
+					}
+				});
+			}
+
+			document.addEventListener('cbi-tab-active', function() {
+				window.dispatchEvent(new Event('resize'));
+			});
+
+			updateStatusView();
+
+			L.Poll.add(function() {
+				return updateStatusView();
+			}, 3);
+
+			return mapNode;
+		});
 	}
 });

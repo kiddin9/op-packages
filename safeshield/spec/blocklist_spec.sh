@@ -43,6 +43,13 @@ Describe 'SafeShield blocklist behavior'
 		The error should equal ''
 	End
 
+	It 'uses uclient-fetch for artifacts and curl with a 20-second API deadline'
+		When call ss_case_artifact_transport_policy
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
 	It 'stops retries when the Hub requires a SafeShield upgrade'
 		When call ss_case_upgrade_required
 		The status should be success

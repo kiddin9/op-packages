@@ -14,7 +14,7 @@ ss_max_blocklist_file_size_kb="30000"
 ss_min_valid_line_count="3000"
 ss_compress_blocklist="0"
 ss_initial_dnsmasq_restart="0"
-ss_download_timeout="10"
+ss_download_timeout="30"
 ss_download_retry="3"
 ss_pause_timeout="20"
 ss_boot_start_delay_s="30"
@@ -72,7 +72,7 @@ ss_validate_int() {
 }
 
 ss_validate_config() {
-	ss_validate_int ss_download_timeout 10 invalid_download_timeout
+	ss_validate_int ss_download_timeout 30 invalid_download_timeout
 	ss_validate_int ss_download_retry 3 invalid_download_retry
 	ss_validate_int ss_max_blocklist_file_size_kb 30000 invalid_max_blocklist_file_size_kb
 	ss_validate_int ss_min_valid_line_count 3000 invalid_min_valid_line_count
@@ -113,7 +113,7 @@ ss_load_config() {
 	ss_min_valid_line_count="$(ss_config_get config min_valid_line_count 3000)"
 	ss_compress_blocklist="$(ss_config_get config compress_blocklist 0)"
 	ss_initial_dnsmasq_restart="$(ss_config_get config initial_dnsmasq_restart 0)"
-	ss_download_timeout="$(ss_config_get config download_timeout 10)"
+	ss_download_timeout="$(ss_config_get config download_timeout 30)"
 	ss_download_retry="$(ss_config_get config download_retry 3)"
 	ss_pause_timeout="$(ss_config_get config pause_timeout 20)"
 	ss_boot_start_delay_s="$(ss_config_get config boot_start_delay_s 30)"

@@ -46,6 +46,16 @@ ss_case_config_validation() (
 	CONFIG_GET_VALUE=''
 	ss_spec_assert_eq "$(ss_config_get config enabled default)" 'default'
 
+	# Missing and invalid artifact download timeouts use 30 seconds consistently.
+	ss_spec_assert_eq "$ss_download_timeout" '30'
+	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/etc/config/safeshield" "option download_timeout '30'"
+	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/config.sh" 'ss_config_get config download_timeout 30'
+	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/share/rpcd/ucode/safeshield/core.uc" "download_timeout: { kind: 'int', def: 30,"
+	CONFIG_GET_VALUE='10'
+	ss_spec_assert_eq "$(ss_config_get config download_timeout 30)" '10'
+	CONFIG_GET_VALUE=''
+	ss_spec_assert_eq "$(ss_config_get config download_timeout 30)" '30'
+
 	ss_download_timeout='invalid'
 	ss_download_retry='-1'
 	ss_max_blocklist_file_size_kb='1.5'
@@ -62,7 +72,7 @@ ss_case_config_validation() (
 	WARNINGS=''
 	ss_validate_config
 
-	ss_spec_assert_eq "$ss_download_timeout" '10'
+	ss_spec_assert_eq "$ss_download_timeout" '30'
 	ss_spec_assert_eq "$ss_download_retry" '3'
 	ss_spec_assert_eq "$ss_max_blocklist_file_size_kb" '30000'
 	ss_spec_assert_eq "$ss_min_valid_line_count" '3000'

@@ -8,7 +8,7 @@ import {ShuntUtils} from "../utils/feature/shunt/section";
 import {CORE_TYPE, FIREWALL_DNS_FORWARD, HijpassValues, LuciFlied} from "../enum/hijpass";
 import {FirewallDnsForwardUtils} from "../utils/feature/firewall/dns-forward";
 import form from "form";
-import fs from "fs";
+import { Backend } from "../utils/backend";
 import view from 'view';
 import uci from 'uci';
 
@@ -255,8 +255,7 @@ function createGeoRuleQuery(
                 return;
             }
 
-            const result = await fs.exec('/usr/lib/hijpass/geoview.sh',
-                [isTagQuery ? '-e' : '-l', queryType, queryValue]);
+            const result = await Backend.lookupGeo(queryType, queryValue, isTagQuery ? 'expand' : 'list');
             if (result.code !== 0) {
                 throw new Error(result.stderr || _('Query Failed'));
             }
@@ -454,7 +453,7 @@ const v = view.extend({
             await view.prototype.handleSave(ev)
         } catch (e) {
             console.log(e);
-            NotificationUtils.error(_('Configuration Save Failed'), _(e.message), 5000);
+            throw e;
         }
     },
 
@@ -560,7 +559,7 @@ function createBasicOptions(s: LuCI.form.AbstractSection) {
     }
 
     // 日志开关
-    FormUtils.createLogFlagOption(s, LuciFlied.CONF_NAME, 'basic');
+    FormUtils.createLogFlagOption(s, 'basic');
 
     // 日志路径
     let logLevel = s.taboption('basic', form.ListValue, 'log_level', _('Log Level'), _('Logging Level'));
@@ -599,7 +598,7 @@ function createRouteOptions(s: LuCI.form.AbstractSection) {
 
     let defaultProxyNode = ShuntFormUtils.createRequiredListValue(routeTypeSection, 'default_proxy_node', _('Default Global Exit'),
         _('Select Default Exit Node'),
-        function (section_id: any, value: any) {
+        function (_section_id: any, value: any) {
             if (!value) {
                 return _('Configure Global Exit First');
             }
@@ -892,7 +891,7 @@ function createDNSOptions(s: LuCI.form.AbstractSection) {
     // 默认全局DNS配置
     let defaultDNSNode = ShuntFormUtils.createRequiredListValue(dnsTypeSection, 'default_dns_node', _('Default Global DNS'),
         _('Select Default DNS'),
-        function (section_id: string, value: any) {
+        function (_section_id: string, value: any) {
             if (!value) {
                 return _('Please configure the global DNS server first');
             }

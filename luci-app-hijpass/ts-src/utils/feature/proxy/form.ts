@@ -1,30 +1,20 @@
-import fs from "fs";
+import { Backend } from "../../backend";
 import form from "form";
 import uci from "uci";
 import ui from "ui";
-import { CORE_PROTOCOLS, CORE_TYPE, CoreType, HijpassValues, LuciFlied, PROXY_TYPE, ProxyType, normalizeCoreType } from "../../../enum/hijpass";
+import { CORE_PROTOCOLS, CORE_TYPE, CoreType, HijpassValues, LuciFlied, PROXY_TYPE, ProxyType, PROXY_CONFIG_TYPE } from "../../../enum/hijpass";
 import { JsonUtils } from "../../base/files/json";
 import { NotificationUtils } from "../../base/luci/notification";
 import { UciUtils } from "../../base/luci/uci";
 import { ValidationUtils } from "../../base/luci/validation";
-import { ProxyConfigFileUtils } from "./config-file";
+import { GeneratedConfigUtils } from "../config/backend";
+import { ConfigPreviewUtils } from "../config/preview";
 import { ProxyChainUtils } from "./chain";
 import { ImportedProxyConfig, ProxyShareLinkUtils } from "./share-link";
 import { findProxyDependencyCycleFrom } from "./validation";
+import { createNodeLogButton } from "../log/node";
 
 const PROTOCOL_CORES: CoreType[] = [CORE_TYPE.XRAY, CORE_TYPE.SING_BOX];
-
-function loadProxyLog(logPath: string, contentEl: HTMLElement) {
-    contentEl.textContent = _('Loading...');
-    fs.exec('/usr/bin/tail', ['-n', '200', logPath])
-        .then((result: any) => {
-            let text = (result && result.stdout) ? result.stdout.trim() : '';
-            text = text.replace(/\x1b\[[0-9;]*m/g, '');
-            contentEl.textContent = text || _('No Logs');
-            contentEl.scrollTop = contentEl.scrollHeight;
-        })
-        .catch(() => { contentEl.textContent = _('Read Failed'); });
-}
 
 function updateLatencyButton(el: HTMLElement, ms: number) {
     el.textContent = ms + 'ms';
@@ -41,9 +31,7 @@ function updateLatencyButton(el: HTMLElement, ms: number) {
 }
 
 function applyFilter(typeSelect: HTMLSelectElement, core: string): void {
-    const normalizedCore = normalizeCoreType(core);
-    if (normalizedCore === CORE_TYPE.CUSTOM) return;
-    const effectiveCore: CoreType = (normalizedCore === CORE_TYPE.XRAY) ? CORE_TYPE.XRAY : CORE_TYPE.SING_BOX;
+    const effectiveCore = core as CoreType;
     const valid: ProxyType[] = [
         ...(CORE_PROTOCOLS[effectiveCore] ?? []),
         PROXY_TYPE.LOAD_BALANCE,
@@ -183,10 +171,7 @@ const ProxyFormUtils = {
         const coreSelect = E('select', {
             class: 'cbi-input-select',
             style: 'min-width:180px'
-        }, [
-            E('option', { value: CORE_TYPE.SING_BOX }, 'sing-box'),
-            E('option', { value: CORE_TYPE.XRAY }, 'xray'),
-        ]) as HTMLSelectElement;
+        }, HijpassValues.DUAL_CORES.map(core => E('option', { value: core.value }, core.label))) as HTMLSelectElement;
         const input = E('textarea', {
             class: 'cbi-input-textarea',
             style: 'width:100%;min-height:120px;box-sizing:border-box',
@@ -276,9 +261,9 @@ const ProxyFormUtils = {
 
     renderProxyType: function (section_id: string) {
         let type = uci.get(LuciFlied.CONF_NAME, section_id, 'type');
-        let coreValue = normalizeCoreType(uci.get(LuciFlied.CONF_NAME, section_id, 'core') || CORE_TYPE.CUSTOM)
-        if (coreValue === CORE_TYPE.CUSTOM) {
-            return E('span', {}, _('Custom'));
+        let coreValue = ProxyChainUtils.getProxyCore(findProxySection(section_id));
+        if (ProxyChainUtils.isCustomProxy(findProxySection(section_id))) {
+            return E('span', {}, _('Handwritten Configuration'));
         }
         let typeLabel = HijpassValues.PROXY_TYPES.find(t => t.value === type)?.label || type || '';
         let coreLabel = HijpassValues.DUAL_CORES.find(c => c.value === coreValue)?.label || coreValue;
@@ -287,15 +272,15 @@ const ProxyFormUtils = {
     },
 
     renderProxyServerInfo: function (section_id: string) {
-        const core = normalizeCoreType(uci.get(LuciFlied.CONF_NAME, section_id, 'core') || CORE_TYPE.CUSTOM);
-        let type = uci.get(LuciFlied.CONF_NAME, section_id, 'type') || PROXY_TYPE.CUSTOM;
+        const core = ProxyChainUtils.getProxyCore(findProxySection(section_id));
+        let type = uci.get(LuciFlied.CONF_NAME, section_id, 'type') || '';
         let server_name = uci.get(LuciFlied.CONF_NAME, section_id, 'tls_server_name');
         if (!server_name) {
             server_name = uci.get(LuciFlied.CONF_NAME, section_id, 'server');
         }
         let server_port = uci.get(LuciFlied.CONF_NAME, section_id, 'server_port');
 
-        if (core === CORE_TYPE.CUSTOM) {
+        if (ProxyChainUtils.isCustomProxy(findProxySection(section_id))) {
             const command = uci.get(LuciFlied.CONF_NAME, section_id, 'command');
             if (command && command.length > 50) {
                 return renderProxyInfoWithChain(section_id,
@@ -367,57 +352,30 @@ const ProxyFormUtils = {
             }, _('Share')));
         }
 
-        let core = uci.get(LuciFlied.CONF_NAME, section_id, 'core');
-        if (normalizeCoreType(core) !== CORE_TYPE.CUSTOM) {
+        if (!ProxyChainUtils.isCustomProxy(section)) {
             btns.push(E('button', {
                 class: 'btn cbi-button',
                 style: 'background-color:#5a4a8a;border-color:#5a4a8a',
-                click: function () {
+                click: async function () {
                     let section = uci.sections(LuciFlied.CONF_NAME, LuciFlied.PROXY_NODE_TYPE)
                         .find((s: any) => s['.name'] === section_id);
                     if (!section) return;
                     let conf: {};
                     try {
-                        conf = ProxyConfigFileUtils.generateProxyConfigFromSection(section)
+                        conf = await GeneratedConfigUtils.preview(section['.name'])
                             || { error: _('Invalid proxy config') };
                     } catch (e: any) {
                         conf = { error: e.message };
                     }
                     let name = uci.get(LuciFlied.CONF_NAME, section_id, 'name') || section_id;
-                    let contentEl = E('pre', {
-                        style: 'max-height:500px;overflow:auto;padding:10px;border-radius:4px;white-space:pre;font-size:0.8em'
-                    }, JSON.stringify(conf, JsonUtils.omitEmptyReplacer, 2)) as HTMLElement;
-                    ui.showModal(name + ' - ' + _('Config Preview'), [
-                        E('div', { class: 'cbi-section' }, [contentEl]),
-                        E('div', { class: 'right' }, [
-                            E('button', { class: 'btn cbi-button', click: ui.hideModal }, _('Close'))
-                        ])
-                    ]);
+                    ConfigPreviewUtils.show(name + ' - ' + _('Config Preview'),
+                        JSON.stringify(conf, JsonUtils.omitEmptyReplacer, 2));
                 }
             }, _('Preview')));
         }
 
-        let logPath = uci.get(LuciFlied.CONF_NAME, section_id, 'log_path');
-        if (logPath) {
-            let name = uci.get(LuciFlied.CONF_NAME, section_id, 'name') || section_id;
-            btns.push(E('button', {
-                class: 'btn cbi-button',
-                style: 'background-color:#3d6b5e;border-color:#3d6b5e',
-                click: function () {
-                    let contentEl = E('pre', {
-                        style: 'max-height:500px;overflow:auto;padding:10px;border-radius:4px;white-space:pre;font-size:0.8em'
-                    }, '') as HTMLElement;
-                    loadProxyLog(logPath, contentEl);
-                    ui.showModal(name + ' - ' + _('Log'), [
-                        E('div', { class: 'cbi-section' }, [contentEl]),
-                        E('div', { class: 'right', style: 'display:flex;justify-content:flex-end;gap:10px' }, [
-                            E('button', { class: 'btn cbi-button', click: ui.hideModal }, _('Close')),
-                            E('button', { class: 'btn cbi-button-action', click: function () { loadProxyLog(logPath, contentEl); } }, _('Refresh'))
-                        ])
-                    ]);
-                }
-            }, _('Log')));
-        }
+        const logButton = createNodeLogButton(LuciFlied.CONF_NAME, section_id);
+        if (logButton) btns.push(logButton);
 
         let port = uci.get(LuciFlied.CONF_NAME, section_id, 'socks_port');
         let enabled = uci.get(LuciFlied.CONF_NAME, section_id, 'enabled');
@@ -432,7 +390,7 @@ const ProxyFormUtils = {
                     el.textContent = '...';
                     el.style.backgroundColor = '#1a6a8a';
                     el.style.borderColor = '#1a6a8a';
-                    fs.exec_direct('/usr/lib/hijpass/net.sh', ['ping', port], 'json')
+                    Backend.ping(port)
                         .then((res: any) => {
                             if (res && res.ms != null) {
                                 updateLatencyButton(el, res.ms);
@@ -463,34 +421,46 @@ const ProxyFormUtils = {
         for (const type of types) {
             for (const core of PROTOCOL_CORES) {
                 if (CORE_PROTOCOLS[core]?.includes(type)) {
-                    o.depends({ type, core, ...conditions });
+                    o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type, core, ...conditions });
                 }
             }
         }
     },
 
-    forCoreProtocols: function (o: LuCI.form.AbstractValue, core: CoreType, types: ProxyType[]): void {
-        types.forEach(t => o.depends({ type: t, core }));
+    forCoreProtocols: function (
+        o: LuCI.form.AbstractValue, core: CoreType, types: ProxyType[],
+        conditions: Record<string, string | RegExp> = {}
+    ): void {
+        types.forEach(t => o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: t, core, ...conditions }));
     },
 
     createCoreAndTypeOptions: function (s: LuCI.form.AbstractSection): void {
+        const configTypeOpt = s.option(form.ListValue, 'config_type', _('Configuration Method'),
+        _("Template configuration uses form fields; handwritten configuration uses your full JSON configuration and run command."));
+        configTypeOpt.modalonly = true;
+        configTypeOpt.default = PROXY_CONFIG_TYPE.GENERATED;
+        configTypeOpt.rmempty = false;
+        configTypeOpt.value(PROXY_CONFIG_TYPE.GENERATED, _('Template Configuration'));
+        configTypeOpt.value(PROXY_CONFIG_TYPE.CUSTOM, _('Handwritten Configuration'));
+
         let coreOpt = s.option(form.ListValue, 'core', _('Backend Core'),
             _('Select backend core for this proxy node'));
         coreOpt.modalonly = true;
+        coreOpt.depends('config_type', PROXY_CONFIG_TYPE.GENERATED);
         coreOpt.default = CORE_TYPE.SING_BOX;
         coreOpt.rmempty = false;
         HijpassValues.DUAL_CORES.forEach(c => coreOpt.value(c.value, _(c.label)));
 
         let typeOpt = s.option(form.ListValue, 'type', _('Proxy Type'),
-            _('Select Proxy Type'));
+        _("Select the protocol offered by the remote server."));
         typeOpt.modalonly = true;
         typeOpt.default = PROXY_TYPE.SHADOWSOCKS;
         typeOpt.rmempty = false;
-        typeOpt.depends('core', CORE_TYPE.XRAY);
-        typeOpt.depends('core', CORE_TYPE.SING_BOX);
+        typeOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, core: CORE_TYPE.XRAY });
+        typeOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, core: CORE_TYPE.SING_BOX });
         HijpassValues.PROXY_TYPES.forEach(t => typeOpt.value(t.value, _(t.label)));
         typeOpt.validate = function (sectionId: string, value: ProxyType) {
-            const core = normalizeCoreType(this.section.formvalue(sectionId, 'core')) as CoreType;
+            const core = this.section.formvalue(sectionId, 'core') as CoreType;
             return value === PROXY_TYPE.LOAD_BALANCE || CORE_PROTOCOLS[core]?.includes(value)
                 ? true
                 : _('Selected core "%s" does not support %s').format(core, value);
@@ -566,7 +536,7 @@ const ProxyFormUtils = {
         let socksInp: HTMLInputElement | null = null;
 
         let listenPortOpt = s.option(form.Value, 'listen_port', _('Local Listen Port'),
-            _('Local Transparent Proxy Listen Port'));
+        _("Local transparent-proxy inbound port used by firewall rules; keep it unique."));
         listenPortOpt.datatype = 'port';
         listenPortOpt.rmempty = false;
         listenPortOpt.modalonly = true;
@@ -610,7 +580,7 @@ const ProxyFormUtils = {
         };
 
         let socksPortOpt = s.option(form.Value, 'socks_port', _('Local SOCKS Port'),
-            _('Local SOCKS Listen Port'));
+        _("Local SOCKS inbound port for clients and proxy chaining; keep it unique."));
         socksPortOpt.datatype = 'port';
         socksPortOpt.rmempty = false;
         socksPortOpt.modalonly = true;

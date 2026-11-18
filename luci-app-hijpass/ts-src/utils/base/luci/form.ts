@@ -1,8 +1,8 @@
 import { LuciFlied, ShuntTag } from "../../../enum/hijpass";
-import fs from "fs";
+import { Editor } from "../../backend";
+import drafts from "hijpass.drafts";
 import form from "form";
 import uci from "uci";
-import { FilePathUtils } from "../files/paths";
 
 const FormUtils = {
     setAnonymousGridSectionMembers: function (section: any) {
@@ -28,34 +28,12 @@ const FormUtils = {
         subsection.addremove = false;
     },
 
-    simpleHash: function (str: string) {
-        let hash = 0;
-        str = str ? str : '';
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            hash |= 0;
-        }
-        return hash;
-    },
-
-    setEditorOptionMembers: function (o: LuCI.form.TextValue, filePath: string, fieldName: string) {
+    setEditorOptionMembers: function (o: LuCI.form.TextValue, editor: Editor, fieldName: string) {
         o.rows = 30;
-        o.load = function (_) {
-            return fs.trimmed(filePath);
-        };
-
-        async function writeFile(sectionId: string, formvalue?: string) {
-            let currentHash = String(FormUtils.simpleHash(formvalue))
-            let oldHash = uci.get(LuciFlied.CONF_NAME, sectionId, fieldName)
-            if (currentHash === oldHash) {
-                return
-            }
-            uci.set(LuciFlied.CONF_NAME, sectionId, fieldName, currentHash)
-            await fs.write(filePath, (formvalue || '').trim().replace(/\r\n/g, '\n') + '\n');
-        }
-
-        o.write = writeFile
-        o.remove = writeFile
+        o.load = () => drafts.read(editor);
+        o.write = (sectionId: string, content: string) =>
+            drafts.save(editor, content, sectionId, fieldName);
+        o.remove = (sectionId: string) => o.write(sectionId, '');
         o.monospace = true;
 
         return o;
@@ -64,56 +42,30 @@ const FormUtils = {
     setConfContentOptionMembers: function (
         o: LuCI.form.TextValue,
         confName: string,
-        dirPath: string,
     ) {
         o.monospace = true;
         o.rows = 20;
 
-        o.load = async function (section_id: string) {
-            return L.resolveDefault(fs.read(FilePathUtils.getNodeConfigFilePath(confName, dirPath, section_id)), '');
+        o.load = (sectionId: string) => drafts.read({ resource: 'proxy_config', section: sectionId });
+        o.write = function (sectionId: string, content: string) {
+            return drafts.save({ resource: 'proxy_config', section: sectionId,
+                name: this.section.formvalue(sectionId, 'name') || uci.get(confName, sectionId, 'name') || sectionId },
+                content, sectionId, 'custom_conf_hash');
         };
-        o.write = async function (section_id: string, value: string) {
-            const content = FilePathUtils.normalizeFileContent(value);
-            await fs.write(FilePathUtils.getNodeConfigFilePath(confName, dirPath, section_id, this), content);
-            uci.set(confName, section_id, 'custom_conf_hash', String(FormUtils.simpleHash(content)));
-        };
-        o.remove = async function (section_id: string) {
-            await fs.write(FilePathUtils.getNodeConfigFilePath(confName, dirPath, section_id, this), '');
-            uci.set(confName, section_id, 'custom_conf_hash', '');
-        };
+        o.remove = (sectionId: string) => o.write(sectionId, '');
     },
 
     createTextOption: function (s: LuCI.form.AbstractSection, tabName: string,
-        fieldName: string, title: string, description: string, filePath: string) {
+        fieldName: string, title: string, description: string, editor: Editor) {
         let o = s.taboption(tabName, form.TextValue, fieldName, title, description);
-        FormUtils.setEditorOptionMembers(o, filePath, fieldName);
+        FormUtils.setEditorOptionMembers(o, editor, fieldName);
         return o;
     },
 
-    createLogFlagOption: function (s: LuCI.form.AbstractSection, conf_type: string, tab: string) {
-        let log_dir = uci.get_first(conf_type, conf_type, 'log_dir');
-
+    createLogFlagOption: function (s: LuCI.form.AbstractSection, tab?: string) {
         let o = tab ? s.taboption(tab, form.Flag, 'log_enabled', _('Record Logs'))
             : s.option(form.Flag, 'log_enabled', _('Record Logs'));
         o.modalonly = true;
-        o.write = function (section_id: string, value: string) {
-            let log_file = 'shunt.log'
-            let name = uci.get(conf_type, section_id, 'name');
-            if (name) {
-                log_file = name + '-' + section_id + '.log'
-            }
-
-            uci.set(conf_type, section_id, 'log_path', log_dir + '/' + log_file);
-        }
-        o.remove = function (section_id: string) {
-            uci.unset(conf_type, section_id, 'log_path');
-        }
-        o.load = function (section_id: string) {
-            if (uci.get(conf_type, section_id, 'log_path')) {
-                return '1'
-            }
-            return '0'
-        }
         o.rmempty = true;
         return o;
     },

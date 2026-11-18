@@ -1,12 +1,16 @@
+import codeEditor from 'hijpass.editor';
 import view from "view";
+import { Backend } from "../utils/backend";
 import uci from "uci";
 import { FIREWALL_DNS_FORWARD, LuciFlied } from "../enum/hijpass";
 import form from "form";
 import { SaveApplyUtils } from "../utils/actions/save-apply/index";
 import { FormUtils } from "../utils/base/luci/form";
-import { FilePathUtils } from "../utils/base/files/paths";
+import { FirewallEditorUtils } from "../utils/feature/firewall/editor";
 import { FirewallFormUtils } from "../utils/feature/firewall/form";
+import { NotificationUtils } from "../utils/base/luci/notification";
 import { FirewallDnsForwardUtils } from "../utils/feature/firewall/dns-forward";
+import { FirewallMigrationUtils } from "../utils/feature/firewall/migration";
 
 
 const v = view.extend({
@@ -36,7 +40,7 @@ const v = view.extend({
         // 创建文本编辑选项
         createTextOptions(s);
 
-        return m.render();
+        return E('div', {}, [...FirewallMigrationUtils.renderNotice(), await m.render()]);
     }
 });
 
@@ -107,26 +111,55 @@ function createListOptions(s: LuCI.form.AbstractSection) {
 
 // 创建所有文本编辑选项
 function createTextOptions(s: LuCI.form.AbstractSection) {
+    FirewallMigrationUtils.createDismissOption(s);
     // IP 直连列表（IPv4 + IPv6）
     FormUtils.createTextOption(s, 'ip_direct', 'ip_direct_hash', null,
         _('Edit IP Direct List'),
-        FilePathUtils.getFilePath('ip_direct'));
+        { resource: 'ip_direct' });
 
     // IP 代理列表（IPv4 + IPv6）
     FormUtils.createTextOption(s, 'ip_proxy', 'ip_proxy_hash', null,
-        _('Edit IP Proxy List'), FilePathUtils.getFilePath('ip_proxy'));
+        _('Edit IP Proxy List'), { resource: 'ip_proxy' });
 
-    // 防火墙规则
-    FormUtils.createTextOption(s, 'nftables', 'nft_hash', null,
-        _('Edit the nftables rule template. Intended for users familiar with nftables and HiJpass rule generation. Arbitrary changes may break compatibility with LuCI configuration features and affect network connectivity.'),
-        FilePathUtils.getFilePath('nft'));
+    const restore = s.taboption<LuCI.form.ButtonValue>('nftables', form.Button, '_restore_template', null);
+    restore.inputtitle = _('Restore Default Template');
+    restore.inputstyle = 'neutral';
+    const renderRestore = restore.renderWidget;
+    restore.renderWidget = function (...args: any[]) {
+        return E('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:.5rem' }, [
+            renderRestore.apply(this, args),
+            E('button', { type: 'button', class: 'btn cbi-button', click: FirewallEditorUtils.showParameters }, _('Template Parameters')),
+        ]);
+    };
+    restore.onclick = async function (ev: Event, sectionId: string) {
+        const button = ev.currentTarget as HTMLButtonElement;
+        button.disabled = true;
+        try {
+            // 只替换编辑器内容，沿用页面的保存流程。
+            const content = await Backend.defaultFirewallTemplate();
+            editor.getUIElement(sectionId).setValue(content.trim());
+        } catch (error) {
+            NotificationUtils.error(_('Restore Failed'), error.message, 5000);
+        } finally { button.disabled = false; }
+    };
+
+    const editor = FormUtils.createTextOption(s, 'nftables', 'nft_hash', null, null,
+        { resource: 'firewall_template' });
+    editor.rows = 38;
+    const renderEditor = editor.renderWidget;
+    editor.renderWidget = function (...args: any[]) {
+        const widget = renderEditor.apply(this, args) as HTMLElement;
+        FirewallEditorUtils.mount(widget, _('Firewall Template'));
+        return widget;
+    };
 
     FirewallFormUtils.createNftViewOption(s);
 
     // 用户自定义启动脚本
-    FormUtils.createTextOption(s, 'hook', 'nft_hook_hash', null,
+    const hook = FormUtils.createTextOption(s, 'hook', 'nft_hook_hash', null,
         _('Executed after HiJpass attempts to load its generated nftables rules during firewall start or reload. Runs only when the generated rules file and this script exist; it may also run if loading the rules fails.'),
-        FilePathUtils.getFilePath('nft_hook'));
+        { resource: 'nft_hook' });
+    codeEditor.configure(hook, 'shell', _('Custom Script'));
 }
 
 // 创建所有标签页

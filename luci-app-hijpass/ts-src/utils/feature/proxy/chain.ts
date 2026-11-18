@@ -1,5 +1,5 @@
 import uci from "uci";
-import { CORE_TYPE, LuciFlied, PROXY_TYPE, normalizeCoreType } from "../../../enum/hijpass";
+import { CORE_TYPE, LuciFlied, PROXY_TYPE, PROXY_CONFIG_TYPE } from "../../../enum/hijpass";
 import type { LoadBalanceProxyNode, ProxyNode } from "../../../module/luci";
 
 export const MAX_PROXY_CHAIN_NODES = 3;
@@ -22,7 +22,12 @@ function getProxyName(section: any): string {
 }
 
 function getProxyCore(section: any): string {
-    return normalizeCoreType(section?.core || CORE_TYPE.SING_BOX);
+    return isCustomProxy(section) ? '' : section?.core || CORE_TYPE.SING_BOX;
+}
+
+// 自定义配置只由 config_type 决定，不解释旧 core/type 值。
+function isCustomProxy(section: any): boolean {
+    return section?.config_type === PROXY_CONFIG_TYPE.CUSTOM;
 }
 
 function isPort(value: any): boolean {
@@ -79,7 +84,7 @@ function resolveLoadBalanceMembers(
         if (!section) {
             throw new Error('Load balancing member node not found: ' + memberName);
         }
-        if (section.type === PROXY_TYPE.LOAD_BALANCE) {
+        if (!isCustomProxy(section) && section.type === PROXY_TYPE.LOAD_BALANCE) {
             throw new Error('Nested load balancing members are not supported: ' + memberName);
         }
         if (section.enabled !== '1') {
@@ -103,6 +108,7 @@ function resolveUpstreamProxy(
     proxyNode: ProxyNode,
     sections: Map<string, any> = getProxySectionMap()
 ): ResolvedUpstreamProxy | undefined {
+    if (isCustomProxy(proxyNode)) return undefined;
     const upstreamName = proxyNode.upstream_proxy_node;
     if (!upstreamName) return undefined;
     if (upstreamName === proxyNode.name) {
@@ -144,7 +150,7 @@ function collectProxyChain(startName: string, sections: Map<string, any>) {
         chain.push(currentName);
 
         const section = sections.get(currentName);
-        if (!section || !section.upstream_proxy_node) break;
+        if (!section || isCustomProxy(section) || !section.upstream_proxy_node) break;
         currentName = section.upstream_proxy_node;
     }
 
@@ -152,6 +158,8 @@ function collectProxyChain(startName: string, sections: Map<string, any>) {
 }
 
 function getProxyDependencies(section: any): string[] {
+    // 自定义命令的出站由用户管理，不读取隐藏的协议表单字段。
+    if (isCustomProxy(section)) return [];
     const dependencies: string[] = [];
     if (section?.type === PROXY_TYPE.LOAD_BALANCE) {
         dependencies.push(...normalizeProxyNodeList(section.member_node));
@@ -198,6 +206,7 @@ function findProxyDependencyCycle(sections: Map<string, any>): string[] | undefi
 const ProxyChainUtils = {
     getProxyName,
     getProxyCore,
+    isCustomProxy,
     getProxySections,
     getProxySectionMap,
     isPort,

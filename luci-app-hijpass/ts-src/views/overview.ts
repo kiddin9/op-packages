@@ -6,6 +6,7 @@ import {SaveApplyUtils} from "../utils/actions/save-apply/index";
 import {ServiceUtils} from "../utils/base/luci/service";
 import { OverviewPanelUtils } from "../utils/feature/overview/panel";
 import { FlowPreviewUtils } from "../utils/feature/overview/flow-preview";
+import { FirewallMigrationUtils } from "../utils/feature/firewall/migration";
 
 const v = view.extend({
     load: function () {
@@ -64,7 +65,7 @@ const v = view.extend({
         sTest.addremove = false;
         sTest.render = OverviewPanelUtils.createConnectivityTest
 
-        return m.render();
+        return E('div', {}, [...FirewallMigrationUtils.renderNotice(L.url('admin/services/hijpass/firewall')), await m.render()]);
     }
 });
 

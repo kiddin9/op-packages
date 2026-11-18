@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_FASTNET:=$(ARCH)
 
 PKG_NAME:=fastnet
-PKG_VERSION:=0.8.9
-PKG_RELEASE:=10
+PKG_VERSION:=0.8.10
+PKG_RELEASE:=11
 
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/fastnet-runtime-v$(PKG_VERSION)/

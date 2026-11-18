@@ -1150,3 +1150,123 @@ msgstr "已将认证服务器配置从\"%s\"重命名为\"%s\"。"
 msgid "Renamed long connection profile from \"%s\" to \"%s\"."
 msgstr "已将长连接配置从\"%s\"重命名为\"%s\"。"
 
+
+msgid "Service Status"
+msgstr "服务运行状态"
+
+msgid "Real-time connection telemetry, client statistics, and authentication status."
+msgstr "实时监控认证终端、网络流量、连接状态与云端通道。"
+
+msgid "Collecting status ..."
+msgstr "正在收集状态..."
+
+msgid "在线认证用户"
+msgstr "在线认证用户"
+
+msgid "当前活跃在线终端 %d 台"
+msgstr "当前活跃在线终端 %d 台"
+
+msgid "服务未启动"
+msgstr "服务未启动"
+
+msgid "下行实时流速"
+msgstr "下行实时流速"
+
+msgid "全网认证终端下载总速率"
+msgstr "全网认证终端下载总速率"
+
+msgid "上行实时流速"
+msgstr "上行实时流速"
+
+msgid "全网认证终端上传总速率"
+msgstr "全网认证终端上传总速率"
+
+msgid "云端管控通道"
+msgstr "云端管控通道"
+
+msgid "WebSocket 已连接"
+msgstr "WebSocket 已连接"
+
+msgid "MQTT 已连接"
+msgstr "MQTT 已连接"
+
+msgid "未连接"
+msgstr "未连接"
+
+msgid "远程云端长连接通道"
+msgstr "远程云端长连接通道"
+
+msgid "认证服务器心跳"
+msgstr "认证服务器心跳"
+
+msgid "在线正常"
+msgstr "在线正常"
+
+msgid "离线 / 异常"
+msgstr "离线 / 异常"
+
+msgid "在线认证终端列表"
+msgstr "在线认证终端列表"
+
+msgid "实时监测当前网关通过 Portal 认证的终端设备、网络流量、在线时长与连接状态。"
+msgstr "实时监测当前网关通过 Portal 认证的终端设备、网络流量、在线时长与连接状态。"
+
+msgid "暂无在线认证终端（当客户端连接并完成 Portal 认证后将实时显示）"
+msgstr "暂无在线认证终端（当客户端连接并完成 Portal 认证后将实时显示）"
+
+msgid "IP 地址"
+msgstr "IP 地址"
+
+msgid "MAC 地址"
+msgstr "MAC 地址"
+
+msgid "终端名称"
+msgstr "终端名称"
+
+msgid "在线时长"
+msgstr "在线时长"
+
+msgid "连接方式"
+msgstr "连接方式"
+
+msgid "网关标识"
+msgstr "网关标识"
+
+msgid "下行流速"
+msgstr "下行流速"
+
+msgid "上行流速"
+msgstr "上行流速"
+
+msgid "操作"
+msgstr "操作"
+
+msgid "强制下线"
+msgstr "强制下线"
+
+msgid "确定要强制下线客户端 %s (%s) 吗？"
+msgstr "确定要强制下线客户端 %s (%s) 吗？"
+
+msgid "客户端 %s 已成功下线"
+msgstr "客户端 %s 已成功下线"
+
+msgid "下线失败：%s"
+msgstr "下线失败：%s"
+
+msgid "运行中"
+msgstr "运行中"
+
+msgid "未运行"
+msgstr "未运行"
+
+msgid "已运行"
+msgstr "已运行"
+
+msgid "每 3 秒自动轮询刷新"
+msgstr "每 3 秒自动轮询刷新"
+
+msgid "有线"
+msgstr "有线"
+
+msgid "无线"
+msgstr "无线"

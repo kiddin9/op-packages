@@ -1,12 +1,13 @@
+import { vlessSecurity } from "../utils/feature/proxy/security";
 import view from "view";
+import editor from "hijpass.editor";
 import uci from "uci";
-import { CORE_TYPE, LuciFlied, HijpassValues, PROXY_TYPE, ProxyType } from "../enum/hijpass";
+import { CORE_TYPE, PROXY_CONFIG_TYPE, LuciFlied, HijpassValues, PROXY_TYPE, ProxyType } from "../enum/hijpass";
 import form from "form";
 import { SaveApplyUtils } from "../utils/actions/save-apply/index";
 import { ServiceUtils } from "../utils/base/luci/service";
 import { FormUtils } from "../utils/base/luci/form";
 import { ValidationUtils } from "../utils/base/luci/validation";
-import { FilePathUtils } from "../utils/base/files/paths";
 import { UciUtils } from "../utils/base/luci/uci";
 import { ProxyFormUtils } from "../utils/feature/proxy/form";
 import { ProxyChainUtils } from "../utils/feature/proxy/chain";
@@ -53,7 +54,7 @@ const v = view.extend({
         FormUtils.setAnonymousGridSectionMembers(s);
 
         // 重写 handleAdd 方法，使用自定义的唯一 ID 生成器
-        s.handleAdd = function (ev: Event, name?: string) {
+        s.handleAdd = function (ev: Event) {
             let sectionId = UciUtils.generateUniqueSectionId(LuciFlied.CONF_NAME);
             return L.bind(form.GridSection.prototype.handleAdd, this, ev, sectionId)();
         };
@@ -85,7 +86,18 @@ const v = view.extend({
         const instances = data[1] ?? {};
         createProxyOptions(s, instances);
 
-        return m.render();
+        return E('div', {}, [
+            E('style', {}, `.cbi-value[data-name="custom_conf"] > .cbi-value-field {
+                    width:100%; min-width:0;
+                }
+                .cbi-value[data-name="custom_conf"] .cm-editor {
+                    min-width:18rem; max-width:56rem; height:26rem; min-height:min(16rem, 60vh); max-height:60vh;
+                }
+                @media (max-width:1366px) {
+                    .cbi-value[data-name="custom_conf"] .cm-editor { min-width:16rem; }
+                }`),
+            await m.render(),
+        ]);
     },
 });
 
@@ -154,18 +166,19 @@ function createGridDisplayOptions(s: LuCI.form.AbstractSection, instances: any) 
 function createCustomProxyOptions(s: LuCI.form.AbstractSection) {
     // 运行命令，{conf_path} 为配置文件路径占位符
     let cmdOpt = s.option(form.Value, 'command', _('Run Command'),
-        _('Proxy Run Command'));
-    cmdOpt.default = '/usr/bin/xray -c {conf_path}';
+        _("Executed as root. Use {conf_path} for this node configuration file path."));
+    cmdOpt.validate = function (_id: string, value: string) { return value.trim() ? true : _('Proxy Run Command'); };
     cmdOpt.rmempty = false;
     cmdOpt.modalonly = true;
-    cmdOpt.depends('core', CORE_TYPE.CUSTOM);
+    cmdOpt.depends('config_type', PROXY_CONFIG_TYPE.CUSTOM);
 
-    // 配置文件内容编辑器，路径自动生成为 $client_dir/$name-$section_id.json
+    // 配置位置和命名由后端根据节点标识解析。
     let confOpt = s.option(form.TextValue, 'custom_conf', _('Configuration File Content'),
-        _('Edit Configuration File'));
+        _("Configuration passed to the run command; enter the complete file contents."));
     confOpt.modalonly = true;
-    confOpt.depends('core', CORE_TYPE.CUSTOM);
-    FormUtils.setConfContentOptionMembers(confOpt, LuciFlied.CONF_NAME, FilePathUtils.getFilePath('client_dir'));
+    confOpt.depends('config_type', PROXY_CONFIG_TYPE.CUSTOM);
+    FormUtils.setConfContentOptionMembers(confOpt, LuciFlied.CONF_NAME);
+    editor.configure(confOpt, 'json', _('Configuration File Content'));
 }
 
 /**
@@ -173,27 +186,26 @@ function createCustomProxyOptions(s: LuCI.form.AbstractSection) {
  */
 function createProxyEnvironmentOptions(s: LuCI.form.AbstractSection) {
     let procdEnvOpt = s.option(form.DynamicList, 'procd_env', _('Procd Environment Variables'),
-        _('Procd Environment Variables'));
+        _("One NAME=value entry per line, passed to this node process."));
     procdEnvOpt.modalonly = true;
 
     let logLevelOpt = s.option(form.ListValue, 'log_level', _('Log Level'), _('Core Log Level'));
     logLevelOpt.modalonly = true;
     logLevelOpt.default = 'info';
     logLevelOpt.rmempty = false;
-    logLevelOpt.depends('core', CORE_TYPE.XRAY);
-    logLevelOpt.depends('core', CORE_TYPE.SING_BOX);
+    logLevelOpt.depends('config_type', PROXY_CONFIG_TYPE.GENERATED);
     HijpassValues.PROXY_LOG_LEVELS.forEach(level => logLevelOpt.value(level));
 
-    FormUtils.createLogFlagOption(s, LuciFlied.CONF_NAME, undefined)
+    FormUtils.createLogFlagOption(s)
 }
 
 function addLoadBalanceDepends(o: LuCI.form.AbstractValue, core?: string) {
     if (core) {
-        o.depends({type: PROXY_TYPE.LOAD_BALANCE, core});
+        o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core});
         return;
     }
-    o.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.SING_BOX});
-    o.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY});
+    o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.SING_BOX});
+    o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY});
 }
 
 function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
@@ -214,7 +226,7 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
             if (!name
                 || name === currentName
                 || section['.name'] === sectionId
-                || section.type === PROXY_TYPE.LOAD_BALANCE) {
+                || !ProxyChainUtils.isCustomProxy(section) && section.type === PROXY_TYPE.LOAD_BALANCE) {
                 return;
             }
 
@@ -235,7 +247,7 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
         const sections = ProxyChainUtils.getProxySectionMap();
         const member = sections.get(value);
         if (!member) return _('Load balancing member node not found');
-        if (member.type === PROXY_TYPE.LOAD_BALANCE) {
+        if (!ProxyChainUtils.isCustomProxy(member) && member.type === PROXY_TYPE.LOAD_BALANCE) {
             return _('Nested load balancing nodes are not supported');
         }
         const dependencyCycle = findProxyDependencyCycleFrom(currentName, [value], sections);
@@ -289,18 +301,18 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
     expected.modalonly = true;
     expected.default = '1';
     expected.datatype = 'uinteger';
-    expected.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+    expected.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
 
     const maxRtt = s.option(form.Value, 'strategy_max_rtt', _('Max Acceptable RTT'), _('Max Acceptable RTT'));
     maxRtt.modalonly = true;
     maxRtt.default = '1s';
-    maxRtt.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+    maxRtt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
 
     const strategyTolerance = s.option(form.Value, 'strategy_tolerance', _('Failure Rate Tolerance'),
         _('Failure Rate Tolerance'));
     strategyTolerance.modalonly = true;
     strategyTolerance.default = '0.05';
-    strategyTolerance.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+    strategyTolerance.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
 
     const fallback = s.option(form.ListValue, 'fallback_tag', _('Fallback Node'), _('Fallback Outbound'));
     fallback.modalonly = true;
@@ -314,7 +326,7 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
             || sectionId;
         ProxyChainUtils.getProxySections().forEach((section: any) => {
             const name = ProxyChainUtils.getProxyName(section);
-            if (!name || name === currentName || section.type === PROXY_TYPE.LOAD_BALANCE) return;
+            if (!name || name === currentName || !ProxyChainUtils.isCustomProxy(section) && section.type === PROXY_TYPE.LOAD_BALANCE) return;
             this.value(name, name);
         });
         return form.ListValue.prototype.load.apply(this, [sectionId]);
@@ -336,24 +348,24 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
         const option = s.option(form.Value, name, title, description);
         option.modalonly = true;
         if (defaultValue) option.default = defaultValue;
-        option.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
-        option.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+        option.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
+        option.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
     });
 
     const sampling = s.option(form.Value, 'probe_sampling', _('Results to Retain'), _('Retain Recent Probe Results'));
     sampling.modalonly = true;
     sampling.default = '10';
     sampling.datatype = 'uinteger';
-    sampling.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
-    sampling.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+    sampling.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
+    sampling.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
 
     const method = s.option(form.ListValue, 'probe_http_method', _('Probe HTTP Method'), _('Probe HTTP Method'));
     method.modalonly = true;
     method.value('', _('Default (HEAD)'));
     method.value('HEAD', 'HEAD');
     method.value('GET', 'GET');
-    method.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
-    method.depends({type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
+    method.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastPing'});
+    method.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.LOAD_BALANCE, core: CORE_TYPE.XRAY, strategy: 'leastLoad'});
 }
 
 
@@ -362,14 +374,14 @@ function createLoadBalanceOptions(s: LuCI.form.AbstractSection) {
  */
 function createCommonServerOptions(s: LuCI.form.AbstractSection) {
     let serverAddrOpt = s.option(form.Value, 'server', _('Server Address'),
-        _('Proxy Server Address'));
+        _("Remote server IP or domain name, without a URL scheme or port."));
     serverAddrOpt.modalonly = true;
     serverAddrOpt.rmempty = false;
     ProxyFormUtils.forProtocols(serverAddrOpt, [PROXY_TYPE.HYSTERIA2, PROXY_TYPE.SHADOWSOCKS,
     PROXY_TYPE.TUIC, PROXY_TYPE.SHADOWTLS, PROXY_TYPE.VLESS]);
 
     let serverPortOpt = s.option(form.Value, 'server_port', _('Server Port'),
-        _('Proxy Server Port'));
+        _("Remote listening port; use the public port when port forwarding is configured."));
     serverPortOpt.datatype = 'port';
     serverPortOpt.modalonly = true;
     serverPortOpt.rmempty = false;
@@ -385,27 +397,27 @@ function createHysteria2AdvancedOptions(s: LuCI.form.AbstractSection) {
         _('Port Hopping Range'));
     serverPortsOpt.modalonly = true;
     serverPortsOpt.datatype = 'portrange';
-    serverPortsOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    serverPortsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
 
     let hopIntervalOpt = s.option(form.Value, 'hop_interval', _('Port Hop Interval'),
         _('Port Hop Interval'));
     hopIntervalOpt.modalonly = true;
     // hop_interval 依赖于类型是 Hysteria2 且 server_ports 有值
-    hopIntervalOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX, server_ports: /./ });
+    hopIntervalOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX, server_ports: /./ });
 
     let upMbpsOpt = s.option(form.Value, 'up_mbps', _('Uplink Speed'),
-        _('Maximum Uplink Bandwidth'));
+        _("Upload bandwidth in Mbps; use the available uplink capacity."));
     upMbpsOpt.datatype = 'uinteger';
     upMbpsOpt.modalonly = true;
-    upMbpsOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
-    upMbpsOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
+    upMbpsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    upMbpsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
 
     let downMbpsOpt = s.option(form.Value, 'down_mbps', _('Downlink Speed'),
-        _('Maximum Downlink Bandwidth'));
+        _("Download bandwidth in Mbps; use the available downlink capacity."));
     downMbpsOpt.datatype = 'uinteger';
     downMbpsOpt.modalonly = true;
-    downMbpsOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
-    downMbpsOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
+    downMbpsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    downMbpsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
 }
 
 /**
@@ -417,7 +429,7 @@ function createHysteria2XrayOptions(s: LuCI.form.AbstractSection) {
     udpIdleTimeoutOpt.datatype = 'uinteger';
     udpIdleTimeoutOpt.modalonly = true;
     udpIdleTimeoutOpt.placeholder = '60';
-    udpIdleTimeoutOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
+    udpIdleTimeoutOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.XRAY });
 }
 
 /**
@@ -427,16 +439,16 @@ function createHysteria2ObfsOptions(s: LuCI.form.AbstractSection) {
     let obfsTypeOpt = s.option(form.ListValue, 'obfs_type', _('OBFS Type'),
         _('QUIC Obfuscation Type'));
     obfsTypeOpt.modalonly = true;
-    obfsTypeOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    obfsTypeOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
 
     HijpassValues.HYSTERIA2_OBFS_TYPES.forEach((item) => {
         obfsTypeOpt.value(item.value, _(item.label));
     });
 
     let obfsPasswordOpt = s.option(form.Value, 'obfs_password', _('OBFS Password'),
-        _('QUIC Obfuscation Password'));
+        _("Salamander password; must match the server."));
     obfsPasswordOpt.modalonly = true;
-    obfsPasswordOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX, obfs_type: 'salamander' });
+    obfsPasswordOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX, obfs_type: 'salamander' });
 }
 
 /**
@@ -448,7 +460,7 @@ function createVlessNetworkOptions(s: LuCI.form.AbstractSection) {
         _('UDP Packet Encoding Method'));
     packetEncodingOpt.modalonly = true;
     // packet_encoding 只对 sing-box core 有意义
-    packetEncodingOpt.depends({ type: PROXY_TYPE.VLESS, core: CORE_TYPE.SING_BOX });
+    packetEncodingOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.VLESS, core: CORE_TYPE.SING_BOX });
 
     HijpassValues.VLESS_PACKET_ENCODINGS.forEach((item) => {
         packetEncodingOpt.value(item.value, _(item.label));
@@ -458,16 +470,16 @@ function createVlessNetworkOptions(s: LuCI.form.AbstractSection) {
 /**
  * 创建通用传输层类型选择（用于支持Transport的协议：VLESS等）
  * - 所有传输类型统一注册（含 xhttp）
- * - sing-box 不支持 xhttp：通过 validate 校验阻止 sing-box+xhttp 的非法组合
+ * - HTTP 仅用于 sing-box，XHTTP 仅用于 Xray，保存时校验所选核心
  * - xhttp 相关子字段仅在 core:xray 时显示
  */
 function createTransportTypeOption(s: LuCI.form.AbstractSection) {
     let transportOpt = s.option(form.ListValue, 'transport_type', _('Transport Protocol'),
-        _('Proxy Transport Protocol'));
+        _("Leave empty for TCP. HTTP requires sing-box; XHTTP requires Xray. Match the peer transport."));
     transportOpt.modalonly = true;
     ProxyFormUtils.forProtocols(transportOpt, [PROXY_TYPE.VLESS]);
 
-    HijpassValues.V2RAY_TRANSPORT_TYPES_XRAY.forEach((item) => {
+    HijpassValues.V2RAY_TRANSPORT_TYPES.forEach((item) => {
         transportOpt.value(item.value, _(item.label));
     });
 
@@ -476,11 +488,14 @@ function createTransportTypeOption(s: LuCI.form.AbstractSection) {
     // 而非 uci.get（那只能读到上次保存的旧值）
     transportOpt.validate = function (sectionId: string, value: string) {
         const core = this.section.formvalue(sectionId, 'core');
-        const realityEnabled = this.section.formvalue(sectionId, 'tls_reality_enabled');
+        const security = this.section.formvalue(sectionId, 'security');
         if (value === 'xhttp' && core !== CORE_TYPE.XRAY) {
             return _('XHTTP transport is only supported by Xray core');
         }
-        if (core === CORE_TYPE.XRAY && realityEnabled === '1' && (value === 'ws' || value === 'httpupgrade')) {
+        if (value === 'http' && core !== CORE_TYPE.SING_BOX) {
+            return _('HTTP transport is only supported by sing-box core');
+        }
+        if (core === CORE_TYPE.XRAY && security === 'reality' && (value === 'ws' || value === 'httpupgrade')) {
             return _('Xray REALITY only supports RAW, XHTTP and gRPC transports');
         }
         return true;
@@ -492,31 +507,31 @@ function createTransportTypeOption(s: LuCI.form.AbstractSection) {
  */
 function createTransportHttpOptions(s: LuCI.form.AbstractSection) {
     let hostOpt = s.option(form.Value, 'transport_http_host', _('HTTP Host'),
-        _('HTTP Host List'));
+        _("HTTP Host sent to the server; if the server checks Host, use an accepted value."));
     hostOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(hostOpt, [PROXY_TYPE.VLESS], { transport_type: 'http' });
+    ProxyFormUtils.forCoreProtocols(hostOpt, CORE_TYPE.SING_BOX, [PROXY_TYPE.VLESS], { transport_type: 'http' });
 
     let pathOpt = s.option(form.Value, 'transport_http_path', _('HTTP Path'),
-        _('HTTP Request Path'));
+        _("Start with /, for example /proxy; match the path configured on the peer."));
     pathOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(pathOpt, [PROXY_TYPE.VLESS], { transport_type: 'http' });
+    ProxyFormUtils.forCoreProtocols(pathOpt, CORE_TYPE.SING_BOX, [PROXY_TYPE.VLESS], { transport_type: 'http' });
 
     let methodOpt = s.option(form.Value, 'transport_http_method', _('HTTP Method'),
-        _('HTTP Request Method'));
+        _("HTTP request method, for example PUT; match any method restriction on the server."));
     methodOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(methodOpt, [PROXY_TYPE.VLESS], { transport_type: 'http' });
+    ProxyFormUtils.forCoreProtocols(methodOpt, CORE_TYPE.SING_BOX, [PROXY_TYPE.VLESS], { transport_type: 'http' });
 
     let idleOpt = s.option(form.Value, 'transport_http_idle_timeout', _('Idle Timeout'),
-        _('Idle Timeout'));
+        _("Duration such as 15s or 1m; HTTP/2 sends a health-check PING after this idle period."));
     idleOpt.modalonly = true;
     idleOpt.default = '15s';
-    ProxyFormUtils.forProtocols(idleOpt, [PROXY_TYPE.VLESS], { transport_type: 'http' });
+    ProxyFormUtils.forCoreProtocols(idleOpt, CORE_TYPE.SING_BOX, [PROXY_TYPE.VLESS], { transport_type: 'http' });
 
     let pingOpt = s.option(form.Value, 'transport_http_ping_timeout', _('PING Timeout'),
-        _('PING Response Timeout'));
+        _("Duration to wait for an HTTP/2 PING reply, for example 15s."));
     pingOpt.modalonly = true;
     pingOpt.default = '15s';
-    ProxyFormUtils.forProtocols(pingOpt, [PROXY_TYPE.VLESS], { transport_type: 'http' });
+    ProxyFormUtils.forCoreProtocols(pingOpt, CORE_TYPE.SING_BOX, [PROXY_TYPE.VLESS], { transport_type: 'http' });
 }
 
 /**
@@ -524,23 +539,23 @@ function createTransportHttpOptions(s: LuCI.form.AbstractSection) {
  */
 function createTransportWsOptions(s: LuCI.form.AbstractSection) {
     let hostOpt = s.option(form.Value, 'transport_ws_host', _('WebSocket Host'),
-        _('WebSocket Host Domain'));
+        _("Host header sent with the WebSocket handshake; use the value required by the reverse proxy."));
     hostOpt.modalonly = true;
     ProxyFormUtils.forProtocols(hostOpt, [PROXY_TYPE.VLESS], { transport_type: 'ws' });
 
     let pathOpt = s.option(form.Value, 'transport_ws_path', _('WebSocket Path'),
-        _('HTTP Request Path'));
+        _("Start with /, for example /proxy; match the path configured on the peer."));
     pathOpt.modalonly = true;
     ProxyFormUtils.forProtocols(pathOpt, [PROXY_TYPE.VLESS], { transport_type: 'ws' });
 
     let earlyDataOpt = s.option(form.Value, 'transport_ws_max_early_data', _('Max Early Data'),
-        _('Maximum allowed payload size in requests'));
+        _("Maximum early-data size in bytes; use the same setting on the server."));
     earlyDataOpt.datatype = 'uinteger';
     earlyDataOpt.modalonly = true;
     ProxyFormUtils.forProtocols(earlyDataOpt, [PROXY_TYPE.VLESS], { transport_type: 'ws' });
 
     let headerNameOpt = s.option(form.Value, 'transport_ws_early_data_header_name', _('Early Data Header Name'),
-        _('Early Data Header Name'));
+        _("Match the server; use Sec-WebSocket-Protocol for compatibility with Xray."));
     headerNameOpt.modalonly = true;
     ProxyFormUtils.forProtocols(headerNameOpt, [PROXY_TYPE.VLESS], { transport_type: 'ws' });
 }
@@ -550,7 +565,7 @@ function createTransportWsOptions(s: LuCI.form.AbstractSection) {
  */
 function createTransportGrpcOptions(s: LuCI.form.AbstractSection) {
     let serviceOpt = s.option(form.Value, 'transport_grpc_service_name', _('gRPC Service Name'),
-        _('gRPC Service Name'));
+        _("gRPC service name; must match the server exactly."));
     serviceOpt.modalonly = true;
     serviceOpt.default = 'TunService';
     ProxyFormUtils.forProtocols(serviceOpt, [PROXY_TYPE.VLESS], { transport_type: 'grpc' });
@@ -578,12 +593,12 @@ function createTransportGrpcOptions(s: LuCI.form.AbstractSection) {
  */
 function createTransportHttpupgradeOptions(s: LuCI.form.AbstractSection) {
     let hostOpt = s.option(form.Value, 'transport_httpupgrade_host', _('HTTPUpgrade Host'),
-        _('Host Domain'));
+        _("HTTPUpgrade Host; must match the server value when Host verification is enabled."));
     hostOpt.modalonly = true;
     ProxyFormUtils.forProtocols(hostOpt, [PROXY_TYPE.VLESS], { transport_type: 'httpupgrade' });
 
     let pathOpt = s.option(form.Value, 'transport_httpupgrade_path', _('HTTPUpgrade Path'),
-        _('HTTP Request Path'));
+        _("Start with /, for example /proxy; match the path configured on the peer."));
     pathOpt.modalonly = true;
     ProxyFormUtils.forProtocols(pathOpt, [PROXY_TYPE.VLESS], { transport_type: 'httpupgrade' });
 }
@@ -593,38 +608,57 @@ function createTransportHttpupgradeOptions(s: LuCI.form.AbstractSection) {
  */
 function createCommonTlsOptions(s: LuCI.form.AbstractSection) {
     let serverNameOpt = s.option(form.Value, 'tls_server_name', _('TLS Server Name'),
-        _('TLS Server Name'));
+        _("TLS server name (SNI). For VLESS, empty uses the server address; REALITY must use an allowed server name."));
     serverNameOpt.modalonly = true;
-    serverNameOpt.rmempty = false;
+    serverNameOpt.rmempty = true;
+    serverNameOpt.validate = function (id: string, value: string) {
+        return value || this.section.formvalue(id, 'type') === PROXY_TYPE.VLESS
+            ? true : _('Expecting a non-empty value');
+    };
     ProxyFormUtils.forProtocols(serverNameOpt, [PROXY_TYPE.HYSTERIA2, PROXY_TYPE.TUIC,
-    PROXY_TYPE.SHADOWTLS, PROXY_TYPE.VLESS]);
+    PROXY_TYPE.SHADOWTLS]);
+    for (const security of ['tls', 'reality']) {
+        ProxyFormUtils.forProtocols(serverNameOpt, [PROXY_TYPE.VLESS], { security });
+    }
 
     let insecureOpt = s.option(form.Flag, 'tls_insecure', _('Ignore Certificate Verification'),
-        _('Accept Any Certificate'));
+        _("Skip server certificate verification; normally leave disabled."));
     insecureOpt.modalonly = true;
-    insecureOpt.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
-    insecureOpt.depends({ type: PROXY_TYPE.VLESS, core: CORE_TYPE.SING_BOX });
+    insecureOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    insecureOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.VLESS, core: CORE_TYPE.SING_BOX, security: 'tls' });
     ProxyFormUtils.forProtocols(insecureOpt, [PROXY_TYPE.TUIC, PROXY_TYPE.SHADOWTLS]);
 }
 
 /**
- * 创建TLS Reality配置选项（用于支持Reality的协议：VLESS等）
+ * VLESS 安全方式使用互斥选项；读取旧配置时保留原来的 TLS 行为。
  */
-function createTlsRealityOptions(s: LuCI.form.AbstractSection) {
-    let realityEnabledOpt = s.option(form.Flag, 'tls_reality_enabled', _('Enable TLS Reality'),
-        _('Enable TLS Reality Obfuscation'));
-    realityEnabledOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(realityEnabledOpt, [PROXY_TYPE.VLESS]);
+function createVlessSecurityOption(s: LuCI.form.AbstractSection) {
+    const option = s.option(form.ListValue, 'security', _('Transport Security'),
+        _("None adds no transport encryption; TLS verifies a certificate; REALITY uses the server public key."));
+    option.value('none', _('None'));
+    option.value('tls', 'TLS');
+    option.value('reality', 'REALITY');
+    option.modalonly = true;
+    option.rmempty = false;
+    option.forcewrite = true;
+    ProxyFormUtils.forProtocols(option, [PROXY_TYPE.VLESS]);
+    option.load = (id: string) => vlessSecurity(uci.get(LuciFlied.CONF_NAME, id) || {});
+    option.write = (id: string, value: string) => {
+        uci.set(LuciFlied.CONF_NAME, id, 'security', value);
+        uci.unset(LuciFlied.CONF_NAME, id, 'tls_reality_enabled');
+    };
+}
 
+function createTlsRealityOptions(s: LuCI.form.AbstractSection) {
     let publicKeyOpt = s.option(form.Value, 'tls_reality_public_key', _('Reality Public Key'),
-        _('Server Reality Public Key'));
+        _("Public key paired with the REALITY private key on the server."));
     publicKeyOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(publicKeyOpt, [PROXY_TYPE.VLESS], { tls_reality_enabled: '1' });
+    ProxyFormUtils.forProtocols(publicKeyOpt, [PROXY_TYPE.VLESS], { security: 'reality' });
 
     let shortIdOpt = s.option(form.Value, 'tls_reality_short_id', _('Reality Short ID'),
-        _('Server Reality Short ID'));
+        _("Use the same short ID on both ends: an even number of hexadecimal digits, up to 16; empty is allowed."));
     shortIdOpt.modalonly = true;
-    ProxyFormUtils.forProtocols(shortIdOpt, [PROXY_TYPE.VLESS], { tls_reality_enabled: '1' });
+    ProxyFormUtils.forProtocols(shortIdOpt, [PROXY_TYPE.VLESS], { security: 'reality' });
 }
 
 /**
@@ -634,7 +668,7 @@ function createHysteria2DebugOptions(s: LuCI.form.AbstractSection) {
     let o = s.option(form.Flag, 'brutal_debug', _('Enable Brutal CC Debug'),
         _('Enable Hysteria Brutal CC Debug'));
     o.modalonly = true;
-    o.depends({ type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
+    o.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.HYSTERIA2, core: CORE_TYPE.SING_BOX });
 }
 
 function createNetworkOption(s: LuCI.form.AbstractSection) {
@@ -651,7 +685,7 @@ function createNetworkOption(s: LuCI.form.AbstractSection) {
 
 function createPasswordOption(s: LuCI.form.AbstractSection) {
     let passwordOpt = s.option(form.Value, 'password', _('Password'),
-        _('Authentication Password'));
+        _("Must match the server password or key for the selected protocol."));
     passwordOpt.modalonly = true;
     passwordOpt.password = true;
     passwordOpt.rmempty = false;
@@ -662,7 +696,8 @@ function createPasswordOption(s: LuCI.form.AbstractSection) {
 }
 
 function createUuidOption(s: LuCI.form.AbstractSection) {
-    let uuidOpt = s.option(form.Value, 'uuid', _('UUID'), _('User UUID'));
+    let uuidOpt = s.option(form.Value, 'uuid', _('UUID'),
+        _("User UUID configured on the server; copy it exactly."));
     uuidOpt.modalonly = true;
     uuidOpt.rmempty = false;
     ProxyFormUtils.forProtocols(uuidOpt, [PROXY_TYPE.VLESS, PROXY_TYPE.TUIC]);
@@ -670,6 +705,43 @@ function createUuidOption(s: LuCI.form.AbstractSection) {
 
 function createMultiplexOptions(s: LuCI.form.AbstractSection) {
     const muxTypes: ProxyType[] = [PROXY_TYPE.SHADOWSOCKS, PROXY_TYPE.VLESS];
+
+    const xrayEnabled = s.option(form.Flag, 'mux_enabled', _('Enable Multiplexing'),
+        _('Use Xray Mux.Cool; the server handles it automatically.'));
+    xrayEnabled.modalonly = true;
+    ProxyFormUtils.forCoreProtocols(xrayEnabled, CORE_TYPE.XRAY, muxTypes);
+    const xrayDependencies = muxTypes.map(type => ({ config_type: PROXY_CONFIG_TYPE.GENERATED,
+        type, core: CORE_TYPE.XRAY, mux_enabled: '1' }));
+    for (const [key, label, maximum, value, description] of [
+        ['mux_concurrency', _('TCP Multiplex Concurrency'), 128, '8',
+            _('Streams per TCP connection (1–128); 0 uses 8, -1 disables TCP multiplexing. Vision requires -1.')],
+        ['mux_xudp_concurrency', _('XUDP Concurrency'), 1024, '16',
+            _('UDP streams per XUDP connection (1–1024); 0 shares the TCP path, -1 uses native UDP handling.')],
+    ] as const) {
+        const option = s.option(form.Value, key, label, description);
+        option.modalonly = true;
+        option.default = value;
+        option.rmempty = false;
+        option.datatype = `range(-1,${maximum})`;
+        xrayDependencies.forEach(dependency => option.depends(dependency));
+        option.validate = function (id: string, value: string) {
+            if (!/^-?\d+$/.test(value) || Number(value) < -1 || Number(value) > maximum)
+                return _('Invalid multiplex concurrency');
+            if (key === 'mux_concurrency' && this.section.formvalue(id, 'type') === PROXY_TYPE.VLESS
+                && this.section.formvalue(id, 'flow') && Number(value) >= 0)
+                return _('Vision requires Mux TCP concurrency -1; use XUDP for UDP multiplexing');
+            return true;
+        };
+    }
+    const udp443 = s.option(form.ListValue, 'mux_udp443', _('Mux UDP/443 Policy'),
+        _('Handle QUIC traffic: reject, carry over Mux, or bypass Mux using the proxy protocol.'));
+    udp443.modalonly = true;
+    udp443.default = 'reject';
+    udp443.rmempty = false;
+    udp443.value('reject', _('Reject'));
+    udp443.value('allow', _('Allow over Mux'));
+    udp443.value('skip', _('Bypass Mux'));
+    xrayDependencies.forEach(dependency => udp443.depends(dependency));
 
     let enabledOpt = s.option(form.Flag, 'multiplex_enabled', _('Enable Multiplexing'),
         _('Enable Multiplexing for Better Efficiency'));
@@ -680,43 +752,49 @@ function createMultiplexOptions(s: LuCI.form.AbstractSection) {
         _('Multiplexing Protocol'));
     protocolOpt.modalonly = true;
     protocolOpt.default = 'h2mux';
-    muxTypes.forEach(t => protocolOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+    muxTypes.forEach(t => protocolOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
     HijpassValues.MULTIPLEX_PROTOCOLS.forEach(item => protocolOpt.value(item.value, item.label));
 
     let maxConnOpt = s.option(form.Value, 'multiplex_max_connections', _('Max Connections'),
         _('Max Connections'));
     maxConnOpt.datatype = 'uinteger';
     maxConnOpt.modalonly = true;
-    muxTypes.forEach(t => maxConnOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+    muxTypes.forEach(t => maxConnOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
 
     let minStreamsOpt = s.option(form.Value, 'multiplex_min_streams', _('Min Streams'),
         _('Min Concurrent Streams'));
     minStreamsOpt.datatype = 'uinteger';
     minStreamsOpt.modalonly = true;
-    muxTypes.forEach(t => minStreamsOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+    muxTypes.forEach(t => minStreamsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
 
     let maxStreamsOpt = s.option(form.Value, 'multiplex_max_streams', _('Max Streams'),
         _('Max Concurrent Streams'));
     maxStreamsOpt.datatype = 'uinteger';
     maxStreamsOpt.modalonly = true;
-    muxTypes.forEach(t => maxStreamsOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+    muxTypes.forEach(t => maxStreamsOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+
+    const paddingOpt = s.option(form.Flag, 'multiplex_padding', _('Multiplex Padding'),
+        _('Enable padding when required by the sing-box server.'));
+    paddingOpt.modalonly = true;
+    muxTypes.forEach(type => paddingOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,
+        type, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
 
     let brutalEnabledOpt = s.option(form.Flag, 'multiplex_brutal_enabled', _('Enable TCP Brutal'),
         _('Enable TCP Brutal Congestion Control'));
     brutalEnabledOpt.modalonly = true;
-    muxTypes.forEach(t => brutalEnabledOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
+    muxTypes.forEach(t => brutalEnabledOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1' }));
 
     let brutalUpOpt = s.option(form.Value, 'multiplex_brutal_up_mbps', _('Uplink Bandwidth'),
         _('Uplink Bandwidth'));
     brutalUpOpt.datatype = 'uinteger';
     brutalUpOpt.modalonly = true;
-    muxTypes.forEach(t => brutalUpOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1', multiplex_brutal_enabled: '1' }));
+    muxTypes.forEach(t => brutalUpOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1', multiplex_brutal_enabled: '1' }));
 
     let brutalDownOpt = s.option(form.Value, 'multiplex_brutal_down_mbps', _('Downlink Bandwidth'),
         _('Downlink Bandwidth'));
     brutalDownOpt.datatype = 'uinteger';
     brutalDownOpt.modalonly = true;
-    muxTypes.forEach(t => brutalDownOpt.depends({ type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1', multiplex_brutal_enabled: '1' }));
+    muxTypes.forEach(t => brutalDownOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: t, core: CORE_TYPE.SING_BOX, multiplex_enabled: '1', multiplex_brutal_enabled: '1' }));
 }
 
 /**
@@ -828,7 +906,7 @@ function createShadowTLSAuthOptions(s: LuCI.form.AbstractSection) {
  */
 function createVlessAuthOptions(s: LuCI.form.AbstractSection) {
     let flowOpt = s.option(form.ListValue, 'flow', _('VLESS Flow Control'),
-        _('VLESS Flow Control'));
+        _("Use Vision only with TCP and TLS or REALITY; match the server flow. Leave empty otherwise."));
     flowOpt.modalonly = true;
     // sing-box 和 xray 均支持 flow: xtls-rprx-vision
     ProxyFormUtils.forProtocols(flowOpt, [PROXY_TYPE.VLESS]);
@@ -843,25 +921,30 @@ function createVlessAuthOptions(s: LuCI.form.AbstractSection) {
  */
 function createTransportXhttpOptions(s: LuCI.form.AbstractSection) {
     let hostOpt = s.option(form.Value, 'transport_xhttp_host', _('XHTTP Host'),
-        _('XHTTP Host Domain'));
+        _("HTTP Host used for XHTTP; match the reverse proxy and any server Host restriction."));
     hostOpt.modalonly = true;
-    hostOpt.depends({ type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
+    hostOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
 
     let pathOpt = s.option(form.Value, 'transport_xhttp_path', _('XHTTP Path'),
-        _('XHTTP Request Path'));
+        _("Start with /, for example /proxy; match the path configured on the peer."));
     pathOpt.modalonly = true;
     pathOpt.default = '/';
-    pathOpt.depends({ type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
+    pathOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
 
     let modeOpt = s.option(form.ListValue, 'transport_xhttp_mode', _('XHTTP Mode'),
-        _('XHTTP Transport Mode'));
+        _("Prefer auto. packet-up sends separate upload requests; stream-up and stream-one use streaming."));
     modeOpt.modalonly = true;
     modeOpt.default = 'auto';
     modeOpt.value('auto', _('Auto'));
     modeOpt.value('packet-up', 'packet-up');
     modeOpt.value('stream-one', 'stream-one');
     modeOpt.value('stream-up', 'stream-up');
-    modeOpt.depends({ type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
+    modeOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED,  type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
+
+    const methodOpt = s.option(form.Value, 'transport_xhttp_method', _('HTTP Method'),
+        _("Optional XHTTP upload method, for example PUT; match the server setting."));
+    methodOpt.modalonly = true;
+    methodOpt.depends({ config_type: PROXY_CONFIG_TYPE.GENERATED, type: PROXY_TYPE.VLESS, core: CORE_TYPE.XRAY, transport_type: 'xhttp' });
 }
 
 
@@ -889,6 +972,7 @@ function createProxyOptions(s: LuCI.form.AbstractSection, instances: any) {
     createPasswordOption(s);
 
     // 通用TLS配置（供所有支持TLS的协议使用）
+    createVlessSecurityOption(s);
     createCommonTlsOptions(s);
 
     createNetworkOption(s);

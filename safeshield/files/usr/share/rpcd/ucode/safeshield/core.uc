@@ -31,7 +31,7 @@ const CONFIG_SPEC = {
     statistics_enabled: { kind: 'bool', def: true },
     statistics_snapshot_interval_s: { kind: 'int', def: 60, min: 10, max: 3600 },
     statistics_retention_hours: { kind: 'int', def: 168, min: 1, max: 168 },
-    download_timeout: { kind: 'int', def: 10, min: 1, max: 86400 },
+    download_timeout: { kind: 'int', def: 30, min: 1, max: 86400 },
     download_retry: { kind: 'int', def: 3, min: 1, max: 100 },
     pause_timeout: { kind: 'int', def: 20, min: 1, max: 86400 },
     boot_start_delay_s: { kind: 'int', def: 30, min: 0, max: 86400 },

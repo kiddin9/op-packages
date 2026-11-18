@@ -24,7 +24,7 @@ config safeshield 'config'
 	option statistics_retention_hours '168'
 
 	# Download / refresh runtime
-	option download_timeout '10'
+	option download_timeout '30'
 	option download_retry '3'
 	option pause_timeout '20'
 	option boot_start_delay_s '30'

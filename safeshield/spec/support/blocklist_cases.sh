@@ -642,3 +642,67 @@ shared.example'
 	ss_spec_assert_file_line "$STATUS" 'error artifact_too_large'
 	ss_spec_assert_not_exists "$SS_ARTIFACT_CACHE_STATE"
 )
+
+# The official artifact is always downloaded by uclient, even if curl exists.
+# API POST remains on the curl 20-second policy independent of artifact size.
+ss_case_artifact_transport_policy() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	mkdir -p "$TMP_DIR/bin"
+	cat >"$TMP_DIR/bin/uclient-fetch" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" > "$TRANSPORT_UCLIENT_ARGS"
+[ "$1" = -q ] || exit 12
+[ "$3" = -O ] || exit 13
+[ "$4" = "$TRANSPORT_OUTPUT" ] || exit 14
+[ "$5" = --timeout=30 ] || exit 15
+printf 'fixture-data' > "$TRANSPORT_OUTPUT"
+[ "${TRANSPORT_FAIL:-0}" = 0 ] || { echo 'SIGNED_URL_VALUE' >&2; exit 2; }
+SH
+	cat >"$TMP_DIR/bin/curl" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" > "$TRANSPORT_CURL_ARGS"
+if [ "${TRANSPORT_POST:-0}" = 1 ]; then
+ printf '{"ok":true}' > "$TRANSPORT_RESPONSE"
+ printf '200'
+ exit 0
+fi
+exit 97
+SH
+	chmod +x "$TMP_DIR/bin/uclient-fetch" "$TMP_DIR/bin/curl"
+	PATH="$TMP_DIR/bin:$PATH"
+	export PATH
+	TRANSPORT_UCLIENT_ARGS="$TMP_DIR/uclient.args"
+	TRANSPORT_CURL_ARGS="$TMP_DIR/curl.args"
+	TRANSPORT_OUTPUT="$TMP_DIR/artifact"
+	TRANSPORT_RESPONSE="$TMP_DIR/response"
+	export TRANSPORT_UCLIENT_ARGS TRANSPORT_CURL_ARGS TRANSPORT_OUTPUT TRANSPORT_RESPONSE
+	ss_download_timeout=30
+	command_exists() { command -v "$1" >/dev/null 2>&1; }
+	# shellcheck disable=SC1091
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	ss_http_get_file 'https://www.smartsafehub.com/private-token' "$TRANSPORT_OUTPUT"
+	ss_spec_assert_eq "$(cat "$TRANSPORT_OUTPUT")" 'fixture-data'
+	ss_spec_assert_file_contains "$TRANSPORT_UCLIENT_ARGS" '--timeout=30'
+	[ ! -f "$TRANSPORT_CURL_ARGS" ]
+	TRANSPORT_FAIL=1
+	export TRANSPORT_FAIL
+	if ss_http_get_file 'https://www.smartsafehub.com/private-token' "$TRANSPORT_OUTPUT" 2>"$TMP_DIR/error"; then
+		return 1
+	fi
+	[ ! -f "$TRANSPORT_OUTPUT" ]
+	! grep -Fq 'SIGNED_URL_VALUE' "$TMP_DIR/error"
+	! grep -Fq 'private-token' "$TMP_DIR/error"
+	if ss_http_get_file 'http://example.invalid/list' "$TRANSPORT_OUTPUT"; then
+		return 1
+	fi
+	TRANSPORT_POST=1
+	export TRANSPORT_POST
+	printf '{}' >"$TMP_DIR/body"
+	ss_http_post_json 'https://www.smartsafehub.com/api/v1/resolve' "$TMP_DIR/body" "$TRANSPORT_RESPONSE"
+	ss_spec_assert_file_contains "$TRANSPORT_CURL_ARGS" '--max-time 20'
+	ss_spec_assert_file_contains "$TRANSPORT_CURL_ARGS" '--max-redirs 0'
+	ss_spec_assert_file_contains "$TRANSPORT_CURL_ARGS" '--proto =https'
+	ss_spec_assert_file_contains "$TRANSPORT_CURL_ARGS" '--connect-timeout 20'
+)

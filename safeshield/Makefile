@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=safeshield
-PKG_VERSION:=0.3.27
-PKG_RELEASE:=6
+PKG_VERSION:=0.3.28
+PKG_RELEASE:=7
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -25,6 +25,7 @@ define Package/safeshield
 	+jsonfilter \
 	+uci \
 	+uclient-fetch \
+	+curl \
 	+dnsmasq \
 	+gzip \
 	+coreutils-sort \

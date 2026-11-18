@@ -6,7 +6,7 @@ const ts = require('typescript');
 const path = require('node:path');
 
 function preview(shunt, firewall, nodes = []) {
-    const sections = { hijpass: { ip_proxy: '/rules/proxy' }, firewall, shunt, dns: {} };
+    const sections = { hijpass: {}, firewall, shunt, dns: {} };
     const context = vm.createContext({ exports: {}, require(name) {
         if (name === 'uci') return {
             get_first: (_, type) => sections[type],
@@ -20,7 +20,8 @@ function preview(shunt, firewall, nodes = []) {
         if (name.endsWith('/dns-forward')) return { FirewallDnsForwardUtils: { getSource: () => 'none' } };
         if (name.endsWith('/chain')) return { ProxyChainUtils: {
             getProxySectionMap: () => new Map(nodes.map(node => [node.name, node])),
-            getProxyCore: node => node.core,
+            getProxyCore: node => node.config_type === 'custom' ? '' : node.core,
+            isCustomProxy: node => node.config_type === 'custom',
             collectProxyChain: name => ({ chain: [name] })
         } };
         throw new Error(name);
@@ -37,7 +38,7 @@ for (const type of ['sing-box', 'xray']) {
     for (const config_type of ['tmpl', 'custom']) {
         test(`${type} ${config_type}: show port and routing resource without internal outbounds`, () => {
             const diagram = preview({ enabled: '1', shunt_listen_port: '18081', type, config_type }, { shunt_port: '18081' });
-            for (const branch of diagram.branches) {
+            for (const branch of diagram.branches.filter(branch => branch.condition !== 'Forced direct address')) {
                 assert.equal(branch.steps.length, 2);
                 assert.equal(branch.steps[0].title, 'Default shunt port: 18081');
                 assert.equal(branch.steps[0].detail, undefined);
@@ -56,12 +57,21 @@ test('both default and proxy ports show the actual node resource', () => {
     assert.equal(diagram.branches[0].steps.length, 2);
     assert.equal(diagram.branches[0].steps[0].title, 'Proxy port: 7890');
     assert.equal(diagram.branches.at(-1).steps[0].title, 'Default shunt port: 7890');
-    for (const branch of diagram.branches) {
+    for (const branch of diagram.branches.filter(branch => branch.condition !== 'Forced direct address')) {
         assert.equal(branch.steps.length, 2);
         assert.equal(branch.steps[1].title, 'Proxy node: node');
         assert.equal(branch.steps[0].page, 'firewall');
         assert.equal(branch.steps[1].page, 'proxy');
         assert.equal(branch.steps[1].detail, 'sing-box');
+    }
+});
+
+test('custom command nodes are not displayed as load balancing when old protocol fields remain', () => {
+    const diagram = preview({}, { shunt_port: '7890', proxy_port: '7890' },
+        [{ enabled: '1', name: 'manual', listen_port: '7890', config_type: 'custom', type: 'load_balance', member_node: ['missing'] }]);
+    for (const branch of diagram.branches.filter(branch => branch.condition !== 'Forced direct address')) {
+        assert.equal(branch.steps[1].title, 'Proxy node: manual');
+        assert.equal(branch.steps[1].detail, '');
     }
 });
 

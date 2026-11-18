@@ -1,4 +1,6 @@
-import { CORE_PROTOCOLS, CORE_TYPE, CoreType, PROXY_TYPE, ProxyType, normalizeCoreType } from "../../../enum/hijpass";
+import { CORE_PROTOCOLS, CORE_TYPE, CoreType, PROXY_TYPE, ProxyType, PROXY_CONFIG_TYPE } from "../../../enum/hijpass";
+
+import { vlessSecurity } from "./security";
 
 type ProxyFieldValue = string | string[];
 
@@ -222,6 +224,7 @@ function splitFirst(value: string, separator: string): [string, string] {
 function baseValues(type: ProxyType, core: CoreType): Record<string, ProxyFieldValue> {
     return {
         enabled: '1',
+        config_type: PROXY_CONFIG_TYPE.GENERATED,
         type,
         core,
         log_level: 'info',
@@ -229,7 +232,7 @@ function baseValues(type: ProxyType, core: CoreType): Record<string, ProxyFieldV
 }
 
 function normalizeSelectedCore(core: string): CoreType {
-    const normalized = normalizeCoreType(core);
+    const normalized = (core || '').trim();
     if (normalized !== CORE_TYPE.XRAY && normalized !== CORE_TYPE.SING_BOX) {
         throw new Error(_('Invalid core selection'));
     }
@@ -363,9 +366,13 @@ function parseVless(uri: ParsedUri, core: CoreType): ImportedProxyConfig {
     }
 
     const transport = queryValue(uri.query, 'type');
-    const security = queryValue(uri.query, 'security');
+    const security = queryValue(uri.query, 'security') || 'none';
+    if (!['none', 'tls', 'reality'].includes(security)) throw new Error(_('Invalid VLESS share link'));
     if (transport === 'xhttp' && core !== CORE_TYPE.XRAY) {
         throw new Error(_('XHTTP transport is only supported by Xray core'));
+    }
+    if (transport === 'http' && core !== CORE_TYPE.SING_BOX) {
+        throw new Error(_('HTTP transport is only supported by sing-box core'));
     }
 
     const values: Record<string, ProxyFieldValue> = {
@@ -378,7 +385,7 @@ function parseVless(uri: ParsedUri, core: CoreType): ImportedProxyConfig {
         packet_encoding: queryValue(uri.query, 'packetEncoding', 'packet_encoding'),
         tls_server_name: queryValue(uri.query, 'sni', 'servername'),
         tls_insecure: isTruthy(queryValue(uri.query, 'allowInsecure', 'allow_insecure', 'insecure')) ? '1' : '0',
-        tls_reality_enabled: security === 'reality' ? '1' : '0',
+        security,
         tls_reality_public_key: queryValue(uri.query, 'pbk', 'publicKey', 'public_key'),
         tls_reality_short_id: queryValue(uri.query, 'sid', 'shortId', 'short_id'),
         multiplex_enabled: '0',
@@ -412,6 +419,7 @@ function parseVless(uri: ParsedUri, core: CoreType): ImportedProxyConfig {
         values.transport_xhttp_host = queryValue(uri.query, 'host');
         values.transport_xhttp_path = queryValue(uri.query, 'path') || '/';
         values.transport_xhttp_mode = queryValue(uri.query, 'mode') || 'auto';
+        values.transport_xhttp_method = queryValue(uri.query, 'method');
     }
 
     return {
@@ -426,19 +434,17 @@ function generateVless(section: any): string {
     }
 
     const transport = String(section.transport_type || 'tcp');
-    const security = section.tls_reality_enabled === '1'
-        ? 'reality'
-        : (section.tls_server_name || section.tls_insecure === '1' ? 'tls' : 'none');
+    const security = vlessSecurity(section);
     const params: Record<string, string | undefined> = {
         encryption: 'none',
         security,
-        sni: section.tls_server_name,
-        allowInsecure: section.tls_insecure === '1' ? '1' : undefined,
+        sni: security !== 'none' ? section.tls_server_name : undefined,
+        allowInsecure: security === 'tls' && section.tls_insecure === '1' ? '1' : undefined,
         flow: section.flow,
         type: transport === '' ? 'tcp' : transport,
         packetEncoding: section.packet_encoding,
-        pbk: section.tls_reality_enabled === '1' ? section.tls_reality_public_key : undefined,
-        sid: section.tls_reality_enabled === '1' ? section.tls_reality_short_id : undefined,
+        pbk: security === 'reality' ? section.tls_reality_public_key : undefined,
+        sid: security === 'reality' ? section.tls_reality_short_id : undefined,
     };
 
     if (transport === 'ws') {
@@ -457,6 +463,7 @@ function generateVless(section: any): string {
         params.host = section.transport_xhttp_host;
         params.path = section.transport_xhttp_path;
         params.mode = section.transport_xhttp_mode;
+        params.method = section.transport_xhttp_method;
     }
 
     return 'vless://' + encodeText(String(section.uuid)) + '@' +
@@ -548,7 +555,8 @@ function generateShadowTls(section: any): string {
 
 const ProxyShareLinkUtils = {
     canExport: function (section: any): boolean {
-        const core = normalizeCoreType(section?.core) as CoreType;
+        if (section?.config_type === PROXY_CONFIG_TYPE.CUSTOM) return false;
+        const core = (section?.core || CORE_TYPE.SING_BOX) as CoreType;
         return CORE_PROTOCOLS[core]?.includes(section?.type) ?? false;
     },
 

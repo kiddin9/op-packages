@@ -1,4 +1,4 @@
-import fs from "fs";
+import { Backend } from "../../backend";
 import form from "form";
 import network from "network";
 import uci from "uci";
@@ -173,14 +173,16 @@ const FirewallFormUtils = {
                 textarea.style.cursor = 'progress';
                 textarea.value = _('Loading');
 
-                fs.exec_direct('/usr/lib/hijpass/nft.sh', ['show'], 'text')
+                Backend.showFirewall()
                     .then((res: any) => {
                         textarea.value = res?.trim() || _('No Rules');
                         textarea.setAttribute('aria-label', _('Firewall Rules'));
                         textarea.removeAttribute('title');
                         loaded = true;
                     })
-                    .catch(() => { textarea.value = _('Read Failed'); })
+                    .catch((error: Error) => {
+                        textarea.value = _('Read Failed') + (error?.message ? '\n' + error.message : '');
+                    })
                     .finally(() => {
                         loading = false;
                         textarea.removeAttribute('aria-busy');

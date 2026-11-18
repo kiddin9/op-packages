@@ -1,0 +1,9 @@
+{%
+/** @global {{ tcp: integer[], udp: integer[] }} ports 已校验并去重的服务端监听端口。 */
+%}
+chain hijserver {
+{% for (let network in ['tcp', 'udp']) { if (length(ports[network])) { %}
+    {{ network }} dport { {{ join(', ', ports[network]) }} } counter accept
+{% } } %}
+    return
+}

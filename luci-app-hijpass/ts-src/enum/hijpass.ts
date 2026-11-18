@@ -19,7 +19,6 @@ export enum LuciFlied {
 }
 
 export const PROXY_TYPE = {
-    CUSTOM: 'custom',
     LOAD_BALANCE: 'load_balance',
     HYSTERIA2: 'hysteria2',
     SHADOWSOCKS: 'shadowsocks',
@@ -31,6 +30,10 @@ export const PROXY_TYPE = {
 export const CORE_TYPE = {
     XRAY: 'xray',
     SING_BOX: 'sing-box',
+} as const;
+
+export const PROXY_CONFIG_TYPE = {
+    GENERATED: 'generated',
     CUSTOM: 'custom',
 } as const;
 
@@ -42,17 +45,12 @@ export const FIREWALL_DNS_FORWARD = {
 
 export type FirewallDnsForward = typeof FIREWALL_DNS_FORWARD[keyof typeof FIREWALL_DNS_FORWARD];
 
-// 'custom' 与 xray/sing-box 平级，是独立的核心类型
 export type CoreType = typeof CORE_TYPE[keyof typeof CORE_TYPE];
 export type ProxyType = typeof PROXY_TYPE[keyof typeof PROXY_TYPE];
+export type ProxyConfigType = typeof PROXY_CONFIG_TYPE[keyof typeof PROXY_CONFIG_TYPE];
 
-export function normalizeCoreType(type?: string): string {
-    const normalized = (type || '').trim();
-    return normalized === 'singbox' ? CORE_TYPE.SING_BOX : normalized;
-}
-
-// 仅 xray/sing-box 有协议列表；custom 无需协议选择
-export const CORE_PROTOCOLS: Partial<Record<CoreType, ProxyType[]>> = {
+// 自动生成模式按核心限制可用协议；自定义模式不选择核心和协议。
+export const CORE_PROTOCOLS: Record<CoreType, ProxyType[]> = {
     [CORE_TYPE.XRAY]: [PROXY_TYPE.SHADOWSOCKS, PROXY_TYPE.HYSTERIA2, PROXY_TYPE.VLESS],
     [CORE_TYPE.SING_BOX]: [PROXY_TYPE.SHADOWSOCKS, PROXY_TYPE.HYSTERIA2, PROXY_TYPE.VLESS,
                            PROXY_TYPE.TUIC, PROXY_TYPE.SHADOWTLS],
@@ -115,9 +113,9 @@ export const HijpassValues = {
         {label: 'packetaddr', value: 'packetaddr'},
         {label: 'xudp', value: 'xudp'}
     ] as const,
-    // xray 支持的传输层（含 xhttp；sing-box 不支持 xhttp，由 validate 阻断）
-    V2RAY_TRANSPORT_TYPES_XRAY: [
-        {label: 'None', value: ''},
+    // HTTP 用于 sing-box，XHTTP 用于 Xray；表单按所选核心校验。
+    V2RAY_TRANSPORT_TYPES: [
+        {label: 'Default (TCP)', value: ''},
         {label: 'HTTP', value: 'http'},
         {label: 'WebSocket', value: 'ws'},
         {label: 'gRPC', value: 'grpc'},
@@ -132,7 +130,6 @@ export const HijpassValues = {
     DUAL_CORES: [
         {label: 'sing-box', value: CORE_TYPE.SING_BOX},
         {label: 'xray',     value: CORE_TYPE.XRAY},
-        {label: 'Custom',   value: CORE_TYPE.CUSTOM}
     ] as const,
 }
 

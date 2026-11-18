@@ -1,17 +1,28 @@
-import fs from "fs";
+import { formatUpdateProgress } from './progress';
+import { Backend, RuleUpdateResult, UpdateProgress } from "../../backend";
 
 type RuleUpdateStatus = 'success' | 'error' | 'neutral';
-type RuleUpdateResult = { success?: boolean };
 
-function updateRuleFile(statusElement: HTMLElement, updateButton: HTMLButtonElement) {
+function updateRuleFile(statusElement: HTMLElement, updateButton: HTMLButtonElement, taskId?: string) {
     updateButton.disabled = true;
     updateUpdateStatus(statusElement, _('Updating Rule Files'), 'neutral');
-    fs.exec_direct('/usr/lib/hijpass/rules.sh', ['update'], 'json')
+    const progress = (value: UpdateProgress) => updateUpdateStatus(statusElement, formatUpdateProgress(value), 'neutral');
+    (taskId ? Backend.resumeRuleUpdate(taskId, progress) : Backend.updateRules(progress))
         .then(function (result: RuleUpdateResult) {
             if (result?.success) {
                 updateUpdateStatus(statusElement, _('Rule Files Updated'), 'success');
+            } else if (result?.code === 'UPDATE_BUSY') {
+                updateUpdateStatus(statusElement, _('Rule update already running'), 'neutral');
+            } else if (result?.failed?.includes('restart')) {
+                updateUpdateStatus(statusElement, _('Rule files updated, but service restart failed; see main log'), 'error');
             } else {
-                updateUpdateStatus(statusElement, _('Rule File Update Failed: %s').format(_('Update failed')), 'error');
+                const labels: Record<string, string> = {
+                    gfw_list: _('GFW List'), chn_domain_list: _('CHN Domain List'),
+                    chn_v4_route: _('CHN IPv4 Route'), chn_v6_route: _('CHN IPv6 Route'),
+                    geoip: 'GeoIP', geosite: 'GeoSite', restart: _('Service Restart'),
+                };
+                const failed = (result?.failed || []).map(key => labels[key] || key).join(', ');
+                updateUpdateStatus(statusElement, _('Rule File Update Failed: %s').format(failed || _('Update failed')), 'error');
             }
         })
         .catch(function (error) {
@@ -64,28 +75,24 @@ function performQuery(
 
 function queryDomain(keyword: string, outputElement: HTMLTextAreaElement, statusElement: HTMLElement) {
     clearQuery(outputElement)
-    fs.exec('/usr/bin/lua', ['/usr/lib/hijpass/luci-utils.lua', 'iptype', keyword])
-        .then(function (result) {
-            const geoType = result.code === 0 ? 'geoip' : 'geosite';
-            return fs.exec('/usr/lib/hijpass/geoview.sh', ['-l', geoType, keyword])
-                .then(setOutput(outputElement, statusElement, '# ' + geoType + '\n'));
-        })
-        .catch(setError(statusElement))
-    fs.exec('/usr/lib/hijpass/rules.sh', ['query', keyword])
+    Backend.queryGeo(keyword)
+        .then(setOutput(outputElement, statusElement, _('# Geo Rules\n')))
+        .catch(setError(statusElement));
+    Backend.queryRules(keyword)
         .then(setOutput(outputElement, statusElement, _('# Local Rule Files\n')))
         .catch(setError(statusElement));
 }
 
 function queryShunt(keyword: string, outputElement: HTMLTextAreaElement, statusElement: HTMLElement) {
     clearQuery(outputElement)
-    fs.exec('/usr/lib/hijpass/route-match.sh', [keyword])
+    Backend.matchRule(keyword)
         .then(setOutput(outputElement, statusElement, _('# Shunt Rules\n')))
         .catch(setError(statusElement))
 }
 
 function queryGeoTag(keyword: string, geoType: string, outputElement: HTMLTextAreaElement, statusElement: HTMLElement) {
     clearQuery(outputElement)
-    fs.exec('/usr/lib/hijpass/geoview.sh', ['-e', geoType, keyword])
+    Backend.lookupGeo(geoType, keyword, 'expand')
         .then(function (result) {
             if (result.code !== 0) {
                 throw new Error(result.stderr || _('Query Failed'));
@@ -140,8 +147,9 @@ function setError(statusElement: HTMLElement) {
 
 const RulePanelUtils = {
     createUpdateButtons: function () {
-        const statusElement = E('span', {
-            'style': 'margin-left: 10px; font-size: 12px; color: #666;'
+        const statusElement = E('div', {
+            'role': 'status', 'aria-live': 'polite',
+            'style': 'margin-top: 8px; font-size: 12px; color: #666; overflow-wrap: anywhere;'
         }) as HTMLElement;
         const updateButton = E('button', {
             'class': 'cbi-button cbi-button-neutral',
@@ -149,9 +157,21 @@ const RulePanelUtils = {
             'type': 'button',
             'click': function (ev: Event) {
                 ev.preventDefault();
+                if (updateButton.disabled) return;
                 updateRuleFile(statusElement, updateButton);
             }
-        }, _('Update Rule Files')) as HTMLButtonElement;
+        }, _('Checking...')) as HTMLButtonElement;
+
+        updateButton.disabled = true;
+        Backend.ruleUpdateStatus().then(({ id }) => {
+            if (id) updateRuleFile(statusElement, updateButton, id);
+            else updateButton.disabled = false;
+        }).catch(error => {
+            updateUpdateStatus(statusElement, _('Failed to check update status: %s').format(error.message), 'error');
+            updateButton.disabled = false;
+        }).finally(() => {
+            updateButton.textContent = _('Update Rule Files');
+        });
 
         return E('div', {'class': 'cbi-section'}, [
             E('div', {'class': 'cbi-section-node'}, [

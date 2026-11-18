@@ -77,7 +77,7 @@ const v = view.extend({
         let downloadTimeout = s.taboption('resources', form.Value, 'download_timeout', _('Download Timeout'),
             _('Single Download Timeout'));
         downloadTimeout.datatype = 'uinteger';
-        downloadTimeout.default = '3';
+        downloadTimeout.default = '120';
         downloadTimeout.rmempty = false;
 
         let runtimeTab = s.taboption('runtime', form.DummyValue, '_runtime_tab');

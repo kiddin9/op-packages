@@ -262,14 +262,17 @@ ss_http_post_json() {
 	local out="$3"
 	local authorization="${4:-}"
 	local data rc log_file
+	local api_timeout=20
 
 	SS_HTTP_STATUS=''
+	case "$url" in https://*) ;; *) return 1 ;; esac
 
 	if command_exists curl; then
 		if [ -n "$authorization" ]; then
-			SS_HTTP_STATUS="$(curl -sS \
-				--connect-timeout "$ss_download_timeout" \
-				--max-time "$ss_download_timeout" \
+			SS_HTTP_STATUS="$(curl --disable -sS \
+				--proto '=https' --noproxy '*' --location --max-redirs 0 \
+				--connect-timeout "$api_timeout" \
+				--max-time "$api_timeout" \
 				-H 'Content-Type: application/json' \
 				-H 'Accept: application/json' \
 				-H "Authorization: ${authorization}" \
@@ -278,9 +281,10 @@ ss_http_post_json() {
 				-w '%{http_code}' \
 				"$url")" || return $?
 		else
-			SS_HTTP_STATUS="$(curl -sS \
-				--connect-timeout "$ss_download_timeout" \
-				--max-time "$ss_download_timeout" \
+			SS_HTTP_STATUS="$(curl --disable -sS \
+				--proto '=https' --noproxy '*' --location --max-redirs 0 \
+				--connect-timeout "$api_timeout" \
+				--max-time "$api_timeout" \
 				-H 'Content-Type: application/json' \
 				-H 'Accept: application/json' \
 				--data-binary "@${payload}" \
@@ -305,7 +309,7 @@ ss_http_post_json() {
 
 	if ss_uclient_supports '--post-file' && ss_uclient_supports '--header'; then
 		if [ -n "$authorization" ]; then
-			if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" \
+			if uclient-fetch "$url" -O "$out" --timeout="${api_timeout}" \
 				--header='Content-Type: application/json' \
 				--header='Accept: application/json' \
 				--header="Authorization: ${authorization}" \
@@ -315,7 +319,7 @@ ss_http_post_json() {
 				rc=$?
 			fi
 		else
-			if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" \
+			if uclient-fetch "$url" -O "$out" --timeout="${api_timeout}" \
 				--header='Content-Type: application/json' \
 				--header='Accept: application/json' \
 				--post-file="$payload" 2>"$log_file"; then
@@ -337,7 +341,7 @@ ss_http_post_json() {
 	}
 
 	if ss_uclient_supports '--post-file'; then
-		if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" --post-file="$payload" 2>"$log_file"; then
+		if uclient-fetch "$url" -O "$out" --timeout="${api_timeout}" --post-file="$payload" 2>"$log_file"; then
 			rc=0
 		else
 			rc=$?
@@ -349,7 +353,7 @@ ss_http_post_json() {
 	if ss_uclient_supports '--post-data'; then
 		data="$(cat "$payload")"
 		if ss_uclient_supports '--header'; then
-			if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" \
+			if uclient-fetch "$url" -O "$out" --timeout="${api_timeout}" \
 				--header='Content-Type: application/json' \
 				--header='Accept: application/json' \
 				--post-data="$data" 2>"$log_file"; then
@@ -358,7 +362,7 @@ ss_http_post_json() {
 				rc=$?
 			fi
 		else
-			if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" --post-data="$data" 2>"$log_file"; then
+			if uclient-fetch "$url" -O "$out" --timeout="${api_timeout}" --post-data="$data" 2>"$log_file"; then
 				rc=0
 			else
 				rc=$?
@@ -372,40 +376,34 @@ ss_http_post_json() {
 	return 1
 }
 
+# Artifact transfer uses uclient-fetch regardless of whether curl is installed.
+# uclient --timeout is a network inactivity timeout, not a whole-file deadline.
+# The caller verifies the downloaded artifact's size and SHA256 before use.
 ss_http_get_file() {
 	local url="$1"
 	local out="$2"
 	local rc log_file
 
 	SS_HTTP_STATUS=''
-
-	if command_exists curl; then
-		SS_HTTP_STATUS="$(curl -LSs \
-			--connect-timeout "$ss_download_timeout" \
-			--max-time "$ss_download_timeout" \
-			-o "$out" \
-			-w '%{http_code}' \
-			"$url")" || return $?
-
-		case "$SS_HTTP_STATUS" in
-			2[0-9][0-9])
-				return 0
-				;;
-			*)
-				return 1
-				;;
-		esac
-	fi
-
+	case "$url" in https://*) ;; *) return 1 ;; esac
 	command_exists uclient-fetch || return 1
 	log_file="${out}.uclient.txt"
-	rm -f "$log_file"
-	if uclient-fetch "$url" -O "$out" --timeout="${ss_download_timeout}" 2>"$log_file"; then
+	rm -f "$out" "$log_file"
+	if uclient-fetch -q "$url" -O "$out" --timeout="${ss_download_timeout}" 2>"$log_file"; then
 		rc=0
 	else
 		rc=$?
+		rm -f "$out"
 	fi
-	ss_http_finish_uclient_request "$log_file" "$rc"
+	# Signed artifact URLs may occur in uclient's diagnostic output. Never
+	# forward the raw log to syslog or UI, including on download failure.
+	SS_HTTP_STATUS="$(ss_http_status_from_uclient_log "$log_file")"
+	rm -f "$log_file"
+	if [ "$rc" -ne 0 ]; then
+		printf 'SafeShield artifact transfer failed (exit=%s, http=%s)\n' \
+			"$rc" "${SS_HTTP_STATUS:-unknown}" >&2
+	fi
+	return "$rc"
 }
 
 ss_artifact_source_action() {

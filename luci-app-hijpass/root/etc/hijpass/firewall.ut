@@ -1,0 +1,229 @@
+{% /** @global {object} options */ %}
+table inet hijpass {
+    {# pre-filter：筛选客户端流量并转入透明代理。 -#}
+    chain pre-filter {
+        type filter hook prerouting priority filter - 50; policy accept;
+        {# 跳过访问路由器本地地址的流量。 -#}
+        fib daddr type local counter return
+
+        {# WAN 入站流量不参与透明代理。 -#}
+        {% if (length(options.wan)): %}
+            iifname { {{ options.wanNames }} } counter return
+        {% endif %}
+
+        {# 白名单模式：接口或 MAC 命中即可代理，两者皆空时全部跳过。 -#}
+        {% if (!options.allowAll): %}
+            {% if (length(options.interfaces) && length(options.macs)): %}
+                iif != { {{ options.interfaceNames }} } ether saddr != { {{ join(', ', options.macs) }} } counter return
+            {% elif (length(options.interfaces)): %}
+                iif != { {{ options.interfaceNames }} } counter return
+            {% elif (length(options.macs)): %}
+                ether saddr != { {{ join(', ', options.macs) }} } counter return
+            {% else %}
+                counter return
+            {% endif %}
+        {% endif %}
+        {# 全局代理模式：跳过排除的接口和 MAC。 -#}
+        {% if (options.allowAll && length(options.excludedInterfaces)): %}
+            iif { {{ options.excludedInterfaceNames }} } counter return
+        {% endif %}
+        {% if (options.allowAll && length(options.excludedMacs)): %}
+            ether saddr { {{ join(', ', options.excludedMacs) }} } counter return
+        {% endif %}
+
+        {# 回包不再参与代理判断。 -#}
+        ct direction reply counter return
+
+        {# 仅处理选中的 TCP/UDP 协议。 -#}
+        meta l4proto != { {{ join(', ', options.protocols) }} } counter return
+
+        {# 新连接按目的地址设置代理或分流标记。 -#}
+        ct state new,related counter jump tproxy-shunt
+
+        {# 未标记的直连连接返回原链。 -#}
+        ct mark != { {{ options.proxyMark }}, {{ options.shuntMark }} } counter return
+
+        {# 过滤不代理的 UDP 和非常用 TCP 端口。 -#}
+        counter jump proxy-port-filter
+
+        {# 代理标记交给指定节点，并设置策略路由标记。 -#}
+        {% if (options.proxyPort): %}
+            meta l4proto { {{ join(', ', options.protocols) }} } ct mark {{ options.proxyMark }} tproxy to :{{ options.proxyPort }} meta mark set {{ options.proxyMark }} counter accept
+        {% endif %}
+
+        {# 剩余代理或分流标记交给分流入口。 -#}
+        {% if (options.shuntPort): %}
+            meta l4proto { {{ join(', ', options.protocols) }} } ct mark { {{ options.proxyMark }}, {{ options.shuntMark }} } tproxy to :{{ options.shuntPort }} meta mark set {{ options.proxyMark }} counter
+        {% endif %}
+    }
+
+    {# out-route：为路由器本机流量设置代理标记。 -#}
+    {% if (options.proxyLocal): %}
+        chain out-route {
+            type route hook output priority filter - 50; policy accept;
+            {# 跳过本地目标、回包和代理进程，避免代理回环。 -#}
+            fib daddr type local counter return
+            ct direction reply counter return
+            meta l4proto != { {{ join(', ', options.protocols) }} } counter return
+            meta skgid {{ sprintf("%J", options.user) }} counter return
+
+            {# 本机连接同样经过地址分流和端口过滤。 -#}
+            ct state new,related counter jump tproxy-shunt
+
+            counter jump proxy-port-filter
+            counter jump tproxy-mark
+        }
+    {% endif %}
+
+    {# tproxy-shunt：按地址与域名集合选择直连、代理或分流。 -#}
+    chain tproxy-shunt {
+        {# 已标记连接沿用原选择。 -#}
+        ct mark { {{ options.proxyMark }}, {{ options.shuntMark }} } return
+
+        {# IP 代理列表和代理域名解析结果优先走代理。 -#}
+        {% if (length(options.ip4.proxy)): %}
+            ip daddr @proxy4list ct mark set {{ options.proxyMark }} counter return
+        {% endif %}
+        {% if (length(options.ip6.proxy)): %}
+            ip6 daddr @proxy6list ct mark set {{ options.proxyMark }} counter return
+        {% endif %}
+        {% if (options.domainSets): %}
+            ip daddr @dnsproxy4list ct mark set {{ options.proxyMark }} counter return
+            ip6 daddr @dnsproxy6list ct mark set {{ options.proxyMark }} counter return
+        {% endif %}
+
+        {# 本地、DNS 上游及直连列表中的目标直接返回。 -#}
+        {% if (length(options.ip4.direct)): %}
+            ip daddr @bypass4list counter return
+        {% endif %}
+        {% if (length(options.ip6.direct)): %}
+            ip6 daddr @bypass6list counter return
+        {% endif %}
+        {% if (options.domainSets): %}
+            ip daddr @dnsbypass4list counter return
+            ip6 daddr @dnsbypass6list counter return
+        {% endif %}
+
+        {# GFW 域名解析结果走代理。 -#}
+        {% if (options.useGfw): %}
+            ip daddr @gfw4list counter ct mark set {{ options.proxyMark }} counter return
+            ip6 daddr @gfw6list counter ct mark set {{ options.proxyMark }} counter return
+        {% endif %}
+
+        {# 启用分流时，CHN 域名和路由列表中的目标直连。 -#}
+        {% if (options.useChn && options.shuntPort): %}
+            ip daddr @chn4list counter return
+            ip6 daddr @chn6list counter return
+        {% endif %}
+
+        {% if (options.useChnRoute && options.shuntPort): %}
+            ip daddr @chnroute4list counter return
+            ip6 daddr @chnroute6list counter return
+        {% endif %}
+
+        {# 未命中上述列表的目标交给分流入口。 -#}
+        {% if (options.shuntPort): %}
+            ct mark set {{ options.shuntMark }} counter comment "shunt mark"
+        {% endif %}
+    }
+
+    {# tproxy-mark：将连接标记同步到策略路由标记。 -#}
+    chain tproxy-mark {
+        ct mark { {{ options.proxyMark }}, {{ options.shuntMark }} } meta mark set {{ options.proxyMark }}
+    }
+
+    {# proxy-port-filter：过滤不代理的 UDP 和非常用 TCP 端口。 -#}
+    chain proxy-port-filter {
+        {# 拒绝 QUIC，促使应用回退到 TCP。 -#}
+        meta l4proto udp udp dport 443 counter reject
+
+        {# 清除非 DNS UDP 的代理标记。 -#}
+        meta l4proto udp udp dport != 53 ct mark set 0 counter return
+
+        {# 非强制代理连接仅保留常用 TCP 端口。 -#}
+        meta l4proto tcp ct mark != {{ options.proxyMark }} tcp dport != { 22, 25, 53, 143, 465, 587, 853, 993, 995, 80, 443} ct mark set 0 counter return
+    }
+
+    {# dns-forward：转发 ACL 选中客户端的 DNS 查询。 -#}
+    {% if (options.forwardPort): %}
+        chain dns-forward {
+            type nat hook prerouting priority dstnat - 1; policy accept;
+            {# WAN 入站 DNS 不参与转发。 -#}
+            {% if (length(options.wan)): %}
+                iifname { {{ options.wanNames }} } counter return
+            {% endif %}
+
+            {# 使用与透明代理相同的客户端 ACL。 -#}
+            {% if (!options.allowAll): %}
+                {% if (length(options.interfaces) && length(options.macs)): %}
+                    iif != { {{ options.interfaceNames }} } ether saddr != { {{ join(', ', options.macs) }} } counter return
+                {% elif (length(options.interfaces)): %}
+                    iif != { {{ options.interfaceNames }} } counter return
+                {% elif (length(options.macs)): %}
+                    ether saddr != { {{ join(', ', options.macs) }} } counter return
+                {% else %}
+                    counter return
+                {% endif %}
+            {% endif %}
+            {% if (options.allowAll && length(options.excludedInterfaces)): %}
+                iif { {{ options.excludedInterfaceNames }} } counter return
+            {% endif %}
+            {% if (options.allowAll && length(options.excludedMacs)): %}
+                ether saddr { {{ join(', ', options.excludedMacs) }} } counter return
+            {% endif %}
+            {# 将客户端的 TCP/UDP 53 查询转发到本地 DNS 服务。 -#}
+            meta l4proto { tcp, udp } th dport 53 counter redirect to :{{ options.forwardPort }}
+        }
+    {% endif %}
+
+    {# dns-forward-output：转发路由器系统 DNS 并排除代理进程。 -#}
+    {% if (options.forwardPort && options.proxyLocal): %}
+        chain dns-forward-output {
+            type nat hook output priority -101; policy accept;
+            {# 排除代理进程的上游查询，避免 DNS 递归。 -#}
+            meta skgid {{ sprintf("%J", options.user) }} counter return
+
+            {# 仅转发路由器发往本机 53 端口的系统 DNS 查询。 -#}
+            fib daddr type local meta l4proto { tcp, udp } th dport 53 counter redirect to :{{ options.forwardPort }}
+        }
+    {% endif %}
+
+    {% for (let version in [4, 6]): %}
+        {% let addresses = version == 4 ? options.ip4 : options.ip6; %}
+        {# 域名与 CHN 路由集合支持自动合并，地址超时三天。 -#}
+        {% for (let set in [
+            { name: 'chnroute', enabled: options.useChnRoute, elements: addresses.china },
+            { name: 'gfw', enabled: options.useGfw, elements: [] },
+            { name: 'chn', enabled: options.useChn, elements: [] },
+            { name: 'dnsproxy', enabled: options.domainSets, elements: [] },
+            { name: 'dnsbypass', enabled: options.domainSets, elements: [] },
+        ]): %}
+            {% if (set.enabled): %}
+                set {{ set.name }}{{ version }}list {
+                    type ipv{{ version }}_addr
+                    flags interval,timeout
+                    auto-merge
+                    timeout 3d
+                    gc-interval 3d
+                    {% if (length(set.elements)): %}
+                        elements = { {{ join(', ', set.elements) }} }
+                    {% endif %}
+                }
+            {% endif %}
+        {% endfor %}
+        {# 静态直连和代理列表仅在非空时创建集合。 -#}
+        {% for (let set in [
+            { name: 'bypass', elements: addresses.direct },
+            { name: 'proxy', elements: addresses.proxy },
+        ]): %}
+            {% if (length(set.elements)): %}
+                set {{ set.name }}{{ version }}list {
+                    type ipv{{ version }}_addr
+                    flags interval
+                    auto-merge
+                    elements = { {{ join(', ', set.elements) }} }
+                }
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+}

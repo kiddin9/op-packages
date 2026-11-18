@@ -4,7 +4,6 @@
  */
 
 export interface NotificationOptions {
-    message?: string; // 兼容旧版本，如果只传 message 则作为 title
     title?: string; // 通知标题
     content?: string; // 通知内容
     type?: 'success' | 'error' | 'warning' | 'info';
@@ -78,7 +77,6 @@ class NotificationManager {
      */
     show(options: NotificationOptions) {
         const {
-            message,
             title,
             content,
             type = 'info',
@@ -90,12 +88,6 @@ class NotificationManager {
 
         const id = `notification-${++this.notificationId}`;
         const config = this.getTypeConfig(type);
-
-        // 确定标题和内容
-        // 如果提供了 title 和 content，使用它们
-        // 否则，如果提供了 message，使用 message 作为标题
-        const notificationTitle = title || message;
-        const notificationContent = content;
 
         // 创建通知元素
         const notification = document.createElement('div');
@@ -149,19 +141,19 @@ class NotificationManager {
         `;
 
         // 创建标题
-        if (notificationTitle) {
+        if (title) {
             const titleEl = document.createElement('div');
             titleEl.style.cssText = `
                 font-weight: 600;
                 font-size: 14px;
                 line-height: 1.4;
             `;
-            titleEl.textContent = notificationTitle;
+            titleEl.textContent = title;
             contentContainer.appendChild(titleEl);
         }
 
         // 创建内容
-        if (notificationContent) {
+        if (content) {
             const contentEl = document.createElement('div');
             contentEl.style.cssText = `
                 font-weight: 400;
@@ -170,7 +162,7 @@ class NotificationManager {
                 opacity: 0.9;
                 white-space: pre-line;
             `;
-            contentEl.textContent = notificationContent;
+            contentEl.textContent = content;
             contentContainer.appendChild(contentEl);
         }
 
@@ -264,28 +256,28 @@ class NotificationManager {
      * 显示成功通知
      */
     success(message: string, duration?: number) {
-        return this.show({ message, type: 'success', duration });
+        return this.show({ title: message, type: 'success', duration });
     }
 
     /**
      * 显示错误通知
      */
     error(message: string, duration?: number) {
-        return this.show({ message, type: 'error', duration });
+        return this.show({ title: message, type: 'error', duration });
     }
 
     /**
      * 显示警告通知
      */
     warning(message: string, duration?: number) {
-        return this.show({ message, type: 'warning', duration });
+        return this.show({ title: message, type: 'warning', duration });
     }
 
     /**
      * 显示信息通知
      */
     info(message: string, duration?: number) {
-        return this.show({ message, type: 'info', duration });
+        return this.show({ title: message, type: 'info', duration });
     }
 
     /**

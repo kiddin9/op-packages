@@ -1,39 +1,28 @@
-import fs from "fs";
-import uci from "uci";
-import { LuciFlied } from "../../../enum/hijpass";
+import { Backend, Log } from "../../backend";
 
-function createLogFileOptions() {
-    let options = [];
+/** Filter whole entries, keeping continuation lines and ignoring severity words in messages. */
+export function filterLogEntries(content: string, level: string): string {
+    if (!level) return content;
+    const wanted = level.toUpperCase().replace(/^WARNING$/, 'WARN');
+    let matches = false;
+    return content.split('\n').filter(line => {
+        const plain = line.replace(/\x1b\[[0-9;]*m/g, '');
+        // Application, sing-box and Xray headers; indented lines remain part of their entry.
+        const header = plain.match(/^\[\d{4}-\d{2}-\d{2} [^\]]+\]\s+(DEBUG|INFO|WARN(?:ING)?|ERROR)\b/i)
+            || plain.match(/^\+\d{4}\s+\d{4}-\d{2}-\d{2}\s+\S+\s+(DEBUG|INFO|WARN(?:ING)?|ERROR)\b/i)
+            || plain.match(/^\d{4}[-/]\d{2}[-/]\d{2}\s+\S+\s+\[(DEBUG|INFO|WARN(?:ING)?|ERROR)\]/i)
+            || plain.match(/^\[?(DEBUG|INFO|WARN(?:ING)?|ERROR)\]?\s*[:\[]/i);
+        if (header) matches = header[1].toUpperCase().replace(/^WARNING$/, 'WARN') === wanted;
+        // Other timestamped entries (e.g. TRACE/FATAL) must not inherit the preceding severity.
+        else if (/^(?:\[?\d{4}[-/]\d{2}[-/]\d{2}[ T]|\+\d{4}\s+\d{4}-\d{2}-\d{2})/.test(plain)) matches = false;
+        return matches;
+    }).join('\n');
+}
 
-    let hijpassLog = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.CONF_NAME, 'log_path');
-    options.push(E('option', {'value': hijpassLog}, _('Main Log')));
-
-    let shuntLog = uci.get_first(LuciFlied.CONF_NAME, LuciFlied.SHUNT_SECTION_TYPE, 'log_path');
-    if (shuntLog) {
-        options.push(E('option', {'value': shuntLog}, _('Shunt Log')));
-    }
-
-    uci.sections(LuciFlied.CONF_NAME, LuciFlied.PROXY_NODE_TYPE, (proxySection) => {
-        let proxyName = proxySection['.name'];
-        let displayName = proxySection.name || proxyName;
-        let log_path = proxySection.log_path;
-
-        if (log_path) {
-            options.push(E('option', {'value': log_path}, _('Proxy Log') + ' - ' + displayName));
-        }
-    });
-
-    uci.sections(LuciFlied.SERVER_CONF_NAME, LuciFlied.SERVER_NODE_TYPE, (serverSection) => {
-        let proxyName = serverSection['.name'];
-        let displayName = serverSection.name || proxyName;
-        let log_path = serverSection.log_path;
-
-        if (log_path) {
-            options.push(E('option', {'value': log_path}, _('Server Log') + ' - ' + displayName));
-        }
-    });
-
-    return options;
+function createLogFileOptions(logs: Log[]) {
+    const labels = { main: _('Main Log'), shunt: _('Shunt Log'), proxy: _('Proxy Log'), server: _('Server Log') };
+    return logs.map(log => E('option', { value: log.id },
+        labels[log.kind] + (log.kind === 'proxy' || log.kind === 'server' ? ' - ' + log.name : '')));
 }
 
 function loadLogs(
@@ -49,21 +38,10 @@ function loadLogs(
 
     updateLogStatus(statusElement, _('Loading Logs'));
 
-    fs.exec('/usr/bin/tail', ['-n', linesCount, logFile]).then(function (result) {
-        let logContent = result.stdout || '';
+    Backend.readLog(logFile, linesCount).then(function (content) {
+        let logContent = content || '';
 
-        if (levelFilter) {
-            let upperFilter = levelFilter.toUpperCase();
-            let filteredLines = logContent.split('\n').filter(function (line) {
-                let upperLine = line.toUpperCase();
-                if (upperFilter === 'WARN') {
-                    return upperLine.includes('WARN') || upperLine.includes('WARNING');
-                }
-
-                return upperLine.includes(upperFilter);
-            });
-            logContent = filteredLines.join('\n');
-        }
+        logContent = filterLogEntries(logContent, levelFilter);
 
         logContent = highlightLogContent(logContent);
 
@@ -151,7 +129,7 @@ function convertAnsiToHtml(text) {
     let result = text;
     let openTags = [];
 
-    result = result.replace(/\x1b\[([0-9;]*)m/g, function (match, codes) {
+    result = result.replace(/\x1b\[([0-9;]*)m/g, function (_match, codes) {
         if (!codes) codes = '0';
 
         let codeArray = codes.split(';');
@@ -196,12 +174,12 @@ function downloadLogs(logFileSelect: HTMLSelectElement, statusElement: HTMLEleme
 
     updateLogStatus(statusElement, _('Preparing Download'));
 
-    fs.read(logFile).then(function (content) {
-        let blob = new Blob([content], {type: 'text/plain'});
+    Backend.downloadLog(logFile).then(function (result) {
+        let blob = new Blob([result.content], {type: 'text/plain'});
         let url = window.URL.createObjectURL(blob);
         let a = document.createElement('a');
         a.href = url;
-        a.download = logFile.split('/').pop() + '_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.log';
+        a.download = result.name + '_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.log';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -224,7 +202,7 @@ function clearLogs(
 
     updateLogStatus(statusElement, _('Clearing Logs'));
 
-    fs.write(logFile, '').then(function () {
+    Backend.clearLog(logFile).then(function () {
         updateLogStatus(statusElement, _('Log Cleared'));
         loadLogs(logFileSelect, levelFilterSelect, linesCountSelect, statusElement, logContentElement);
     }).catch(function (error) {
@@ -241,6 +219,8 @@ type TraceDiagnosticsValues = {
     url: string;
     mode: string;
     clientIp: string;
+    protocol: string;
+    port: string;
     method: string;
     timeout: string;
     tcpdump: boolean;
@@ -265,16 +245,11 @@ function buildTraceArgs(values: TraceDiagnosticsValues) {
     const method = values.method || 'HEAD';
     const args = [];
 
-    if (!/^https?:\/\/[A-Za-z0-9_.:\-/?#%=&+~[\]]+$/.test(url)) {
-        throw new Error(_('Please enter a valid HTTP or HTTPS URL'));
-    }
-
     if (!/^[0-9]+$/.test(timeout) || parseInt(timeout, 10) < 1 || parseInt(timeout, 10) > 120) {
         throw new Error(_('Timeout must be an integer between 1 and 120'));
     }
 
     args.push('-t', timeout);
-    args.push('-X', method);
 
     if (values.mode === 'client') {
         const clientIp = values.clientIp.trim();
@@ -282,6 +257,23 @@ function buildTraceArgs(values: TraceDiagnosticsValues) {
             throw new Error(_('Please enter a valid client IP address'));
         }
         args.push('-c', clientIp);
+        const protocol = values.protocol || 'all';
+        const port = values.port.trim();
+        if (!['all', 'tcp', 'udp'].includes(protocol)) {
+            throw new Error(_('Please select a valid transport protocol'));
+        }
+        if (port && (!/^[0-9]+$/.test(port) || Number(port) < 1 || Number(port) > 65535)) {
+            throw new Error(_('Please enter a valid destination port'));
+        }
+        args.push('-n', protocol, '-P', port || 'all');
+    } else {
+        if (!/^https?:\/\/[A-Za-z0-9_.:\-/?#%=&+~[\]]+$/.test(url)) {
+            throw new Error(_('Please enter a valid HTTP or HTTPS URL'));
+        }
+        if (!['HEAD', 'GET'].includes(method)) {
+            throw new Error(_('Please select a valid request method'));
+        }
+        args.push('-X', method);
     }
 
     if (values.tcpdump) {
@@ -297,11 +289,11 @@ function buildTraceArgs(values: TraceDiagnosticsValues) {
         args.push('-v');
     }
 
-    args.push(url);
+    if (values.mode !== 'client') args.push(url);
     return args;
 }
 
-function runTraceDiagnostics(
+async function runTraceDiagnostics(
     values: TraceDiagnosticsValues,
     statusElement: HTMLElement,
     outputElement: HTMLElement,
@@ -320,26 +312,43 @@ function runTraceDiagnostics(
     runButton.disabled = true;
     setTraceStatus(statusElement, _('Running Trace Diagnostics'));
 
-    fs.exec('/usr/lib/hijpass/trace-url.sh', args).then(function (result) {
-        const stdout = result.stdout || '';
-        const stderr = result.stderr || '';
-        setTraceOutput(outputElement, stdout || stderr || _('No Output'));
-
-        if (result.code === 0) {
-            setTraceStatus(statusElement, _('Trace Completed') + ' - ' + new Date().toLocaleTimeString());
-        } else {
-            setTraceStatus(statusElement, _('Trace Failed') + ' - ' + (stderr || _('Exit Code') + ': ' + result.code), '#b00020');
+    let taskId: string | undefined;
+    let completed = false;
+    try {
+        // Keep each request short: capture runs independently of the RPC timeout.
+        const start = await Backend.startTrace(args);
+        if (start.code !== 0) throw new Error(start.stderr || _('Trace Failed'));
+        taskId = start.stdout.trim();
+        if (!/^[A-Za-z0-9]{8}$/.test(taskId)) throw new Error(_('Invalid trace task ID'));
+        const deadline = Date.now() + (Number(values.timeout) + 60) * 1000;
+        while (true) {
+            const result = await Backend.traceStatus(taskId);
+            setTraceOutput(outputElement, [result.stdout, result.stderr].filter(Boolean).join('\n') || _('Preparing capture'));
+            if (!result.running) {
+                completed = true;
+                if (result.code !== 0) throw new Error(result.stderr || _('Exit Code') + ': ' + result.code);
+                setTraceStatus(statusElement, _('Trace Completed') + ' - ' + new Date().toLocaleTimeString());
+                break;
+            }
+            if (values.mode === 'client' && result.stdout.includes('Trace is active')) {
+                setTraceStatus(statusElement, _('Capture is active. Generate requests on the selected client now.'));
+            }
+            if (Date.now() > deadline) throw new Error(_('Timed out waiting for trace results'));
+            await new Promise(resolve => window.setTimeout(resolve, 1000));
         }
-    }).catch(function (error) {
-        setTraceOutput(outputElement, error.message || String(error));
+    } catch (error) {
         setTraceStatus(statusElement, _('Trace Failed') + ' - ' + error.message, '#b00020');
-    }).finally(function () {
+    } finally {
         runButton.disabled = false;
-    });
+        if (taskId && completed) {
+            await Backend.releaseTrace(taskId).catch(console.error);
+        }
+    }
 }
 
 function createTraceOutputPanel() {
     const statusElement = E('div', {
+        'role': 'status', 'aria-live': 'polite',
         'style': 'display: none; font-size: 12px; color: #666; margin-bottom: 6px;'
     }) as HTMLElement;
     const outputElement = E('pre', {
@@ -357,11 +366,12 @@ function createTraceOutputPanel() {
 }
 
 const LogPanelUtils = {
-    createLogControlPanel: function () {
+    createLogControlPanel: async function () {
+        const logs = await Backend.logList();
         const logFileSelect = E('select', {
             'class': 'cbi-input-select',
             'style': 'margin-right: 10px;'
-        }, createLogFileOptions()) as HTMLSelectElement;
+        }, createLogFileOptions(logs)) as HTMLSelectElement;
         const levelFilterSelect = E('select', {
             'class': 'cbi-input-select',
             'style': 'margin-right: 10px;'

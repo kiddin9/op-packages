@@ -105,7 +105,7 @@ const ValidationUtils = {
         return true;
     },
 
-    validateNameFormat: function (sectionId: any, value: any) {
+    validateNameFormat: function (_sectionId: any, value: any) {
         if (!value || value === '') {
             return _('Node name cannot be empty');
         }

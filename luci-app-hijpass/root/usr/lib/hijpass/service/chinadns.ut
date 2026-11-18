@@ -1,0 +1,35 @@
+{%
+/** @typedef {import('../../../share/ucode/hijpass/types/service.uc').ChinadnsOptions} ChinadnsOptions */
+/** @global {ChinadnsOptions} options 由 dns.uc 注入。 */
+%}
+{# options 来自 dns.uc：listenPort/direct/proxy 为已校验端口及上游，useChn/useGfw 控制列表。 -#}
+bind-addr ::
+bind-port {{ options.listenPort }}
+china-dns {{ options.direct }}
+trust-dns {{ options.proxy }}
+{% if (options.useChn): %}
+chnlist-file {{ options.chnList }}
+{% endif %}
+{% if (options.useGfw): %}
+gfwlist-file {{ options.gfwList }}
+{% endif %}
+{# 只启用一个内置列表时，未匹配域名交给另一侧上游。 -#}
+{% if (options.useChn && !options.useGfw): %}
+default-tag gfw
+{% endif %}
+{% if (options.useGfw && !options.useChn): %}
+default-tag chn
+{% endif %}
+group userdirect
+group-dnl /tmp/hijpass/domain-direct.txt
+group-upstream {{ options.direct }}
+group-ipset inet@hijpass@dnsbypass4list,inet@hijpass@dnsbypass6list
+group userproxy
+group-dnl /tmp/hijpass/domain-proxy.txt
+group-upstream {{ options.proxy }}
+group-ipset inet@hijpass@dnsproxy4list,inet@hijpass@dnsproxy6list
+add-tagchn-ip inet@hijpass@chn4list,inet@hijpass@chn6list
+add-taggfw-ip inet@hijpass@gfw4list,inet@hijpass@gfw6list
+ipset-name4 inet@hijpass@chnroute4list
+ipset-name6 inet@hijpass@chnroute6list
+verdict-cache 4096

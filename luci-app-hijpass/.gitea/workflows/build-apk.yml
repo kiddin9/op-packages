@@ -1,0 +1,28 @@
+name: Build LuCI APKs
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:24-bookworm
+    steps:
+      - uses: https://github.com/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install SDK prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential file gawk libncurses-dev python3 python3-distutils rsync unzip zstd
+      - name: Build LuCI APKs
+        run: bash scripts/build-openwrt-apk.sh apk-output
+      - name: Upload APKs
+        uses: https://github.com/actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
+        with:
+          name: luci-app-hijpass-apks
+          path: apk-output/*.apk
+          if-no-files-found: error

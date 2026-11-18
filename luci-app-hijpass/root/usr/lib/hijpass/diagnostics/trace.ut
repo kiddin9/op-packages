@@ -1,0 +1,14 @@
+{%
+/** @typedef {import('../../../share/ucode/hijpass/types/diagnostics.uc').Capture} TraceOptions */
+/** @global {TraceOptions} capture 由 capture.uc 注入。 */
+%}
+{# capture 是已校验的 Capture：客户端在 DNAT 前按原目标端口过滤，路由器在 out-route 捕获。 -#}
+{% if (capture.mode == 'client'): %}
+add chain inet hijpass {{ capture.chain }} { type filter hook prerouting priority -301; policy accept; }
+insert rule inet hijpass {{ capture.chain }} {{ length(iptoarr(capture.client)) == 4 ? 'ip' : 'ip6' }} saddr {{ capture.client }}{% if (capture.protocol != 'all'): %} meta l4proto {{ capture.protocol }}{% elif (capture.port != 'all'): %} meta l4proto { tcp, udp }{% endif %}{% if (capture.port != 'all'): %} th dport {{ capture.port }}{% endif %} meta nftrace set 1 comment "{{ capture.comment }}"
+{% else %}
+{% for (let address in capture.addresses): %}
+insert rule inet hijpass out-route {{ length(iptoarr(address)) == 4 ? 'ip' : 'ip6' }} daddr {{ address }} tcp dport {{ capture.targetPort }} meta nftrace set 1 comment "{{ capture.comment }}"
+{% endfor %}
+insert rule inet hijpass out-route tcp dport {{ capture.targetPort }} meta nftrace set 1 comment "{{ capture.comment }}"
+{% endif %}

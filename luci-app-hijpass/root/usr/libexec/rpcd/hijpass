@@ -1,0 +1,107 @@
+#!/bin/sh
+
+# RPC 桥只分发已命名的业务方法；数据交给 ucode，系统操作交给各功能 Shell。
+. /usr/lib/hijpass/common.sh
+case "$1" in
+    list) hijpass_run_ucode "$HIJPASS_LIB/rpc/data.uc" list; exit $? ;;
+    call) method=$2 ;;
+    *) exit 1 ;;
+esac
+
+case "$method" in
+    firewall_template_default|editor_sessions|config_render|config_validate|log_list|log_read|log_clear|server_render|server_validate)
+        hijpass_run_ucode "$HIJPASS_LIB/rpc/data.uc" call "$method"
+        exit $? ;;
+esac
+
+# jshn 解析参数，不对客户端输入使用 eval 或拼接 Shell 命令。
+json_load "$(cat)" || { hijpass_json_error 'invalid RPC request'; exit 0; }
+argument() {
+    json_get_type arg_type "$1"
+    case "$arg_type" in string|'') ;; *) hijpass_json_error "invalid RPC argument: $1"; exit 0 ;; esac
+    json_get_var "$1" "$1"
+}
+
+if [ "$method" = trace_capabilities ]; then
+    json_init
+    if command -v tcpdump >/dev/null 2>&1; then json_add_boolean tcpdump 1
+    else json_add_boolean tcpdump 0; fi
+    json_dump
+    exit 0
+fi
+
+directory=$(mktemp -d /tmp/hijpass-rpc.XXXXXX) || exit 1
+trap 'rm -rf -- "$directory"' EXIT
+capture() {
+    "$@" >"$directory/stdout" 2>"$directory/stderr"
+    status=$?
+    # 输出可能包含完整 nft 集合，不能放入 jshn 导出的环境变量。
+    hijpass_run_ucode "$HIJPASS_LIB/result.uc" output "$directory" "$status"
+}
+# 已输出业务 JSON 的脚本保留原响应；没有 JSON 时才返回 RPC 错误。
+structured() {
+    "$@" >"$directory/stdout" 2>"$directory/stderr"
+    if [ -s "$directory/stdout" ]; then cat "$directory/stdout"
+    else hijpass_run_ucode "$HIJPASS_LIB/result.uc" error-file "$directory/stderr"; fi
+}
+case "$method" in
+    service_restart) structured "$HIJPASS_LIB/rpc/jobs.sh" start restart ;;
+    firewall_reset) capture "$HIJPASS_LIB/firewall/firewall.sh" reset ;;
+    firewall_show) capture nft list table inet hijpass ;;
+    cleanup_node)
+        argument kind; argument section; argument name
+        capture "$HIJPASS_LIB/maintenance/cleanup.sh" "$kind" "$section" "$name" ;;
+    network_connect)
+        argument url; argument timeout
+        structured "$HIJPASS_LIB/network/network.sh" connect "$url" "$timeout" ;;
+    network_ping)
+        argument port
+        structured "$HIJPASS_LIB/network/network.sh" ping "$port" ;;
+    rule_update) structured "$HIJPASS_LIB/rpc/jobs.sh" start rules ;;
+    rule_update_status) structured "$HIJPASS_LIB/rpc/jobs.sh" current rules ;;
+    rule_query)
+        argument keyword
+        capture "$HIJPASS_LIB/rules/update.sh" query "$keyword" ;;
+    rule_match)
+        argument keyword
+        capture "$HIJPASS_LIB/rules/route-match.sh" "$keyword" ;;
+    geo_lookup)
+        argument type; argument mode; argument keyword
+        case "$type:$mode" in geosite:list|geoip:list) flag=-l ;; geosite:expand|geoip:expand) flag=-e ;;
+            *) hijpass_json_error 'invalid Geo query'; exit 0 ;; esac
+        capture "$HIJPASS_LIB/rules/geoview.sh" "$flag" "$type" "$keyword" ;;
+    geo_query)
+        argument keyword
+        if "$HIJPASS_LIB/network/network.sh" iptype "$keyword" >/dev/null 2>&1; then type=geoip; else type=geosite; fi
+        capture "$HIJPASS_LIB/rules/geoview.sh" -l "$type" "$keyword" ;;
+    core_version|core_latest|core_update|core_update_status)
+        argument core
+        action=${method#core_}
+        case "$core" in xray|sing-box) ;;
+            *) hijpass_json_error 'invalid core action'; exit 0 ;; esac
+        if [ "$action" = update ]; then structured "$HIJPASS_LIB/rpc/jobs.sh" start "$core"
+        elif [ "$action" = update_status ]; then structured "$HIJPASS_LIB/rpc/jobs.sh" current "$core"
+        else structured "$HIJPASS_LIB/core/update.sh" "$action" "$core"; fi ;;
+    job_status)
+        argument id
+        structured "$HIJPASS_LIB/rpc/jobs.sh" status "$id" ;;
+    trace_start)
+        json_get_type arg_type args
+        [ "$arg_type" = array ] || { hijpass_json_error 'invalid trace arguments'; exit 0; }
+        json_select args
+        json_get_keys keys
+        set --
+        for key in $keys; do
+            json_get_type arg_type "$key"
+            [ "$arg_type" = string ] && [ "$#" -lt 24 ] || { hijpass_json_error 'invalid trace argument'; exit 0; }
+            json_get_var value "$key"
+            set -- "$@" "$value"
+        done
+        capture "$HIJPASS_LIB/diagnostics/task.sh" start "$@" ;;
+    trace_status|trace_release)
+        argument id
+        if [ "$method" = trace_status ]; then structured "$HIJPASS_LIB/diagnostics/task.sh" status "$id"
+        else capture "$HIJPASS_LIB/diagnostics/task.sh" release "$id"; fi ;;
+    *) hijpass_json_error 'unknown RPC method' ;;
+esac
+exit 0
