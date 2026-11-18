@@ -7,10 +7,10 @@ sed -i -E '
   s/[^[]*\("iStoreOS官网","iStoreOS website"\)\),1\),//
 
   # 2. 主题模式通过 html 标签 data-*-mode 判断默认选 dark 或 light，否则默认跟随系统（system）
-  s/document\.body\.getAttribute\("theme"\)/(Array.from(document.documentElement.attributes).find(a=>\/^data-.*mode$\/.test(a.name))||{}).value/
+  s/document\.body\.getAttribute\("theme"\)/(Array.from(document.documentElement.attributes).find(a=>\/^data-.*(mode|theme)$\/.test(a.name))||{}).value/
   s/an=Ed\(\)\|\|ri\(\)/an=ri()/
   s/\([^()]*\.matches\)!=null\?[^:]*:window\.matchMedia\([^)]*\)\.matches/document.documentElement.dataset.darkmode!=null?document.documentElement.dataset.darkmode==="true":&/
-  s/\((Ld)\),[a-zA-Z0-9_$]+\.observe\(document\.body,\{attributes:!0,attributeFilter:\["theme"\]\}\)/(m=>{m.some(r=>\/^data-.*mode$\/.test(r.attributeName))\&\&\1(),m.some(r=>r.attributeName==="data-darkmode")\&\&Dd()}),wl.observe(document.documentElement,{attributes:!0})/
+  s/\((Ld)\),[a-zA-Z0-9_$]+\.observe\(document\.body,\{attributes:!0,attributeFilter:\["theme"\]\}\)/(m=>{m.some(r=>\/^data-.*(mode|theme)$\/.test(r.attributeName))\&\&\1(),m.some(r=>r.attributeName==="data-darkmode")\&\&Dd()}),wl.observe(document.documentElement,{attributes:!0})/
 
   # 3. 去除网络连接卡片中的软件源检测与配置
   s/[a-zA-Z0-9_$]+\.networkInfo/&==="softSourceFailed"?"netSuccess":&/
