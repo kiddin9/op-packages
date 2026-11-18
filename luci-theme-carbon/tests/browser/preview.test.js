@@ -348,6 +348,43 @@ test('a custom logo replaces the sidebar logo and the dashboard hero icon', asyn
 	await ctx2.close();
 });
 
+test('Open-Box channel radio dots stay inside their inputs', async () => {
+	// Open-Box v0.1.457 main.js resets these inputs to position:static.
+	// Its stylesheet is injected after the theme, as on the real LuCI page.
+	for (const mount of ['src', 'min']) {
+		for (const width of [390, 1280]) {
+			for (const appearance of ['light', 'dark']) {
+				const context = await browser.newContext({ viewport: { width, height: 800 } });
+				const page = await context.newPage();
+				try {
+					await page.goto(base + '/src/preview/form.html');
+					await page.setContent(`<!doctype html><html data-darkmode="${appearance === 'dark'}"><head>
+					<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+					<style>
+					.ob-chan-radio{display:flex;align-items:center;gap:.5em;min-width:0;cursor:pointer}
+					.ob-chan-row .ob-chan-radio input{flex:none;width:16px;height:16px;margin:0;padding:0;border:0;border-radius:50%;box-shadow:none;line-height:1;position:static;vertical-align:middle;cursor:pointer}
+					</style></head><body data-page="admin-services-openbox">
+					<main style="position:relative;height:700px"><div class="ob-chan-row">
+					<label class="ob-chan-radio"><input type="radio" name="channel" checked>GitHub 直连</label>
+					<label class="ob-chan-radio"><input type="radio" name="channel">镜像</label>
+					</div></main></body></html>`, { waitUntil: 'load' });
+					for (const index of [0, 1]) {
+						if (index) await page.locator('.ob-chan-radio').nth(index).click();
+						const dot = await page.locator('input:checked').evaluate((input) => {
+							const style = getComputedStyle(input, '::after');
+							return { width: parseFloat(style.width), height: parseFloat(style.height),
+								position: getComputedStyle(input).position };
+						});
+						assert.equal(dot.position, 'relative', `${mount}/${width}/${appearance}: input anchors dot`);
+						assert.equal(dot.width, 8, 'dot fits the 16px radio');
+						assert.equal(dot.height, 8, 'dot stays circular');
+					}
+				} finally { await context.close(); }
+			}
+		}
+	}
+});
+
 /* plugin adapters (styles/18-plugins.css) against markup copied from luci-app-diskman */
 const DISKMAN_FIXTURE = `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="/src/htdocs/luci-static/carbon/carbon.css">
