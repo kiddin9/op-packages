@@ -197,26 +197,73 @@ return baseclass.extend({
 			: minfo.sim_note ? minfo.sim_note
 			: _('unknown');
 		var pinIn = E('input', { 'type': 'password', 'class': 'cbi-input-password',
-			'style': 'width:12em', 'placeholder': _('current PIN') });
+			'style': 'width:12em', 'placeholder': _('current PIN'), 'autocomplete': 'off' });
+		var newIn = E('input', { 'type': 'password', 'class': 'cbi-input-password',
+			'style': 'width:12em', 'placeholder': _('new PIN'), 'autocomplete': 'off' });
+		var new2In = E('input', { 'type': 'password', 'class': 'cbi-input-password',
+			'style': 'width:12em', 'placeholder': _('repeat new PIN'), 'autocomplete': 'off' });
+		var storeIn = E('input', { 'type': 'checkbox', 'checked': true });
+
+		/* what became of the configured PIN (the daemon's keep_pin) */
+		var configNote = function(c) {
+			if (!c) return '';
+			if (c.updated) return ' ' + _('The configured PIN was updated.');
+			if (c.reason == 'configured_pin_differs') return ' ' + _('The configuration holds a different PIN; it was left as it is.');
+			if (c.reason == 'none_configured') return ' ' + _('No PIN is configured for this modem.');
+			return '';
+		};
+
+		/* Every PIN typed here is checked by the card, and a wrong one costs an
+		   attempt. With fewer than two left the daemon refuses (`low_retries`);
+		   asked once, the call is repeated with force. */
+		var run = function(call, okText) {
+			return call(false).then(function(r) {
+				if (r && r.error == 'low_retries' &&
+				    confirm(_('Only %d PIN attempt is left. A wrong PIN locks the card, and only the PUK unlocks it again. Continue?').format(r.retries)))
+					return call(true);
+				return r;
+			}).then(function(r) {
+				if (r && r.ok === false)
+					ui.addNotification(null, E('p', [ _('SIM PIN operation failed: %s').format(
+						r.error == 'pin_disabled' ? _('the PIN query is off; enable it first')
+						: (r.error || '?') + (r.retries != null ? ' — ' + _('%d attempts left').format(r.retries) : '')) ]), 'error');
+				else
+					ui.addNotification(null, E('p', [ okText + configNote(r && r.config) ]), 'info');
+			});
+		};
+
+		var pinOk = function(v) { return /^[0-9]{4,8}$/.test(v); };
+
 		var pinAct = function(enable) {
 			var pin = (pinIn.value || '').trim();
-			if (!pin) {
-				ui.addNotification(null, E('p', _('Enter the current SIM PIN first.')), 'warning');
+			if (!pinOk(pin)) {
+				ui.addNotification(null, E('p', _('Enter the current SIM PIN (4-8 digits) first.')), 'warning');
 				return;
 			}
-			return callPinLock(data.modem, pin, enable).then(function(r) {
-				if (r && r.ok === false)
-					ui.addNotification(null, E('p', [ _('PIN change failed: %s').format(r.error || '?') ]), 'error');
-				else
-					ui.addNotification(null, E('p', enable ? _('SIM PIN query enabled.') : _('SIM PIN query disabled.')), 'info');
-			});
+			return run(function(force) { return callPinLock(data.modem, pin, enable, storeIn.checked, force); },
+				enable ? _('SIM PIN query enabled.') : _('SIM PIN query disabled.'));
+		};
+
+		var pinChange = function() {
+			var pin = (pinIn.value || '').trim(), nw = (newIn.value || '').trim();
+			if (!pinOk(pin) || !pinOk(nw)) {
+				ui.addNotification(null, E('p', _('The current and the new PIN are 4-8 digits each.')), 'warning');
+				return;
+			}
+			if (nw != (new2In.value || '').trim()) {
+				ui.addNotification(null, E('p', _('The two new PINs differ.')), 'warning');
+				return;
+			}
+			return run(function(force) { return wrpc.pinChange(data.modem, pin, nw, storeIn.checked, force); },
+				_('SIM PIN changed.'));
 		};
 
 		out.push(E('div', { 'class': 'cbi-section' }, [
 			E('h4', {}, _('SIM PIN')),
 			/* array child: pinState can now carry daemon text (sim_note), and a
 			   bare string goes in through innerHTML (luci.js:1394-96) */
-			E('p', {}, [ _('PIN query: '), E('strong', {}, [ pinState ]) ]),
+			E('p', {}, [ _('PIN query: '), E('strong', {}, [ pinState ]),
+				(minfo.pin1 && minfo.pin1.retries != null) ? ' ' + _('(%d attempts left)').format(minfo.pin1.retries) : '' ]),
 			E('div', { 'style': 'margin-bottom:4px' }, [
 				pinIn, ' ',
 				E('button', { 'class': 'btn cbi-button cbi-button-apply', 'style': 'margin-left:8px',
@@ -224,8 +271,15 @@ return baseclass.extend({
 				E('button', { 'class': 'btn cbi-button cbi-button-remove', 'style': 'margin-left:4px',
 					'click': ui.createHandlerFn(self, function() { return pinAct(false); }) }, _('Disable PIN'))
 			]),
+			E('div', { 'style': 'margin-bottom:4px' }, [
+				newIn, ' ', new2In, ' ',
+				E('button', { 'class': 'btn cbi-button cbi-button-action', 'style': 'margin-left:8px',
+					'click': ui.createHandlerFn(self, pinChange) }, _('Change PIN'))
+			]),
+			E('p', {}, [ E('label', {}, [ storeIn, ' ',
+				_('Keep the PIN in the configuration, so the modem can unlock the card at start') ]) ]),
 			E('p', { 'style': 'color:#666;font-size:90%' },
-				_('Enabling or disabling the PIN query needs the current PIN. Disabling lets the SIM boot without a PIN.'))
+				_('Every operation needs the current PIN, and a wrong one costs an attempt. Disabling lets the SIM boot without a PIN. After a change the configured PIN follows by itself when it was the old one.'))
 		]));
 
 		/* per-SIM overrides (config wwand_sim) are edited on the Network →

@@ -105,8 +105,12 @@ return baseclass.extend({
 		return askBound(function(force) { return callSwitchSlot(modem, slot, force); });
 	},
 	pinVerify:  checked({ object: 'wwand', method: 'modem_sim_pin_verify', params: [ 'modem', 'pin' ], expect: {} }),
-	simPuk:     checked({ object: 'wwand', method: 'modem_sim_puk', params: [ 'modem', 'puk', 'new_pin' ], expect: {} }),
-	pinLock:    checked({ object: 'wwand', method: 'modem_sim_pin_lock', params: [ 'modem', 'pin', 'enable' ], expect: {} }),
+	simPuk:     checked({ object: 'wwand', method: 'modem_sim_puk', params: [ 'modem', 'puk', 'new_pin', 'store' ], expect: {} }),
+	/* `store`: keep the PIN in the config where none is (the daemon also
+	   rewrites a configured PIN the card just proved wrong); `force`: past
+	   the low-retry guard, after the user confirmed it */
+	pinLock:    checked({ object: 'wwand', method: 'modem_sim_pin_lock', params: [ 'modem', 'pin', 'enable', 'store', 'force' ], expect: {} }),
+	pinChange:  checked({ object: 'wwand', method: 'modem_sim_pin_change', params: [ 'modem', 'old_pin', 'new_pin', 'store', 'force' ], expect: {} }),
 	/* READ-ONLY profile list. NOT `esim` with op 'profiles': that method is in
 	   the WRITE acl because its other ops enable, disable and delete profiles,
 	   and rpcd grants a METHOD, never a method with certain arguments — so a
@@ -145,6 +149,9 @@ return baseclass.extend({
 	   Deliberately no "delete all": the daemon has no such primitive, because it
 	   would delete what is in the store when the modem runs it rather than what
 	   the operator was shown. */
+	cellBroadcast: rpc.declare({ object: 'wwand', method: 'modem_cell_broadcast', params: [ 'modem' ], expect: {} }),
+	/* USSD: op send|cancel|status (write ACL — a code may book a tariff) */
+	ussd:      checked({ object: 'wwand', method: 'modem_ussd', params: [ 'modem', 'op', 'text' ], expect: {} }),
 	smsDelete: checked({ object: 'wwand', method: 'modem_sms_delete', params: [ 'modem', 'storage', 'index', 'indices' ], expect: {} }),
 
 	/* --- migration -------------------------------------------------------- */

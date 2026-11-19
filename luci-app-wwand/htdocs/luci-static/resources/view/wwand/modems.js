@@ -168,6 +168,7 @@ return view.extend({
 
 		modemopts.addRadio(s, 'radio', direct);
 		modemopts.addCellLock(s, 'radio', direct);
+		modemopts.addCellBroadcast(s, 'radio', direct);
 		modemopts.addResilience(s, 'resilience', direct);
 
 		/* the whole config form lives in the Config modal — keep the table to
@@ -454,8 +455,12 @@ return view.extend({
 										var npin = (document.getElementById('wwand-newpin').value || '').trim();
 										if (!/^[0-9]{8}$/.test(puk)) { ui.addNotification(null, E('p', {}, _('The PUK must be exactly 8 digits.')), 'error'); return; }
 										if (!/^[0-9]{4,8}$/.test(npin)) { ui.addNotification(null, E('p', {}, _('The new PIN must be 4-8 digits.')), 'error'); return; }
-										return wrpc.simPuk(section_id, puk, npin).then(function(res) {
-											done(res, _('SIM unblocked, new PIN set. Update the configured PIN in the modem settings!'));
+										/* store: the new PIN goes into the config, which
+										   otherwise still holds the one that is gone */
+										return wrpc.simPuk(section_id, puk, npin, true).then(function(res) {
+											done(res, (res && res.config && res.config.updated)
+												? _('SIM unblocked, new PIN set and stored in the configuration.')
+												: _('SIM unblocked, new PIN set. Update the configured PIN in the modem settings!'));
 										});
 									}
 									var pin = (document.getElementById('wwand-pin').value || '').trim();
@@ -467,6 +472,7 @@ return view.extend({
 						]) ]));
 				}),
 			}, _('Unlock SIM')) : null;
+
 
 			/* Detach / Attach: one entry that flips with the modem's state
 			   (status `detached`). Detach ends the data sessions first, then

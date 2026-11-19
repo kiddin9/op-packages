@@ -628,6 +628,34 @@ return baseclass.extend({
 	/* Cell lock fields (kept separate so the caller can slot the live cell-scan
 	   widget between the radio options and the lock inputs). Returns the two
 	   lock options so a scan widget can push values into them. */
+	/* Cell Broadcast (wwand sms_rx.uc): three states, because "unset" is
+	   one of them — the modem's own setting is then left alone, while "Off"
+	   actively switches it off */
+	addCellBroadcast: function(s, tab, bind) {
+		var o;
+
+		o = s.taboption(tab, form.ListValue, 'cell_broadcast', _('Cell Broadcast'),
+			_('Receive Cell Broadcast messages — public warnings (ETWS, EU-Alert / CMAS) and the channels listed below. Messages are shown under Modem Tools and sent as the <code>cell_broadcast</code> event. "Leave unchanged" does not touch the modem\'s own setting.'));
+		o.value('', _('Leave modem setting unchanged'));
+		o.value('1', _('On'));
+		o.value('0', _('Off'));
+		o.optional = true;
+		bind(o);
+
+		o = s.taboption(tab, form.DynamicList, 'cb_channels', _('Broadcast channels'),
+			_('Message identifiers to receive, single (<code>919</code>) or as a range (<code>4370-4399</code>). Empty = the public warning channels, 4352-4359 and 4370-4399.'));
+		o.datatype = 'string';
+		o.depends('cell_broadcast', '1');
+		o.validate = function(section_id, value) {
+			if (!value) return true;
+			var m = /^([0-9]+)(-([0-9]+))?$/.exec(value.trim());
+			if (!m || +m[1] > 65535 || (m[3] != null && (+m[3] > 65535 || +m[3] < +m[1])))
+				return _('An identifier 0-65535, or a range like 4370-4399');
+			return true;
+		};
+		bind(o);
+	},
+
 	addCellLock: function(s, tab, bind) {
 		var lock4g = s.taboption(tab, form.DynamicList, 'lock_4g', _('LTE cell lock'),
 			_('Lock to LTE cells, one "earfcn:pci" per entry (several = a cell list).'));

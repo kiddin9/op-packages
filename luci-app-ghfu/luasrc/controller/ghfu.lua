@@ -395,7 +395,7 @@ local function detect_device_info()
         distrib_id = distrib_id,
         distrib_rev = distrib_rev,
         distrib_desc = distrib_desc,
-        is_kwrt = (distrib_id == "Kwrt" or distrib_id == "1004"),
+        is_kwrt = (distrib_id == "Kwrt" or distrib_id == "1760"),
         candidates = candidates
     }
 end

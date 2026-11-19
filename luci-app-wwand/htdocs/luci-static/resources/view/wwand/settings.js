@@ -1151,6 +1151,137 @@ return view.extend({
 		];
 	},
 
+	/* Cell Broadcast: the last messages the daemon kept (newest first, the
+	   repeats already gone — wwand cbs.uc). A public warning is marked; the
+	   switch itself is in the modem's settings (Radio & Cell). */
+	renderCellBroadcast: function(data) {
+		var self = this, modem = data.modem;
+		var body = E('div', { 'style': 'margin-top:6px' }, E('em', {}, _('Loading…')));
+		var KIND = { etws: _('ETWS warning'), cmas: _('Public warning'), pws: _('Public warning') };
+
+		function load() {
+			return wrpc.cellBroadcast(modem).then(function(res) {
+				var msgs = (res && res.messages) || [];
+				if (!msgs.length) {
+					dom.content(body, E('em', {}, (res && res.configured == '1')
+						? _('No message received since the daemon started.')
+						: _('Cell Broadcast is not switched on for this modem (Modems → Radio & Cell).')));
+					return;
+				}
+				dom.content(body, E('table', { 'class': 'table' }, [
+					E('tr', { 'class': 'tr table-titles' }, [
+						E('th', { 'class': 'th' }, _('Received')),
+						E('th', { 'class': 'th' }, _('Channel')),
+						E('th', { 'class': 'th' }, _('Message')),
+					]),
+				].concat(msgs.map(function(m) {
+					return E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td' }, [ m.at ? new Date(m.at * 1000).toLocaleString() : '?' ]),
+						E('td', { 'class': 'td' }, [ String(m.id),
+							m.kind ? E('div', {}, E('strong', {}, [ (KIND[m.kind] || m.kind) + (m.name ? ' (' + m.name + ')' : '') ])) : '' ]),
+						E('td', { 'class': 'td', 'style': 'white-space:pre-wrap' }, [ m.text != null ? m.text : (m.raw || '') ]),
+					]);
+				}))));
+			});
+		}
+
+		load();
+
+		/* title INSIDE the section (see netsel.js) */
+		return [
+			E('div', { 'class': 'cbi-section' }, [
+				E('h3', {}, _('Cell Broadcast')),
+				E('div', {}, E('button', { 'class': 'btn cbi-button cbi-button-action',
+					click: ui.createHandlerFn(self, load) }, _('Refresh'))),
+				body,
+			]),
+		];
+	},
+
+	/* USSD: a code (*100#) or the answer to the question the network asked
+	   last (ubus modem_ussd). The reply is the network's; a question keeps
+	   the session open, and the next Send answers it. The last message is
+	   loaded with the page, so a USSD the network sent on its own is seen
+	   too. Every Send goes to the network once — a code may book a tariff,
+	   so nothing here repeats one by itself. */
+	renderUssd: function(data) {
+		var self = this, modem = data.modem;
+		var input = E('input', { 'type': 'text', 'class': 'cbi-input-text', 'maxlength': 182,
+			'placeholder': '*100#', 'style': 'width:14em' });
+		var out = E('div', { 'style': 'margin-top:6px;white-space:pre-wrap' });
+
+		function show(res, isReply) {
+			var last = res && res.last;
+			var text = isReply ? res.reply : (last && last.text);
+			var ask = isReply ? res.action_required : (last && last.action_required);
+
+			if (text == null && !ask) {
+				dom.content(out, isReply ? E('em', {}, _('The network sent no text.')) : '');
+				return;
+			}
+
+			dom.content(out, [
+				(!isReply && last && last.origin == 'network') ? E('div', {}, E('em', {}, _('From the network:'))) : '',
+				E('code', { 'style': 'white-space:pre-wrap' }, [ text || '' ]),
+				ask ? E('div', { 'class': 'cbi-value-description' },
+					_('The network asks for a reply: enter it above and send, or end the session.')) : '',
+			]);
+		}
+
+		function fail(res) {
+			var e = res && res.error;
+			dom.content(out, E('em', {}, [
+				e == 'unsupported_on_backend' ? _('This modem does not offer USSD.')
+				: e == 'busy' ? _('A USSD request is still out; wait for its answer.')
+				: e == 'timeout' ? _('No answer from the network.')
+				: e == 'unsupported_text' ? _('This modem cannot send these characters.')
+				: _('USSD failed: %s').format(e ? e + (res.detail ? ' (' + JSON.stringify(res.detail) + ')' : '') : '?') ]));
+		}
+
+		function send() {
+			var t = (input.value || '').trim();
+			if (!t)
+				return;
+			dom.content(out, E('em', {}, _('Waiting for the network…')));
+			return wrpc.ussd(modem, 'send', t).then(function(res) {
+				if (res && res.ok)
+					show(res, true);
+				else
+					fail(res);
+			});
+		}
+
+		function cancel() {
+			return wrpc.ussd(modem, 'cancel', '').then(function(res) {
+				dom.content(out, (res && res.ok) ? E('em', {}, _('Session ended.')) : '');
+				if (!(res && res.ok)) fail(res);
+			});
+		}
+
+		wrpc.ussd(modem, 'status', '').then(function(res) {
+			if (res && res.ok)
+				show(res, false);
+		});
+
+		/* title INSIDE the section (see netsel.js) */
+		return [
+			E('div', { 'class': 'cbi-section' }, [
+				E('h3', {}, _('USSD')),
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Code or answer')),
+					E('div', { 'class': 'cbi-value-field' }, [ input, ' ',
+						E('button', { 'class': 'btn cbi-button cbi-button-action',
+							click: ui.createHandlerFn(self, send) }, _('Send')), ' ',
+						E('button', { 'class': 'btn cbi-button cbi-button-reset',
+							click: ui.createHandlerFn(self, cancel) }, _('End session')),
+						E('div', { 'class': 'cbi-value-description' },
+							_('A service code such as *100# for the balance, sent to the network as it is. Codes are the operator\'s: one may change your tariff or book an option, so send only codes you know.')) ]),
+				]),
+				out,
+			]),
+		];
+	},
+
 	render: function(data) {
 		if (!data || !data.modem)
 			return E('p', {}, _('No modem present.'));
@@ -1438,6 +1569,6 @@ return view.extend({
 			netsel.render(panelCtx, data),
 		].concat(this.renderCarrierConfig(data)).concat(this.renderCellLock(data)).concat(esim.render(panelCtx, data)).concat([
 			this.renderPlmnManager(data.modem, data),
-		]).concat(this.renderSms(data)));
+		]).concat(this.renderSms(data)).concat(this.renderUssd(data)).concat(this.renderCellBroadcast(data)));
 	},
 });

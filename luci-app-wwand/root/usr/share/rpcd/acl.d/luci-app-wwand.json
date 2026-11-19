@@ -21,6 +21,7 @@
 					"modem_signal",
 					"modem_sim_slots",
 					"modem_sms_list",
+					"modem_cell_broadcast",
 					"status"
 				]
 			},
@@ -53,6 +54,8 @@
 					"modem_set_settings",
 					"set_log_level",
 					"modem_sim_pin_lock",
+					"modem_sim_pin_change",
+					"modem_ussd",
 					"modem_sim_pin_verify",
 					"modem_sim_puk",
 					"modem_sim_reinit",

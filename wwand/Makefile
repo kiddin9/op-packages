@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.10.0_pre0
-PKG_RELEASE:=98
+PKG_VERSION:=1.10.0_pre10
+PKG_RELEASE:=99
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=70048f8c50ff37693a0c712ae443fb678a07d97a
+PKG_SOURCE_VERSION:=8b641042dd97d98e9214f2c9a2ac1f3e96af518f
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -96,17 +96,17 @@ UCDIR:=/usr/share/ucode/wwand
 # silently ship in the base too. The per-backend install lists below carry the
 # QMI/MBIM/NCM/eSIM modules; main.uc/wwandctl.uc install as executables.
 WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
-	carrier_config.uc client.uc config.uc config_check.uc context_common.uc \
+	carrier_config.uc cbs.uc cell_lock.uc client.uc config.uc config_check.uc context_common.uc \
 	context_monitor_qmi.uc ctx_settings.uc daemon.uc deps.uc discovery.uc \
 	fcc_fibocom.uc \
 	hwops.uc log.uc modem_common.uc modem_datapath_qmi.uc modem_init_qmi.uc plugins.uc \
 	modem_quirks.uc modeswitch.uc ncm_vendors.uc netlink.uc netsel_ops.uc \
 	protocol_switch.uc reconnect.uc recovery.uc regdetail.uc sim.uc sim_plmn.uc \
-	simops.uc siminventory.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
-	telemetry_qmi.uc transport.uc ubus.uc version.uc wwandctl_fmt.uc
+	simops.uc siminventory.uc sms.uc sms_pdu.uc sms_rx.uc telemetry_mbim.uc telemetry_ncm.uc \
+	telemetry_qmi.uc transport.uc ubus.uc ussd.uc version.uc wwandctl_fmt.uc
 WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
 WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc merge.uc nas.uc pdc.uc rat.uc \
-	tmd.uc uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
+	tmd.uc uim.uc voice.uc voice_lazy.uc wda.uc wds.uc wms.uc wms_lazy.uc
 
 # DEVELOPERS: set CONFIG_WWAND_UCODE_SOURCE to ship readable .uc source
 # instead of bytecode — for editing modules live under /usr/share/ucode/wwand
