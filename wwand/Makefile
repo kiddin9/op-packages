@@ -51,7 +51,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
 PKG_VERSION:=1.10.0_pre0
-PKG_RELEASE:=97
+PKG_RELEASE:=98
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
@@ -153,16 +153,32 @@ endef
 # SDK (`feeds update` puts it under feeds/base and links package/feeds/base).
 # Not found (an unusual tree) means no floor, as before — never a guess.
 #
-# Deliberately NOT +libucode by name, though that would record the
-# ABI-versioned libucode<abi>: on a later ucode upgrade it keeps the old
-# library installed, and wwand_io.so then loads it into an interpreter running
-# the new one — two libucode ABIs in one process. Without it the library goes
-# and files/wwand.init says why the daemon cannot start.
+# The same floor on libucode<abi>, because the VM that loads the bytecode is
+# the LIBRARY, and `ucode (>=)` does not move it: `ucode` depends on
+# libucode<abi> without a version, so apk upgrades the binary and leaves the
+# old library. That is how a 25.12.6 box got wwand 1.10.0_pre0 with ucode
+# 2026.07.09 over libucode20230711 2026.01.16 and failed with "Bytecode
+# version mismatch, got 0x02, expected 0x01" (ddimension/wwand#92, reproduced
+# in the 25.12.6 rootfs, 2026-11-19). The floor has to name the ABI package:
+# libucode<abi> provides the bare `libucode` WITHOUT a version, so apk cannot
+# satisfy `libucode>=…` at all (same rootfs). OpenWrt's FormatDepends would
+# add the suffix itself, but only from $(STAGING_DIR)/pkginfo/libucode.version
+# (include/feeds.mk GetABISuffix), so the ABI is read from ucode's Makefile
+# like the date.
+#
+# The cost, accepted: after an ABI change in ucode, a wwand built against the
+# old ABI keeps libucode<old> installed until wwand is rebuilt, and wwand_io.so
+# (NEEDED libucode.so.<old>) then loads it next to the interpreter's
+# libucode.so.<new>. Without the floor the old library goes and wwand.init
+# explains the start failure instead. The floor wins because the case it fixes
+# happens on every point release of a branch whose ucode moves, the other one
+# only while the feed lags an ABI change.
 UCODE_MAKEFILE:=$(firstword $(wildcard \
 	$(TOPDIR)/package/utils/ucode/Makefile \
 	$(TOPDIR)/package/feeds/base/ucode/Makefile \
 	$(TOPDIR)/feeds/base/package/utils/ucode/Makefile))
 UCODE_BUILT:=$(if $(UCODE_MAKEFILE),$(subst -,.,$(shell sed -n 's/^PKG_SOURCE_DATE:=//p' '$(UCODE_MAKEFILE)')))
+UCODE_ABI:=$(if $(UCODE_MAKEFILE),$(shell sed -n 's/^PKG_ABI_VERSION:=//p' '$(UCODE_MAKEFILE)'))
 
 # ---------------------------------------------------------------------------
 # base: daemon + framework + codec/client + shared core. No backend on its own;
@@ -179,7 +195,7 @@ define Package/wwand
   # wwand-private, always version-locked to the ucode side). PROVIDES keeps
   # configs/upgrades from the era of the separate ucode-mod-wwand-io working.
   PROVIDES:=ucode-mod-wwand-io
-  EXTRA_DEPENDS:=$(if $(UCODE_BUILT),ucode (>=$(UCODE_BUILT)))
+  EXTRA_DEPENDS:=$(if $(UCODE_BUILT),ucode (>=$(UCODE_BUILT))$(if $(UCODE_ABI),$(comma) libucode$(UCODE_ABI) (>=$(UCODE_BUILT))))
 endef
 
 define Package/wwand/description

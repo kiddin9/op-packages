@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('htdocs/luci-static/resources/menu-carbon.js', 'utf8');
 
-function load({ uci = {}, lang = 'en', info = {}, meminfo = null } = {}) {
+function load({ uci = {}, lang = 'en', info = {}, meminfo = null, trafficSource } = {}) {
 	const calls = [], indicators = [];
 	const poll = {
 		running: true,
@@ -27,6 +27,7 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null } = {}) {
 	const listeners = {};
 	const context = {
 		baseclass: { extend: (v) => v }, session: {},
+		traffic: { read: source => source },
 		fs: { read: (path) => {
 			assert.equal(path, '/proc/meminfo');
 			return meminfo instanceof Error ? Promise.reject(meminfo) : Promise.resolve(meminfo);
@@ -37,6 +38,7 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null } = {}) {
 		window: { Carbon: { version: 'test' }, setTimeout: (fn) => fn() },
 		E: () => ({}),
 		document: {
+			querySelector: selector => selector === '.cb-app' && trafficSource != null ? { dataset: { trafficSource } } : null,
 			getElementById: (id) => id === 'maincontent' ? { insertBefore() {} } : null,
 			documentElement: { getAttribute: () => lang },
 			addEventListener: (name, fn) => { listeners[name] = fn; }
@@ -57,6 +59,11 @@ function infoProvider(options) {
 	f.subject.mountDashboard('admin', {});
 	return provider;
 }
+
+test('device speeds pass only the configured traffic source to the collector', () => {
+	for (const [trafficSource, expected] of [[undefined, 'nlbwmon'], ['invalid', 'nlbwmon'], ['nlbwmon', 'nlbwmon'], ['nftables', 'nftables']])
+		assert.equal(infoProvider({ trafficSource }).deviceTraffic(), expected);
+});
 
 const containerMeminfo = `MemTotal:        1048576 kB
 MemFree:          593908 kB

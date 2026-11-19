@@ -106,6 +106,45 @@ test('counter reset, missing device, failed read, suspend and changed interval d
 	assert.equal(tracker.update(sample(Number.MAX_SAFE_INTEGER + 1), 550000), null);
 });
 
+test('invalid placeholder MAC does not discard a valid device rate', () => {
+	const tracker = new (load().DeviceRates)();
+	const mac = '00:11:22:33:44:55';
+	const sample = (n) => ({ interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'],
+		data: [['00:00:00:00:00:00', null, null], [mac, n, n * 2]] });
+	tracker.update(sample(100), 0);
+	const rate = tracker.update(sample(200), 5000).rates.get(mac);
+	assert.equal(rate.down, 20);
+	assert.equal(rate.up, 40);
+});
+
+test('switching accounting sources with identical cadence resets unrelated byte totals', () => {
+	const tracker = new (load().DeviceRates)();
+	const sample = (source, n) => ({ source, interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'],
+		data: [['00:11:22:33:44:55', n, n]] });
+	tracker.update(sample('nlbwmon', 100), 0);
+	assert.equal(tracker.update(sample('nftables', 1000000), 5000).rates.size, 0);
+	assert.equal(tracker.update(sample('nftables', 172500000), 10000).rates.get('00:11:22:33:44:55').down, 34300000);
+	assert.equal(tracker.update(sample('nlbwmon', 300000000), 20000).rates.size, 0);
+});
+
+test('nft device creation, removal and recreation leave other device baselines intact', () => {
+	const tracker = new (load().DeviceRates)();
+	const a = '00:11:22:33:44:55', b = '00:11:22:33:44:66';
+	const sample = (data) => ({ source: 'nftables', interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes', 'identity'], data });
+	tracker.update(sample([[a, 100, 100, '[1,2]']]), 0);
+	let result = tracker.update(sample([[a, 200, 150, '[1,2]'], [b, 500, 500, '[3,4]']]), 5000);
+	assert.equal(result.source, 'nftables');
+	assert.equal(result.rates.get(a).down, 20);
+	assert.equal(result.rates.has(b), false);
+	result = tracker.update(sample([[b, 1000, 1000, '[5,6]'], [a, 300, 200, '[1,2]']]), 10000);
+	assert.equal(result.rates.get(a).down, 20);
+	assert.equal(result.rates.has(b), false, 'higher totals with new handles still reset');
+	result = tracker.update(sample([[a, 400, 250, '[1,2]']]), 15000);
+	assert.equal(result.rates.get(a).down, 20, 'removing b leaves a intact');
+	assert.equal(tracker.update(null, 20000), null);
+	assert.equal(tracker.update(sample([[a, 1000, 1000, '[1,2]']]), 80000).rates.size, 0, 'failure recovery needs fresh baseline');
+});
+
 test('early reads do not move the device-speed baseline or invent short-window spikes', () => {
 	const tracker = new (load().DeviceRates)();
 	const sample = (n) => ({ interval: 30, columns: ['mac', 'rx_bytes', 'tx_bytes'], data: [['00:11:22:33:44:55', n, n]] });

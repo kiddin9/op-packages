@@ -133,7 +133,7 @@
 		]),
 		devStats: () => wait({ rx_bytes: Math.round(rx), tx_bytes: Math.round(tx) }),
 		deviceTraffic: () => wait({
-			interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'],
+			source: 'nlbwmon', interval: 5, columns: ['mac', 'rx_bytes', 'tx_bytes'],
 			data: LEASES.slice(0, 9).map((l, i) => [l.macaddr,
 				Math.floor((Date.now() - t0) / 5000) * (9 - i) * 180000,
 				Math.floor((Date.now() - t0) / 5000) * (9 - i) * 12000])

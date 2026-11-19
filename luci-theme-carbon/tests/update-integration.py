@@ -180,6 +180,17 @@ esac
         self.assertFalse(self.rpc('status')['can_upgrade'])
         self.assertEqual(self.rpc('upgrade', dict(version='1.1.0-r1'))['error'], 'stale')
 
+    def test_traffic_source_setting(self):
+        self.assertEqual(self.rpc('status')['traffic_source'], 'nlbwmon')
+        self.shell('touch /etc/config/carbon; uci set carbon.traffic=traffic; uci set carbon.traffic.source=invalid; uci commit carbon')
+        self.assertEqual(self.rpc('status')['traffic_source'], 'nlbwmon')
+        for source in ['nftables', 'nlbwmon']:
+            self.assertEqual(self.rpc('set_traffic_source', dict(source=source)), dict(traffic_source=source))
+            self.assertEqual(self.shell('uci get carbon.traffic.source').strip(), source)
+            for bad in [{}, dict(source='auto')]:
+                self.assertEqual(self.rpc('set_traffic_source', bad), dict(error='invalid_source'))
+            self.assertEqual(self.rpc('status')['traffic_source'], source)
+
     def test_mirror_setting_is_validated(self):
         for bad in ['http://mirror.test/', 'https://mirror.test/;reboot', 'https://user@mirror.test/', 'ftp://x/', 'https://-bad/']:
             self.assertEqual(self.rpc('configure', dict(mirror=bad)).get('error'), 'invalid_mirror', bad)
