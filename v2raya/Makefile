@@ -14,14 +14,14 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya
 PKG_VERSION:=2.5.16
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=skip
 
 WEB_FILE:=v2raya-web-$(PKG_VERSION).tar.gz
-WEB_HASH:=5e4dc08ca1dd89d3cc627d951018739c753ced272bd698d8778bed3bba2197e7
+WEB_HASH:=17d7948a48f78485ad6ca43531b0e6edcfc49307ce6e2bd46d3ee79950185456
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/v2rayA-$(PKG_VERSION)/service
 

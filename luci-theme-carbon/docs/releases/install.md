@@ -11,6 +11,12 @@
 **Install script.** Run on the router. It installs the signed APK or the IPK through apk/opkg, so online updates work and no key import is needed:
 
 ```sh
+curl -fsSL -o /tmp/carbon-install.sh https://github.com/@REPOSITORY@/releases/latest/download/carbon-install.sh && sh /tmp/carbon-install.sh
+```
+
+Or, use `wget`.
+
+```sh
 wget -O /tmp/carbon-install.sh https://github.com/@REPOSITORY@/releases/latest/download/carbon-install.sh && sh /tmp/carbon-install.sh
 ```
 
@@ -33,6 +39,12 @@ After a first install, log out and back in once so the dashboard and settings pe
 | 以上任意固件 | apk 或 opkg | `carbon-install.sh` |
 
 **安装脚本。** 在路由器上执行。脚本通过 apk/opkg 安装已签名的 APK 或 IPK，在线升级可用，无需导入公钥：
+
+```sh
+curl -fsSL -o /tmp/carbon-install.sh https://github.com/@REPOSITORY@/releases/latest/download/carbon-install.sh && sh /tmp/carbon-install.sh
+```
+
+或者使用 `wget`。
 
 ```sh
 wget -O /tmp/carbon-install.sh https://github.com/@REPOSITORY@/releases/latest/download/carbon-install.sh && sh /tmp/carbon-install.sh
