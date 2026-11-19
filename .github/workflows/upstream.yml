@@ -390,7 +390,7 @@ jobs:
         git_clone https://github.com/rabbitrogi/luci-app-zerotier
         git_clone https://github.com/arafatrahmanzami/luci-app-quickactions quickactions; mvdir quickactions
         git_clone https://github.com/de-quenx/luci-theme-luxe
-        git_clone https://github.com/anothaDev/luci-theme-vantage vantage;mv -f vantage/*vantage ./;rm -rf vantage
+        git clone fixes-after-1.0.20 https://github.com/anothaDev/luci-theme-vantage vantage;mv -f vantage/*vantage ./;rm -rf vantage
         git_clone https://github.com/xiaokeikei/luci-app-cf-dns-speedtest
         git_clone https://github.com/masmbit/luci-app-openvpn-plus
         git_clone https://github.com/xxi-arch/luci-app-device-manager
