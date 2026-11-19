@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=transmission-web-control
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/Youngv/transmission-web-control
-PKG_SOURCE_DATE:=2026-04-10
-PKG_SOURCE_VERSION:=ea23f2fdbb554bd65f25921b15b250f42d7e72ee
+PKG_SOURCE_URL:=https://github.com/QuickBox/transmission-web-control
+PKG_SOURCE_DATE:=2026-10-10
+PKG_SOURCE_VERSION:=a2818c1fcc013e1b751ec228a20f64976a90d4cf
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=MIT
