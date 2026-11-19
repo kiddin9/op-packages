@@ -567,7 +567,7 @@ jobs:
         ) &
 
         (
-        for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-store"); do
+        for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-store" | grep -v "luci-app-quickstart"); do
         pkg="${pkg%/}"
         if [[ $pkg == luci-app-v2raya ]]; then
           sed -i '/^[[:space:]]*PKG_\(VERSION\|RELEASE\):*=/d' $pkg/Makefile || true
