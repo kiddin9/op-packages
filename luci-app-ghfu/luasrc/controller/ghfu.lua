@@ -1198,9 +1198,21 @@ function action_status()
         return
     end
 
-    local updatelogs = trim(http_get(FIRMWARE_BASE_URL .. "/updatelogs.txt", 8))
-    if updatelogs:match("^<!DOCTYPE") or updatelogs:match("^<html") then
-        updatelogs = ""
+    local updatelogs = ""
+    local fw_dir_url = (latest and latest.html_url and latest.html_url ~= "") and latest.html_url:gsub("/+$", "") or ""
+    if fw_dir_url ~= "" and fw_dir_url ~= FIRMWARE_BASE_URL then
+        updatelogs = trim(http_get(fw_dir_url .. "/updatelogs.txt", 8))
+        local low = updatelogs:lower()
+        if low:match("^<!doctype") or low:match("^<html") then
+            updatelogs = ""
+        end
+    end
+    if updatelogs == "" then
+        updatelogs = trim(http_get(FIRMWARE_BASE_URL .. "/updatelogs.txt", 8))
+        local low = updatelogs:lower()
+        if low:match("^<!doctype") or low:match("^<html") then
+            updatelogs = ""
+        end
     end
 
     latest.release_total_count = (latest.assets and #latest.assets) or 0
