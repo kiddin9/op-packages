@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Execute older uclient-fetch fixtures through the production curl interface.
+# Unlike permissive fetch mocks, reject missing security flags and unsafe URLs.
+set -eu
+[ "${1:-}" = --disable ] || exit 80
+redirect=0; max_redirs=''; proto=''; proto_redir=''; proxy=''; fail=0
+out=''; body=''; timeout=''; url=''; format=''; header1=''; header2=''; header3=''
+while [ "$#" -gt 0 ]; do
+ case "$1" in
+  --disable|--silent|--show-error) shift ;;
+  --fail) fail=1; shift ;;
+  --location) redirect=1; shift ;;
+  --max-redirs) max_redirs="$2"; shift 2 ;;
+  --proto) proto="$2"; shift 2 ;;
+  --proto-redir) proto_redir="$2"; shift 2 ;;
+  --noproxy) proxy="$2"; shift 2 ;;
+  --connect-timeout|--max-time) timeout="$2"; shift 2 ;;
+  --output) out="$2"; shift 2 ;;
+  --write-out) format="$2"; shift 2 ;;
+  --data-binary) body="${2#@}"; shift 2 ;;
+  --header|-H)
+   if [ -z "$header1" ]; then header1="$2"; elif [ -z "$header2" ]; then header2="$2"; else header3="$2"; fi
+   shift 2 ;;
+  --) shift; url="$1"; shift; [ "$#" -eq 0 ] || exit 81 ;;
+  *) exit 82 ;;
+ esac
+ done
+[ "$redirect" = 1 ] && [ "$max_redirs" = 0 ] && [ "$proto" = '=https' ] && \
+ [ "$proto_redir" = '=https' ] && [ "$proxy" = '*' ] && [ "$fail" = 1 ] && \
+ [ "$format" = '%{http_code}' ] && [ -n "$out" ] || exit 83
+case "$url" in https://*) ;; *) exit 84 ;; esac
+# Optionally simulate HTTP redirects without invoking the old test backend.
+case "${MOCK_CURL_STATUS:-200}" in
+  200|201|204) ;;
+  301|302|307|308)
+   [ "$out" = /dev/null ] || printf 'redirect' > "$out"
+   printf '%s' "${MOCK_CURL_STATUS}"
+   exit 0 ;;
+  *) exit 85 ;;
+esac
+set -- -q -T "${timeout:-10}" -O "$out"
+if [ -n "$body" ]; then
+ set -- "$@" --method=POST --body-file="$body" --post-file="$body"
+fi
+# Both formats are used by the old test fixtures.
+[ -z "$header1" ] || set -- "$@" "--header=$header1"
+[ -z "$header2" ] || set -- "$@" "--header=$header2"
+[ -z "$header3" ] || set -- "$@" "--header=$header3"
+"${MOCK_CURL_BACKEND:?}" "$@" "$url" || exit 86
+printf '%s' "${MOCK_CURL_STATUS:-200}"

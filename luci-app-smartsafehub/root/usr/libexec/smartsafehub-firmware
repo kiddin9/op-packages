@@ -1,6 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -u
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
 [ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
@@ -15,7 +18,6 @@ FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_FIRMWARE_METADATA_FILE:-/usr/share/smarts
 ROM_FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_FIRMWARE_ROM_METADATA_FILE:-/rom/usr/share/smartsafehub/firmware.json}"
 BOARD_NAME_FILE="${SMARTSAFEHUB_FIRMWARE_BOARD_NAME_FILE:-/tmp/sysinfo/board_name}"
 UCI_BIN="${SMARTSAFEHUB_FIRMWARE_UCI_BIN:-uci}"
-UCLIENT_FETCH_BIN="${SMARTSAFEHUB_FIRMWARE_UCLIENT_FETCH_BIN:-uclient-fetch}"
 JSONFILTER_BIN="${SMARTSAFEHUB_FIRMWARE_JSONFILTER_BIN:-jsonfilter}"
 SHA256SUM_BIN="${SMARTSAFEHUB_FIRMWARE_SHA256SUM_BIN:-sha256sum}"
 UBUS_BIN="${SMARTSAFEHUB_FIRMWARE_UBUS_BIN:-ubus}"
@@ -24,7 +26,6 @@ EVENTS_BIN="${SMARTSAFEHUB_FIRMWARE_EVENTS_BIN:-/usr/libexec/smartsafehub-events
 APPS_RESTORE_BIN="${SMARTSAFEHUB_APPS_RESTORE_BIN:-/usr/libexec/smartsafehub-apps-restore}"
 DEFAULT_API_BASE_URL="https://www.smartsafehub.com/api/v1"
 CHECK_TIMEOUT_S=20
-DOWNLOAD_TIMEOUT_S=180
 DEFAULT_CHECK_INTERVAL_S=21600
 MIN_CHECK_INTERVAL_S=900
 MAX_CHECK_INTERVAL_S=604800
@@ -371,12 +372,8 @@ perform_check() {
 {"schema":1,"device_code":"$device_code","channel":"$channel","current_build_id":"$current_build_id"}
 EOF2
 
-	if ! "$UCLIENT_FETCH_BIN" -q -T "$CHECK_TIMEOUT_S" \
-		--method=POST \
-		--body-file="$request_file" \
-		--header='Content-Type: application/json' \
-		-O "$response_tmp" \
-		"$base/firmware/resolve"; then
+	if ! ssh_http_request POST "$response_tmp" "$CHECK_TIMEOUT_S" \
+		"$base/firmware/resolve" "$request_file"; then
 		rm -f "$request_file" "$response_tmp"
 		set_error 'FIRMWARE_RESOLVE_FAILED' '펌웨어 업데이트 서버에 연결하지 못했습니다.'
 		return 1
@@ -487,7 +484,7 @@ perform_prepare_online() {
 	clear_error
 	save_state
 
-	if ! "$UCLIENT_FETCH_BIN" -q -T "$DOWNLOAD_TIMEOUT_S" -O "${IMAGE_FILE}.part" "$download_url"; then
+	if ! ssh_http_download "${IMAGE_FILE}.part" "$download_url"; then
 		rm -f "${IMAGE_FILE}.part"
 		set_error 'FIRMWARE_DOWNLOAD_FAILED' '펌웨어 파일을 다운로드하지 못했습니다.'
 		return 1

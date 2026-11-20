@@ -16,11 +16,6 @@ function public_ip(ip, n,a) {
         !(a[1] == 169 && a[2] == 254) && !(a[1] == 198 && (a[2] == 18 || a[2] == 19))
 }
 BEGIN {
-    while ((getline line < previous) > 0) {
-        split(line, fields, "\t")
-        if (fields[1] ~ /^[0-9.]+$/) { prev_count[fields[1]] = fields[2]+0; prev_dest[fields[1]] = fields[3]+0 }
-    }
-    close(previous)
 }
 {
     if (NR > 2048) { truncated=1; exit }
@@ -42,19 +37,13 @@ BEGIN {
     if (!(key in dest_seen)) { dest_seen[key]=1; destinations[src]++ }
 }
 END {
+    printf "%d\t%d\t%d\n",total,dev_n,truncated?1:0 > metadata
+    close(metadata)
     printf "" > snapshot
     for (k=1;k<=dev_n;k++) {
         ip=order[k]
         # Partial snapshots are never a trustworthy consecutive baseline.
         if (!truncated) printf "%s\t%d\t%d\n", ip,count[ip],destinations[ip] > snapshot
-        if (!truncated &&
-            ((count[ip] >= 120 && prev_count[ip] >= 120) ||
-             (destinations[ip] >= 40 && prev_dest[ip] >= 40))) {
-            if (candidate_ip == "") {
-                candidate_ip=ip; candidate_connections=count[ip]; candidate_dest=destinations[ip]
-            }
-            printf "%s\t%d\t%d\n", ip, count[ip], destinations[ip] > candidate
-        }
     }
     close(snapshot)
     close(candidate)
@@ -64,9 +53,7 @@ END {
         printf "%s{\"ip\":\"%s\",\"connections\":%d,\"destinations\":%d}", (k > 1 ? "," : ""),ip,count[ip],destinations[ip] > status
     }
     printf "],\"alert\":" > status
-    if (candidate_ip != "")
-        printf "{\"ip\":\"%s\",\"connections\":%d,\"destinations\":%d}",candidate_ip,candidate_connections,candidate_dest > status
-    else printf "null" > status
+    printf "null" > status
     print "}" > status
     close(status)
 }

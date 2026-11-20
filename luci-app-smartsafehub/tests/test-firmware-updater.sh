@@ -3,6 +3,7 @@
 set -eu
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+export SMARTSAFEHUB_HTTP_LIB="$ROOT_DIR/root/usr/lib/smartsafehub/http.sh"
 export SMARTSAFEHUB_COMMON_LIB="$ROOT_DIR/root/usr/lib/smartsafehub/common.sh"
 FIRMWARE="$ROOT_DIR/root/usr/libexec/smartsafehub-firmware"
 TMP="$(mktemp -d)"
@@ -164,7 +165,8 @@ export SMARTSAFEHUB_FIRMWARE_LOCK_DIR="$TMP/firmware.lock"
 export SMARTSAFEHUB_FIRMWARE_METADATA_FILE="$TMP/firmware.json"
 export SMARTSAFEHUB_FIRMWARE_BOARD_NAME_FILE="$TMP/sysinfo/board_name"
 export SMARTSAFEHUB_FIRMWARE_UCI_BIN="$TMP/bin/uci"
-export SMARTSAFEHUB_FIRMWARE_UCLIENT_FETCH_BIN="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_CURL_BIN="$ROOT_DIR/tests/support/mock-curl" MOCK_CURL_BACKEND="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_UCLIENT_BIN="$TMP/bin/uclient-fetch"
 export SMARTSAFEHUB_FIRMWARE_JSONFILTER_BIN="$TMP/bin/jsonfilter"
 export SMARTSAFEHUB_FIRMWARE_SHA256SUM_BIN="$(command -v sha256sum)"
 export SMARTSAFEHUB_FIRMWARE_UBUS_BIN="$TMP/bin/ubus"

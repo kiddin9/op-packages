@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Read-only, firmware-pinned SmartSafeHub Apps catalog fetch.
 set -eu
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 
 RUNTIME_DIR="${SMARTSAFEHUB_APPS_RUNTIME_DIR:-/tmp/smartsafehub}"
 ROM_METADATA="${SMARTSAFEHUB_APPS_ROM_METADATA:-/rom/usr/share/smartsafehub/firmware.json}"
 FIRMWARE_METADATA="${SMARTSAFEHUB_APPS_METADATA:-/usr/share/smartsafehub/firmware.json}"
 JSONFILTER="${SMARTSAFEHUB_APPS_JSONFILTER_BIN:-jsonfilter}"
-UCLIENT="${SMARTSAFEHUB_APPS_UCLIENT_BIN:-uclient-fetch}"
 CATALOG_URL='https://www.smartsafehub.com/api/v1/app-store/catalog'
 
 json_field() { "$JSONFILTER" -i "$1" -e "$2" 2>/dev/null | head -n 1; }
@@ -36,7 +38,7 @@ umask 077
 tmp="$(mktemp "$RUNTIME_DIR/apps-catalog.XXXXXXXX")" || exit 1
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
 url="$CATALOG_URL?schema=1&device_code=$device_code&firmware_build_id=$build_id&channel=$channel"
-"$UCLIENT" -q -T 8 -O "$tmp" "$url" >/dev/null 2>&1 || exit 1
+ssh_http_request GET "$tmp" 8 "$url" "" >/dev/null 2>&1 || exit 1
 bytes="$(wc -c < "$tmp" | tr -d ' ')"
 [ "$bytes" -gt 1 ] && [ "$bytes" -le 131072 ] || exit 1
 [ "$(json_field "$tmp" '@.schema')" = 1 ] || exit 1

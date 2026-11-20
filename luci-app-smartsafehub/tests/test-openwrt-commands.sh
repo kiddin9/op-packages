@@ -56,6 +56,25 @@ awk 'BEGIN { print "xxd is a literal" }'
 EOF
 check_allowed
 
+# A POSIX function with a nested subshell keeps temporary variables isolated
+# while remaining visible as a shell function to the OpenWrt command audit.
+# This catches the status-parser regression where the audit previously read a
+# `name() (` function declaration as an unsupported external command.
+cat > "$FILE" <<'EOF'
+#!/bin/sh
+count=7
+parse_catalog() {
+    (
+        count=12
+        printf '%s\n' "$count" > /dev/null
+    )
+}
+parse_catalog
+[ "$count" -eq 7 ]
+EOF
+check_allowed
+sh "$FILE" || fail 'subshell helper changed the caller variables'
+
 cat >> "$FILE" <<'EOF'
 od -An -tx1 /dev/urandom
 EOF
@@ -107,27 +126,14 @@ EOF
 check_blocked xxd
 rm "$TMP/root/etc/init.d/smartsafehub-fixture"
 
-# `curl` is NOT a default. A single legacy guarded fallback is documented in
-# the checker; a new unguarded use must fail even in that same script.
-cat > "$TMP/root/usr/libexec/smartsafehub-device" <<'EOF'
+# curl is guaranteed by LUCI_DEPENDS. The shared HTTP helper enforces
+# no-redirect and TLS policy (verified by test-http-transport.sh).
+grep -Eq '^curl$' "$POLICY" || fail 'curl must be in the required package command policy'
+cat > "$FILE" <<'EOF'
 #!/bin/sh
-curl -fsS https://example.invalid
+curl --version >/dev/null
 EOF
-check_blocked curl
-
-# An extra unguarded call must not be allowed merely because the same script
-# contains the previously reviewed guarded curl fallback.
-cat > "$TMP/root/usr/libexec/smartsafehub-device" <<'EOF'
-#!/bin/sh
-post_json() {
- if command -v curl >/dev/null 2>&1; then
-  curl -fsS https://example.invalid
- fi
-}
-curl -fsS https://example.invalid
-EOF
-check_blocked curl
-rm "$TMP/root/usr/libexec/smartsafehub-device"
+check_allowed
 
 cat > "$TMP/root/usr/libexec/smartsafehub-bad-interpreter" <<'EOF'
 #!/bin/bash

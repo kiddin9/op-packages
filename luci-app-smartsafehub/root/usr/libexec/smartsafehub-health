@@ -1,6 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -u
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
 [ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
@@ -26,7 +29,6 @@ DNSMASQ_INIT="${SMARTSAFEHUB_HEALTH_DNSMASQ_INIT:-/etc/init.d/dnsmasq}"
 UCI_BIN="${SMARTSAFEHUB_HEALTH_UCI_BIN:-uci}"
 UBUS_BIN="${SMARTSAFEHUB_HEALTH_UBUS_BIN:-ubus}"
 JSONFILTER_BIN="${SMARTSAFEHUB_HEALTH_JSONFILTER_BIN:-jsonfilter}"
-UCLIENT_FETCH_BIN="${SMARTSAFEHUB_HEALTH_UCLIENT_FETCH_BIN:-uclient-fetch}"
 DF_BIN="${SMARTSAFEHUB_HEALTH_DF_BIN:-df}"
 DATE_BIN="${SMARTSAFEHUB_HEALTH_DATE_BIN:-date}"
 SLEEP_BIN="${SMARTSAFEHUB_HEALTH_SLEEP_BIN:-sleep}"
@@ -741,13 +743,8 @@ maybe_report() {
 	fi
 	build_report_payload
 	base="$(api_base_url)"
-	if "$UCLIENT_FETCH_BIN" -q -T "$REPORT_TIMEOUT_S" \
-		--method=POST \
-		--body-file="$REPORT_PAYLOAD_FILE" \
-		--header='Content-Type: application/json' \
-		--header="Authorization: Device $credential" \
-		-O /dev/null \
-		"$base/health/reports"; then
+	if ssh_http_request POST /dev/null "$REPORT_TIMEOUT_S" "$base/health/reports" \
+		"$REPORT_PAYLOAD_FILE" -H "Authorization: Device $credential"; then
 		write_report_state 1 1 "$plan" "$entitlement_status" "$now" reported '' "$ISSUE_FINGERPRINT" 0
 		return 0
 	fi

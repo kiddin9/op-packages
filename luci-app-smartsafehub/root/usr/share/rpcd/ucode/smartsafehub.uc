@@ -4,7 +4,7 @@
 import { failure } from './smartsafehub/core.uc';
 import { read_netwatch_status, update_netwatch_enabled } from './smartsafehub/netwatch.uc';
 import { read_apps_catalog } from './smartsafehub/apps.uc';
-import { read_apps_status, read_apps_metrics, install_app, update_app, remove_app } from './smartsafehub/apps-manager.uc';
+import { read_apps_status, read_apps_metrics, install_app, repair_app, update_app, remove_app } from './smartsafehub/apps-manager.uc';
 import { read_connected_devices } from './smartsafehub/devices.uc';
 import {
 	discard_uploaded_backup,
@@ -198,6 +198,12 @@ const methods = {
 		args: { app_id: '' },
 		call: require_root_password(function(request) {
 			return install_app(request);
+		}),
+	},
+	apps_repair: {
+		args: { app_id: '' },
+		call: require_root_password(function(request) {
+			return repair_app(request);
 		}),
 	},
 	apps_update: {

@@ -310,6 +310,31 @@ test('devices merge leases, Wi-Fi stations, ARP and host hints by MAC', () => {
 	assert.deepEqual(Array.from(C.mergeDevices({ leases: [{ macaddr: 'bad' }] })), []);
 });
 
+test('devices discard placeholder and IP-only hostnames and avoid false DHCPv6 merges', () => {
+	const C = load();
+	const list = C.mergeDevices({
+		leases: [
+			{ hostname: '10.0.0.194', ipaddr: '10.0.0.194', macaddr: '02:11:22:33:44:55', expires: 3600 },
+			{ hostname: '*', ipaddr: '10.0.0.195', macaddr: '02:11:22:33:44:56', expires: 3600 },
+			{ hostname: '-', ipaddr: '10.0.0.196', macaddr: '02:11:22:33:44:57', expires: 3600 }
+		],
+		leases6: [
+			{ hostname: '*', ip6addrs: ['fd00::99/128'] },
+			{ hostname: '10.0.0.194', ip6addrs: ['fd00::94/128'] }
+		],
+		hints: {
+			'02:11:22:33:44:56': { name: 'LivingRoom' },
+			'02:11:22:33:44:57': { name: '10.0.0.196' }
+		}
+	});
+	const by = Object.fromEntries(list.map((d) => [d.macaddr, d]));
+	assert.equal(by['02:11:22:33:44:55'].hostname, '');
+	assert.equal(by['02:11:22:33:44:55'].ip6addr, '', 'IP-only hostname must not merge unrelated DHCPv6 lease');
+	assert.equal(by['02:11:22:33:44:56'].hostname, 'LivingRoom', 'placeholder "*" must not shadow a real host hint');
+	assert.equal(by['02:11:22:33:44:56'].ip6addr, '', 'placeholder "*" must not merge unrelated DHCPv6 lease');
+	assert.equal(by['02:11:22:33:44:57'].hostname, '', 'IP-only host hint is discarded');
+});
+
 test('IPv6-only leases are known devices without claiming an ARP or Wi-Fi observation', () => {
 	const C = load();
 	const list = C.mergeDevices({ leases6: [

@@ -5,6 +5,7 @@ ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 HELPER="$ROOT/root/usr/libexec/smartsafehub-netwatch"
 COMMON="$ROOT/root/usr/lib/smartsafehub/common.sh"
 PARSER="$ROOT/root/usr/lib/smartsafehub/netwatch.awk"
+LEARNER="$ROOT/root/usr/lib/smartsafehub/netwatch-learn.awk"
 EVENTS_DAEMON="$ROOT/root/usr/libexec/smartsafehub-events"
 RPC="$ROOT/root/usr/share/rpcd/ucode/smartsafehub.uc"
 NETWATCH_RPC="$ROOT/root/usr/share/rpcd/ucode/smartsafehub/netwatch.uc"
@@ -27,6 +28,11 @@ printf '%s\n' "${MOCK_DATE:-1800000000}"
 SH
 cat > "$TMP/bin/event" <<'SH'
 #!/bin/sh
+# A one-shot failure marker works across shells without leaking mock variables.
+if [ -f "${MOCK_EVENT_LOG}.fail-once" ]; then
+    rm -f "${MOCK_EVENT_LOG}.fail-once"
+    exit 1
+fi
 printf '%s\n' "$*" >> "$MOCK_EVENT_LOG"
 SH
 cat > "$TMP/bin/conntrack" <<'SH'
@@ -50,6 +56,9 @@ run() {
     SMARTSAFEHUB_NETWATCH_RUNTIME_DIR="$TMP/run" \
     SMARTSAFEHUB_NETWATCH_PROC="${MOCK_SOURCE:-$MOCK_CONNTRACK_FILE}" \
     SMARTSAFEHUB_NETWATCH_PARSER="$PARSER" \
+    SMARTSAFEHUB_NETWATCH_LEARNER="$LEARNER" \
+    SMARTSAFEHUB_NETWATCH_PERSIST_DIR="$TMP/store" \
+    SMARTSAFEHUB_NETWATCH_ARP="${MOCK_ARP:-$TMP/no-arp}" \
     SMARTSAFEHUB_NETWATCH_EVENTS="$TMP/bin/event" \
     SMARTSAFEHUB_NETWATCH_UCI="$TMP/bin/uci" \
     SMARTSAFEHUB_NETWATCH_DATE="$TMP/bin/date" \
@@ -65,7 +74,7 @@ ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.20 dst=192.168.8.1 sport=50000 dport=
 ipv6 2 tcp 6 430 ESTABLISHED src=fd00::2 dst=2001:4860:4860::8888 sport=50000 dport=443
 DATA
 run
-jq -e '.phase=="ready" and .totalConnections==1 and .totalDevices==1 and .devices[0].ip=="192.168.8.20" and .devices[0].destinations==1 and .alert==null' "$TMP/run/status.json" >/dev/null || fail '사설→공인 IPv4만 정확히 관찰해야 함'
+jq -e '.phase=="ready" and .trainingReadyDevices==0 and .trainingLearningDevices==1 and .trainingStableDevices==0 and .totalConnections==1 and .totalDevices==1 and .devices[0].ip=="192.168.8.20" and .devices[0].destinations==1 and .alert==null' "$TMP/run/status.json" >/dev/null || fail '사설→공인 IPv4만 정확히 관찰해야 함'
 [ ! -s "$MOCK_EVENT_LOG" ] || fail '정상 통신에 오탐을 기록하면 안 됨'
 [ ! -e "$MOCK_FLOCK_LOG" ] || fail 'flock 없는 기본 환경에서도 동작해야 함'
 [ ! -e "$TMP/run/sample.lock.d" ] || fail '공통 잠금을 정상적으로 해제해야 함'
@@ -113,7 +122,7 @@ run
 rm -f "$TMP/run/previous.tmp.$$"
 [ ! -e "$MOCK_FLOCK_LOG" ] || fail '공통 잠금도 flock을 사용하면 안 됨'
 
-# High counts need two consecutive scans; warning should be rate-limited.
+# 신규 학습 정책: 정상적인 125개 동시 연결은 학습 이전에 경고하지 않음.
 : > "$MOCK_CONNTRACK_FILE"
 i=1
 while [ "$i" -le 125 ]; do
@@ -121,31 +130,121 @@ while [ "$i" -le 125 ]; do
     i=$((i+1))
 done
 run
-[ ! -s "$MOCK_EVENT_LOG" ] || fail '첫 관찰의 연결 급증에 바로 경보하면 안 됨'
 run
-[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 1 ] || fail '2회 연속 높은 연결 수에 한 번만 이벤트가 필요함'
-jq -e '.alert.ip=="192.168.8.21" and .alert.connections==125 and .totalConnections==125' "$TMP/run/status.json" >/dev/null || fail '이상 연결 건수/기기가 올바르게 기록되어야 함'
-grep -Fq 'network_watch.anomaly.warning warning' "$MOCK_EVENT_LOG" || fail '최근 활동 이벤트가 발행되어야 함'
-run
-[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 1 ] || fail '30분 안에는 중복 경보를 내지 않아야 함'
-MOCK_DATE=1800001801 run
-[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 2 ] || fail '30분 경과 시 재알림이 가능해야 함'
+jq -e '.alert==null and .devices[0].state=="learning"' "$TMP/run/status.json" >/dev/null || fail '초기 학습 중 일반적인 연결에 경고하지 않아야 함'
+[ ! -s "$MOCK_EVENT_LOG" ] || fail '초기 학습 중 일반적인 연결을 경고하면 안 됨'
 
-# Two different devices must not suppress one another for 30 minutes.
+# A valid MAC ties daily history to a device across DHCP address changes.
+cat > "$TMP/arp" <<'ARP'
+IP address       HW type     Flags       HW address            Mask     Device
+192.168.8.21     0x1         0x2         02:11:22:33:44:55     *        br-lan
+ARP
 : > "$MOCK_CONNTRACK_FILE"
 i=1
-while [ "$i" -le 125 ]; do
+while [ "$i" -le 100 ]; do
     printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.21 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
-    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.23 dst=8.8.8.8 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
     i=$((i+1))
 done
-MOCK_DATE=1800001802 run
-MOCK_DATE=1800001802 run
-[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 3 ] || fail '다른 기기는 기존 30분 제한과 독립적으로 경고해야 함'
-grep -Fq '"source_ip":"192.168.8.23"' "$MOCK_EVENT_LOG" || fail '두 번째 기기의 경고 누락'
-MOCK_DATE=1800001803 run
-[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 3 ] || fail '각 기기의 30분 제한을 유지해야 함'
-[ "$(wc -l < "$TMP/run/alerts.tsv")" -eq 2 ] || fail '기기별 경고 제한 상태를 저장해야 함'
+DAY_START=$(( (1800000000 / 86400 + 1) * 86400 ))
+day=0
+while [ "$day" -lt 7 ]; do
+    hour=0
+    while [ "$hour" -lt 4 ]; do
+        MOCK_DATE=$((DAY_START + day * 86400 + hour * 3600)) MOCK_ARP="$TMP/arp" run
+        hour=$((hour+1))
+    done
+    day=$((day+1))
+done
+MOCK_DATE=$((DAY_START + 6*86400 + 4*3600)) MOCK_ARP="$TMP/arp" run
+jq -e '.devices[0].state=="normal" and .trainingReadyDevices==1 and .trainingLearningDevices==0 and .trainingStableDevices==0 and .devices[0].trainingDays>=7 and .devices[0].baselineConnections>=100' "$TMP/run/status.json" >/dev/null || fail '7일 이상 유효 관찰 후 기기별 기준선을 생성해야 함'
+[ ! -s "$MOCK_EVENT_LOG" ] || fail '학습용 정상 데이터가 경고를 생성하면 안 됨'
+[ -s "$TMP/store/baseline.tsv" ] || fail '학습 데이터의 플래시 체크포인트가 필요함'
+grep -Fq 'm:02:11:22:33:44:55' "$TMP/store/baseline.tsv" || fail 'MAC 식별 기준을 유지해야 함'
+
+# A re-addressed device must retain its MAC-based learned baseline.
+for file in "$TMP/arp" "$MOCK_CONNTRACK_FILE"; do
+    sed 's/192.168.8.21/192.168.8.25/' "$file" > "$TMP/readdress.tmp"
+    mv -f "$TMP/readdress.tmp" "$file"
+done
+MOCK_DATE=$((DAY_START + 7*86400)) MOCK_ARP="$TMP/arp" run
+jq -e '.devices[0].ip=="192.168.8.25" and .devices[0].baselineConnections>=100 and .devices[0].state=="normal"' "$TMP/run/status.json" >/dev/null || fail 'DHCP 주소 변경 후 기기별 학습이 유지되어야 함'
+# A sustained deviation produces one episode even after 30 minutes.
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 350 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+MOCK_DATE=$((DAY_START + 7*86400 + 60)) MOCK_ARP="$TMP/arp" run
+jq -e '.alert==null and .devices[0].state=="watch"' "$TMP/run/status.json" >/dev/null || fail '처음 높은 연결은 변화 관찰로 표시해야 함'
+MOCK_DATE=$((DAY_START + 7*86400 + 120)) MOCK_ARP="$TMP/arp" run
+MOCK_DATE=$((DAY_START + 7*86400 + 180)) MOCK_ARP="$TMP/arp" run
+jq -e '.alert.ip=="192.168.8.25" and .devices[0].state=="anomaly"' "$TMP/run/status.json" >/dev/null || fail '세 번 연속 정상 범위 초과 시 이상 증가 감지'
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 1 ] || fail '이상 에피소드당 이벤트는 한 번만 생성해야 함'
+MOCK_DATE=$((DAY_START + 7*86400 + 2400)) MOCK_ARP="$TMP/arp" run
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 1 ] || fail '30분이 지나도 동일 이상 상태를 재알림하면 안 됨'
+# A reboot must recover learned histograms and active warning state.
+rm -f "$TMP/run/history.tsv" "$TMP/run/alerts.tsv" "$TMP/run/streak.tsv"
+MOCK_DATE=$((DAY_START + 7*86400 + 2460)) MOCK_ARP="$TMP/arp" run
+jq -e '.devices[0].baselineConnections>=100' "$TMP/run/status.json" >/dev/null || fail '재부팅 시 기기별 학습 복구 실패'
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 1 ] || fail '재부팅 후 지속 중인 이상을 중복 경고하지 않아야 함'
+
+# Three valid normal observations end an episode and allow a later re-alert.
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 100 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+for n in 2500 2560 2620; do MOCK_DATE=$((DAY_START + 7*86400 + n)) MOCK_ARP="$TMP/arp" run; done
+[ ! -s "$TMP/run/alerts.tsv" ] || fail '정상 복귀 후 진행 중인 이벤트를 종료해야 함'
+[ ! -s "$TMP/store/active.tsv" ] || fail '이벤트 종료를 영구 저장해야 함'
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 350 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+for n in 2700 2760 2820; do MOCK_DATE=$((DAY_START + 7*86400 + n)) MOCK_ARP="$TMP/arp" run; done
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 2 ] || fail '정상 복귀 후 새로운 이상 발생 시 다시 알려야 함'
+
+# A temporary events daemon failure must not consume an episode notification.
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 100 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+for n in 3000 3060 3120; do MOCK_DATE=$((DAY_START + 7*86400 + n)) MOCK_ARP="$TMP/arp" run; done
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 350 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+MOCK_DATE=$((DAY_START + 7*86400 + 3200)) MOCK_ARP="$TMP/arp" run
+MOCK_DATE=$((DAY_START + 7*86400 + 3260)) MOCK_ARP="$TMP/arp" run
+# Avoid MOCK_EVENT_FAIL=1 on a shell function: some macOS /bin/sh versions
+# retain prefix assignments, making the retry fail for the wrong reason.
+# The event stub consumes this marker on precisely one emission attempt.
+: > "${MOCK_EVENT_LOG}.fail-once"
+MOCK_DATE=$((DAY_START + 7*86400 + 3320)) MOCK_ARP="$TMP/arp" run
+[ ! -e "${MOCK_EVENT_LOG}.fail-once" ] || fail '발행 실패 주입이 실행되어야 함'
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 2 ] || fail '이벤트 발행 실패는 기록하지 않아야 함'
+[ ! -s "$TMP/run/alerts.tsv" ] || fail '발행 실패한 이상 상태를 완료 처리하면 안 됨'
+MOCK_DATE=$((DAY_START + 7*86400 + 3380)) MOCK_ARP="$TMP/arp" run
+[ "$(wc -l < "$MOCK_EVENT_LOG")" -eq 3 ] || fail '이벤트 발행 실패 시 다음 관찰에서 재시도해야 함'
+
+# After 14 days without valid samples, stale learning must disappear.
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 100 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.8.25 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+MOCK_DATE=$((DAY_START + 22*86400)) MOCK_ARP="$TMP/arp" run
+jq -e '.devices[0].state=="learning" and .trainingReadyDevices==0 and .trainingLearningDevices==1 and .devices[0].trainingDays==0' "$TMP/run/status.json" >/dev/null || fail '14일이 지난 학습 데이터를 기준선으로 사용하면 안 됨'
+[ "$(wc -l < "$TMP/run/history.tsv")" -le 896 ] || fail '14일 히스토그램 상한을 초과하면 안 됨'
 
 # Restore a single high-count device for the fallback baseline checks.
 : > "$MOCK_CONNTRACK_FILE"
@@ -161,6 +260,8 @@ done
     MOCK_ENABLED=0 run
     jq -e '.phase=="disabled" and .totalConnections==0' "$TMP/run/status.json" >/dev/null || fail '비활성 상태는 수집을 하지 않아야 함'
     [ ! -e "$TMP/run/previous.tsv" ] || fail '꺼진 뒤에는 이전 연결 기준선도 지워야 함'
+    [ ! -e "$TMP/run/history.tsv" ] && [ ! -e "$TMP/store/baseline.tsv" ] || fail '사용 중지 시 학습 데이터도 삭제해야 함'
+    [ ! -e "$TMP/store/active.tsv" ] || fail '사용 중지 시 이상 상태를 삭제해야 함'
 )
 
 # No procfs and no working conntrack must be reported, not a healthy empty snapshot.
@@ -247,10 +348,11 @@ done
 MOCK_DATE=1800003602 run
 jq -e '.alert == null and .devices[0].destinations == 40' "$TMP/run/status.json" >/dev/null || fail '목적지 증가 첫 관찰은 경고하지 않아야 함'
 MOCK_DATE=1800003602 run
-jq -e '.alert.ip == "192.168.8.22" and .alert.destinations == 40' "$TMP/run/status.json" >/dev/null || fail '외부 목적지 수 증가를 2회 연속 확인해야 함'
+jq -e '.alert == null and .devices[0].state == "learning"' "$TMP/run/status.json" >/dev/null || fail '학습 중 평범한 목적지 수 증가를 경고하지 않아야 함'
 
 # Explicitly cap large tables and avoid warnings on partial snapshots.
 MOCK_SOURCE="$MOCK_CONNTRACK_FILE" run
+cp "$TMP/run/history.tsv" "$TMP/before-limited-history.tsv"
 : > "$MOCK_CONNTRACK_FILE"
 i=1
 while [ "$i" -le 2100 ]; do
@@ -260,6 +362,30 @@ done
 MOCK_SOURCE="$MOCK_CONNTRACK_FILE" run
 jq -e '.phase=="ready" and .limited==true and .alert==null and .totalConnections<=2048' "$TMP/run/status.json" >/dev/null || fail '연결 2048개 제한과 부분 관찰 안전성이 필요함'
 [ ! -s "$TMP/run/previous.tsv" ] || fail '부분 관찰 결과를 다음 경고의 기준선으로 사용하면 안 됨'
+cmp -s "$TMP/run/history.tsv" "$TMP/before-limited-history.tsv" || fail '부분 관찰 결과로 기존 14일 학습을 변경하면 안 됨'
+
+# The 12-row limit must be applied AFTER ranking all observed devices.
+# A noisy device encountered 14th must not disappear behind ordinary devices.
+: > "$MOCK_CONNTRACK_FILE"
+i=1
+while [ "$i" -le 13 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.9.%s dst=8.8.8.8 sport=10001 dport=443\n' "$i" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+i=1
+while [ "$i" -le 600 ]; do
+    printf 'ipv4 2 tcp 6 430 ESTABLISHED src=192.168.9.200 dst=8.8.4.4 sport=%s dport=443\n' "$((10000+i))" >> "$MOCK_CONNTRACK_FILE"
+    i=$((i+1))
+done
+MOCK_DATE=1800110000 run
+jq -e '.phase=="ready" and .totalDevices==14 and (.devices | length)==12 and
+    .trainingReadyDevices==0 and .trainingLearningDevices==14 and .trainingStableDevices==0 and
+    .devices[0].ip=="192.168.9.200" and .devices[0].state=="watch"' "$TMP/run/status.json" >/dev/null || fail '14번째 기기의 변화 관찰을 우선 표시하고 전체 학습 수를 집계해야 함'
+MOCK_DATE=1800110060 run
+MOCK_DATE=1800110120 run
+jq -e '.devices[0].ip=="192.168.9.200" and .devices[0].state=="anomaly" and
+    .alert.ip=="192.168.9.200" and .trainingReadyDevices + .trainingLearningDevices == .totalDevices' "$TMP/run/status.json" >/dev/null || fail '12대 표시 제한으로 이상 증가 감지 기기를 누락하면 안 됨'
+[ "$(wc -c < "$TMP/run/status.json")" -le 8192 ] || fail '정렬된 상태 정보가 RPC 크기 상한을 초과하면 안 됨'
 
 # RPC/UI/demo and packaging contract.
 grep -Fq 'ssh_lock_acquire' "$HELPER" || fail 'Network Watch는 공통 잠금 모듈을 사용해야 함'

@@ -237,6 +237,13 @@ export function useAsyncResource<T>({
       return;
     }
 
+    // A successful local mutation supersedes any earlier background read.
+    // Otherwise that read could land after a new bulb was added or removed
+    // and temporarily undo the visible result.
+    generation.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+    inFlight.current = null;
     lastSuccessAt.current = Date.now();
     failureCount.current = 0;
     setState((current) => ({

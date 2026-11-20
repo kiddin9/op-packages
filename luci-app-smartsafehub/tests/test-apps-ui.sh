@@ -27,6 +27,9 @@ check('ssh-apps-installed-badge' in page and 'ssh-apps-update-badge' in page and
       'installed, update notice and update action need distinct styles')
 check('.ssh-apps-update-button' in styles and ".ssh-app[data-theme='dark'] .ssh-apps-update-button" in styles,
       'update action must have a distinct dark-mode style')
+check('const updateAvailable = Boolean(managed && state?.updateAvailable);' in page and
+      'managed && state?.partial && !installed && !updateAvailable' in page,
+      '새 승인 의존성이 추가된 기존 앱은 설치 마무리 대신 업데이트를 제공해야 합니다')
 
 
 # App installation storage must refer to the writable APK filesystem.
@@ -217,8 +220,8 @@ check("if (!installStatus || statusError || pending !== null || running || resto
 # Installing still uses the existing confirmation and neither action bypasses RPC guards.
 check("action === 'install' && !window.confirm" in page, 'existing install confirmation must remain')
 check("<OperationIndicator action={activeAction} />" in page, 'loading must show on app and orphan entries')
-check("{removing ? '제거 중…' : action === 'update' ? '업데이트 중…' : '설치 중…'}" in page,
-      'install, update and remove must show distinct spinner states')
+check("{removing ? '제거 중…' : action === 'update' ? '업데이트 중…' : action === 'repair' ? '복원 중…' : '설치 중…'}" in page,
+      'install, repair, update and remove must show distinct spinner states')
 check("job.action === 'remove' ? '앱 제거 중' : job.action === 'update' ? '앱 업데이트 중' : '앱 설치 중'" in page,
       'running job status must use the action name')
 check("job.phase === 'failed' ? 'border-rose-200 bg-rose-50 text-rose-800'" in page,

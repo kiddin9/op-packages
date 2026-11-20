@@ -12,6 +12,8 @@ SLEEP="${SMARTSAFEHUB_APPS_RESTORE_SLEEP_BIN:-sleep}"
 START_DELAY="${SMARTSAFEHUB_APPS_RESTORE_START_DELAY:-30}"
 RETRY_DELAY="${SMARTSAFEHUB_APPS_RESTORE_RETRY_DELAY:-120}"
 RETRIES="${SMARTSAFEHUB_APPS_RESTORE_RETRIES:-12}"
+APK_RETRIES="${SMARTSAFEHUB_APPS_RESTORE_APK_RETRIES:-3}"
+APK_RETRY_DELAY="${SMARTSAFEHUB_APPS_RESTORE_APK_RETRY_DELAY:-20}"
 POLL_INTERVAL="${SMARTSAFEHUB_APPS_RESTORE_POLL_INTERVAL:-2}"
 POLL_LIMIT="${SMARTSAFEHUB_APPS_RESTORE_POLL_LIMIT:-240}"
 STATE="$RUNTIME/apps-restore.state"
@@ -31,9 +33,13 @@ valid_sha() {
  [ "${#1}" -eq 64 ]
 }
 write_state() {
- phase="$1"; id="$2"; code="$3"
+ phase="$1"; id="$2"; code="$3"; detail="${4:-}"
  state_tmp="$(mktemp "$RUNTIME/apps-restore-state.XXXXXXXX")" || return 1
  printf 'phase\t%s\napp_id\t%s\ncode\t%s\n' "$phase" "$id" "$code" > "$state_tmp"
+ case "$detail" in
+  apk_index|apk_simulate|plan_rejected|dependency_mismatch)
+   printf 'detail\t%s\n' "$detail" >> "$state_tmp";;
+ esac
  mv -f "$state_tmp" "$STATE"
 }
 log() {
@@ -60,7 +66,7 @@ job_field() {
 # Starts exactly the same preflight/ownership/signature/plan checks as a user
 # clicking Install. Never calls apk add directly, never reuses cached catalogs.
 run_job() {
- id="$1"; n=0
+ id="$1"; n=0; DETAIL=''
  if ! "$MANAGER" start install "$id" restore >/dev/null 2>&1; then
   RESULT=BUSY
   return 1
@@ -70,7 +76,10 @@ run_job() {
   if [ "$current" = "$id" ]; then
    case "$phase" in
     success) RESULT=NONE; return 0;;
-    failed) RESULT="$(job_field code)"; [ -n "$RESULT" ] || RESULT=UNKNOWN; return 1;;
+    failed)
+     RESULT="$(job_field code)"; [ -n "$RESULT" ] || RESULT=UNKNOWN
+     DETAIL="$(job_field detail)"
+     return 1;;
    esac
   fi
   "$SLEEP" "$POLL_INTERVAL"
@@ -80,7 +89,7 @@ run_job() {
  return 1
 }
 restore_one() {
- id="$1"; attempt=1
+ id="$1"; attempt=1; apk_failures=0
  while [ "$attempt" -le "$RETRIES" ]; do
   # User removal while waiting takes precedence; never reinstall a removed app.
   [ -f "$OWNED/$id" ] || return 0
@@ -101,12 +110,22 @@ restore_one() {
     RESULT=INVALID_MANIFEST
    fi
   fi
-  # Only networking failures or a concurrent manual operation are retried.
-  # Changed approval pins, revoked apps, bad signatures and unsafe dependency
-  # plans are never bypassed or retried indefinitely.
-  case "$RESULT" in BUSY|E21|E25|E31|E35) ;; *) return 1;; esac
+  # A boot-time apk index/simulation failure can be transient. Repeat the
+  # entire approved catalog, digest and plan preflight, never the APK command
+  # alone. A *rejected* solver plan, incompatible dependencies, revoked app,
+  # unsigned archive or mismatched ownership must never be auto-retried.
+  delay="$RETRY_DELAY"
+  case "$RESULT" in
+   BUSY|E21|E25|E31|E35) ;;
+   E34)
+    case "$DETAIL" in apk_index|apk_simulate) ;; *) return 1;; esac
+    apk_failures=$((apk_failures + 1))
+    [ "$apk_failures" -lt "$APK_RETRIES" ] || return 1
+    delay="$APK_RETRY_DELAY";;
+   *) return 1;;
+  esac
   [ "$attempt" -lt "$RETRIES" ] || return 1
-  "$SLEEP" "$RETRY_DELAY"
+  "$SLEEP" "$delay"
   attempt=$((attempt + 1))
  done
  return 1
@@ -131,29 +150,29 @@ restore() {
  [ "$pending" -eq 1 ] || return 0
  write_state starting '' NONE
  "$SLEEP" "$START_DELAY"
- failed=0; last_app=''; last_code=NONE
+ failed=0; last_app=''; last_code=NONE; last_detail=''
  for manifest in "$OWNED"/*; do
   [ -f "$manifest" ] || continue
   id="${manifest##*/}"
   valid_id "$id" || continue
   if needs_restore "$manifest"; then
-   RESULT=NONE
+   RESULT=NONE; DETAIL=''
    if restore_one "$id"; then
     log "restored $id"
    else
-    failed=1; last_app="$id"; last_code="$RESULT"
-    log "restore blocked for $id ($RESULT)"
+    failed=1; last_app="$id"; last_code="$RESULT"; last_detail="${DETAIL:-}"
+    log "restore blocked for $id ($RESULT${DETAIL:+:$DETAIL})"
    fi
   else
    result=$?
    if [ "$result" -eq 2 ]; then
-    failed=1; last_app="$id"; last_code=INVALID_MANIFEST
+    failed=1; last_app="$id"; last_code=INVALID_MANIFEST; last_detail=''
     log "invalid owned manifest for $id"
    fi
   fi
  done
  if [ "$failed" -eq 1 ]; then
-  write_state failed "$last_app" "$last_code"
+  write_state failed "$last_app" "$last_code" "$last_detail"
  else
   write_state success '' NONE
  fi

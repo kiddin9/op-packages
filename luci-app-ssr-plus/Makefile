@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=198
-PKG_RELEASE:=104
+PKG_RELEASE:=105
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -65,24 +65,24 @@ choice
 config PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy
 	bool "Iptables Transparent Proxy"
 	depends on !PACKAGE_firewall4
-	select PACKAGE_dnsmasq_full_ipset
-	select PACKAGE_ipset
-	select PACKAGE_iptables
-	select PACKAGE_iptables-zz-legacy
-	select PACKAGE_iptables-mod-conntrack-extra
-	select PACKAGE_iptables-mod-iprange
-	select PACKAGE_iptables-mod-socket
-	select PACKAGE_iptables-mod-tproxy
-	select PACKAGE_kmod-ipt-nat
+	select PACKAGE_dnsmasq_full_ipset if PACKAGE_$(PKG_NAME)
+	select PACKAGE_ipset if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables-zz-legacy if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables-mod-conntrack-extra if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables-mod-iprange if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables-mod-socket if PACKAGE_$(PKG_NAME)
+	select PACKAGE_iptables-mod-tproxy if PACKAGE_$(PKG_NAME)
+	select PACKAGE_kmod-ipt-nat if PACKAGE_$(PKG_NAME)
 
 config PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy
 	bool "Nftables Transparent Proxy"
 	depends on PACKAGE_firewall4
-	select PACKAGE_dnsmasq_full_nftset
-	select PACKAGE_nftables
-	select PACKAGE_kmod-nft-socket
-	select PACKAGE_kmod-nft-tproxy
-	select PACKAGE_kmod-nft-nat
+	select PACKAGE_dnsmasq_full_nftset if PACKAGE_$(PKG_NAME)
+	select PACKAGE_nftables if PACKAGE_$(PKG_NAME)
+	select PACKAGE_kmod-nft-socket if PACKAGE_$(PKG_NAME)
+	select PACKAGE_kmod-nft-tproxy if PACKAGE_$(PKG_NAME)
+	select PACKAGE_kmod-nft-nat if PACKAGE_$(PKG_NAME)
 endchoice
 
 choice

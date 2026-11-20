@@ -7,6 +7,7 @@ export type AppRoute =
   | 'devices'
   | 'safeshield'
   | 'netwatch'
+  | 'smarthome'
   | 'rules'
   | 'account'
   | 'apps'
@@ -79,6 +80,13 @@ export const ROUTES: readonly RouteDefinition[] = [
     description: '연결된 기기의 외부 통신 변화를 가볍게 관찰하고 주의 신호를 확인합니다.',
   },
   {
+    route: 'smarthome',
+    hash: '#smarthome',
+    label: '스마트홈',
+    title: '스마트홈',
+    description: 'Jarbis로 Wi-Fi 스마트 전구를 검색하고 제어합니다.',
+  },
+  {
     route: 'rules',
     hash: '#rules',
     label: '사용자 규칙',
@@ -121,5 +129,5 @@ export const ROUTE_BY_NAME = Object.fromEntries(
 
 // Public demo exposes only these read-only, fixture-backed screens.
 export const DEMO_ROUTES: readonly AppRoute[] = [
-  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'netwatch', 'rules', 'account', 'apps', 'system',
+  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'netwatch', 'smarthome', 'rules', 'account', 'apps', 'system',
 ];

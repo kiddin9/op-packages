@@ -30,7 +30,8 @@ select,
 }
 input:where(:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"])),
 select,
-.cbi-select { height: 34px; }
+.cbi-select { height: 34px; vertical-align: middle; }
+.cbi-dropdown:not(.btn):not(.cbi-button) { vertical-align: middle; }
 
 textarea { width: 100%; min-height: 120px; font-family: var(--cb-mono); font-size: 12.5px; resize: vertical; }
 

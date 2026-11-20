@@ -3,11 +3,13 @@
 # Durable outbox for authenticated successful user installs and updates.
 # Never affects APK transactions; send only app, release, kind and receipt ID.
 set -eu
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 umask 077
 QUEUE="${SMARTSAFEHUB_APPS_METRICS_DIR:-/etc/smartsafehub/apps-metrics-pending}"
 CREDENTIAL="${SMARTSAFEHUB_APPS_METRICS_CREDENTIAL:-/etc/smartsafehub/device-credential.json}"
 JSONFILTER="${SMARTSAFEHUB_APPS_JSONFILTER_BIN:-jsonfilter}"
-FETCH="${SMARTSAFEHUB_APPS_METRICS_FETCH_BIN:-uclient-fetch}"
 URL="${SMARTSAFEHUB_APPS_METRICS_URL:-https://www.smartsafehub.com/api/v1/app-store/installs}"
 MAX_PENDING=500
 MAX_FLUSH=3
@@ -54,9 +56,8 @@ flush() {
   valid_event "$event" || continue
   [ "$(json_field "$file" '@.event_id')" = "$event" ] || continue
   response="$(mktemp "$QUEUE/.response.XXXXXXXX")" || return 1
-  if "$FETCH" -q -T 8 -O "$response" \
-    --header='Content-Type: application/json' \
-    --header="Authorization: Device $token" --post-file="$file" "$URL" >/dev/null 2>&1; then
+  if ssh_http_request POST "$response" 8 "$URL" "$file" \
+    -H "Authorization: Device $token" >/dev/null 2>&1; then
    accepted="$(json_field "$response" '@.status')"
    case "$accepted" in recorded|duplicate) rm -f "$file";; *) failed=1;; esac
   else

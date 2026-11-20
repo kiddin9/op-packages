@@ -1,6 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -u
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
 [ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
@@ -17,7 +20,6 @@ APK_WORLD_FILE="${SMARTSAFEHUB_UPDATER_APK_WORLD_FILE:-/etc/apk/world}"
 REPOSITORY_DIR="${SMARTSAFEHUB_UPDATER_REPOSITORY_DIR:-/etc/apk/repositories.d}"
 REPOSITORY_FILE="${SMARTSAFEHUB_UPDATER_REPOSITORY_FILE:-$REPOSITORY_DIR/smartsafehub.list}"
 APK_BIN="${SMARTSAFEHUB_UPDATER_APK_BIN:-apk}"
-UCLIENT_FETCH_BIN="${SMARTSAFEHUB_UPDATER_UCLIENT_FETCH_BIN:-uclient-fetch}"
 JSONFILTER_BIN="${SMARTSAFEHUB_UPDATER_JSONFILTER_BIN:-jsonfilter}"
 UCI_BIN="${SMARTSAFEHUB_UPDATER_UCI_BIN:-uci}"
 RPCD_INIT="${SMARTSAFEHUB_UPDATER_RPCD_INIT:-/etc/init.d/rpcd}"
@@ -397,7 +399,7 @@ refresh_release_notes() {
 	}
 
 	index_url="${base}/releases/${UPDATE_PACKAGE}/index.json"
-	if "$UCLIENT_FETCH_BIN" -q -T "$RELEASE_NOTE_TIMEOUT_S" -O "$index_file" "$index_url" > "$log_file" 2>&1 \
+	if ssh_http_request GET "$index_file" "$RELEASE_NOTE_TIMEOUT_S" "$index_url" "" > "$log_file" 2>&1 \
 		&& file_size_is_valid "$index_file" "$RELEASE_INDEX_MAX_BYTES"; then
 		if ! select_release_versions "$index_file" "$installed" "$available" "$versions_file"; then
 			complete=false
@@ -416,8 +418,8 @@ refresh_release_notes() {
 		}
 
 		note_file="$work_dir/note.$(printf '%03d' "$note_count").json"
-		if ! "$UCLIENT_FETCH_BIN" -q -T "$RELEASE_NOTE_TIMEOUT_S" -O "$note_file" \
-			"${base}/releases/${UPDATE_PACKAGE}/${version}.json" >> "$log_file" 2>&1; then
+		if ! ssh_http_request GET "$note_file" "$RELEASE_NOTE_TIMEOUT_S" \
+			"${base}/releases/${UPDATE_PACKAGE}/${version}.json" "" >> "$log_file" 2>&1; then
 			rm -f "$note_file"
 			complete=false
 			log_message "release note unavailable for $version"

@@ -163,6 +163,10 @@ export function installVerifiedApp(appId: string): Promise<AppsOperationAccepted
   return callApi(API_OBJECT, 'apps_install', { app_id: appId }, { timeoutMs: 8000 });
 }
 
+export function repairVerifiedApp(appId: string): Promise<AppsOperationAccepted> {
+  return callApi(API_OBJECT, 'apps_repair', { app_id: appId }, { timeoutMs: 8000 });
+}
+
 export function updateVerifiedApp(appId: string): Promise<AppsOperationAccepted> {
   return callApi(API_OBJECT, 'apps_update', { app_id: appId }, { timeoutMs: 8000 });
 }

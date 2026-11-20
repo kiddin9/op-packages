@@ -26,6 +26,7 @@ printf 'approved chart mock package payload\n' > "$TMP/repo/luci-lib-chartjs-26.
 printf 'approved Retro Arcade mock package payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.0.0-r1.apk"
 printf 'approved etherwake mock package payload\n' > "$TMP/repo/etherwake-1.09-r5.apk"
 printf 'approved WOL LuCI mock package payload\n' > "$TMP/repo/luci-app-wol-26.288.56989~75a306d.apk"
+printf 'signed future dependency mock\n' > "$TMP/repo/new-signed-helper-1.0-r1.apk"
 INDEX_SHA="$(sha256sum "$TMP/repo/packages.adb" | cut -d ' ' -f 1)"
 ARCHIVE_SHA="$(sha256sum "$TMP/repo/nlbwmon-2025.06.02~29236be6-r1.apk" | cut -d ' ' -f 1)"
 LUCISH="$(sha256sum "$TMP/repo/luci-app-nlbwmon-26.288.56989~75a306d.apk" | cut -d ' ' -f 1)"
@@ -33,6 +34,7 @@ CHARTSHA="$(sha256sum "$TMP/repo/luci-lib-chartjs-26.288.56989~75a306d.apk" | cu
 RETROSHA="$(sha256sum "$TMP/repo/smartsafehub-app-retro-arcade-1.0.0-r1.apk" | cut -d ' ' -f 1)"
 ETHERSHA="$(sha256sum "$TMP/repo/etherwake-1.09-r5.apk" | cut -d ' ' -f 1)"
 WOLSHA="$(sha256sum "$TMP/repo/luci-app-wol-26.288.56989~75a306d.apk" | cut -d ' ' -f 1)"
+HELPERSHA="$(sha256sum "$TMP/repo/new-signed-helper-1.0-r1.apk" | cut -d ' ' -f 1)"
 cat > "$TMP/catalog.json" <<EOF
 {"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-build-1","channel":"stable","apps":[{"id":"network-usage-monitor","version":"2025.06.02-r1","name":"네트워크 사용량 모니터","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","packages":[{"name":"nlbwmon","version":"2025.06.02~29236be6-r1","sha256":"$ARCHIVE_SHA"},{"name":"luci-app-nlbwmon","version":"26.288.56989~75a306d","sha256":"$LUCISH"},{"name":"luci-lib-chartjs","version":"26.288.56989~75a306d","sha256":"$CHARTSHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
 EOF
@@ -86,7 +88,8 @@ while [ "$#" -gt 0 ]; do
  esac
 done
 case "$url" in
- https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/packages.adb)
+ https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/packages.adb|\
+ https://repo.smartsafehub.com/stable/packages/mipsel_24kc/smartsafehub/20261027T123000/packages.adb)
    cp "$APPS_TEST_REPO/packages.adb" "$dest";;
  https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/nlbwmon-2025.06.02~29236be6-r1.apk)
    cp "$APPS_TEST_REPO/nlbwmon-2025.06.02~29236be6-r1.apk" "$dest";;
@@ -102,6 +105,8 @@ case "$url" in
    cp "$APPS_TEST_REPO/etherwake-1.09-r5.apk" "$dest";;
  https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/luci-app-wol-26.288.56989~75a306d.apk)
    cp "$APPS_TEST_REPO/luci-app-wol-26.288.56989~75a306d.apk" "$dest";;
+ https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/new-signed-helper-1.0-r1.apk)
+   cp "$APPS_TEST_REPO/new-signed-helper-1.0-r1.apk" "$dest";;
  *) exit 2;;
 esac
 printf '%s\n' "$url" >> "$APPS_TEST_URL_LOG"
@@ -219,22 +224,9 @@ case "$1" in
    esac
    [ -s "$local_index" ] || exit 2
    cmp -s "$local_index" "$APPS_TEST_REPO/packages.adb" || exit 2
-   if [ -s "${local_index%/*}/smartsafehub-app-retro-arcade-1.0.0-r1.apk" ] ||
-      [ -s "${local_index%/*}/smartsafehub-app-retro-arcade-1.1.0-r1.apk" ]; then
-     [ "$(find "${local_index%/*}" -name '*.apk' | wc -l | tr -d ' ')" -eq 1 ] || exit 2
-   elif [ -s "${local_index%/*}/etherwake-1.09-r5.apk" ] ||
-        [ -s "${local_index%/*}/luci-app-wol-26.288.56989~75a306d.apk" ]; then
-     [ "$(find "${local_index%/*}" -name '*.apk' | wc -l | tr -d ' ')" -eq 2 ] || exit 2
-     for name in etherwake-1.09-r5 luci-app-wol-26.288.56989~75a306d; do
-       [ -s "${local_index%/*}/$name.apk" ] || exit 2
-     done
-   else
-     for name in nlbwmon-2025.06.02~29236be6-r1 \
-         luci-app-nlbwmon-26.288.56989~75a306d \
-         luci-lib-chartjs-26.288.56989~75a306d; do
-       [ -s "${local_index%/*}/$name.apk" ] || exit 2
-     done
-   fi
+   # The production adapter checks every approved hash. This fake index
+   # permits any approved count so CI catches accidental fixed-size policies.
+   [ "$(find "${local_index%/*}" -name '*.apk' | wc -l | tr -d ' ')" -gt 0 ] || exit 2
    if [ "$5" = update ]; then
      if [ "${APPS_TEST_REPO_UPDATE_FAIL:-0}" = 1 ]; then
        echo 'ERROR: repository index update rejected' >&2
@@ -268,12 +260,12 @@ if [ "${1:-}" = --simulate ]; then
  for pin in "$@"; do
   name="${pin%%=*}"
   case "$repo:$name" in
-   hub:nlbwmon|hub:luci-app-nlbwmon|hub:luci-lib-chartjs|hub:smartsafehub-app-retro-arcade|hub:etherwake|hub:luci-app-wol) ;;
+   hub:nlbwmon|hub:luci-app-nlbwmon|hub:luci-lib-chartjs|hub:smartsafehub-app-retro-arcade|hub:etherwake|hub:luci-app-wol|hub:new-signed-helper) ;;
    *) exit 2;;
   esac
   if [ "${APPS_TEST_UPGRADE:-0}" = 1 ]; then
     echo '(1/3) Upgrading luci-base (mock)'
-  elif [ "$upgrade" = 1 ]; then
+  elif [ "$upgrade" = 1 ] && grep -qxF "$name" "$APPS_TEST_INSTALLED" 2>/dev/null; then
     echo "(1/1) Upgrading $name (mock)"
   else
     echo "(1/2) Installing $name (mock)"
@@ -281,18 +273,21 @@ if [ "${1:-}" = --simulate ]; then
  done
  exit 0
 fi
+if [ "${APPS_TEST_INSTALL_FAIL:-0}" = 1 ]; then
+ echo 'ERROR: simulated interrupted APK transaction' >&2
+ exit 1
+fi
 for pin in "$@"; do
  name="${pin%%=*}"
  case "$repo:$name" in
-  hub:nlbwmon|hub:luci-app-nlbwmon|hub:luci-lib-chartjs|hub:smartsafehub-app-retro-arcade|hub:etherwake|hub:luci-app-wol) ;;
+  hub:nlbwmon|hub:luci-app-nlbwmon|hub:luci-lib-chartjs|hub:smartsafehub-app-retro-arcade|hub:etherwake|hub:luci-app-wol|hub:new-signed-helper) ;;
   *) exit 2;;
  esac
  grep -qxF "$name" "$APPS_TEST_INSTALLED" 2>/dev/null || printf '%s\n' "$name" >> "$APPS_TEST_INSTALLED"
- if [ "$upgrade" = 1 ]; then
-  awk -v n="$name" '$1 != n' "$APPS_TEST_VERSION_DB" > "$APPS_TEST_VERSION_DB.tmp"
-  printf '%s %s\n' "$name" "${pin#*=}" >> "$APPS_TEST_VERSION_DB.tmp"
-  mv -f "$APPS_TEST_VERSION_DB.tmp" "$APPS_TEST_VERSION_DB"
- fi
+ # Mock APK must record exact versions even on the first installation.
+ awk -v n="$name" '$1 != n' "$APPS_TEST_VERSION_DB" > "$APPS_TEST_VERSION_DB.tmp"
+ printf '%s %s\n' "$name" "${pin#*=}" >> "$APPS_TEST_VERSION_DB.tmp"
+ mv -f "$APPS_TEST_VERSION_DB.tmp" "$APPS_TEST_VERSION_DB"
 done
 SH2
 cat > "$TMP/bin/start-stop-daemon" <<'SH2'
@@ -317,7 +312,8 @@ export SMARTSAFEHUB_APPS_MANAGER_BIN="$MANAGER"
 export SMARTSAFEHUB_APPS_HELPER_BIN="$TMP/bin/fetch-catalog"
 export SMARTSAFEHUB_APPS_RUNTIME_DIR="$TMP/runtime"
 export SMARTSAFEHUB_APPS_OWNED_DIR="$TMP/owned"
-export SMARTSAFEHUB_APPS_UCLIENT_BIN="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_CURL_BIN="$ROOT/tests/support/mock-curl" MOCK_CURL_BACKEND="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_UCLIENT_BIN="$TMP/bin/uclient-fetch"
 export APPS_TEST_URL_LOG="$TMP/fetched-urls"
 export SMARTSAFEHUB_APPS_OVERLAY_PATH="$TMP/overlay"
 export SMARTSAFEHUB_APPS_MEMINFO_PATH="$TMP/meminfo"
@@ -441,11 +437,13 @@ grep -Fqx "$(printf 'code\tE25')" "$TMP/runtime/apps-operation.state" || fail 'm
 cp "$TMP/catalog-good.json" "$TMP/catalog.json"
 python3 - "$TMP/catalog.json" <<'PY_BAD'
 import json,sys
-path=sys.argv[1]; obj=json.load(open(path)); obj['apps'][0]['packages'].pop()
+path=sys.argv[1]; obj=json.load(open(path))
+obj['apps'][0]['web_ui']={'package':'luci-lib-chartjs'}
+obj['apps'][0]['packages'].pop()
 open(path,'w').write(json.dumps(obj))
 PY_BAD
 "$MANAGER" start install network-usage-monitor || fail 'partial package set did not queue'
-grep -Fqx "$(printf 'code\tE27')" "$TMP/runtime/apps-operation.state" || fail 'partial package set accepted'
+grep -Fqx "$(printf 'code\tE27')" "$TMP/runtime/apps-operation.state" || fail 'unapproved UI primary should fail before archive fetch'
 cp "$TMP/catalog-good.json" "$TMP/catalog.json"
 # A repository signature/index failure must fail closed before any install.
 export APPS_TEST_REPO_UPDATE_FAIL=1
@@ -562,6 +560,8 @@ printf 'PASS: multi-app lookup, E22 regression and manual package protection\n'
 : > "$APPS_TEST_INSTALLED"
 : > "$APPS_TEST_VERSION_DB"
 rm -f "$TMP/owned/retro-arcade" "$TMP/owned/network-usage-monitor"
+"$MANAGER" start install retro-arcade restore || fail 'repair without ownership did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'restore without ownership was not blocked'
 printf 'new signed Retro payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk"
 RESTORE_NEW_SHA="$(sha256sum "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk" | cut -d ' ' -f 1)"
 cat > "$TMP/catalog.json" <<EOF_RESTORE_NEW
@@ -583,6 +583,7 @@ grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'r
 export APPS_TEST_MISSING_DEP=1
 "$MANAGER" start install retro-arcade restore || fail 'dependency simulation failure did not queue'
 grep -Fqx "$(printf 'code\tE34')" "$TMP/runtime/apps-operation.state" || fail 'restore bypassed solver guard'
+grep -Fqx "$(printf 'detail\tapk_simulate')" "$TMP/runtime/apps-operation.state" || fail 'simulator failure detail missing'
 [ "$(cat "$TMP/owned/retro-arcade")" = "$RESTORE_OLD_MANIFEST" ] || fail 'failed solver changed ownership'
 unset APPS_TEST_MISSING_DEP
 printf 'tampered new Retro payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk"
@@ -726,6 +727,44 @@ printf 'smartsafehub-app-retro-arcade 1.0.0-r1\n' > "$APPS_TEST_VERSION_DB"
 grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'manual version drift not rejected'
 printf 'PASS: selected-app signed updates, version checks, no core upgrades and no duplicate receipts\n'
 
+# A future approved release can add a package without changing router source.
+# If the real APK step fails, the pinned new package has a recovery ownership
+# record and can be retried without adopting a manually installed package.
+printf 'smartsafehub-app-retro-arcade 1.1.0-r1\n' > "$APPS_TEST_VERSION_DB"
+python3 - "$TMP/catalog.json" "$HELPERSHA" <<'PY_ADD_DEP'
+import json, sys
+path, digest = sys.argv[1:]
+data = json.load(open(path))
+data['apps'][0]['packages'].append({
+    'name': 'new-signed-helper', 'version': '1.0-r1', 'sha256': digest,
+})
+with open(path, 'w') as output:
+    json.dump(data, output)
+PY_ADD_DEP
+"$TMP/bin/fetch-catalog"
+"$MANAGER" status
+grep -Fqx "$(printf 'retro-arcade\t0\t1\t1\t0\t1\t1.1.0-r1')" "$TMP/runtime/apps-status.tsv" ||
+ fail 'added dependency should expose update on installed app'
+export APPS_TEST_INSTALL_FAIL=1
+"$MANAGER" start update retro-arcade || fail 'interrupted approved dependency update not queued'
+grep -Fqx "$(printf 'code\tE54')" "$TMP/runtime/apps-operation.state" ||
+ fail 'interrupted APK transaction did not report failure'
+grep -q "^new-signed-helper$(printf '\t')" "$TMP/owned/retro-arcade" ||
+ fail 'interrupted newly approved dependency was left unmanaged'
+unset APPS_TEST_INSTALL_FAIL
+"$MANAGER" start update retro-arcade || fail 'retry of approved dependency update not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" ||
+ fail 'retry of newly approved dependency did not succeed'
+grep -q "^new-signed-helper$(printf '\t')" "$TMP/owned/retro-arcade" ||
+ fail 'successful dependency update lost ownership'
+grep -Fxq new-signed-helper "$APPS_TEST_INSTALLED" ||
+ fail 'newly approved dependency was never installed'
+"$MANAGER" start update retro-arcade || fail 'repeated dependency update should be no-op'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" ||
+ fail 'duplicate dependency update was allowed'
+printf 'PASS: 신규 승인 의존성 업데이트와 설치 실패 후 재시도 보호\n'
+
+
 # Approved catalog and installed status are fetched independently. A mismatch
 # across requests is not an orphan: only an Apps-owned manifest for a package
 # that remains installed can mark an approval as retired.
@@ -792,6 +831,29 @@ grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fa
 [ ! -e "$SMARTSAFEHUB_APPS_LUCI_INDEX_CACHE" ] || fail 'LuCI menu cache not invalidated after WOL removal'
 [ ! -e "$TMP/owned/wake-on-lan" ] || fail 'WOL ownership not cleared'
 [ ! -s "$APPS_TEST_INSTALLED" ] || fail 'WOL left installed APKs behind'
+# An additional signed dependency is accepted without a firmware/web UI update.
+python3 - "$TMP/catalog.json" "$HELPERSHA" <<'PY_WOL_NEW_DEP'
+import json, sys
+path, digest = sys.argv[1:]
+data = json.load(open(path))
+data['apps'][0]['packages'].append({
+    'name': 'new-signed-helper', 'version': '1.0-r1', 'sha256': digest,
+})
+with open(path, 'w') as fp:
+    json.dump(data, fp)
+PY_WOL_NEW_DEP
+"$MANAGER" start install wake-on-lan || fail 'approved additional dependency install not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'approved additional dependency was rejected'
+grep -q "^new-signed-helper$(printf '\t')" "$TMP/owned/wake-on-lan" || fail 'new dependency not owned'
+"$MANAGER" start remove wake-on-lan || fail 'removing generic dependency not queued'
+[ ! -s "$APPS_TEST_INSTALLED" ] || fail 'generic dependency remained after safe removal'
+# Reset the catalog for deliberately invalid pin fixtures.
+python3 - "$TMP/catalog.json" <<'PY_WOL_CLEAR'
+import json, sys
+path=sys.argv[1]; data=json.load(open(path))
+data['apps'][0]['packages']=[p for p in data['apps'][0]['packages'] if p['name'] != 'new-signed-helper']
+with open(path, 'w') as fp: json.dump(data, fp)
+PY_WOL_CLEAR
 # An extra/omitted package in a bad catalog must be rejected before any APK
 # download/install, even if the index and SHA values look valid.
 python3 - "$TMP/catalog.json" <<'PY_WOL_EXTRA'
@@ -801,7 +863,7 @@ data['apps'][0]['packages'].append({'name':'luci-app-nlbwmon','version':'26.288.
 open(p,'w').write(json.dumps(data))
 PY_WOL_EXTRA
 "$MANAGER" start install wake-on-lan || fail 'bad WOL catalog not queued'
-grep -Fqx "$(printf 'code\tE27')" "$TMP/runtime/apps-operation.state" || fail 'WOL extra APK was not rejected'
+grep -Fqx "$(printf 'code\tE33')" "$TMP/runtime/apps-operation.state" || fail 'WOL dependency with unapproved archive hash was accepted'
 [ ! -s "$APPS_TEST_INSTALLED" ] || fail 'invalid WOL feed changed package state'
 [ ! -e "$TMP/owned/wake-on-lan" ] || fail 'invalid WOL feed wrote ownership'
 python3 - "$TMP/catalog.json" <<'PY_WOL_MISSING'
@@ -813,3 +875,183 @@ PY_WOL_MISSING
 "$MANAGER" start install wake-on-lan || fail 'incomplete WOL catalog not queued'
 grep -Fqx "$(printf 'code\tE27')" "$TMP/runtime/apps-operation.state" || fail 'missing WOL LuCI APK was not rejected'
 printf 'PASS: Wake-on-LAN signed dual-APK lifecycle, LuCI route and corrupt approvals\n'
+
+# Jarbis accepts the Hub's reviewed dependency set without a fixed package
+# count, including after the older manually installed release was removed.
+# The cryptographic archive/solver validation still rejects unprovided pins.
+# Mock download intentionally fails AFTER preflight to prove the failure is
+# not E27/E29; no actual APKs or firmware packages are modified by this test.
+: > "$APPS_TEST_INSTALLED"
+: > "$APPS_TEST_VERSION_DB"
+for name in rpcd-mod-ucode ucode-mod-uci ucode-mod-fs jsonfilter libpthread; do
+ printf '%s\n' "$name" >> "$APPS_TEST_INSTALLED"
+done
+printf 'libpthread 1.0-r1\n' > "$APPS_TEST_VERSION_DB"
+jarbis_catalog() {
+ python3 - "$TMP/catalog.json" "$INDEX_SHA" "$1" "$2" <<'PY_JARBIS_FIXTURE'
+import json
+import sys
+
+path, index_hash, arch, variant = sys.argv[1:]
+packages = (
+    'jarbis', 'mosquitto-ssl', 'mosquitto-client-ssl', 'libmosquitto-ssl',
+    'libcares', 'cJSON', 'libpthread', 'librt', 'curl', 'libcurl4',
+    'libnghttp2-14', 'libopenssl3',
+)
+if arch == 'mipsel_24kc':
+    packages += ('libatomic1',)
+if variant == 'missing':
+    packages = tuple(name for name in packages if name != 'cJSON')
+elif variant == 'extra':
+    packages += ('unreviewed-package',)
+elif variant == 'no_atomic':
+    packages = tuple(name for name in packages if name != 'libatomic1')
+elif variant == 'spoof':
+    packages = tuple('notjarbis' if name == 'jarbis' else name for name in packages)
+catalog = {
+    'schema': 1, 'channel': 'stable', 'apps': [
+        {
+            'id': 'jarbis', 'version': '0.2.3-r1',
+            'runtime': 'router', 'installer': 'apk', 'package_arch': arch,
+            'repository_release_id': '20261027T123000',
+            'repository_index_sha256': index_hash,
+            'packages': [
+                {'name': name, 'version': '1.0-r1', 'sha256': 'a' * 64}
+                for name in packages
+            ],
+            'requirements': {'min_memory_mb': 1, 'min_storage_mb': 1},
+        }
+    ],
+}
+with open(path, 'w', encoding='utf-8') as stream:
+    json.dump(catalog, stream)
+PY_JARBIS_FIXTURE
+}
+assert_jarbis_code() {
+ expected="$1"
+ "$MANAGER" start install jarbis || fail 'Jarbis install did not queue'
+ grep -Fqx "$(printf 'code\t%s' "$expected")" "$TMP/runtime/apps-operation.state" ||
+  fail "Jarbis preflight expected $expected"
+ [ ! -e "$TMP/owned/jarbis" ] || fail 'Jarbis failure adopted an unrelated APK'
+ [ "$(wc -l < "$APPS_TEST_INSTALLED" | tr -d ' ')" -eq 5 ] ||
+  fail 'Jarbis preflight modified firmware dependencies'
+}
+jarbis_catalog aarch64_cortex-a53 valid
+# A manually installed Jarbis package may not be silently adopted by Apps.
+printf 'jarbis\n' >> "$APPS_TEST_INSTALLED"
+"$MANAGER" start install jarbis || fail 'manual Jarbis install did not queue'
+grep -Fqx "$(printf 'code\tE29')" "$TMP/runtime/apps-operation.state" ||
+ fail 'manually installed Jarbis was adopted'
+grep -vxF jarbis "$APPS_TEST_INSTALLED" > "$APPS_TEST_INSTALLED.next" || :
+mv "$APPS_TEST_INSTALLED.next" "$APPS_TEST_INSTALLED"
+assert_jarbis_code E31
+jarbis_catalog aarch64_cortex-a53 missing
+assert_jarbis_code E31
+jarbis_catalog aarch64_cortex-a53 extra
+assert_jarbis_code E31
+jarbis_catalog aarch64_cortex-a53 spoof
+assert_jarbis_code E31
+# A previously installed shared package must have exactly the reviewed
+# version: reject drift instead of adopting it, upgrading it or uninstalling it.
+jarbis_catalog aarch64_cortex-a53 valid
+printf 'libpthread 0.9-r1\n' > "$APPS_TEST_VERSION_DB"
+assert_jarbis_code E34
+printf 'libpthread 1.0-r1\n' > "$APPS_TEST_VERSION_DB"
+# MIPS is an independent contract; libatomic1 is mandatory only on MIPS.
+printf 'all\nmipsel_24kc\n' > "$TMP/apk-arch"
+jarbis_catalog mipsel_24kc valid
+assert_jarbis_code E31
+jarbis_catalog mipsel_24kc missing
+assert_jarbis_code E31
+jarbis_catalog mipsel_24kc extra
+assert_jarbis_code E31
+jarbis_catalog mipsel_24kc no_atomic
+assert_jarbis_code E31
+printf 'PASS: Jarbis generic signed APK pins, manual-install cleanup and shared libraries\n'
+
+# Neither the manager nor the UI source knows this newly approved app ID.
+# This must still install and remove via the same immutable signed index.
+printf 'all\naarch64_cortex-a53\n' > "$TMP/apk-arch"
+: > "$APPS_TEST_INSTALLED"
+: > "$APPS_TEST_VERSION_DB"
+cat > "$TMP/catalog.json" <<EOF_NEW_APP
+{"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-build-1","channel":"stable","apps":[{"id":"future-lan-tool","version":"1.0-r1","name":"새 승인 앱","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","packages":[{"name":"new-signed-helper","version":"1.0-r1","sha256":"$HELPERSHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
+EOF_NEW_APP
+"$MANAGER" start install future-lan-tool || fail 'new approved app required router code change'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'future app install did not succeed'
+grep -Fxq new-signed-helper "$APPS_TEST_INSTALLED" || fail 'future app package missing'
+"$MANAGER" start remove future-lan-tool || fail 'future app removal not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'future app removal did not succeed'
+[ ! -s "$APPS_TEST_INSTALLED" ] || fail 'future app left behind an APK'
+printf 'PASS: 신규 앱도 공유기 코드 변경 없이 서명된 패키지를 설치하고 제거함\n'
+
+# App catalog enumeration must not be corrupted by the pin parser's counters.
+# This reproduces a real 5-app catalog with Jarbis first (12 approved APKs).
+# Earlier builds reset the outer status() index to 12 while scanning Jarbis,
+# causing all four already-installed apps to incorrectly show "재설치".
+python3 - "$TMP/catalog.json" "$APPS_TEST_INSTALLED" "$APPS_TEST_VERSION_DB" "$TMP/owned" <<'PY_STATUS_INDEX'
+import json
+import pathlib
+import sys
+
+catalog_path, installed_path, versions_path, owned_dir = map(pathlib.Path, sys.argv[1:])
+sha = "a" * 64
+names = ["jarbis"] + [f"jar-dependency-{i:02}" for i in range(1, 12)]
+apps = [
+    ("jarbis", names, {"type": "smartsafehub", "path": "#smarthome", "package": "jarbis"}),
+    ("retro-arcade", ["smartsafehub-app-retro-arcade"], {"type": "static", "path": "/retro-arcade/", "package": "smartsafehub-app-retro-arcade"}),
+    ("travelmate", ["travelmate", "luci-app-travelmate"], {"type": "luci", "path": "/cgi-bin/luci/admin/services/travelmate", "package": "luci-app-travelmate"}),
+    ("wake-on-lan", ["etherwake", "luci-app-wol"], {"type": "luci", "path": "/cgi-bin/luci/admin/services/wol", "package": "luci-app-wol"}),
+    ("network-usage-monitor", ["nlbwmon", "luci-app-nlbwmon", "luci-lib-chartjs"], {"type": "luci", "path": "/cgi-bin/luci/admin/status/nlbwmon", "package": "luci-app-nlbwmon"}),
+]
+entries = []
+all_names = []
+for app_id, packages, web_ui in apps:
+    entries.append({
+        "id": app_id,
+        "version": "1.0-r1",
+        "runtime": "router",
+        "installer": "apk",
+        "package_arch": "aarch64_cortex-a53",
+        "repository_release_id": "20261027T123000",
+        "repository_index_sha256": sha,
+        "web_ui": web_ui,
+        "packages": [{"name": name, "version": "1.0-r1", "sha256": sha} for name in packages],
+        "requirements": {"min_memory_mb": 1, "min_storage_mb": 1},
+    })
+    all_names.extend(packages)
+    # Only the app's primary is Apps-owned; shared runtimes are not adopted.
+    (owned_dir / app_id).write_text(f"{packages[0]}\t1.0-r1\t{sha}\n")
+catalog_path.write_text(json.dumps({
+    "schema": 1,
+    "device_code": "iptime-ax3000sm",
+    "firmware_build_id": "mock-build-1",
+    "channel": "stable",
+    "apps": entries,
+}))
+installed_path.write_text("\n".join(all_names) + "\n")
+versions_path.write_text("".join(f"{name} 1.0-r1\n" for name in all_names))
+PY_STATUS_INDEX
+"$TMP/bin/fetch-catalog"
+for order in original reversed; do
+    if [ "$order" = reversed ]; then
+        python3 - "$TMP/catalog.json" <<'PY_REVERSE_STATUS'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    data = json.load(source)
+data["apps"].reverse()
+with open(sys.argv[1], "w", encoding="utf-8") as output:
+    json.dump(data, output)
+PY_REVERSE_STATUS
+        "$TMP/bin/fetch-catalog"
+    fi
+    "$MANAGER" status
+    [ "$(wc -l < "$TMP/runtime/apps-status.tsv" | tr -d ' ')" -eq 5 ] || fail '설치 상태 조회에서 승인 앱 5개가 누락되었습니다'
+    for app in jarbis retro-arcade travelmate wake-on-lan network-usage-monitor; do
+        grep -Fq "$(printf '%s\t1\t1\t1\t' "$app")" "$TMP/runtime/apps-status.tsv" ||
+            fail "설치된 앱 $app 가 다른 앱의 의존성 개수 때문에 재설치로 표시됩니다 ($order)"
+    done
+done
+printf 'PASS: Jarbis 12개 의존성 조회 후에도 나머지 승인 앱 4개의 설치 상태와 소유권이 유지됨\n'

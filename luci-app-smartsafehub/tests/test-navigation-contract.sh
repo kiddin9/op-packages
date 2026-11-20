@@ -256,8 +256,10 @@ grep -A4 -F ".ssh-app[data-theme='dark'] .ssh-product-header-action {" "$STYLES"
 if grep -Fq 'sessionStorage' "$HASH_ROUTE" || grep -Fq 'smartsafehub.route.hash' "$HASH_ROUTE"; then
 	fail 'hash navigation must not duplicate route state in sessionStorage'
 fi
-grep -Fq 'HASH_ROUTES[window.location.hash]' "$HASH_ROUTE" || \
-	fail 'hash router must resolve the current browser fragment directly'
+grep -Fq "const hash = window.location.hash;" "$HASH_ROUTE" || \
+	fail 'hash router must use the current browser fragment directly'
+grep -Fq "HASH_ROUTES[hash.startsWith('#apps?') ? '#apps' : hash]" "$HASH_ROUTE" || \
+	fail 'hash router must preserve ordinary routes while supporting Apps highlighting'
 grep -Fq "window.addEventListener('hashchange', handleChange);" "$HASH_ROUTE" || \
 	fail 'hash router must react to browser hashchange events'
 

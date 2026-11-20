@@ -99,6 +99,7 @@ test('SmartSafeHub Account and Apps use fictional fixtures, not live APIs', () =
   assert.match(fixtures, /pairingCode: null/);
   assert.match(fixtures, /id: 'network-usage-monitor'/);
   assert.match(fixtures, /id: 'retro-arcade'/);
+  assert.match(fixtures, /id: 'arcdrop'/);
   assert.match(fixtures, /id: 'wake-on-lan'/);
   assert.match(fixtures, /category: 'entertainment'/);
   const newFixtures = fixtures.slice(fixtures.indexOf('export const demoAccount:'), fixtures.indexOf('export const demoDevices:'));
@@ -115,16 +116,26 @@ test('demo showcases verified Apps versions, upgrade badge, and installed sizes 
   assert.ok(catalog.indexOf("id: 'retro-arcade'") < catalog.indexOf("id: 'network-usage-monitor'"),
     'demo card ordering should match the actual Apps page');
   assert.match(catalog, /id: 'retro-arcade',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '1\.2\.0-r4'/);
+  assert.match(catalog, /id: 'jarbis',[\s\S]*?category: 'iot',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '0\.2\.3-r1'/);
+  assert.ok(catalog.indexOf("id: 'jarbis'") < catalog.indexOf("id: 'retro-arcade'"));
   assert.match(catalog, /id: 'network-usage-monitor',[\s\S]*?version: '2025\.06\.02~29236be6-r1'/);
-  assert.match(catalog, /id: 'travelmate',[\s\S]*?publisherType: 'third_party',[\s\S]*?version: '2\.4\.9-r6'/);
+  assert.match(catalog, /id: 'travelmate',[\s\S]*?publisherType: 'third_party',[\s\S]*?version: '2\.4\.9-r5'/);
   assert.match(catalog, /id: 'wake-on-lan',[\s\S]*?category: 'utilities',[\s\S]*?version: '26\.288\.56989~75a306d'/);
   assert.ok(catalog.indexOf("id: 'network-usage-monitor'") < catalog.indexOf("id: 'wake-on-lan'"));
-  assert.match(status, /'wake-on-lan': \{\s*installed: false,\s*partial: false,\s*managed: false/);
+  assert.match(status, /'wake-on-lan': \{\s*installed: true,\s*partial: false,\s*managed: true/);
 
+  assert.match(status, /jarbis: \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: false,\s*installedVersion: '0\.2\.3-r1'/);
   assert.match(status, /'retro-arcade': \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: true,\s*installedVersion: '1\.0\.0-r1'/);
   assert.match(status, /'network-usage-monitor': \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: false,\s*installedVersion: '2025\.06\.02~29236be6-r1'/);
+  assert.match(metrics, /jarbis: 215040/);
   assert.match(metrics, /'retro-arcade': 1394688/);
   assert.match(metrics, /'network-usage-monitor': 117760/);
+  const makefile = readFileSync(resolve(root, '../../Makefile'), 'utf8');
+  const minimumSafeShield = makefile.match(/^LUCI_EXTRA_DEPENDS:=safeshield \(>=(\d+\.\d+\.\d+)\)$/m)?.[1];
+  const demoSafeShield = fixtures.match(/available: true, version: '(\d+\.\d+\.\d+)', enabled: true/)?.[1];
+  assert.ok(minimumSafeShield && demoSafeShield, 'SafeShield minimum and demo versions must be defined');
+  assert.ok(new Intl.Collator('en', { numeric: true }).compare(demoSafeShield, minimumSafeShield) >= 0,
+    'SafeShield demo should meet current minimum supported version');
   assert.match(fixtures, /storage: demoAppsMetrics\.storage/,
     'dashboard disk and Apps donut must share the same fictional storage');
 
@@ -188,6 +199,39 @@ test('Network Watch 안내 문서와 데모 연결은 함께 유지된다', () =
   assert.match(docs, /Network Watch/);
   assert.match(docs, /실제 네트워크를 관찰하거나 차단하지 않으며/);
   assert.match(docs, /실제 설치 가능한 버전은 기기·채널별 Hub 승인 목록/);
+});
+
+
+test('Jarbis Demo는 실제 스마트홈 화면과 가상 Tasmota 데이터를 사용하며 모든 API 연결을 차단한다', () => {
+  const routes = readFileSync(resolve(root, 'app/routes.ts'), 'utf8');
+  const entry = readFileSync(resolve(root, 'demo/main.tsx'), 'utf8');
+  const page = readFileSync(resolve(root, 'pages/SmartHomePage.tsx'), 'utf8');
+  const ops = readFileSync(resolve(root, 'demo/jarbis.ts'), 'utf8');
+  const fixtures = readFileSync(resolve(root, 'demo/data.ts'), 'utf8');
+  const apps = readFileSync(resolve(root, 'pages/AppsPage.tsx'), 'utf8');
+  const docs = readFileSync(resolve(root, '../../docs/ROUTER_DEMO.md'), 'utf8');
+  assert.match(routes, /'netwatch', 'smarthome', 'rules'/);
+  assert.match(entry, /case 'smarthome':/);
+  assert.match(entry, /<SmartHomePage demo onDemoAction=\{readonlyNotice\} operations=\{demoJarbisOperations\}/);
+  assert.match(entry, /demoLightStates=\{demoJarbisLightStates\}/);
+  assert.doesNotMatch(page, /from ['"]\.\.\/api\//, 'shared smart-home page must not import live RPC');
+  assert.match(page, /if \(demo \|\| !status\?\.enabled/);
+  assert.match(page, /if \(demoAction\(\)\) return;/);
+  assert.match(page, /if \(demoAction\(\)\) return false;/);
+  assert.match(page, /!demo && status\?\.enabled && status\.brokerMode/);
+  assert.match(page, /disabled=\{controlsDisabled \|\| demo\}/);
+  assert.match(ops, /getJarbisCredentials: blocked/);
+  for (const method of ['scanJarbis', 'setJarbisEnabled', 'addJarbisDevice', 'updateJarbisDevice',
+    'removeJarbisDevice', 'pairJarbisDevice', 'setJarbisLight']) {
+    assert.ok(ops.includes(`${method}: blocked`), `${method} must be blocked in demo`);
+  }
+  for (const name of ['demoJarbisStatus', 'demoJarbisDevices', 'demoJarbisCandidates', 'demoJarbisLightStates']) {
+    assert.ok(fixtures.includes(`export const ${name}:`), `missing fixture ${name}`);
+  }
+  assert.match(fixtures, /192\.0\.2\.203/);
+  assert.match(apps, /href="#smarthome">스마트홈 체험<\/a>/);
+  assert.match(docs, /가상의 Tasmota 전구/);
+  assert.doesNotMatch(ops, /fetch\(|callApi|callRpc|\.\.\/api\//);
 });
 
 test('README links to the public router demo', () => {

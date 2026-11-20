@@ -176,9 +176,17 @@ export function activityPresentation(event: ActivityEvent): ActivityPresentation
     case 'network_watch.anomaly.warning': {
       const ip = metadataString(event, 'source_ip');
       const connections = metadataNumber(event, 'connections');
+      const destinations = metadataNumber(event, 'destinations');
+      const baselineConnections = metadataNumber(event, 'baseline_connections');
+      const baselineDestinations = metadataNumber(event, 'baseline_destinations');
+      const details = baselineConnections !== null && baselineConnections > 0 && connections !== null && connections > baselineConnections
+        ? ` (동시 연결 ${formatNumber(connections)}개, 평소 기준 ${formatNumber(baselineConnections)}개)`
+        : baselineDestinations !== null && baselineDestinations > 0 && destinations !== null && destinations > baselineDestinations
+          ? ` (외부 목적지 ${formatNumber(destinations)}곳, 평소 기준 ${formatNumber(baselineDestinations)}곳)`
+          : connections !== null ? ` (동시 연결 ${formatNumber(connections)}개)` : '';
       return {
         title: 'Network Watch 통신 증가 감지',
-        description: `${ip ? `${ip} 기기에서 ` : '연결된 기기에서 '}외부 연결이 연속해서 높은 수준으로 관찰되었습니다${connections !== null ? ` (동시 연결 ${formatNumber(connections)}개)` : ''}. 악성 통신으로 확정된 것은 아닙니다.`,
+        description: `${ip ? `${ip} 기기에서 ` : '연결된 기기에서 '}외부 통신이 3회 연속 평소보다 높게 관찰되었습니다${details}. 악성 통신으로 확정된 것은 아닙니다.`,
       };
     }
     case 'settings.netwatch.enabled':

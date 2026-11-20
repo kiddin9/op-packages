@@ -35,13 +35,14 @@ ucode-mod-ubus
 ucode-mod-fs
 ucode-mod-uci
 procd
-uclient-fetch
+curl
 jsonfilter
 igmpproxy
-safeshield (>= 0.3.24-r4)
+conntrack
+safeshield (>= 0.3.26)
 ```
 
-`LUCI_DEPENDS`의 `+igmpproxy`는 IPTV Beta의 멀티캐스트 proxy runtime을 함께 설치하고, `+safeshield`는 빌드 시 SafeShield 패키지 선택 관계를 유지합니다. `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.24-r4)`는 설치·업데이트 시 필요한 최소 SafeShield 버전을 강제합니다.
+`LUCI_DEPENDS`의 `+igmpproxy`는 IPTV Beta의 멀티캐스트 proxy runtime을 함께 설치하고, `+safeshield`는 빌드 시 SafeShield 패키지 선택 관계를 유지합니다. `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.26)`는 설치·업데이트 시 필요한 최소 SafeShield 버전을 강제합니다.
 
 프런트엔드 빌드에는 **Node.js 24 이상**이 필요합니다.
 

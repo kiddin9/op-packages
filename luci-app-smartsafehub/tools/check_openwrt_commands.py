@@ -42,31 +42,6 @@ SOURCED_FUNCTIONS = {
     'procd_add_reload_trigger', 'procd_close_instance', 'procd_open_instance',
     'procd_set_param', 'set_state',
 }
-# OpenWrt's standard rootfs does not ship curl. Device registration has a
-# legacy *conditional* curl fallback; it uses the required uclient-fetch when
-# curl is absent. Allow that existing branch only, never a new curl caller.
-OPTIONAL_CURL_SOURCE = 'root/usr/libexec/smartsafehub-device'
-
-
-def legacy_curl_is_guarded(source: str) -> bool:
-    """Verify every curl invocation is in the existing guarded branch."""
-    match = re.search(r'^post_json\(\)\s*\{(?P<body>.*?)^\}', source,
-                      flags=re.MULTILINE | re.DOTALL)
-    if not match:
-        return False
-    body = match.group('body')
-    guard = re.search(r'^ if command -v curl >/dev/null 2>&1; then$',
-                      body, flags=re.MULTILINE)
-    end_guard = re.search(r'^ fi$', body, flags=re.MULTILINE)
-    invocations = list(re.finditer(r'^\s*curl\s', source, flags=re.MULTILINE))
-    if not guard or not end_guard or not invocations:
-        return False
-    # The fallback requires both authenticated and unauthenticated requests.
-    for invocation in invocations:
-        if not (match.start('body') + guard.end() <= invocation.start() <
-                match.start('body') + end_guard.start()):
-            return False
-    return True
 INTERNAL = set('''
 if then elif else fi for in do done while until case esac function return exit
 local export readonly set shift trap read eval exec command builtin type hash alias
@@ -381,9 +356,6 @@ def audit(root: Path, allowed: set[str]) -> list[str]:
                     errors.append(f'{rel}: unsupported command default: '
                                   f'{variable}={command}')
         for command in sorted(commands(source) - allowed - shared - SOURCED_FUNCTIONS):
-            if (rel == OPTIONAL_CURL_SOURCE and command == 'curl' and
-                    legacy_curl_is_guarded(source)):
-                continue
             errors.append(f'{rel}: unsupported command: {command}')
         errors.extend(performance_risks(source, rel))
     return errors

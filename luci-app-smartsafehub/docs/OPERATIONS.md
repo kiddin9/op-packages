@@ -28,6 +28,20 @@ ubus list | grep smartsafehub
 ubus call smartsafehub system_root_password_status '{}'
 ```
 
+## HTTPS 전송 및 리다이렉트 정책
+
+SmartSafeHub의 일반 API 통신(장치 등록, 활동·진단 전송, Apps 카탈로그, 업데이트 확인, 릴리스 노트)은 `curl`을 사용합니다. 기본 전체 제한시간은 20초이며 각 호출부가 더 짧게 지정한 경우 그 값을 유지합니다. `/usr/lib/smartsafehub/http.sh`는 HTTPS 인증서 검증을 유지하고, API에서는 HTTP 리다이렉트(301/302/307/308)를 거부하며 인증 헤더를 외부 호스트로 전달하지 않습니다.
+
+펌웨어 이미지, Apps 패키지(`.apk`) 및 패키지 색인(`packages.adb`) 다운로드는 `uclient-fetch --timeout=30`을 사용합니다. 이 값은 전체 다운로드 시간 제한이 아닌 수신 대기 제한입니다. 파일 다운로드는 시작 URL의 HTTPS를 확인하며, 응답 파일은 기존 크기·SHA256·서명/승인 검증 절차를 거친 후에만 사용합니다. 파일 전송 경로에서는 API 인증 헤더를 전송하지 않습니다. `uclient-fetch`가 서버 리다이렉트를 처리할 수 있으므로 신뢰된 공식 저장소와 HTTPS 응답 정책을 유지해야 합니다.
+
+```sh
+apk info -e curl
+apk info -e uclient-fetch
+curl --version
+```
+
+API 호출에서 서버가 3xx를 반환하면 인증정보 보호를 위해 실패 처리하므로 API 주소는 직접 2xx를 응답해야 합니다. 파일 다운로드에서는 `uclient-fetch`의 리다이렉트 동작을 허용하되 기존 해시·서명 검증을 유지합니다. 최초 설치 전의 서명 키 다운로드는 패키지 설치 전 부트스트랩 절차입니다.
+
 ## 설치 후 확인
 
 ### 패키지와 정적 자산

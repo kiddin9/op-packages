@@ -16,20 +16,30 @@ cat > "$TMP/bin/manager" <<'MOCK'
 #!/bin/sh
 [ "$1" = start ] && [ "$2" = install ] && [ "$3" = network-usage-monitor ] && [ "$4" = restore ] || exit 4
 printf '%s\n' "$3" >> "$RESTORE_TEST_CALLS"
-case "${RESTORE_TEST_MODE:-success}" in
+detail=''
+mode="${RESTORE_TEST_MODE:-success}"
+case "$mode" in
  busy) exit 3;;
- offline)
-  code=E21
-  phase=failed;;
- revoked)
-  code=E22
-  phase=failed;;
+ offline) code=E21; phase=failed;;
+ revoked) code=E22; phase=failed;;
+ apk_once|index_once)
+  if [ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 1 ]; then
+   code=E34; phase=failed
+   if [ "$mode" = index_once ]; then detail=apk_index; else detail=apk_simulate; fi
+  else
+   printf 'nlbwmon\nluci-app-nlbwmon\nluci-lib-chartjs\n' > "$RESTORE_TEST_INSTALLED"
+   code=NONE; phase=success
+  fi;;
+ apk_always) code=E34; phase=failed; detail=apk_simulate;;
+ apk_rejected) code=E34; phase=failed; detail=plan_rejected;;
+ apk_unknown) code=E34; phase=failed;;
+ mismatch) code=E28; phase=failed;;
  success)
   printf 'nlbwmon\nluci-app-nlbwmon\nluci-lib-chartjs\n' > "$RESTORE_TEST_INSTALLED"
-  code=NONE
-  phase=success;;
+  code=NONE; phase=success;;
 esac
 printf 'phase\t%s\naction\tinstall\napp_id\t%s\ncode\t%s\n' "$phase" "$3" "$code" > "$SMARTSAFEHUB_APPS_RUNTIME_DIR/apps-operation.state"
+[ -z "$detail" ] || printf 'detail\t%s\n' "$detail" >> "$SMARTSAFEHUB_APPS_RUNTIME_DIR/apps-operation.state"
 MOCK
 cat > "$TMP/bin/sleep" <<'MOCK'
 #!/bin/sh
@@ -40,7 +50,9 @@ export SMARTSAFEHUB_APPS_MANAGER_BIN="$TMP/bin/manager"
 export SMARTSAFEHUB_APPS_APK_BIN="$TMP/bin/apk"
 export SMARTSAFEHUB_APPS_RESTORE_SLEEP_BIN="$TMP/bin/sleep"
 export SMARTSAFEHUB_APPS_RESTORE_START_DELAY=0
-export SMARTSAFEHUB_APPS_RESTORE_RETRIES=2
+export SMARTSAFEHUB_APPS_RESTORE_RETRIES=4
+export SMARTSAFEHUB_APPS_RESTORE_APK_RETRIES=3
+export SMARTSAFEHUB_APPS_RESTORE_APK_RETRY_DELAY=0
 export SMARTSAFEHUB_APPS_RESTORE_RETRY_DELAY=0
 export SMARTSAFEHUB_APPS_RESTORE_POLL_INTERVAL=0
 export SMARTSAFEHUB_APPS_RESTORE_POLL_LIMIT=2
@@ -62,15 +74,38 @@ grep -Fqx "$(printf 'code\tINVALID_MANIFEST')" "$TMP/runtime/apps-restore.state"
 # chart dependency must not be recorded as owned.
 HASH="$(printf %064d 0)"
 printf 'nlbwmon\t2025.06.02~29236be6-r1\t%s\nluci-app-nlbwmon\t26.288.56989~75a306d\t%s\n' "$HASH" "$HASH" > "$TMP/owned/network-usage-monitor"
+export SMARTSAFEHUB_APPS_RESTORE_RETRIES=2
 export RESTORE_TEST_MODE=offline
 "$RESTORE" run
 [ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 2 ] || fail 'network error retry was not bounded'
 grep -Fqx "$(printf 'code\tE21')" "$TMP/runtime/apps-restore.state" || fail 'network failure state missing'
+export SMARTSAFEHUB_APPS_RESTORE_RETRIES=4
 : > "$RESTORE_TEST_CALLS"
 export RESTORE_TEST_MODE=revoked
 "$RESTORE" run
 [ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 1 ] || fail 'revoked approval was retried'
 grep -Fqx "$(printf 'code\tE22')" "$TMP/runtime/apps-restore.state" || fail 'revoked approval error missing'
+: > "$RESTORE_TEST_CALLS"
+# 부팅 직후 일시적인 E34 는 정확히 확인된 단계에서만 다시 검증합니다.
+for mode in apk_once index_once; do
+ : > "$RESTORE_TEST_CALLS"
+ export RESTORE_TEST_MODE="$mode"
+ "$RESTORE" run
+ [ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 2 ] || fail "recoverable $mode not retried once"
+ grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-restore.state" || fail "recoverable $mode not restored"
+ : > "$RESTORE_TEST_INSTALLED"
+done
+: > "$RESTORE_TEST_CALLS"
+export RESTORE_TEST_MODE=apk_always
+"$RESTORE" run
+[ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 3 ] || fail 'E34 retries exceeded bounded limit'
+grep -Fqx "$(printf 'detail\tapk_simulate')" "$TMP/runtime/apps-restore.state" || fail 'E34 failure stage was not persisted'
+for mode in apk_rejected apk_unknown mismatch; do
+ : > "$RESTORE_TEST_CALLS"
+ export RESTORE_TEST_MODE="$mode"
+ "$RESTORE" run
+ [ "$(wc -l < "$RESTORE_TEST_CALLS" | tr -d ' ')" -eq 1 ] || fail "unsafe $mode was retried"
+done
 : > "$RESTORE_TEST_CALLS"
 export RESTORE_TEST_MODE=success
 "$RESTORE" run

@@ -354,12 +354,12 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		await page.click(tileToggle);
 		const enterAnims = await page.evaluate(() => document.querySelector('.cb-tile-devices')?.getAnimations().length || 0);
 		assert.ok(enterAnims > 0, 'adding a module triggers an entrance animation');
-		await page.waitForTimeout(280);
+		await page.waitForFunction(() => (document.querySelector('.cb-tile-devices')?.getAnimations().length || 0) === 0, null, { timeout: 2000 });
 		assert.equal(await page.evaluate(() => window.scrollY), scrollAfterPreset, 'toggling a tile keeps exact scroll position');
 		await page.click(tileToggle);
 		const exitGhost = await page.evaluate(() => document.querySelectorAll('.cb-dash-ghosts .cb-card-leaving').length);
 		assert.equal(exitGhost, 1, 'closing a module renders an inert exit ghost animation');
-		await page.waitForTimeout(280);
+		await page.waitForFunction(() => document.querySelectorAll('.cb-dash-ghosts').length === 0, null, { timeout: 2000 });
 		assert.equal(await page.evaluate(() => document.querySelectorAll('.cb-dash-ghosts').length), 0, 'exit ghost layer cleans up after animation');
 		assert.equal(await page.evaluate(() => window.scrollY), scrollAfterPreset, 'untoggling a tile keeps exact scroll position');
 		/* Reset scroll to top before taking the hero/monitor/sheet reference screenshot */
@@ -711,6 +711,356 @@ test('table dropdown options escape the last row and remain clickable', async ()
 				}
 			}
 		}
+	}
+});
+
+/* Upstream luci-app-package-manager / luci-app-opkg inline stylesheet subset */
+const PACKAGE_MANAGER_CSS = `
+	.controls { display: flex; margin: .5em 0 1em 0; flex-wrap: wrap; justify-content: space-around; }
+	.controls > * { padding: .25em; white-space: nowrap; flex: 1 1 33%; box-sizing: border-box; display: flex; flex-wrap: wrap; }
+	.controls > *:first-child, .controls > * > label { flex-basis: 100%; min-width: 250px; }
+	.controls > *:nth-child(2), .controls > *:nth-child(3) { flex-basis: 20%; }
+	.controls > * > .btn { flex-basis: 20px; text-align: center; }
+	.controls > * > * { flex-grow: 1; align-self: center; }
+	.controls > div > input { width: auto; }
+	.td.version, .td.size { white-space: nowrap; }
+	#packages .td.cbi-section-actions { width: auto; }
+`;
+
+test('package manager controls align inputs and buttons on desktop and phone', async () => {
+	const cases = [
+		['src', 1440, 'light'], ['src', 1024, 'light'], ['src', 390, 'light'],
+		['min', 1440, 'dark'], ['min', 390, 'dark']
+	];
+	for (const [mount, width, appearance] of cases) {
+		const label = `${mount}/${width}/${appearance}`;
+		const { page, context, errors } = await open('/src/preview/form.html', { width, height: 900, appearance });
+		try {
+			await page.setContent(`<!doctype html><html data-darkmode="${appearance === 'dark'}"><head><meta charset="utf-8">
+				<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+				<style>${PACKAGE_MANAGER_CSS}</style>
+				</head><body data-page="admin-system-package-manager"><main id="maincontent" style="padding:24px"><div id="view">
+				<div class="cbi-section"><div class="controls">
+					<div><label>磁盘空间:</label><div class="cbi-progressbar" title="19% 已使用"><div style="width:19%">&nbsp;</div></div></div>
+					<div id="filter-block"><label>筛选:</label><span class="control-group"><input type="text" name="filter" value="adg"><button class="btn cbi-button">清除</button></span></div>
+					<div id="install-block"><label>下载并安装软件包:</label><span class="control-group"><input type="text" name="install" placeholder="软件包名称或 URL..."><button class="btn cbi-button cbi-button-action">确认</button></span></div>
+					<div id="actions-block"><label>操作:</label> <span class="control-group"><button class="btn cbi-button-positive">更新列表...</button> <button class="btn cbi-button-action">上传软件包...</button> <button class="btn cbi-button-neutral">配置 opkg</button></span></div>
+					<div id="check-block"><label>选项:</label><span class="control-group"><input type="checkbox" checked><button class="cbi-button">应用</button></span></div>
+				</div></div>
+				<div id="diag-group" style="margin-top:16px"><span class="control-group"><input type="text" value="openwrt.org"><button class="btn cbi-button cbi-button-action">IPv4 Ping</button></span></div>
+				<div class="cbi-section-node" style="margin-top:16px">
+					<div class="cbi-value"><label class="cbi-value-title">密码</label><div class="cbi-value-field"><div id="pw-group" class="control-group"><input type="password" value="secret"><button class="cbi-button cbi-button-neutral">*</button></div></div></div>
+					<div class="cbi-value"><label class="cbi-value-title">本地时间</label><div class="cbi-value-field"><input type="text" readonly value="12:00"><div id="time-group" class="control-group"><button class="cbi-button">同步</button></div></div></div>
+					<div class="cbi-value"><label class="cbi-value-title">列表</label><div class="cbi-value-field"><div class="cbi-dynlist"><div id="dyn-add" class="add-item"><input type="text" value="1.1.1.1"><button class="btn">+</button></div></div></div></div>
+				</div>
+				<div id="inline-pair" style="margin-top:16px"><input type="text" value="abc"> <button class="btn cbi-button">确定</button></div>
+				<div id="btn-variants" style="margin-top:16px"><button id="btn-neutral" class="cbi-button cbi-button-neutral">N</button><button id="btn-up" class="cbi-button cbi-button-up">↑</button></div>
+				</div></main></body></html>`, { waitUntil: 'load' });
+			const geom = await page.evaluate(() => {
+				const pair = (sel) => {
+					const input = document.querySelector(sel + ' input').getBoundingClientRect();
+					const btn = document.querySelector(sel + ' button').getBoundingClientRect();
+					return {
+						topDiff: Math.abs(input.top - btn.top),
+						bottomDiff: Math.abs(input.bottom - btn.bottom),
+						heightDiff: Math.abs(input.height - btn.height),
+						gap: btn.left - input.right,
+						btnWidth: btn.width
+					};
+				};
+				const actionBtns = [...document.querySelectorAll('#actions-block button')].map((b) => b.getBoundingClientRect());
+				return {
+					overflow: document.documentElement.scrollWidth > window.innerWidth,
+					filter: pair('#filter-block'),
+					install: pair('#install-block'),
+					diag: pair('#diag-group'),
+					pw: pair('#pw-group'),
+					pwMarginTop: parseFloat(getComputedStyle(document.getElementById('pw-group')).marginTop),
+					timeMarginTop: parseFloat(getComputedStyle(document.getElementById('time-group')).marginTop),
+					checkboxWidth: document.querySelector('#check-block input[type="checkbox"]').getBoundingClientRect().width,
+					dyn: pair('#dyn-add'),
+					inline: pair('#inline-pair'),
+					neutralBg: getComputedStyle(document.getElementById('btn-neutral')).backgroundColor,
+					upBg: getComputedStyle(document.getElementById('btn-up')).backgroundColor,
+					actionBtns
+				};
+			});
+			assert.equal(geom.overflow, false, `${label}: no horizontal overflow`);
+			for (const name of ['filter', 'install', 'diag', 'pw', 'dyn']) {
+				const p = geom[name];
+				assert.ok(p.topDiff <= 0.5, `${label} ${name}: top aligned (${p.topDiff}px)`);
+				assert.ok(p.bottomDiff <= 0.5, `${label} ${name}: bottom aligned (${p.bottomDiff}px)`);
+				assert.ok(p.heightDiff <= 0.5, `${label} ${name}: equal height (${p.heightDiff}px)`);
+				assert.ok(p.gap >= 4, `${label} ${name}: visible gap between input and button (${p.gap}px)`);
+			}
+			assert.equal(geom.pwMarginTop, 0, `${label}: first-child password control-group has no extra top margin`);
+			assert.ok(geom.timeMarginTop >= 6, `${label}: follow-up control-group keeps top margin (${geom.timeMarginTop}px)`);
+			assert.ok(geom.checkboxWidth <= 20, `${label}: checkbox in .controls .control-group is not stretched (${geom.checkboxWidth}px)`);
+			assert.ok(geom.dyn.btnWidth < 60, `${label}: dynlist .btn add button is not stretched (${geom.dyn.btnWidth}px)`);
+			assert.equal(geom.upBg, geom.neutralBg, `${label}: cbi-button-up matches cbi-button-neutral fill in ${appearance} mode`);
+			for (let i = 1; i < geom.actionBtns.length; i++) {
+				const prev = geom.actionBtns[i - 1], cur = geom.actionBtns[i];
+				if (Math.abs(prev.top - cur.top) <= 1) {
+					assert.ok(Math.abs(prev.bottom - cur.bottom) <= 0.5, `${label}: action buttons aligned`);
+					assert.ok(cur.left - prev.right >= 4, `${label}: action buttons separated (${cur.left - prev.right}px)`);
+				}
+			}
+			if (width > 760) {
+				assert.ok(geom.inline.topDiff <= 0.5 && geom.inline.bottomDiff <= 0.5,
+					`${label}: plain inline input + button aligned (top=${geom.inline.topDiff}, bottom=${geom.inline.bottomDiff})`);
+			}
+			assert.deepEqual(errors, []);
+		} finally { await context.close(); }
+	}
+});
+
+test('table action cells keep direct buttons compact and centred while preserving wrapped action groups', async () => {
+	for (const mount of ['src', 'min']) {
+		for (const width of [1440, 390]) {
+			const label = `${mount}/${width}`;
+			const { page, context, errors } = await open('/src/preview/form.html', { width, height: 900 });
+			try {
+				await page.setContent(`<!doctype html><html><head><meta charset="utf-8">
+					<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+					<style>${PACKAGE_MANAGER_CSS}</style>
+					</head><body data-page="admin-system-package-manager"><main id="maincontent" style="padding:24px"><div id="view">
+					<div class="cbi-section">
+						<table id="packages" class="table">
+							<tr class="tr cbi-section-table-titles">
+								<th class="th col-2 left">软件包名称</th>
+								<th class="th col-2 left version">版本</th>
+								<th class="th col-1 center size">大小 (.ipk)</th>
+								<th class="th col-10 left">描述</th>
+								<th class="th right cbi-section-actions">&nbsp;</th>
+							</tr>
+							<tr class="tr">
+								<td class="td col-2 left" data-title="软件包名称">luci-app-adguardhome</td>
+								<td class="td col-2 left version" data-title="版本">27.320.76646~57f5dec</td>
+								<td class="td col-1 center size" data-title="大小 (.ipk)">40.18 KiB</td>
+								<td class="td col-10 left" data-title="描述">LuCI support for AdGuard Home</td>
+								<td class="td right cbi-section-actions"><div id="pkg-install" class="btn cbi-button-action">安装...</div></td>
+							</tr>
+						</table>
+					</div>
+					<div class="cbi-section">
+						<table id="actions-cases" class="table">
+							<tr class="tr table-titles">
+								<th class="th">名称</th>
+								<th class="th cbi-section-actions">静态租约 / 操作</th>
+							</tr>
+							<tr class="tr">
+								<td class="td" data-title="名称">direct-button</td>
+								<td class="td cbi-section-actions"><button id="direct-btn" class="cbi-button cbi-button-apply">设为静态</button></td>
+							</tr>
+							<tr class="tr">
+								<td class="td" data-title="名称">multi-direct</td>
+								<td class="td cbi-section-actions"><button id="direct-a" class="cbi-button cbi-button-edit">编辑</button><button id="direct-b" class="cbi-button cbi-button-remove">删除</button></td>
+							</tr>
+							<tr class="tr">
+								<td class="td" data-title="名称">combo-direct</td>
+								<td class="td cbi-section-actions"><div id="direct-combo" class="cbi-dropdown btn cbi-button-action"><ul><li display="0">启动</li></ul><span class="open">▾</span></div></td>
+							</tr>
+							<tr class="tr">
+								<td class="td" data-title="名称">wrapped-cbi</td>
+								<td class="td cbi-section-actions" style="min-width:220px"><div id="wrapped-group"><button id="wrap-a" class="cbi-button cbi-button-edit">编辑</button><button id="wrap-b" class="cbi-button cbi-button-remove">删除</button></div></td>
+							</tr>
+						</table>
+					</div>
+					</div></main></body></html>`, { waitUntil: 'load' });
+
+				const res = await page.evaluate(() => {
+					const measureBtn = (id) => {
+						const el = document.getElementById(id);
+						const cs = getComputedStyle(el);
+						const r = el.getBoundingClientRect();
+						const td = el.closest('.td').getBoundingClientRect();
+						const range = document.createRange();
+						range.selectNodeContents(el);
+						const tr = range.getBoundingClientRect();
+						return {
+							display: cs.display,
+							justify: cs.justifyContent,
+							width: r.width,
+							height: r.height,
+							tdWidth: td.width,
+							leftInset: r.left - td.left,
+							rightInset: td.right - r.right,
+							centerDelta: Math.abs((tr.left - r.left) - (r.right - tr.right))
+						};
+					};
+					const multiA = document.getElementById('direct-a').getBoundingClientRect();
+					const multiB = document.getElementById('direct-b').getBoundingClientRect();
+					const comboCs = getComputedStyle(document.getElementById('direct-combo'));
+					const wrap = document.getElementById('wrapped-group');
+					const wrapCs = getComputedStyle(wrap);
+					const wrapR = wrap.getBoundingClientRect();
+					const wrapA = document.getElementById('wrap-a').getBoundingClientRect();
+					const wrapB = document.getElementById('wrap-b').getBoundingClientRect();
+					return {
+						pkg: measureBtn('pkg-install'),
+						direct: measureBtn('direct-btn'),
+						multiTopDiff: Math.abs(multiA.top - multiB.top),
+						multiGap: multiB.left - multiA.right,
+						combo: { display: comboCs.display, justify: comboCs.justifyContent },
+						wrapped: {
+							display: wrapCs.display,
+							leftGap: wrapA.left - wrapR.left,
+							rightGap: wrapR.right - wrapB.right,
+							topDiff: Math.abs(wrapA.top - wrapB.top),
+							gap: wrapB.left - wrapA.right
+						}
+					};
+				});
+
+				for (const [name, b] of [['pkg-install', res.pkg], ['direct-btn', res.direct]]) {
+					assert.equal(b.display, 'inline-flex', `${label} ${name}: stays inline-flex`);
+					assert.equal(b.justify, 'center', `${label} ${name}: centres label`);
+					assert.ok(b.centerDelta <= 2, `${label} ${name}: text centred inside button (delta=${b.centerDelta})`);
+					assert.ok(b.width < 120, `${label} ${name}: compact auto width (${b.width}px)`);
+					assert.ok(b.height <= 30, `${label} ${name}: compact table action height (${b.height}px)`);
+				}
+				if (width > 760) {
+					assert.ok(res.pkg.rightInset <= 20, `${label} pkg-install: aligned to right edge of action cell (${res.pkg.rightInset}px)`);
+				} else {
+					assert.ok(res.pkg.leftInset <= 16, `${label} pkg-install: aligned to left edge of mobile card (${res.pkg.leftInset}px)`);
+				}
+				assert.ok(res.multiTopDiff <= 1 && res.multiGap >= 3.5, `${label}: adjacent direct buttons keep gap without whitespace (${res.multiGap}px)`);
+				assert.equal(res.combo.display, 'inline-flex', `${label}: direct combo button keeps inline-flex`);
+				assert.equal(res.combo.justify, 'center', `${label}: direct combo button keeps button alignment`);
+				assert.equal(res.wrapped.display, 'flex', `${label}: CBI wrapper div keeps flex`);
+				if (width > 760) {
+					assert.ok(res.wrapped.rightGap <= 1 && res.wrapped.leftGap >= 40,
+						`${label}: CBI wrapper stays right-aligned on desktop (left=${res.wrapped.leftGap}, right=${res.wrapped.rightGap})`);
+				} else {
+					assert.ok(res.wrapped.leftGap <= 1 && res.wrapped.rightGap >= 40,
+						`${label}: CBI wrapper stays left-aligned on phone (left=${res.wrapped.leftGap}, right=${res.wrapped.rightGap})`);
+				}
+				assert.ok(res.wrapped.topDiff <= 1 && res.wrapped.gap >= 3.5, `${label}: wrapped buttons keep row gap`);
+				assert.deepEqual(errors, []);
+			} finally { await context.close(); }
+		}
+	}
+});
+
+test('lease table avatars stay in the hostname column when hostnames are IP addresses', async () => {
+	for (const mount of ['src', 'min']) {
+		const { page, context, errors } = await open('/src/preview/form.html', { width: 1280, height: 900 });
+		try {
+			await page.setContent(`<!doctype html><html><head><meta charset="utf-8">
+				<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+				<script src="/${mount}/htdocs/luci-static/carbon/carbon.js?v=test"></script>
+				</head><body><div id="view">
+				<table id="status_leases" class="table">
+					<tr class="tr table-titles"><th class="th">状态</th><th class="th">主机名</th><th class="th">IPv4 地址</th><th class="th">MAC 地址</th><th class="th">剩余租期</th></tr>
+					<tr class="tr" data-case="normal"><td class="td"><span class="dot"></span></td><td class="td">lwip0</td><td class="td">10.0.0.10</td><td class="td">02:11:22:33:44:01</td><td class="td">11h 59m</td></tr>
+					<tr class="tr" data-case="ip-unknown"><td class="td"><span class="dot"></span></td><td class="td">10.0.0.194</td><td class="td">10.0.0.194</td><td class="td">02:11:22:33:44:55</td><td class="td">11h 57m</td></tr>
+					<tr class="tr" data-case="ip-apple"><td class="td"><span class="dot"></span></td><td class="td">10.0.0.195</td><td class="td">10.0.0.195</td><td class="td">f0:ee:7a:66:0b:3e</td><td class="td">11h 56m</td></tr>
+					<tr class="tr" data-case="dash-apple"><td class="td"><span class="dot"></span></td><td class="td">-</td><td class="td">10.0.0.196</td><td class="td">f0:ee:7a:66:0b:3f</td><td class="td">11h 55m</td></tr>
+				</table>
+				<table id="lease_status_table" class="table">
+					<tr class="tr table-titles"><th class="th">接口</th><th class="th">主机名</th><th class="th">IPv4 地址</th><th class="th">MAC 地址</th><th class="th">剩余租期</th></tr>
+					<tr class="tr" data-case="single-iface-ip"><td class="td">lan</td><td class="td">10.0.0.194</td><td class="td">10.0.0.194</td><td class="td">02:11:22:33:44:55</td><td class="td">11h 59m</td></tr>
+				</table>
+				<table id="status_leases6" class="table">
+					<tr class="tr table-titles"><th class="th">状态</th><th class="th">主机</th><th class="th">IPv6 地址</th><th class="th">DUID</th><th class="th">剩余租期</th></tr>
+					<tr class="tr" data-case="v6-dot-ip-hint"><td class="td"><span class="dot"></span></td><td class="td">10.0.0.194</td><td class="td">2001:db8::1/128<br>fd00::1/128</td><td class="td">000100012a3b4c5df0ee7a660b3e</td><td class="td">11h 59m</td></tr>
+				</table>
+				<table id="lease6_status_table" class="table">
+					<tr class="tr table-titles"><th class="th">主机</th><th class="th">IPv6 地址</th><th class="th">DUID</th><th class="th">剩余租期</th></tr>
+					<tr class="tr" data-case="v6-single-nolead"><td class="td">10.0.0.194</td><td class="td">fe80::1/128</td><td class="td">00030001021122334455</td><td class="td">11h 59m</td></tr>
+				</table>
+				</div></body></html>`, { waitUntil: 'load' });
+
+			await page.evaluate(() => { window.Carbon.initLeaseAvatars(document.getElementById('view')); });
+			await page.waitForFunction(() => document.querySelector('[data-case="normal"] .cb-host') && document.querySelector('[data-case="v6-dot-ip-hint"] .cb-host'));
+
+			const inspect = (sel) => page.evaluate((s) => {
+				const cells = [...document.querySelector(s).children].filter((c) => c.classList.contains('td'));
+				return cells.map((c) => {
+					const av = c.querySelector('.cb-avatar');
+					const nm = c.querySelector('.cb-host-name');
+					return {
+						hosts: c.querySelectorAll('.cb-host').length,
+						hasDotDirect: !!c.querySelector(':scope > .dot'),
+						brand: av ? av.classList.contains('cb-avatar-brand') : false,
+						brandTitle: av ? av.getAttribute('title') : null,
+						avatarText: av ? av.textContent : null,
+						hasSvg: av ? !!av.querySelector('svg') : false,
+						hostName: nm ? nm.textContent : null
+					};
+				});
+			}, sel);
+
+			/* 1. Multi-row #status_leases with leading status-dot column */
+			for (const name of ['normal', 'ip-unknown', 'ip-apple', 'dash-apple']) {
+				const cols = await inspect(`[data-case="${name}"]`);
+				assert.equal(cols[0].hosts, 0, `${mount} ${name}: status-dot cell stays undecorated`);
+				assert.equal(cols[0].hasDotDirect, true, `${mount} ${name}: dot remains direct child of col 0`);
+				assert.equal(cols[1].hosts, 1, `${mount} ${name}: hostname cell gets avatar`);
+			}
+			const ipUnknown = await inspect('[data-case="ip-unknown"]');
+			assert.equal(ipUnknown[1].hostName, '10.0.0.194', `${mount}: IP hostname text preserved`);
+			assert.equal(ipUnknown[1].hasSvg, true, `${mount}: IP hostname with unknown MAC uses laptop icon, not digit "1"`);
+			assert.equal(ipUnknown[1].avatarText, '', `${mount}: no numeric monogram for IP hostname`);
+
+			const ipApple = await inspect('[data-case="ip-apple"]');
+			assert.equal(ipApple[1].brand, true, `${mount}: IP hostname with known OUI gets brand avatar`);
+			assert.equal(ipApple[1].brandTitle, 'Apple');
+
+			/* 2. Single-row table with leading Interface column and IP hostname */
+			const singleIface = await inspect('[data-case="single-iface-ip"]');
+			assert.equal(singleIface[0].hosts, 0, `${mount}: Interface column stays undecorated`);
+			assert.equal(singleIface[1].hosts, 1, `${mount}: single IP-hostname row still decorated in col 1`);
+			assert.equal(singleIface[1].hasSvg, true, `${mount}: single IP-hostname row uses laptop icon`);
+
+			/* 3. DHCPv6 table with leading dot, IPv4 fallback hostname, <br>-joined IPv6 and DUID-LLT */
+			const v6Dot = await inspect('[data-case="v6-dot-ip-hint"]');
+			assert.equal(v6Dot[0].hosts, 0, `${mount} v6: status-dot cell stays undecorated`);
+			assert.equal(v6Dot[1].hosts, 1, `${mount} v6: hostname cell decorated`);
+			assert.equal(v6Dot[1].brandTitle, 'Apple', `${mount} v6: DUID-LLT MAC identifies Apple`);
+
+			/* 4. Single-row DHCPv6 table without leading column and IPv4 fallback hostname */
+			const v6NoLead = await inspect('[data-case="v6-single-nolead"]');
+			assert.equal(v6NoLead[0].hosts, 1, `${mount} v6 no-lead: col 0 IP-hostname gets avatar`);
+			assert.equal(v6NoLead[0].hasSvg, true, `${mount} v6 no-lead: uses laptop icon`);
+
+			/* 5. Dynamic MutationObserver updates: append IP row, missing-IP row with MAC/time, single no-lead IPv4 row */
+			await page.evaluate(() => {
+				const t = document.getElementById('status_leases');
+				const tr = document.createElement('tr');
+				tr.className = 'tr';
+				tr.setAttribute('data-case', 'appended-ip');
+				tr.innerHTML = '<td class="td"><span class="dot"></span></td><td class="td">10.0.0.199</td><td class="td">10.0.0.199</td><td class="td">02:11:22:33:44:99</td><td class="td">11h 50m</td>';
+				t.appendChild(tr);
+
+				const t2 = document.getElementById('lease_status_table');
+				t2.innerHTML = '<tr class="tr table-titles"><th class="th">主机名</th><th class="th">IPv4 地址</th><th class="th">MAC 地址</th><th class="th">剩余租期</th></tr>' +
+					'<tr class="tr" data-case="missing-ip"><td class="td">host-no-ip</td><td class="td">-</td><td class="td">f0:ee:7a:66:0b:3e</td><td class="td">11:59:00</td></tr>';
+			});
+			await page.waitForFunction(() => document.querySelector('[data-case="appended-ip"] .cb-host'));
+			const appended = await inspect('[data-case="appended-ip"]');
+			assert.equal(appended[0].hosts, 0, `${mount} appended: col 0 untouched`);
+			assert.equal(appended[1].hosts, 1, `${mount} appended: col 1 decorated`);
+			assert.equal(appended[1].hasSvg, true, `${mount} appended: laptop icon`);
+			const normalAfter = await inspect('[data-case="normal"]');
+			assert.equal(normalAfter[1].hosts, 1, `${mount}: existing rows not double-wrapped`);
+
+			const missingIp = await inspect('[data-case="missing-ip"]');
+			assert.equal(missingIp[1].hosts, 0, `${mount}: MAC address is never mistaken for an IPv6 cell`);
+			assert.equal(missingIp[2].hosts, 0, `${mount}: HH:MM:SS time is never mistaken for an IPv6 cell`);
+
+			await page.evaluate(() => {
+				const t2 = document.getElementById('lease_status_table');
+				t2.innerHTML = '<tr class="tr table-titles"><th class="th">主机名</th><th class="th">IPv4 地址</th><th class="th">MAC 地址</th><th class="th">剩余租期</th></tr>' +
+					'<tr class="tr" data-case="v4-single-nolead"><td class="td">10.0.0.194</td><td class="td">10.0.0.194</td><td class="td">02:11:22:33:44:55</td><td class="td">11h 59m</td></tr>';
+			});
+			await page.waitForFunction(() => document.querySelector('[data-case="v4-single-nolead"] .cb-host'));
+			const v4NoLead = await inspect('[data-case="v4-single-nolead"]');
+			assert.equal(v4NoLead[0].hosts, 1, `${mount} v4 no-lead: col 0 IP-hostname gets avatar`);
+			assert.equal(v4NoLead[0].hasSvg, true, `${mount} v4 no-lead: uses laptop icon`);
+
+			assert.deepEqual(errors, []);
+		} finally { await context.close(); }
 	}
 });
 

@@ -18,11 +18,14 @@ import { ConnectedDevicesPage } from '../pages/ConnectedDevicesPage';
 import { HomePage } from '../pages/HomePage';
 import { SafeShieldPage } from '../pages/SafeShieldPage';
 import { NetworkWatchPage } from '../pages/NetworkWatchPage';
+import { SmartHomePage } from '../pages/SmartHomePage';
+import { demoJarbisOperations } from './jarbis';
 import {
   demoActivity, demoDevices, demoFirmware, demoHealth, demoLan,
   demoSafeShield, demoStatistics, demoStatus, demoUpdates,
   demoWan, demoWifi, demoRules, demoWifiQr, demoGuestWifiQr,
   demoAccount, demoApps, demoAppsStatus, demoAppsMetrics, demoNetwatch,
+  demoJarbisStatus, demoJarbisDevices, demoJarbisCandidates, demoJarbisLightStates,
 } from './data';
 import '../styles/app.css';
 
@@ -62,6 +65,13 @@ function DemoApp() {
       content = <NetworkWatchPage data={demoNetwatch} devices={demoDevices} activity={demoActivity} error={null} loading={false} onRetry={reset}
         onSetEnabled={async () => { readonlyNotice(); }} demo onDemoAction={readonlyNotice} />;
       break;
+    case 'smarthome':
+      content = <SmartHomePage demo onDemoAction={readonlyNotice} operations={demoJarbisOperations}
+        statusResource={{ data: demoJarbisStatus, error: null, loading: false, replaceData: () => {} }}
+        devicesResource={{ data: demoJarbisDevices, error: null, loading: false, replaceData: () => {} }}
+        candidatesResource={{ data: demoJarbisCandidates, error: null, loading: false, replaceData: () => {} }}
+        demoLightStates={demoJarbisLightStates} />;
+      break;
     case 'account':
       content = <SmartSafeHubAccountPage data={demoAccount} error={null} loading={false}
         pairingBusy={false} refreshing={false} syncError={null} demo
@@ -73,6 +83,7 @@ function DemoApp() {
         installStatus={demoAppsStatus} metrics={demoAppsMetrics} statusError={null}
         demo onDemoAction={readonlyNotice} onRefreshStatus={reset} onRetry={reset}
         onInstall={async () => { readonlyNotice(); }}
+        onRepair={async () => { readonlyNotice(); }}
         onRemove={async () => { readonlyNotice(); }}
         onUpdate={async () => { readonlyNotice(); }} />;
       break;

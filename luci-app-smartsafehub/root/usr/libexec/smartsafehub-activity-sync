@@ -1,6 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -u
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 umask 077
 
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
@@ -21,7 +24,6 @@ DEVICE_BIN="${SMARTSAFEHUB_ACTIVITY_DEVICE_BIN:-/usr/libexec/smartsafehub-device
 DEVICE_STATE_FILE="${SMARTSAFEHUB_ACTIVITY_DEVICE_STATE_FILE:-$RUNTIME_DIR/device.json}"
 UCI_BIN="${SMARTSAFEHUB_ACTIVITY_UCI_BIN:-uci}"
 JSONFILTER_BIN="${SMARTSAFEHUB_ACTIVITY_JSONFILTER_BIN:-jsonfilter}"
-UCLIENT_FETCH_BIN="${SMARTSAFEHUB_ACTIVITY_UCLIENT_FETCH_BIN:-uclient-fetch}"
 DATE_BIN="${SMARTSAFEHUB_ACTIVITY_DATE_BIN:-date}"
 SLEEP_BIN="${SMARTSAFEHUB_ACTIVITY_SLEEP_BIN:-sleep}"
 LOGGER_BIN="${SMARTSAFEHUB_ACTIVITY_LOGGER_BIN:-logger}"
@@ -185,9 +187,8 @@ apply_configuration() {
 
 post_authorized_json() {
 	local body_file="$1" output_file="$2" url="$3" token="$4"
-	"$UCLIENT_FETCH_BIN" -q -T "$REQUEST_TIMEOUT_S" --method=POST --body-file="$body_file" \
-		--header='Content-Type: application/json' --header="Authorization: Bearer $token" \
-		-O "$output_file" "$url"
+	ssh_http_request POST "$output_file" "$REQUEST_TIMEOUT_S" "$url" "$body_file" \
+		-H "Authorization: Bearer $token"
 }
 
 credential_valid() {

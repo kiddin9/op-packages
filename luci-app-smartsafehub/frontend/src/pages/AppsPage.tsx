@@ -11,6 +11,7 @@ import { approvedAppPath } from '../utils/appsWebUi';
 import { formatStorageBytes } from '../utils/appsStorage';
 import { isFirstPartyPublisher } from '../utils/appsPublisher';
 import { appsJobNoticeKey, readDismissedAppsJob, saveDismissedAppsJob } from '../utils/appsJobNotice';
+import { appsHighlightFromHash } from '../utils/appsHighlight';
 
 interface AppsPageProps {
   data: AppsCatalog | null;
@@ -23,6 +24,7 @@ interface AppsPageProps {
   statusError: string | null;
   onRefreshStatus: () => void;
   onInstall: (id: string) => Promise<void>;
+  onRepair: (id: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onUpdate: (id: string) => Promise<void>;
   /** All public demo actions are local-only; no installs or real app launch. */
@@ -66,7 +68,7 @@ const TABS: readonly { id: AppsCategory; label: string }[] = [
   { id: 'other', label: '기타' },
 ];
 
-type AppAction = 'install' | 'update' | 'remove';
+type AppAction = 'install' | 'repair' | 'update' | 'remove';
 
 function OperationIndicator({ action }: { action: AppAction }) {
   const removing = action === 'remove';
@@ -76,21 +78,39 @@ function OperationIndicator({ action }: { action: AppAction }) {
         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity="0.25" />
         <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
       </svg>
-      {removing ? '제거 중…' : action === 'update' ? '업데이트 중…' : '설치 중…'}
+      {removing ? '제거 중…' : action === 'update' ? '업데이트 중…' : action === 'repair' ? '복원 중…' : '설치 중…'}
     </span>
   );
 }
 
 export function AppsPage({ data, error, loading, refreshing, onRetry, installStatus, metrics, statusError,
-  onRefreshStatus, onInstall, onUpdate, onRemove, demo = false, onDemoAction }: AppsPageProps) {
+  onRefreshStatus, onInstall, onRepair, onUpdate, onRemove, demo = false, onDemoAction }: AppsPageProps) {
+  const [highlightedAppId, setHighlightedAppId] = useState(() => demo ? null : appsHighlightFromHash(window.location.hash));
   const [category, setCategory] = useState<AppsCategory>('all');
   const [query, setQuery] = useState('');
+  const highlightedCardRef = useRef<HTMLElement | null>(null);
+  const scrolledHighlightRef = useRef<string | null>(null);
   const [pending, setPending] = useState<{ appId: string; action: AppAction } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<VerifiedApp | null>(null);
   const cancelRemoveRef = useRef<HTMLButtonElement>(null);
   const removeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [dismissedJob, setDismissedJob] = useState<string | null>(readDismissedAppsJob);
+  // The optional highlight is only a visual guide; never filter or implicitly
+  // install apps. Support the legacy #apps/jarbis link for old entry points.
+  // The Apps route can remain mounted while only its hash changes.
+  useEffect(() => {
+    if (demo) return;
+    const syncHighlight = () => {
+      const highlighted = appsHighlightFromHash(window.location.hash);
+      scrolledHighlightRef.current = null;
+      setHighlightedAppId(highlighted);
+      setCategory('all');
+      setQuery('');
+    };
+    window.addEventListener('hashchange', syncHighlight);
+    return () => window.removeEventListener('hashchange', syncHighlight);
+  }, [demo]);
   // Keep the last successful catalog while a refresh fails. A separate status
   // request may describe a different catalog generation, so a missing ID
   // alone is NOT proof that an app has been discontinued.
@@ -100,6 +120,8 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
     ? Object.entries(installStatus?.installed ?? {}).filter(([id, state]) =>
       state.retired === true && state.managed && !apps.some((app) => app.id === id))
     : [];
+  const guidedJarbis = apps.find(app => app.id === 'jarbis');
+  const guidedState = installStatus?.installed?.jarbis;
   const restore = installStatus?.restore;
   const job = installStatus?.job;
   const running = job?.phase === 'starting' || job?.phase === 'running';
@@ -118,8 +140,21 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
   const jobAction: AppAction | null = job?.action === 'install' || job?.action === 'update' || job?.action === 'remove' ? job.action : null;
   const filtered = useMemo(() => apps.filter((app) =>
     (category === 'all' || appsCategoryOf(app.category) === category) &&
-    `${app.name} ${app.summary}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+    `${app.id} ${app.name} ${app.summary}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
   ), [apps, category, query]);
+
+  // Wait for the approved catalog to render before scrolling. A catalog
+  // arriving asynchronously must still receive its first highlight, without
+  // repeated jumps on every status poll or background refresh.
+  useEffect(() => {
+    if (!highlightedAppId || !filtered.some(app => app.id === highlightedAppId)) return;
+    if (scrolledHighlightRef.current === highlightedAppId) return;
+    const card = highlightedCardRef.current;
+    if (!card) return;
+    scrolledHighlightRef.current = highlightedAppId;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    card.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+  }, [highlightedAppId, filtered]);
 
   useEffect(() => {
     if (!removeTarget) return;
@@ -155,11 +190,13 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
     }
     if (action === 'update' && !window.confirm(`${app.name} 앱을 최신 승인 버전으로 업데이트하시겠습니까?\n\n업데이트 중 공유기를 재부팅하지 마세요.`)) return;
     if (action === 'install' && !window.confirm(`${app.name} 앱을 설치하시겠습니까?\n\n앱을 변경하는 동안 공유기를 재부팅하지 마세요.`)) return;
+    if (action === 'repair' && !window.confirm(`${app.name} 앱의 누락된 패키지를 복원하시겠습니까?\n\n기존 설치 기록과 최신 승인 패키지를 검증합니다. 복원 중 공유기를 재부팅하지 마세요.`)) return;
     if (action === 'remove') closeRemoveDialog();
     setActionError(null);
     setPending({ appId: app.id, action });
     try {
       if (action === 'install') await onInstall(app.id);
+      else if (action === 'repair') await onRepair(app.id);
       else if (action === 'update') await onUpdate(app.id);
       else await onRemove(app.id);
       onRefreshStatus();
@@ -204,11 +241,10 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
             <p class="mt-2 text-xs leading-5 text-slate-600">
               앱에서 제공하던 기능을 더 이상 사용할 수 없습니다. 제거하는 동안 공유기를 재부팅하지 마세요.
             </p>
-            {removeTarget.id === 'travelmate' ? (
-              <p class="mt-2 text-xs leading-5 text-slate-600">
-                다른 공유기 기능에서도 사용하는 공용 패키지는 안전을 위해 유지됩니다.
-              </p>
-            ) : null}
+            <p class="mt-2 text-xs leading-5 text-slate-600">
+              이전에 직접 설치한 패키지는 Apps가 제거하지 않습니다. 다른 앱이나 공유기 기능에
+              필요한 패키지가 영향을 받는다면 안전을 위해 제거가 중단될 수 있습니다.
+            </p>
             <div class="mt-5 flex justify-end gap-2">
               <button
                 class="min-h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
@@ -227,6 +263,21 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
           </div>
         </div>
       ) : null}
+      {highlightedAppId === 'jarbis' ? <section aria-label="Jarbis 설치 안내" class="ssh-apps-guide flex flex-col gap-2 rounded-2xl border border-teal-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0 flex-1">
+          <p class="m-0 text-xs font-extrabold tracking-widest text-teal-700">스마트홈 시작하기 · 1단계</p>
+          <h2 class="mt-1 mb-1 text-base font-black text-slate-950">Jarbis 설치 및 확인</h2>
+        {!data || loading || !installStatus || installStatus.ready === false ?
+          <p role="status" class="m-0 text-sm text-slate-600">승인된 Jarbis와 공유기 설치 상태를 확인하고 있습니다.</p>
+          : !guidedJarbis ? <p class="m-0 text-sm text-slate-600">현재 펌웨어에 승인된 Jarbis가 없습니다. 목록을 새로고침하거나 지원 여부를 확인해 주세요.</p>
+          : guidedState?.installed && !running && !restoring ? <>
+            <p role="status" class="m-0 text-sm text-slate-600">Jarbis가 설치되어 있습니다. 스마트홈으로 돌아가 첫 전구를 연결해 보세요.</p>
+            <a class="ssh-apps-guide-return mt-2 inline-flex min-h-9 items-center rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800" href="#smarthome">스마트홈 시작하기</a>
+          </> : running || restoring ? <p role="status" class="m-0 text-sm text-slate-600">앱 작업을 진행 중입니다. 완료되면 이 화면에서 설치 상태를 확인할 수 있습니다.</p>
+          : <p class="m-0 text-sm text-slate-600">아래 Jarbis 카드에서 <strong>{guidedState?.managed || guidedState?.partial ? '재설치 또는 설치 마무리' : '설치'}</strong>를 눌러 주세요. 설치는 직접 확인한 후에만 진행됩니다.</p>}
+        </div>
+        <p class="ssh-apps-guide-caption m-0 text-xs text-slate-500 sm:max-w-60">다른 검증 앱도 함께 둘러보실 수 있습니다.</p>
+      </section> : null}
       <div class="min-w-0">
         <SectionHeading
           eyebrow="SmartSafeHub Apps"
@@ -275,7 +326,7 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
         <div aria-live="polite" class={`rounded-2xl border p-4 text-sm ${restore.phase === 'failed' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-teal-200 bg-teal-50 text-teal-900'}`} role="status">
           <strong>{restore.phase === 'failed' ? 'Apps 자동 복원을 완료하지 못했습니다.' : '펌웨어 업데이트 후 Apps를 복원하는 중입니다.'}</strong>
           {restore.appId ? <span> · {restore.appId}</span> : null}
-          {restore.phase === 'failed' ? <p class="mb-0 mt-1 text-xs">{OPERATION_MESSAGES[restore.code] ?? '승인·연결·설치 상태를 확인해 주세요.'} 필요한 경우 앱 카드에서 설치 마무리를 진행할 수 있습니다.</p> : <p class="mb-0 mt-1 text-xs">검증된 패키지만 다시 설치합니다. 완료될 때까지 앱 설치·제거를 시작하지 마세요.</p>}
+          {restore.phase === 'failed' ? <p class="mb-0 mt-1 text-xs">{OPERATION_MESSAGES[restore.code] ?? '승인·연결·설치 상태를 확인해 주세요.'} 필요한 경우 앱 카드에서 재설치 또는 설치 마무리를 진행할 수 있습니다.</p> : <p class="mb-0 mt-1 text-xs">검증된 패키지만 다시 설치합니다. 완료될 때까지 앱 설치·제거를 시작하지 마세요.</p>}
         </div>
       ) : null}
       {showJob && job ? (
@@ -331,13 +382,16 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
               </div>
               <div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((app) => {
+                  const isHighlighted = app.id === highlightedAppId;
                   const state = installStatus?.installed[app.id];
                   const installed = state?.installed ?? false;
                   const bytes = metrics?.installedSizes?.[app.id];
                   const sizeLabel = installed && typeof bytes === 'number' && Number.isSafeInteger(bytes) && bytes >= 0
                     ? formatStorageBytes(bytes) : null;
                   const managed = state?.managed ?? false;
-                  const updateAvailable = Boolean(installed && managed && state?.updateAvailable);
+                  // A new approved dependency may be missing while the existing app is
+                  // still Apps-owned. Allow the reviewed update to complete it.
+                  const updateAvailable = Boolean(managed && state?.updateAvailable);
                   const installedVersion = installed ? state?.installedVersion : null;
                   const showOfferedVersion = Boolean(installed && installedVersion && (updateAvailable || installedVersion !== app.version));
                   const activeAction = pending?.appId === app.id ? pending.action : running && job?.appId === app.id ? jobAction : null;
@@ -345,12 +399,18 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
                   const removable = managed && (installed || Boolean(state?.partial));
                   const launchPath = installed && state?.webUiReady ? approvedAppPath(app.webUi) : null;
                   return (
-                    <article class="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" key={app.id}>
+                    <article
+                      class={`flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${isHighlighted ? 'ssh-apps-highlight-card' : ''}`}
+                      data-highlighted={isHighlighted ? 'true' : undefined}
+                      key={app.id}
+                      ref={isHighlighted ? highlightedCardRef : null}
+                    >
                       <div class="flex min-w-0 items-start gap-3">
                         <span class="grid size-14 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600"><AppsCategoryIcon category={appsCategoryOf(app.category)} class="size-7" /></span>
                         <div class="min-w-0 flex-1">
                           <div class="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
                             <h3 class="m-0 min-w-0 flex-1 break-words text-sm font-black text-slate-950">{app.name}</h3>
+                            {isHighlighted ? <span class="ssh-apps-highlight-label shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold">설치 안내</span> : null}
                             {installed && managed ? <span class="ssh-apps-installed-badge shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold">✓ 설치됨</span> : null}
                           </div>
                           <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -383,14 +443,16 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
                         )}
                         {activeAction ? <OperationIndicator action={activeAction} /> : (
                           <span class="flex flex-wrap items-center gap-2">
-                            {managed && state?.partial && !installed ? (
-                              <button class="min-h-9 rounded-lg border border-teal-300 bg-white px-3 text-xs font-bold text-teal-800 hover:bg-teal-50 disabled:opacity-50" disabled={disabled} onClick={() => void requestOperation(app, 'install')} type="button">설치 마무리</button>
+                            {managed && state?.partial && !installed && !updateAvailable ? (
+                              <button class="min-h-9 rounded-lg border border-teal-300 bg-white px-3 text-xs font-bold text-teal-800 hover:bg-teal-50 disabled:opacity-50" disabled={disabled} onClick={() => void requestOperation(app, 'repair')} type="button">설치 마무리</button>
                             ) : null}
                             {updateAvailable ? <button class="ssh-apps-update-button min-h-9 rounded-lg border px-3 text-xs font-bold transition disabled:opacity-50" disabled={disabled} onClick={() => void requestOperation(app, 'update')} type="button">업데이트</button> : null}
-                            {launchPath ? (demo ? (
-                              <button aria-label={`${app.name} 데모 실행 안내`} class="inline-flex min-h-9 items-center rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800" onClick={onDemoAction} type="button">열기 ↗</button>
+                            {launchPath ? (demo ? (launchPath === '#smarthome' ? (
+                              <a aria-label="Jarbis 스마트홈 체험" class="inline-flex min-h-9 items-center rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800" href="#smarthome">스마트홈 체험</a>
                             ) : (
-                              <a aria-label={`${app.name} 새 탭에서 열기`} class="inline-flex min-h-9 items-center rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800" href={launchPath} rel="noopener noreferrer" target="_blank">열기 ↗</a>
+                              <button aria-label={`${app.name} 데모 실행 안내`} class="inline-flex min-h-9 items-center rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800" onClick={onDemoAction} type="button">열기 ↗</button>
+                            )) : (
+                              <a aria-label={`${app.name} ${app.id === 'jarbis' ? '스마트홈으로 이동' : '새 탭에서 열기'}`} class="inline-flex min-h-9 items-center rounded-lg border border-teal-700 bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800" href={launchPath} rel="noopener noreferrer" target={app.id === 'jarbis' ? '_self' : '_blank'}>{app.id === 'jarbis' ? '스마트홈 열기' : '열기 ↗'}</a>
                             )) : installed && app.webUi ? (
                               <span class="text-xs text-amber-700" title="이 앱의 웹 UI 패키지를 설치해야 열 수 있습니다.">웹 UI 미설치</span>
                             ) : null}
@@ -399,7 +461,7 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
                           : <button
                               class={`min-h-9 rounded-lg border bg-white px-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${removable ? 'border-red-300 text-red-700 hover:bg-red-50 focus-visible:ring-red-100' : 'border-teal-300 text-teal-800 hover:bg-teal-50 focus-visible:ring-teal-200'}`}
                               disabled={disabled || (Boolean(state?.partial) && !managed)}
-                              onClick={(event) => removable ? openRemoveDialog(app, event.currentTarget) : void requestOperation(app, 'install')}
+                              onClick={(event) => removable ? openRemoveDialog(app, event.currentTarget) : void requestOperation(app, managed ? 'repair' : 'install')}
                               type="button"
                             >{removable ? '제거' : managed ? '재설치' : '설치'}</button>}
                           </span>

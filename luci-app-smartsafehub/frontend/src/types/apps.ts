@@ -9,7 +9,7 @@ export interface VerifiedApp {
   publisherType?: 'first_party' | 'third_party';
   version: string;
   /** Approved same-origin LuCI page or first-party static app; never a remote URL. */
-  webUi?: { type: 'luci' | 'static'; path: string } | null;
+  webUi?: { type: 'luci' | 'static' | 'smartsafehub'; path: string } | null;
 }
 
 export interface AppsCatalog {

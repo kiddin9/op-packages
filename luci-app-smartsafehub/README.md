@@ -18,7 +18,7 @@ SmartSafeHub는 OpenWrt 공유기를 위한 통합 홈 게이트웨이 관리 UI
 - OpenWrt: **25.12 버전 이상**
 - 백엔드: rpcd ucode 모듈
 - 프런트엔드: Preact, TypeScript, Vite, Tailwind CSS
-- SafeShield: **safeshield (>= 0.3.26)**
+- SafeShield: **safeshield (>= 0.3.28)**
 - 라이선스: **GPL-3.0-or-later**
 
 변경 내역은 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.

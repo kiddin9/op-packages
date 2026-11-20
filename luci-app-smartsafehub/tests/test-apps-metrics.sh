@@ -39,7 +39,7 @@ SH2
 chmod +x "$TMP/bin/"*
 export SMARTSAFEHUB_APPS_METRICS_DIR="$TMP/pending"
 export SMARTSAFEHUB_APPS_METRICS_CREDENTIAL="$TMP/credential.json"
-export SMARTSAFEHUB_APPS_METRICS_FETCH_BIN="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_CURL_BIN="$ROOT/tests/support/mock-curl" MOCK_CURL_BACKEND="$TMP/bin/uclient-fetch"
 export SMARTSAFEHUB_APPS_JSONFILTER_BIN="$TMP/bin/jsonfilter"
 export APPS_METRICS_TEST_MODE=fail
 export APPS_METRICS_TEST_LAST_BODY="$TMP/last-body.json"

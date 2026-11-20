@@ -2484,3 +2484,328 @@
   background: #d97706;
   border-color: #d97706;
 }
+
+/* Apps deep-link highlight: guide visitors without hiding other approved apps. */
+.ssh-apps-highlight-card {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px #14b8a633, 0 8px 28px #0d94881c;
+  scroll-margin-top: 6rem;
+  animation: ssh-apps-highlight-pulse 1.2s ease-out 2;
+}
+.ssh-apps-highlight-label {
+  color: #0f766e;
+  background: #ccfbf1;
+  border: 1px solid #5eead4;
+}
+.ssh-app[data-theme='dark'] .ssh-apps-highlight-card {
+  border-color: #2dd4bf;
+  box-shadow: 0 0 0 2px #2dd4bf36, 0 10px 28px #02061775;
+}
+.ssh-app[data-theme='dark'] .ssh-apps-highlight-label {
+  color: #5eead4;
+  background: #042f2e;
+  border-color: #0f766e;
+}
+@keyframes ssh-apps-highlight-pulse {
+  0%, 100% { outline: 0 solid #14b8a600; }
+  40% { outline: 5px solid #14b8a63d; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ssh-apps-highlight-card { animation: none; }
+}
+
+/* Smart home first-use illustration. Pure SVG/CSS: no third-party assets,
+ * polling, large shaders or JavaScript-driven animation on the router. */
+.ssh-home-onboarding {
+  display: grid;
+  gap: 1rem;
+}
+
+.ssh-home-welcome {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .88fr);
+  align-items: stretch;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 365px;
+  border: 1px solid #c4ebe7;
+  border-radius: 1.4rem;
+  background: radial-gradient(ellipse at 75% 40%, #d8f7ef 0%, transparent 49%), linear-gradient(115deg, #f7fffd 0%, #eaf5f8 100%);
+  color: #0f172a;
+}
+
+.ssh-home-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(1.4rem, 3.3vw, 2.7rem);
+}
+
+.ssh-home-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+  color: #0f766e;
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.ssh-home-brand-mark {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border: 1px solid #99dcd7;
+  border-radius: .65rem;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.ssh-home-brand-divider {
+  height: .75rem;
+  border-left: 1px solid #92cbc5;
+}
+
+.ssh-home-stage-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  margin-top: 2.1rem;
+  padding: .4rem .75rem;
+  border: 1px solid #99e3d8;
+  border-radius: 100px;
+  background: #e0faf3;
+  color: #0f766e;
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.ssh-home-status-dot {
+  width: .45rem;
+  height: .45rem;
+  border-radius: 50%;
+  background: #14b8a6;
+  box-shadow: 0 0 0 3px rgb(20 184 166 / .12);
+}
+
+/* The decorative status indicator must not imply that unavailable or broken
+ * services are healthy. Stage colors supplement, never replace, the text. */
+.ssh-home-onboarding[data-stage='unavailable'] .ssh-home-stage-label,
+.ssh-home-onboarding[data-stage='repair'] .ssh-home-stage-label {
+  border-color: #eecf91;
+  background: #fff8e8;
+  color: #925a13;
+}
+.ssh-home-onboarding[data-stage='unavailable'] .ssh-home-status-dot,
+.ssh-home-onboarding[data-stage='repair'] .ssh-home-status-dot {
+  background: #e6a23c;
+  box-shadow: 0 0 0 3px rgb(230 162 60 / .13);
+}
+.ssh-home-onboarding[data-stage='service-error'] .ssh-home-status-dot {
+  background: #f87171;
+  box-shadow: 0 0 0 3px rgb(248 113 113 / .13);
+}
+
+.ssh-home-eyebrow {
+  margin: 1.25rem 0 .4rem;
+  color: #0f766e;
+  font-size: .71rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.ssh-home-title {
+  max-width: 20ch;
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.55rem, 2.5vw, 2.25rem);
+  font-weight: 900;
+  line-height: 1.26;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.ssh-home-description {
+  max-width: 38rem;
+  margin: .95rem 0 0;
+  color: #475569;
+  font-size: .875rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.ssh-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem;
+  margin-top: 1.75rem;
+}
+
+.ssh-home-primary,
+.ssh-home-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  padding: .7rem 1.05rem;
+  border-radius: .8rem;
+  font-size: .8rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.ssh-home-primary {
+  border: 1px solid #0d9488;
+  background: #0f766e;
+  box-shadow: 0 8px 20px rgb(13 148 136 / .14);
+  color: #fff;
+}
+
+.ssh-home-primary:hover { background: #115e59; transform: translateY(-1px); }
+.ssh-home-secondary { border: 1px solid #b3d6d7; background: rgb(255 255 255 / .65); color: #164e63; }
+.ssh-home-secondary:hover { background: #fff; border-color: #0d9488; }
+.ssh-home-primary:focus-visible,
+.ssh-home-secondary:focus-visible { outline: 2px solid #0d9488; outline-offset: 3px; }
+.ssh-home-action-note { margin: 1.05rem 0 0; color: #64748b; font-size: .72rem; line-height: 1.65; }
+
+.ssh-home-visual {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.25rem clamp(1rem, 2vw, 1.75rem) 1rem 0;
+}
+
+.ssh-home-scene {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 260px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgb(94 234 212 / .16);
+  border-radius: 1.25rem;
+  background: radial-gradient(circle at 50% 40%, #183f4e 0, #10243a 47%, #08182b 100%);
+  box-shadow: 0 16px 42px rgb(15 23 42 / .13), inset 0 1px rgb(255 255 255 / .08);
+}
+
+.ssh-home-scene-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .23;
+  background-image: linear-gradient(rgb(45 212 191 / .24) 1px, transparent 1px), linear-gradient(90deg, rgb(45 212 191 / .24) 1px, transparent 1px);
+  background-size: 31px 31px;
+  mask-image: radial-gradient(ellipse, #000 20%, transparent 77%);
+}
+
+.ssh-home-scene-svg { position: relative; width: 100%; max-width: 520px; height: auto; }
+.ssh-home-scene-caption { position: absolute; right: 1rem; bottom: .8rem; color: #74cfc6; font-size: .55rem; font-weight: 800; letter-spacing: .17em; opacity: .83; }
+.ssh-home-visual-note { margin: .6rem 0 0; color: #64748b; font-size: .65rem; line-height: 1.5; text-align: center; }
+
+.ssh-home-light-float { animation: ssh-home-float 5s ease-in-out infinite; transform-origin: 260px 150px; }
+.ssh-home-light-glow { animation: ssh-home-glow 4s ease-in-out infinite; transform-origin: 260px 144px; }
+.ssh-home-hub-float { animation: ssh-home-float 6s ease-in-out infinite reverse; }
+.ssh-home-hub-led { animation: ssh-home-glow 3s ease-in-out infinite; transform-origin: 202px 270px; }
+.ssh-home-orbit-left { animation: ssh-home-float 5.5s ease-in-out infinite; }
+.ssh-home-orbit-right { animation: ssh-home-float 5.5s ease-in-out infinite reverse; }
+.ssh-home-sparkle { animation: ssh-home-twinkle 3.5s ease-in-out infinite alternate; }
+
+@keyframes ssh-home-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes ssh-home-glow { 0%, 100% { opacity: .7; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.05); } }
+@keyframes ssh-home-twinkle { 0%, 100% { opacity: .38; } 50% { opacity: 1; } }
+
+.ssh-home-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
+.ssh-home-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  min-width: 0;
+  padding: 1.15rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+}
+.ssh-home-feature-icon { display: grid; width: 2.7rem; height: 2.7rem; flex: 0 0 2.7rem; place-items: center; border-radius: .85rem; background: #e8faf6; color: #0f766e; }
+.ssh-home-feature h3 { margin: 0; color: #0f172a; font-size: .83rem; font-weight: 800; line-height: 1.5; }
+.ssh-home-feature p { margin: .4rem 0 0; color: #64748b; font-size: .73rem; line-height: 1.65; }
+
+.ssh-home-steps { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); align-items: center; gap: 1.2rem; padding: 1.25rem 1.45rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: #fff; }
+.ssh-home-steps-eyebrow { color: #0f766e; font-size: .64rem; font-weight: 900; letter-spacing: .15em; }
+.ssh-home-steps-heading h3 { margin: .35rem 0 0; color: #0f172a; font-size: .94rem; font-weight: 850; }
+.ssh-home-step-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.ssh-home-step { position: relative; display: flex; align-items: flex-start; gap: .65rem; min-width: 0; }
+.ssh-home-step-number { color: #0d9488; font-size: .84rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ssh-home-step strong { display: block; color: #0f172a; font-size: .77rem; line-height: 1.5; }
+.ssh-home-step p { margin: .2rem 0 0; color: #64748b; font-size: .67rem; line-height: 1.5; }
+.ssh-home-step-arrow { position: absolute; top: .1rem; right: .1rem; color: #94a3b8; }
+
+.ssh-app[data-theme='dark'] .ssh-home-welcome {
+  border-color: #203448;
+  background: radial-gradient(ellipse at 81% 31%, rgb(13 148 136 / .16), transparent 52%), linear-gradient(115deg, #101b2f 0%, #0e182c 100%);
+}
+.ssh-app[data-theme='dark'] .ssh-home-brand { color: #5eead4; }
+.ssh-app[data-theme='dark'] .ssh-home-brand-mark { border-color: #165e5b; background: #163a41; color: #5eead4; }
+.ssh-app[data-theme='dark'] .ssh-home-brand-divider { border-color: #2d5360; }
+.ssh-app[data-theme='dark'] .ssh-home-stage-label { border-color: #185b59; background: #113937; color: #99f6e4; }
+.ssh-app[data-theme='dark'] .ssh-home-eyebrow { color: #5eead4; }
+.ssh-app[data-theme='dark'] .ssh-home-title { color: #f8fafc; }
+.ssh-app[data-theme='dark'] .ssh-home-description { color: #b9c9d9; }
+.ssh-app[data-theme='dark'] .ssh-home-secondary { border-color: #35445d; background: #17253b; color: #e2e8f0; }
+.ssh-app[data-theme='dark'] .ssh-home-secondary:hover { border-color: #14b8a6; background: #20344c; }
+.ssh-app[data-theme='dark'] .ssh-home-action-note,
+.ssh-app[data-theme='dark'] .ssh-home-visual-note { color: #94a3b8; }
+.ssh-app[data-theme='dark'] .ssh-home-feature,
+.ssh-app[data-theme='dark'] .ssh-home-steps { border-color: #1e3048; background: #0f1a2d; }
+.ssh-app[data-theme='dark'] .ssh-home-feature-icon { background: #123b3c; color: #5eead4; }
+.ssh-app[data-theme='dark'] .ssh-home-feature h3,
+.ssh-app[data-theme='dark'] .ssh-home-steps-heading h3,
+.ssh-app[data-theme='dark'] .ssh-home-step strong { color: #e9f2f8; }
+.ssh-app[data-theme='dark'] .ssh-home-feature p,
+.ssh-app[data-theme='dark'] .ssh-home-step p { color: #9aafc3; }
+.ssh-app[data-theme='dark'] .ssh-home-steps-eyebrow,
+.ssh-app[data-theme='dark'] .ssh-home-step-number { color: #5eead4; }
+
+.ssh-app[data-theme='dark'] .ssh-home-onboarding[data-stage='unavailable'] .ssh-home-stage-label,
+.ssh-app[data-theme='dark'] .ssh-home-onboarding[data-stage='repair'] .ssh-home-stage-label {
+  border-color: #72551f;
+  background: #3a2d1c;
+  color: #fcd34d;
+}
+
+@media (max-width: 900px) {
+  .ssh-home-welcome { grid-template-columns: minmax(0, 1fr) minmax(0, .72fr); }
+  .ssh-home-steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .ssh-home-welcome { grid-template-columns: minmax(0, 1fr); }
+  .ssh-home-copy { padding: 1.4rem 1.3rem 1rem; }
+  .ssh-home-stage-label { margin-top: 1.4rem; }
+  .ssh-home-visual { padding: .5rem 1.15rem 1.15rem; }
+  .ssh-home-scene { min-height: 190px; max-height: 280px; }
+  .ssh-home-scene-svg { max-height: 275px; }
+  .ssh-home-features { grid-template-columns: 1fr; }
+  .ssh-home-feature { padding: 1rem; }
+  .ssh-home-step-list { grid-template-columns: 1fr; }
+  .ssh-home-step-arrow { display: none; }
+  .ssh-home-steps { padding: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ssh-home-light-float,
+  .ssh-home-light-glow,
+  .ssh-home-hub-float,
+  .ssh-home-hub-led,
+  .ssh-home-orbit-left,
+  .ssh-home-orbit-right,
+  .ssh-home-sparkle { animation: none; }
+  .ssh-home-primary,
+  .ssh-home-secondary { transition: none; }
+  .ssh-home-primary:hover { transform: none; }
+}

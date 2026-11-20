@@ -1,6 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -u
+HTTP_LIB="${SMARTSAFEHUB_HTTP_LIB:-$(dirname "$0")/../lib/smartsafehub/http.sh}"
+[ -r "$HTTP_LIB" ] || exit 1
+. "$HTTP_LIB"
 umask 077
 
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
@@ -22,7 +25,6 @@ RECOMMENDED_CATALOG="${SMARTSAFEHUB_RECOMMENDED_CATALOG_FILE:-$RUNTIME_DIR/recom
 RECOMMENDED_ACK_STATE="${SMARTSAFEHUB_RECOMMENDED_ACK_STATE_FILE:-$RUNTIME_DIR/recommended-rules.reported}"
 API_BASE_URL="${SMARTSAFEHUB_DEVICE_API_BASE_URL:-https://www.smartsafehub.com/api/v1}"
 SAFESHIELD_VERSION_FILE="${SMARTSAFEHUB_SAFESHIELD_VERSION_FILE:-/usr/lib/safeshield/version}"
-UCLIENT_FETCH_BIN="${SMARTSAFEHUB_DEVICE_UCLIENT_FETCH_BIN:-uclient-fetch}"
 JSONFILTER_BIN="${SMARTSAFEHUB_DEVICE_JSONFILTER_BIN:-jsonfilter}"
 DATE_BIN="${SMARTSAFEHUB_DEVICE_DATE_BIN:-date}"
 SLEEP_BIN="${SMARTSAFEHUB_DEVICE_SLEEP_BIN:-sleep}"
@@ -128,20 +130,14 @@ EOF
 }
 
 post_json() {
- local url="$1" body="$2" out="$3" auth="${4:-}" log="${out}.log" rc
+ local url="$1" body="$2" out="$3" auth="${4:-}" log="${out}.log"
  rm -f "$out" "$log"
- if command -v curl >/dev/null 2>&1; then
-  if [ -n "$auth" ]; then
-   curl -fsS --connect-timeout "$REQUEST_TIMEOUT_S" --max-time "$REQUEST_TIMEOUT_S" -H 'Content-Type: application/json' -H 'Accept: application/json' -H "Authorization: Device $auth" --data-binary "@$body" -o "$out" "$url" >/dev/null 2>"$log"
-  else
-   curl -fsS --connect-timeout "$REQUEST_TIMEOUT_S" --max-time "$REQUEST_TIMEOUT_S" -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary "@$body" -o "$out" "$url" >/dev/null 2>"$log"
-  fi
-  return $?
- fi
  if [ -n "$auth" ]; then
-  "$UCLIENT_FETCH_BIN" "$url" -O "$out" --timeout="$REQUEST_TIMEOUT_S" --header='Content-Type: application/json' --header='Accept: application/json' --header="Authorization: Device $auth" --post-file="$body" 2>"$log"
+  ssh_http_request POST "$out" "$REQUEST_TIMEOUT_S" "$url" "$body" \
+   -H 'Accept: application/json' -H "Authorization: Device $auth" 2>"$log"
  else
-  "$UCLIENT_FETCH_BIN" "$url" -O "$out" --timeout="$REQUEST_TIMEOUT_S" --header='Content-Type: application/json' --header='Accept: application/json' --post-file="$body" 2>"$log"
+  ssh_http_request POST "$out" "$REQUEST_TIMEOUT_S" "$url" "$body" \
+   -H 'Accept: application/json' 2>"$log"
  fi
 }
 

@@ -49,6 +49,7 @@ const NAVIGATION_GROUPS: readonly {
   { label: 'Overview', routes: ['home', 'activity'] },
   { label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] },
   { label: 'Security', routes: ['safeshield', 'netwatch', 'rules'] },
+  { label: 'Smart Home', routes: ['smarthome'] },
   { label: 'Explore', routes: ['apps'] },
   { label: 'System', routes: ['account', 'system', 'settings'] },
 ];
@@ -69,6 +70,8 @@ function NavigationIcon({ route }: { route: AppRoute }) {
       return <DevicesIcon class="size-5" />;
     case 'safeshield':
       return <ShieldIcon class="size-5" />;
+    case 'smarthome':
+      return <SunIcon class="size-5" />;
     case 'netwatch':
       return <NetworkNodesIcon class="size-5" />;
     case 'rules':

@@ -79,8 +79,8 @@ ubus
 uci
 # jsonfilter: base/explicit LuCI and SafeShield dependency
 jsonfilter
-# uclient-fetch: LUCI_DEPENDS +uclient-fetch
-uclient-fetch
+# curl: LUCI_DEPENDS +curl
+curl
 # procd: LUCI_DEPENDS +procd
 procd
 # networking tools included by OpenWrt base system / firmware

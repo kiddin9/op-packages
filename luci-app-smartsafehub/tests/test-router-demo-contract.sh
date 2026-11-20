@@ -13,7 +13,7 @@ done
 grep -Fq "<HomePage" "$DEMO"
 grep -Fq "<SafeShieldPage" "$DEMO"
 grep -Fq "<ConnectedDevicesPage" "$DEMO"
-for page in ActivityPage WanPage LanPage WifiPage SafeShieldRulesPage UpdatePage SmartSafeHubAccountPage AppsPage; do
+for page in ActivityPage WanPage LanPage WifiPage SafeShieldRulesPage UpdatePage SmartSafeHubAccountPage AppsPage SmartHomePage; do
   grep -Fq "<$page" "$DEMO"
 done
 grep -Fq "'rules', 'account', 'apps', 'system'" "$ROOT/frontend/src/app/routes.ts"
@@ -45,7 +45,12 @@ grep -Fq "'safeshield', 'netwatch', 'rules'" "$ROOT/frontend/src/components/Prod
 grep -Fq 'Network Watch' "$ROOT/docs/ROUTER_DEMO.md"
 grep -Fq '실제 네트워크를 관찰하거나 차단하지 않으며' "$ROOT/docs/ROUTER_DEMO.md"
 grep -Fq "version: '1.2.0-r4'" "$FIXTURES"
-grep -Fq "version: '2.4.9-r6'" "$FIXTURES"
+grep -Fq "version: '0.2.3-r1'" "$FIXTURES"
+grep -Fq "case 'smarthome':" "$DEMO"
+grep -Fq "operations={demoJarbisOperations}" "$DEMO"
+grep -Fq "getJarbisCredentials: blocked" "$ROOT/frontend/src/demo/jarbis.ts"
+grep -Fq "if (demo || !status?.enabled" "$ROOT/frontend/src/pages/SmartHomePage.tsx"
+grep -Fq "version: '2.4.9-r5'" "$FIXTURES"
 grep -Fq "demo={demo}" "$ROOT/frontend/src/components/AppShell.tsx"
 grep -Fq "!demo ?" "$ROOT/frontend/src/components/ProductNavigation.tsx"
 grep -Fq "base: '/static/router-demo/'" "$CONFIG"

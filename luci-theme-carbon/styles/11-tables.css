@@ -114,10 +114,18 @@ table { border-collapse: collapse; border-spacing: 0; }
 	width: 1%;
 	white-space: nowrap;
 }
-.td.cbi-section-actions > * { display: flex; gap: 6px; justify-content: flex-end; }
-.td.cbi-section-actions > :not(.cbi-dropdown) > *,
+.td.cbi-section-actions > :not(.btn):not(.cbi-button):not(.cbi-dropdown):not(button):not(input) {
+	display: flex;
+	gap: 6px;
+	justify-content: flex-end;
+}
+.td.cbi-section-actions > :not(.btn):not(.cbi-button):not(.cbi-dropdown):not(button):not(input) > *,
 .td.cbi-section-actions > * > form > * { flex: 0 0 auto; margin: 0; }
 .td.cbi-section-actions > * > form { display: inline-flex; margin: 0; }
+.td.cbi-section-actions > :is(.btn, .cbi-button, .cbi-dropdown, button, input) + :is(.btn, .cbi-button, .cbi-dropdown, button, input) {
+	margin-inline-start: 6px;
+}
+.td.cbi-section-actions .btn,
 .td.cbi-section-actions .cbi-button { min-height: 28px; padding: 3px 11px; font-size: 12.5px; }
 
 .table.valign-middle .td { vertical-align: middle; }

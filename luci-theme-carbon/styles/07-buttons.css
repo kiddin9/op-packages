@@ -54,7 +54,11 @@ button:where(:not([class*="cb-"])):hover { --btn-ring: var(--cb-accent); color: 
 .cbi-button:active,
 button:where(:not([class*="cb-"])):active { transform: translateY(1px); }
 .btn:focus-visible,
-.cbi-button:focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--cb-accent), 0 0 0 4px var(--cb-focus); }
+.cbi-button:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="button"]:focus-visible,
+input[type="reset"]:focus-visible,
+button:where(:not([class*="cb-"])):focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--cb-accent), 0 0 0 4px var(--cb-focus); }
 
 /* primary: solid Carbon indigo */
 .btn.primary,
@@ -133,7 +137,11 @@ input[type="submit"].cbi-button-apply {
 .cbi-button-fieldadd,
 .cbi-button-reload { --btn-bg: var(--cb-fill); --btn-ring: transparent; }
 :root[data-darkmode="true"] .cbi-button-reset,
-:root[data-darkmode="true"] .cbi-button-neutral { --btn-bg: var(--cb-fill); }
+:root[data-darkmode="true"] .cbi-button-neutral,
+:root[data-darkmode="true"] .cbi-button-up,
+:root[data-darkmode="true"] .cbi-button-down,
+:root[data-darkmode="true"] .cbi-button-fieldadd,
+:root[data-darkmode="true"] .cbi-button-reload { --btn-bg: var(--cb-fill); }
 
 .cbi-page-actions .cbi-button-apply + .cbi-button-save,
 .cbi-page-actions .cbi-button-negative + .cbi-button-save {

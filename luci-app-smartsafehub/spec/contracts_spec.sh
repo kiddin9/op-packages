@@ -29,6 +29,20 @@ Describe 'SmartSafeHub 셸 계약 테스트'
     The error should be blank
   End
 
+  It 'curl HTTPS 요청이 리다이렉트를 따르거나 인증 정보를 다른 주소로 보내지 않는지 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-http-transport.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It '펌웨어와 Apps 파일은 uclient-fetch 30초로 다운로드하고 실패 시 임시 파일을 제거한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-download-transport.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
   It 'OpenWrt 25.12 BusyBox 기본 명령과 의존성 호환성을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-openwrt-commands.sh"
     The status should be success
@@ -38,6 +52,13 @@ Describe 'SmartSafeHub 셸 계약 테스트'
 
   It '셸 파이프라인의 Broken pipe 회귀를 방지한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-shell-pipeline-safety.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It '스마트홈 지연 로딩과 재방문 캐시 및 전구 제어 우선순위를 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-smarthome-performance.sh"
     The status should be success
     The output should start with 'PASS:'
     The error should be blank
@@ -170,6 +191,13 @@ Describe 'SmartSafeHub 셸 계약 테스트'
 
   It 'Apps 설치 성공 이벤트 전송과 재시도·복원 제외 계약을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-apps-metrics.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It 'Jarbis 공식 앱 연결과 설치 보안 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-jarbis-apps.sh"
     The status should be success
     The output should start with 'PASS:'
     The error should be blank

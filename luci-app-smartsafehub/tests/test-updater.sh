@@ -3,6 +3,7 @@
 set -eu
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+export SMARTSAFEHUB_HTTP_LIB="$ROOT_DIR/root/usr/lib/smartsafehub/http.sh"
 export SMARTSAFEHUB_COMMON_LIB="$ROOT_DIR/root/usr/lib/smartsafehub/common.sh"
 UPDATER="$ROOT_DIR/root/usr/libexec/smartsafehub-updater"
 MAKEFILE="$ROOT_DIR/Makefile"
@@ -28,7 +29,7 @@ assert_not_contains() {
 	fi
 }
 
-assert_contains "$MAKEFILE" 'LUCI_DEPENDS:=+luci-base +rpcd-mod-ucode +ucode +ucode-mod-ubus +ucode-mod-fs +ucode-mod-uci +procd +uclient-fetch +jsonfilter +igmpproxy +safeshield'
+assert_contains "$MAKEFILE" 'LUCI_DEPENDS:=+luci-base +rpcd-mod-ucode +ucode +ucode-mod-ubus +ucode-mod-fs +ucode-mod-uci +procd +curl +uclient-fetch +jsonfilter +igmpproxy +safeshield'
 SAFESHIELD_MIN_VERSION="$(sed -n 's/^LUCI_EXTRA_DEPENDS:=safeshield (>=\([^)]*\))$/\1/p' "$MAKEFILE")"
 [ -n "$SAFESHIELD_MIN_VERSION" ] || fail 'unable to read safeshield minimum version from LUCI_EXTRA_DEPENDS'
 PKG_VERSION="$(awk -F ':=' '$1 == "PKG_VERSION" { print $2; exit }' "$MAKEFILE")"
@@ -233,7 +234,7 @@ export SMARTSAFEHUB_UPDATER_AUTO_RETRY_COUNT_MARKER="$TMP/auto-retry-count"
 export SMARTSAFEHUB_UPDATER_APK_WORLD_FILE="$TMP/world"
 export SMARTSAFEHUB_UPDATER_REPOSITORY_DIR="$TMP/repos"
 export SMARTSAFEHUB_UPDATER_APK_BIN="$TMP/bin/apk"
-export SMARTSAFEHUB_UPDATER_UCLIENT_FETCH_BIN="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_CURL_BIN="$ROOT_DIR/tests/support/mock-curl" MOCK_CURL_BACKEND="$TMP/bin/uclient-fetch"
 export SMARTSAFEHUB_UPDATER_JSONFILTER_BIN="$TMP/bin/jsonfilter"
 export SMARTSAFEHUB_UPDATER_UCI_BIN="$TMP/bin/uci"
 export SMARTSAFEHUB_UPDATER_RPCD_INIT=''

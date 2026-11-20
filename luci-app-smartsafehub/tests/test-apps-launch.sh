@@ -13,7 +13,8 @@ route = (root/'frontend/src/utils/appsWebUi.ts').read_text()
 catalog = (root/'root/usr/share/rpcd/ucode/smartsafehub/apps.uc').read_text()
 manager = (root/'root/usr/libexec/smartsafehub-apps-manager').read_text()
 status = (root/'root/usr/share/rpcd/ucode/smartsafehub/apps-manager.uc').read_text()
-assert 'target="_blank"' in ui and 'rel="noopener noreferrer"' in ui
+assert "target={app.id === 'jarbis' ? '_self' : '_blank'}" in ui and 'rel="noopener noreferrer"' in ui
+assert "app.id === 'jarbis' ? '스마트홈 열기'" in ui
 assert 'approvedAppPath(app.webUi)' in ui and 'state?.webUiReady' in ui
 assert '웹 UI 미설치' in ui and '설치 마무리' in ui
 assert 'onClick={() => dismissJob(jobKey)}' in ui
@@ -27,6 +28,7 @@ assert "updateAvailable: length(fields) >= 6 && fields[5] == '1'" in status
 assert r'^[0-9]{1,12}-[0-9]{1,12}(-[0-9a-f]{16})?$' in status
 assert 'od -An' not in manager
 assert "if (webUi.type !== 'luci')" in route
+assert "webUi.type === 'smartsafehub'" in route and "webUi.path === '#smarthome'" in route
 assert "'/cgi-bin/luci/admin/services/nlbw/display'" in catalog
 assert 'luci_web_ui_path(item.web_ui.path)' in catalog
 assert 'luci-app-nlbwmon' in manager
@@ -38,9 +40,9 @@ assert "item?.web_ui?.path == '/cgi-bin/luci/admin/services/wol'" in catalog
 assert '[ "$id" = wake-on-lan ]' in manager
 assert 'web_ui.package")" = luci-app-wol' in manager
 assert 'web_ui.path")" = /cgi-bin/luci/admin/services/wol' in manager
-assert '[ "$app" = wake-on-lan ]' in manager
-assert 'for required in etherwake luci-app-wol' in manager
-assert 'primary_package=luci-app-wol' in manager
+assert 'rm -f "$LUCI_INDEX_CACHE"' in manager
+assert 'approved_primary_package' in manager
+assert 'reported="$(field "$CATALOG" "@.apps[$idx].web_ui.package")"' in manager
 assert 'rm -f "$LUCI_INDEX_CACHE"' in manager
 category = (root/'frontend/src/components/AppsCategoryIcon.tsx').read_text()
 page = (root/'frontend/src/pages/AppsPage.tsx').read_text()
@@ -51,7 +53,11 @@ assert "case 'other': return <CircleEllipsisIcon" in category
 assert "default: return <CircleEllipsisIcon" in category
 assert "{ id: 'other', label: '기타' }" in page
 
-assert "id == 'retro-arcade'" in catalog and "type: id == 'retro-arcade'" in catalog
+assert "id == 'retro-arcade'" in catalog and "id == 'retro-arcade' && path == '/retro-arcade/'" in catalog
+assert "id == 'arcdrop'" in catalog and "item?.web_ui?.path == '/arcdrop/'" in catalog
+assert "smartsafehub-app-arcdrop" in manager and '/arcdrop/index.html' in manager
+assert "webUi.type === 'static'" in route and "'/arcdrop/'" in route
+assert "id == 'jarbis' && path == '#smarthome' ? 'smartsafehub'" in catalog
 assert "'/retro-arcade/'" in route and "webUi.type === 'static'" in route
 assert 'smartsafehub-app-retro-arcade' in manager
 assert 'SMARTSAFEHUB_APPS_WEB_ROOT' in manager

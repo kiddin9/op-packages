@@ -192,7 +192,9 @@ test('legacy resize fallback handles sidebar changes with and without motion', a
 			await settle(page);
 			fillsPlot(await geometry(page));
 		}
+		const resized = page.evaluate(() => new Promise((resolve) => window.addEventListener('resize', resolve, { once: true })));
 		await page.setViewportSize({ width: 1600, height: 850 });
+		await resized;
 		await settle(page);
 		fillsPlot(await geometry(page));
 	}

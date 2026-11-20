@@ -158,5 +158,16 @@ function start_apps_operation(request, action) {
 }
 
 export function install_app(request) { return start_apps_operation(request, 'install'); };
+// A separate root-password guarded RPC method deliberately selects the same
+// privileged restore path used after sysupgrade. The manager enforces existing
+// ownership and rechecks the immutable approved APK closure on every request.
+export function repair_app(request) {
+ const app_id = request?.args?.app_id;
+ if (type(app_id) != 'string' || match(app_id, /^[a-z0-9][a-z0-9-]{0,79}$/) == null)
+  return failure('APPS_INVALID_ID', '올바르지 않은 앱입니다.');
+ if (!run_command([ MANAGER, 'start', 'install', app_id, 'restore' ], 5000))
+  return failure('APPS_OPERATION_REJECTED', '다른 작업이 진행 중이거나 복원을 시작하지 못했습니다.');
+ return success({ accepted: true, appId: app_id, action: 'install' });
+};
 export function update_app(request) { return start_apps_operation(request, 'update'); };
 export function remove_app(request) { return start_apps_operation(request, 'remove'); };

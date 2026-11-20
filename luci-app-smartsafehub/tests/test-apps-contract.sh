@@ -58,15 +58,18 @@ MODULE="$ROOT/root/usr/share/rpcd/ucode/smartsafehub/apps-manager.uc"
 [ -f "$MODULE" ] || fail 'APK RPC adapter missing'
 sh -n "$MANAGER" || fail 'APK manager shell syntax invalid'
 grep -Fq 'apps_install: {' "$RPC" || fail 'Apps install RPC missing'
+grep -Fq 'apps_repair: {' "$RPC" || fail 'Apps 복원 RPC 누락'
 grep -Fq 'apps_update: {' "$RPC" || fail 'Apps update RPC missing'
 grep -Fq 'apps_remove: {' "$RPC" || fail 'Apps remove RPC missing'
 grep -Fq 'apps_status: {' "$RPC" || fail 'Apps status RPC missing'
 grep -Fq '"apps_install"' "$ACL" || fail 'Apps install ACL missing'
+grep -Fq '"apps_repair"' "$ACL" || fail 'Apps 복원 ACL 누락'
 grep -Fq '"apps_update"' "$ACL" || fail 'Apps update ACL missing'
 grep -Fq '"apps_remove"' "$ACL" || fail 'Apps remove ACL missing'
 grep -Fq '"apps_status"' "$ACL" || fail 'Apps status ACL missing'
 grep -Fq '"apps_metrics"' "$ACL" || fail 'Apps metrics read ACL missing'
 grep -Fq 'updateVerifiedApp' "$ROOT/frontend/src/api/smartsafehub.ts" || fail 'Apps frontend update call missing'
+grep -Fq 'repairVerifiedApp' "$ROOT/frontend/src/api/smartsafehub.ts" || fail 'Apps 복원 프론트엔드 API 누락'
 grep -Fq 'installVerifiedApp' "$ROOT/frontend/src/api/smartsafehub.ts" || fail 'Apps frontend installation call missing'
 # 다크 모드에서 앱 작업 상태 텍스트가 어둡게 남지 않도록 색상 매핑을 확인한다.
 python3 - "$ROOT/frontend/src/pages/AppsPage.tsx" "$ROOT/frontend/src/styles/app.css" <<'PY_APPS_THEME' || fail 'Apps 작업 상태 다크 모드 계약이 올바르지 않습니다'
@@ -87,7 +90,7 @@ import re
 import sys
 
 rpc, adapter, frontend = (Path(path).read_text() for path in sys.argv[1:])
-for action in ('install', 'remove'):
+for action in ('install', 'repair', 'remove'):
     method = f'apps_{action}'
     assert re.search(rf'{method}:\s*\{{\s*args:\s*\{{\s*app_id:\s*', rpc), method
     assert f"'{method}', {{ app_id: appId }}" in frontend, method
@@ -95,6 +98,9 @@ assert 'const app_id = request?.args?.app_id;' in adapter
 assert 'const app_id = request?.app_id;' not in adapter
 assert 'match(app_id, /^[a-z0-9][a-z0-9-]{0,79}$/)' in adapter
 assert "run_command([ MANAGER, 'start', action, app_id ], 5000)" in adapter
+assert "run_command([ MANAGER, 'start', 'install', app_id, 'restore' ], 5000)" in adapter
+assert "export function repair_app(request)" in adapter
+assert "return repair_app(request);" in rpc
 PY_RPC
 
 # Fake only the HTTP/JSON filter utilities: no external calls or OpenWrt runtime
@@ -131,7 +137,7 @@ export SMARTSAFEHUB_APPS_ROM_METADATA="$TMP/firmware.json"
 export SMARTSAFEHUB_APPS_METADATA="$TMP/firmware.json"
 export SMARTSAFEHUB_APPS_RUNTIME_DIR="$TMP/runtime"
 export SMARTSAFEHUB_APPS_JSONFILTER_BIN="$TMP/bin/jsonfilter"
-export SMARTSAFEHUB_APPS_UCLIENT_BIN="$TMP/bin/uclient-fetch"
+export SMARTSAFEHUB_HTTP_CURL_BIN="$ROOT/tests/support/mock-curl" MOCK_CURL_BACKEND="$TMP/bin/uclient-fetch"
 export APPS_TEST_RESPONSE="$TMP/response.json"
 export APPS_TEST_URL_FILE="$TMP/url"
 "$HELPER" || fail 'valid pinned catalog fetch failed'

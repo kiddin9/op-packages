@@ -96,14 +96,27 @@ h2[name="content"] {
 .cbi-value > .cbi-tblsection { width: 100%; }
 .cbi-value-field > .cbi-checkbox,
 .cbi-value-field > div > .cbi-radio { min-height: 32px; display: inline-flex; align-items: center; }
-/* inline button groups inside a field (e.g. System → Local time) */
-.cbi-value-field .control-group {
+/* inline input + button / button groups (package manager, diagnostics, password reveal, Local time) */
+.control-group:not(.cbi-page-actions) {
 	display: inline-flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 6px;
-	margin-top: 8px;
+	max-width: 100%;
 }
-.cbi-value-field .control-group > * { margin: 0 !important; }
+.control-group:not(.cbi-page-actions) > * { margin: 0 !important; }
+.cbi-value-field .control-group:not(:first-child) { margin-top: 8px; }
+
+/* package manager (luci-app-package-manager / luci-app-opkg): align input + button
+   on desktop and phones with a consistent gap instead of baseline/middle drift */
+.controls .control-group { display: flex; gap: 8px; }
+.controls .control-group > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]) {
+	flex: 1 1 10em;
+	width: auto;
+	min-width: 0;
+	max-width: 260px;
+}
+.controls .control-group > :is(.btn, .cbi-button, button) { flex: 0 0 auto; }
 
 /* multi-line fields: keep the label at the top of the box */
 .cbi-value[data-widget="CBI.TextValue"],

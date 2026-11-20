@@ -9,9 +9,20 @@ DEMO="$ROOT/frontend/src/demo/main.tsx"
 DATA="$ROOT/frontend/src/demo/data.ts"
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 for file in "$PAGE" "$APP" "$DEMO" "$DATA"; do [ -f "$file" ] || fail "missing $file"; done
-for str in 'role="switch"' 'aria-checked={enabled}' 'ssh-switch-control' 'ssh-switch-thumb' 'setTimeout(() => setNotice(null), 3500)' 'formatTimestamp(data.sampledAt)' '관찰 상태' '연결 많음' '판단 보류' '기기 이름을 확인할 수 없으면 IP만 표시합니다' 'recentWarnings(activity)' '최근 감지 이벤트' '관찰 범위 안내' 'list-disc'; do
+for str in 'role="switch"' 'aria-checked={enabled}' 'ssh-switch-control' 'ssh-switch-thumb' 'setTimeout(() => setNotice(null), 3500)' 'formatTimestamp(data.sampledAt)' '관찰 상태' '정상 범위' '변화 관찰' '학습 중' '이상 증가 감지' '판단 보류' '기기 이름을 확인할 수 없으면 IP만 표시합니다' 'recentWarnings(activity)' '최근 감지 이벤트' '관찰 범위 안내' 'list-disc'; do
     grep -Fq "$str" "$PAGE" || fail "화면 설정 및 표시 계약 누락: $str"
 done
+# One unified responsive summary card must include the training status, without a separate
+# full-width training section or three standalone metric cards.
+for str in 'Network Watch 관찰 요약과 학습' 'grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-5' 'sm:col-span-3 xl:col-span-2' '최장 학습 기기 기준' '정상 통신 패턴 학습' 'aria-valuemax={trainingTarget}' 'aria-valuenow={trainingDays}' '7일 · 기준 형성' '{trainingTarget}일 · 안정화' '기준 확보' '현재 관찰 기기 기준' '관찰된 IPv4 외부 연결' '외부 통신 기기'; do
+    grep -Fq "$str" "$PAGE" || fail "통합 관찰 상태 카드의 배치·접근성 계약 누락: $str"
+done
+for str in 'sortObservedDevices' 'visibleDevices.map' 'lg:hidden' 'lg:block' 'TrafficMetric' 'data.limited ? null : (device.baselineConnections ?? null)' 'data.limited ? null : (device.baselineDestinations ?? null)'; do
+    grep -Fq "$str" "$PAGE" || fail "기기별 정렬·모바일·평소 기준 표시 누락: $str"
+done
+! grep -Fq 'max-w-xs' "$PAGE" || fail '학습 진행률 너비가 다시 좁아지면 안 됨'
+! grep -Fq 'grid gap-3 sm:grid-cols-3' "$PAGE" || fail '분리된 요약 카드가 남아 있음'
+[ "$(grep -Fc '기기별 정상 패턴 학습' "$PAGE" || true)" -eq 0 ] || fail '기존 독립 학습 카드가 남아 있음'
 # Match SafeShield's compact SectionHeading action instead of a full-width settings card.
 for str in 'action={' 'NetworkNodesIcon class="size-5"' '관찰 수집' '사용 중 · 관찰 중' '사용 중 · 수집 불가' '상태 확인 불가' 'aria-busy={saving}'; do
     grep -Fq "$str" "$PAGE" || fail "Network Watch 상단 상태·토글 계약 누락: $str"
