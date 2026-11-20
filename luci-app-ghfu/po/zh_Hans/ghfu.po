@@ -309,3 +309,27 @@ msgstr "期望值："
 
 msgid "Got:"
 msgstr "实际值："
+
+msgid "Preparing download..."
+msgstr "正在准备下载..."
+
+msgid "Downloading firmware..."
+msgstr "正在下载固件..."
+
+msgid "Downloading (%d%)"
+msgstr "正在下载 (%d%)"
+
+msgid "Downloading (%s)"
+msgstr "正在下载 (%s)"
+
+msgid "Verifying firmware..."
+msgstr "正在校验固件..."
+
+msgid "Verification failed"
+msgstr "固件校验未通过"
+
+msgid "Flashing in %ds"
+msgstr "即将刷入 (%ds)"
+
+msgid "Waiting for reboot..."
+msgstr "等待设备重启..."

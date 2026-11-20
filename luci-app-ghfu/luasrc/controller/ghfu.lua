@@ -1425,8 +1425,23 @@ function action_download_status()
     local sha256_fail = false
     local fw_name = ""
     local fw_target_path = ""
+    local progress_pct = -1
+    local downloaded_size = 0
+    local total_size = 0
 
     for _, line in ipairs(lines) do
+        local p_pct, p_size, p_total = line:match("^PROGRESS|(%d+)|(%d+)|(%d+)|%-?%d+$")
+        if p_pct then
+            local s_num = tonumber(p_size) or 0
+            local t_num = tonumber(p_total) or 0
+            downloaded_size = s_num
+            total_size = t_num
+            if t_num > 0 then
+                progress_pct = tonumber(p_pct) or 0
+            else
+                progress_pct = -1
+            end
+        end
         local status, _, _, target = line:match("^DONE|([A-Z]+)|(%d+)|(%d+)|(.+)$")
         if status then
             done = true

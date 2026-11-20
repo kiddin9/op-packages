@@ -881,7 +881,15 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         valCancelledLog: '<%:Upgrade cancelled by user after firmware check warning%>',
         sizeLabel: '<%:Size%>',
         sha256Label: '<%:SHA256%>',
-        invalidJsonResp: '<%:Server returned invalid JSON response%>'
+        invalidJsonResp: '<%:Server returned invalid JSON response%>',
+        btnPreparingDownload: '<%:Preparing download...%>',
+        btnDownloading: '<%:Downloading firmware...%>',
+        btnDownloadingPct: '<%:Downloading (%d%)%>',
+        btnDownloadingSize: '<%:Downloading (%s)%>',
+        btnVerifying: '<%:Verifying firmware...%>',
+        btnVerifyFailed: '<%:Verification failed%>',
+        btnCountdown: '<%:Flashing in %ds%>',
+        btnWaitingReboot: '<%:Waiting for reboot...%>'
     };
 
     var BUILTIN_VALID_EXTS = ['.img.gz', '.img', '.bin', '.tar.gz', '.tar', '.itb', '.trx', '.chk', '.dlf', '.ari'];
@@ -917,7 +925,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
     }
 
     function updateTitle() {
-        byId('ghfu_title').textContent = t('title');
+        byId('ghfu_title').textContent = appVersion ? (t('title') + ' v' + appVersion) : t('title');
     }
 
     function isAssetLatest(asset) {
@@ -934,6 +942,13 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             return String(asset.name).indexOf(latestReleaseName) !== -1;
         }
         return true;
+    }
+
+    function setUpgradeButtonProgress(text) {
+        var btn = byId('ghfu_upgrade');
+        if (btn && text) {
+            btn.textContent = text;
+        }
     }
 
     function updateUpgradeButtonText() {
@@ -1079,49 +1094,67 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         appendLog(t('autoFilterMatched').replace('%s', visible[0].name));
     }
 
-    function applyTheme() {
-        var root = byId('ghfu-root');
-        if (!root) return;
-        var isDark = false;
-
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            isDark = true;
+    function detectDarkTheme() {
+        var html = document.documentElement;
+        var body = document.body;
+        var attrs = [
+            body && body.getAttribute('data-theme'),
+            body && body.getAttribute('data-bs-theme'),
+            body && body.getAttribute('data-color-scheme'),
+            body && body.getAttribute('data-argon-mode'),
+            html && html.getAttribute('data-theme'),
+            html && html.getAttribute('data-bs-theme'),
+            html && html.getAttribute('data-color-scheme'),
+            html && html.getAttribute('data-argon-mode')
+        ];
+        for (var a = 0; a < attrs.length; a++) {
+            var val = (attrs[a] || '').toLowerCase();
+            if (val.indexOf('dark') !== -1 || val.indexOf('black') !== -1 || val.indexOf('night') !== -1) return true;
+            if (val.indexOf('light') !== -1 || val.indexOf('white') !== -1 || val.indexOf('day') !== -1) return false;
         }
 
-        if (!isDark) {
-            var darkClasses = ['dark', 'is-dark', 'night', 'dark-mode', 'theme-dark', 'luci-dark'];
-            var body = document.body;
-            var html = document.documentElement;
-            for (var i = 0; i < darkClasses.length; i++) {
-                if (body.classList.contains(darkClasses[i]) ||
-                    html.classList.contains(darkClasses[i])) {
-                    isDark = true;
-                    break;
-                }
-            }
+        var darkClasses = ['dark', 'is-dark', 'night', 'dark-mode', 'theme-dark', 'luci-dark'];
+        var lightClasses = ['light', 'is-light', 'day', 'light-mode', 'theme-light', 'luci-light'];
+        for (var i = 0; i < darkClasses.length; i++) {
+            if ((body && body.classList.contains(darkClasses[i])) || (html && html.classList.contains(darkClasses[i]))) return true;
+        }
+        for (var j = 0; j < lightClasses.length; j++) {
+            if ((body && body.classList.contains(lightClasses[j])) || (html && html.classList.contains(lightClasses[j]))) return false;
         }
 
-        if (!isDark) {
-            var dt = document.body.getAttribute('data-theme') ||
-                     document.body.getAttribute('data-color-scheme') ||
-                     document.documentElement.getAttribute('data-theme') ||
-                     document.documentElement.getAttribute('data-argon-mode') ||
-                     document.body.getAttribute('data-argon-mode');
-            if (dt && dt.indexOf('dark') !== -1) isDark = true;
-        }
-
-        if (!isDark) {
+        var targets = [
+            document.querySelector('#maincontent'),
+            document.querySelector('.main-right'),
+            document.querySelector('main'),
+            body,
+            html
+        ];
+        for (var k = 0; k < targets.length; k++) {
+            var el = targets[k];
+            if (!el) continue;
             try {
-                var bg = window.getComputedStyle(document.body).backgroundColor;
-                var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                var bg = window.getComputedStyle(el).backgroundColor || '';
+                var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
                 if (m) {
-                    var lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
-                    if (lum < 0.4) isDark = true;
+                    var alpha = m[4] !== undefined ? parseFloat(m[4]) : 1;
+                    if (alpha > 0.15) {
+                        var lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
+                        return lum < 0.45;
+                    }
                 }
             } catch (e) {}
         }
 
-        if (isDark) {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            return true;
+        }
+        return false;
+    }
+
+    function applyTheme() {
+        var root = byId('ghfu-root');
+        if (!root) return;
+        if (detectDarkTheme()) {
             root.setAttribute('data-ghfu-dark', '1');
         } else {
             root.removeAttribute('data-ghfu-dark');
@@ -1523,6 +1556,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
 
     function restoreButtonsAfterDownload() {
         setUpgradeWorkflowBusy(false);
+        updateUpgradeButtonText();
     }
 
     function showValidationModal(fwName, keepConfig, retainPkg, validation) {
@@ -1617,6 +1651,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
     function handleDownloadedFirmware(fwName, keepConfig, retainPkg, validation) {
         var isValid = !(validation && validation.valid === false);
         if (!isValid) {
+            setUpgradeButtonProgress(t('btnVerifyFailed'));
             showValidationModal(fwName, keepConfig, retainPkg, validation);
             return;
         }
@@ -1646,6 +1681,18 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                     restoreButtonsAfterDownload();
                 }
                 return;
+            }
+
+            if (typeof resp.progress_pct === 'number' && resp.progress_pct >= 0) {
+                if (resp.progress_pct >= 100) {
+                    setUpgradeButtonProgress(t('btnVerifying'));
+                } else {
+                    setUpgradeButtonProgress(t('btnDownloadingPct').replace('%d', String(resp.progress_pct)));
+                }
+            } else if (typeof resp.downloaded_size === 'number' && resp.downloaded_size > 0) {
+                setUpgradeButtonProgress(t('btnDownloadingSize').replace('%s', humanSize(resp.downloaded_size)));
+            } else {
+                setUpgradeButtonProgress(t('btnDownloading'));
             }
 
             downloadPollTimer = setTimeout(function() {
@@ -1821,6 +1868,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         }
 
         setUpgradeWorkflowBusy(true);
+        setUpgradeButtonProgress(t('btnPreparingDownload'));
         stopDownloadPolling();
 
         appendLog(t('beginDownload') + ' ' + (selectedAsset.name || selectedRelease));
@@ -1842,6 +1890,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             }
 
             if (resp.started) {
+                setUpgradeButtonProgress(t('btnDownloading'));
                 pollDownloadProgress(keepConfig, retainPkg, 0);
                 return;
             }
@@ -1861,6 +1910,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         stopCountdownTimer();
         var sec = 5;
         activeCountdownFwName = fwName;
+        setUpgradeButtonProgress(t('btnCountdown').replace('%d', String(sec)));
         showUpgradeModal('countdown', sec);
         appendLog(t('countdownLogMsg').replace('%d', String(sec)));
         countdownTimer = setInterval(function() {
@@ -1868,10 +1918,12 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             if (sec <= 0) {
                 stopCountdownTimer();
                 activeCountdownFwName = '';
+                setUpgradeButtonProgress(t('startingUpgrade'));
                 appendLog(t('startingUpgrade'));
                 showUpgradeModal('upgrading');
                 doUpgradeRequest(fwName, keepConfig, retainPkg, forceUpgrade);
             } else {
+                setUpgradeButtonProgress(t('btnCountdown').replace('%d', String(sec)));
                 showUpgradeModal('countdown', sec);
                 appendLog(t('countdownLogMsg').replace('%d', String(sec)));
             }
@@ -1903,6 +1955,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             var lines = normalizeLogLines(resp.logs);
             lines.forEach(appendLog);
             if (resp.ok && resp.rebooting) {
+                setUpgradeButtonProgress(t('btnWaitingReboot'));
                 showUpgradeModal('upgrading');
                 pollForReboot();
                 return;
@@ -1916,6 +1969,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             restoreButtonsAfterDownload();
         }).catch(function(err) {
             // sysupgrade may terminate uhttpd or drop the connection before HTTP response finishes
+            setUpgradeButtonProgress(t('btnWaitingReboot'));
             appendLog(t('startingSystemUpgrade'));
             showUpgradeModal('upgrading');
             pollForReboot();
@@ -2153,6 +2207,15 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
 
     initTexts();
     applyTheme();
+    if (window.MutationObserver) {
+        var themeObs = new MutationObserver(applyTheme);
+        if (document.documentElement) {
+            themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'] });
+        }
+        if (document.body) {
+            themeObs.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'] });
+        }
+    }
     setUpgradeWorkflowBusy(false);
     initLocalStatus();
 })();
