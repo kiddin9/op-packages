@@ -1134,10 +1134,67 @@ return view.extend({
 			});
 		}
 
+		/* Send (ubus modem_sms_send): the daemon encodes GSM7 or UCS-2 and
+		   splits a long text itself. One click is one send — a message to a
+		   short number may book an option or cost money, so a failure is
+		   reported, never retried here, and a double click sends once: the
+		   handler is wrapped in ui.createHandlerFn, which disables the button
+		   until the returned promise settles (ui.js:5982-5990, luci 85c7f604,
+		   2026-11-14). A multi-part message that fails
+		   partway says how many parts went out (`sent`, wwand sms.uc), since
+		   those have already reached the network. */
+		var toInput = E('input', { 'type': 'text', 'class': 'cbi-input-text', 'maxlength': 21,
+			'placeholder': '+49170…', 'style': 'width:14em', 'aria-label': _('Recipient') });
+		var textInput = E('textarea', { 'class': 'cbi-input-textarea', 'rows': 3,
+			'style': 'width:100%;max-width:40em', 'aria-label': _('Message text') });
+		var sendOut = E('div', { 'style': 'margin-top:6px' });
+
+		function send() {
+			var to = (toInput.value || '').replace(/[\s\-()\/]/g, '');
+			var text = textInput.value || '';
+
+			if (!/^\+?[0-9]{1,20}$/.test(to)) {
+				dom.content(sendOut, E('em', {}, _('Enter the recipient as digits, optionally with a leading +.')));
+				return;
+			}
+
+			if (!text.length) {
+				dom.content(sendOut, E('em', {}, _('Enter a message text.')));
+				return;
+			}
+
+			dom.content(sendOut, E('em', {}, _('Sending…')));
+
+			return wrpc.smsSend(modem, to, text).then(function(res) {
+				if (res && res.ok) {
+					dom.content(sendOut, E('em', {}, [ (res.parts > 1)
+						? _('Sent (%d parts).').format(res.parts) : _('Sent.') ]));
+					textInput.value = '';
+					return;
+				}
+
+				var e = res && res.error;
+				dom.content(sendOut, E('em', {}, [
+					e == 'unsupported_on_backend' ? _('This modem cannot send SMS through wwand.')
+					: _('Sending failed: %s').format(e ? e + (res.detail ? ' (' + JSON.stringify(res.detail) + ')' : '') : '?'),
+					(res && res.sent > 0) ? ' ' + _('%d part(s) had already been sent.').format(res.sent) : '' ]));
+			});
+		}
+
 		/* title INSIDE the section (see netsel.js) */
 		return [
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('SMS')),
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Send to')),
+					E('div', { 'class': 'cbi-value-field' }, [ toInput,
+						E('div', { 'style': 'margin-top:4px' }, textInput),
+						E('div', { 'style': 'margin-top:4px' }, E('button', { 'class': 'btn cbi-button cbi-button-action',
+							click: ui.createHandlerFn(self, send) }, _('Send SMS'))),
+						E('div', { 'class': 'cbi-value-description' },
+							_('A number with its country code, or a short number such as a provider\'s service number. A long text goes out as several parts; every click sends once.')),
+						sendOut ]),
+				]),
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Storage')),
 					E('div', { 'class': 'cbi-value-field' }, [ storageSel, ' ',

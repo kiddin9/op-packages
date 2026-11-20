@@ -26,10 +26,10 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 
 @media (max-width: 1180px) {
 	.cb-dash .span-8,
+	.cb-dash .span-6,
 	.cb-dash .span-4 { grid-column: span 12; }
-	.cb-dash .span-3 { grid-column: span 6; }
-	.cb-resources .cb-res-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 28px; align-items: start; }
-	.cb-resources .cb-rings { margin-bottom: 0; }
+	.cb-dash .cb-tile { grid-column: span 6; }
+	.cb-dash .cb-tile.cb-tile-wide { grid-column: span 12; }
 }
 
 @media (max-width: 1023px) {
@@ -55,11 +55,44 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 }
 
 @media (max-width: 760px) {
-	.cb-resources .cb-res-body { display: block; }
-	.cb-resources .cb-rings { margin-bottom: 16px; }
 	.cb-dash { gap: 12px; }
 	.cb-card { padding: 16px; }
 	.cb-hero { padding: 18px 16px; }
+	.cb-sheet {
+		top: auto;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		max-height: 86vh;
+		border-radius: 22px 22px 0 0;
+		border-bottom: 0;
+		border-left: 0;
+		border-right: 0;
+		transform: translateY(100%);
+	}
+	.cb-sheet-foot { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+	.cb-sheet-body { padding: 12px 14px 16px; }
+	.cb-sheet-collapse {
+		top: -13px;
+		left: 50%;
+		width: 40px;
+		height: 26px;
+		border-radius: 13px;
+		transform: translateX(-50%);
+	}
+	.cb-sheet-collapse:active:not(:disabled) { transform: translateX(-50%) scale(.94); }
+	.cb-sheet-collapse svg { transform: rotate(90deg); }
+	.cb-sheet-dock {
+		left: 50%;
+		right: auto;
+		width: max-content;
+		max-width: calc(100vw - 24px);
+		flex-wrap: wrap;
+		justify-content: center;
+		transform: translate(-50%, 14px);
+	}
+	.cb-sheet-dock.show { transform: translateX(-50%); }
 	/* hero meta becomes a tidy list: status pill on its own row, then
 	   label/value rows — no more crowding next to the badge */
 	.cb-hero-meta { flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
@@ -209,7 +242,6 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 }
 
 @media (max-width: 480px) {
-	.cb-dash .span-3 { grid-column: span 6; }
 	.cb-tile { padding: 14px; }
 	.cb-tile-val { font-size: 22px; }
 	.cb-spark { display: none; }

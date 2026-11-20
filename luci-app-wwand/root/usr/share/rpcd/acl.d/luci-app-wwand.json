@@ -60,7 +60,8 @@
 					"modem_sim_puk",
 					"modem_sim_reinit",
 					"modem_sim_switch_slot",
-					"modem_sms_delete"
+					"modem_sms_delete",
+					"modem_sms_send"
 				]
 			}
 		}

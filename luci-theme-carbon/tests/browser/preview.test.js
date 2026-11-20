@@ -73,7 +73,7 @@ async function open(url, { width = 1280, height = 900, appearance = 'light', sto
 
 /* every async source has rendered: leases, Wi‑Fi stations, sensors, languages */
 const dashboardReady = (page) => page.waitForFunction(() =>
-	document.querySelectorAll('.cb-card.span-8 .cb-list li').length >= 8 && document.querySelector('.cb-tag-wifi') &&
+	document.querySelectorAll('.cb-clients .cb-list li').length >= 8 && document.querySelector('.cb-tag-wifi') &&
 	document.querySelectorAll('.cb-kv li').length >= 3 && document.querySelector('.cb-lang .cb-lb'));
 
 test('side-router discovery works without DHCP and distinguishes neighbours, gateways and lease records', async () => {
@@ -129,6 +129,8 @@ test('side-router discovery works without DHCP and distinguishes neighbours, gat
 			assert.equal(await page.textContent('.cb-tile-val'), count);
 			assert.equal(await page.textContent('.cb-tile-sub'), zh ? '本机已知设备' : 'Known to this router');
 			assert.equal(await page.getAttribute('.cb-tile-head span[title]', 'title'), zh ? '可能包含离线设备。' : 'May include offline devices.');
+			assert.equal(await page.evaluate(() => document.querySelector('.cb-wireless').classList.contains('hidden')), true, 'no wireless radio hides the wireless card');
+			assert.equal(await page.evaluate(() => document.querySelector('.cb-interfaces').classList.contains('span-12')), true, 'interfaces fills the row when wireless is absent');
 			assert.deepEqual(errors, []);
 		} finally { await context.close(); }
 	}
@@ -313,6 +315,207 @@ test('dashboard shows merged devices, Wi-Fi details, IPv6, sensors and a traffic
 	await page.evaluate(() => window.scrollBy(0, 120));
 	await page.waitForFunction(() => !document.querySelector('.cb-lb-list'));
 	await context.close();
+});
+
+test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/temp tiles, cancel rollback, persistence and mobile layout', async () => {
+	/* 1. Desktop: default spans, live preview, cancel rollback, presets, save & reload */
+	const { page, context, errors } = await open('/src/preview/index.html?lang=zh-Hans', { width: 1440, height: 1000 });
+	try {
+		await dashboardReady(page);
+		const defaultSpans = await page.evaluate(() => [...document.querySelectorAll('.cb-dash > .cb-card:not(.hidden)')].map((el) => {
+			const span = (el.className.match(/span-\d+/) || [])[0];
+			const role = (el.className.match(/cb-(hero|traffic|resources|tile-\w+|clients|wireless|interfaces)/) || [])[0];
+			return role + ':' + span;
+		}));
+		assert.deepEqual(defaultSpans, [
+			'cb-hero:span-12', 'cb-traffic:span-8', 'cb-resources:span-4',
+			'cb-tile-devices:span-3', 'cb-tile-connections:span-3', 'cb-tile-load:span-3', 'cb-tile-uptime:span-3',
+			'cb-clients:span-12', 'cb-wireless:span-6', 'cb-interfaces:span-6'
+		]);
+
+		/* Scroll down to the customize bar, open drawer, and verify edits keep the page scroll position */
+		await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+		const scrollBefore = await page.evaluate(() => window.scrollY);
+		assert.ok(scrollBefore > 200, 'page scrolled down before opening customizer: ' + scrollBefore);
+
+		/* Open customizer drawer and switch to Multi-WAN preset */
+		await page.click('.cb-customize-btn');
+		await page.waitForSelector('.cb-sheet.show');
+		await page.waitForTimeout(300);
+		assert.equal(await page.$eval('.cb-app', (e) => e.hasAttribute('inert')), true, 'background shell is inert while customizer is open');
+		assert.equal(await page.evaluate(() => window.scrollY), scrollBefore, 'opening customizer preserves page scroll');
+		await page.click('.cb-sheet-presets .cb-seg-btn:has-text("多口监控")');
+		await page.waitForFunction(() => document.querySelectorAll('.cb-traffic').length === 2);
+		await page.waitForTimeout(150);
+		const scrollAfterPreset = await page.evaluate(() => window.scrollY);
+		assert.ok(scrollAfterPreset > 200, 'switching preset does not jump page to top: ' + scrollAfterPreset);
+		/* Toggling a tile switch preserves scroll position and runs enter/exit animations cleanly */
+		const tileToggle = '.cb-sheet-group:has-text("指标磁贴") .cb-sheet-row:has-text("已发现设备") .cbi-checkbox input';
+		await page.click(tileToggle);
+		const enterAnims = await page.evaluate(() => document.querySelector('.cb-tile-devices')?.getAnimations().length || 0);
+		assert.ok(enterAnims > 0, 'adding a module triggers an entrance animation');
+		await page.waitForTimeout(280);
+		assert.equal(await page.evaluate(() => window.scrollY), scrollAfterPreset, 'toggling a tile keeps exact scroll position');
+		await page.click(tileToggle);
+		const exitGhost = await page.evaluate(() => document.querySelectorAll('.cb-dash-ghosts .cb-card-leaving').length);
+		assert.equal(exitGhost, 1, 'closing a module renders an inert exit ghost animation');
+		await page.waitForTimeout(280);
+		assert.equal(await page.evaluate(() => document.querySelectorAll('.cb-dash-ghosts').length), 0, 'exit ghost layer cleans up after animation');
+		assert.equal(await page.evaluate(() => window.scrollY), scrollAfterPreset, 'untoggling a tile keeps exact scroll position');
+		/* Reset scroll to top before taking the hero/monitor/sheet reference screenshot */
+		await page.evaluate(() => {
+			window.scrollTo(0, 0);
+			const sb = document.querySelector('.cb-sheet-body');
+			if (sb) sb.scrollTop = 0;
+		});
+		const multiSpans = await page.evaluate(() => [...document.querySelectorAll('.cb-dash > .cb-card:not(.hidden)')].map((el) => {
+			const span = (el.className.match(/span-\d+/) || [])[0];
+			const role = (el.className.match(/cb-(hero|traffic|resources|tile-\w+|clients|wireless|interfaces)/) || [])[0];
+			return role + ':' + span;
+		}));
+		assert.deepEqual(multiSpans, [
+			'cb-hero:span-12', 'cb-traffic:span-6', 'cb-traffic:span-6', 'cb-resources:span-12',
+			'cb-tile-connections:span-3', 'cb-tile-load:span-3', 'cb-tile-temp:span-3', 'cb-tile-uptime:span-3',
+			'cb-interfaces:span-12', 'cb-clients:span-12'
+		]);
+		assert.match(await page.textContent('.cb-tile-temp .cb-tile-val'), /\d+\.\d°C/);
+		const presetVis = await page.evaluate(() => {
+			const b = document.querySelector('.cb-sheet-body').getBoundingClientRect();
+			const lbl = document.querySelector('.cb-sheet-label').getBoundingClientRect();
+			return lbl.height > 10 && lbl.top >= b.top - 1;
+		});
+		assert.equal(presetVis, true, 'preset heading is not squished or clipped');
+		/* Drawer listbox remains interactive while .cb-app is inert */
+		await page.click('.cb-sheet-select >> nth=1');
+		await page.waitForSelector('.cb-lb-list.show');
+		await page.keyboard.press('Escape');
+		assert.equal(await page.$('.cb-lb-list'), null);
+		await page.screenshot({ path: path.join(SHOTS, 'custom-drawer-desktop.png') });
+
+		/* Collapse handle straddles the top-left border of the sheet on desktop (mirrors sidebar .cb-collapse) */
+		const deskSheet = await page.locator('.cb-sheet').boundingBox();
+		const deskHandle = await page.locator('.cb-sheet-collapse').boundingBox();
+		assert.ok(deskHandle.x < deskSheet.x && deskHandle.x + deskHandle.width > deskSheet.x, 'desktop collapse handle straddles left border');
+		assert.ok(deskHandle.y >= deskSheet.y && deskHandle.y <= deskSheet.y + 40, 'desktop collapse handle sits at top-left');
+
+		/* Collapse panel to preview unobstructed dashboard, then expand again with draft intact */
+		await page.click('.cb-sheet-collapse');
+		await page.waitForSelector('.cb-sheet-dock.show');
+		await page.waitForTimeout(320);
+		assert.equal(await page.$eval('.cb-sheet', (e) => e.classList.contains('collapsed') && e.hasAttribute('inert')), true, 'collapsed sheet is inert and hidden');
+		assert.equal(await page.$eval('.cb-app', (e) => e.hasAttribute('inert')), false, 'dashboard is interactive while collapsed');
+		assert.equal(await page.locator('.cb-traffic').count(), 2, 'live draft stays applied while collapsed');
+		const dockBox = await page.locator('.cb-sheet-dock').boundingBox();
+		assert.ok(dockBox.x >= 0 && dockBox.x + dockBox.width <= 1440 && dockBox.y + dockBox.height <= 1000, 'collapsed dock fits inside desktop viewport');
+		await page.screenshot({ path: path.join(SHOTS, 'custom-collapsed-desktop.png') });
+
+		await page.click('.cb-sheet-expand');
+		await page.waitForSelector('.cb-sheet.show');
+		await page.waitForTimeout(300);
+		assert.equal(await page.$eval('.cb-app', (e) => e.hasAttribute('inert')), true, 'expanding re-enables inert on background shell');
+		assert.equal(await page.$eval('.cb-sheet-dock', (e) => !e.classList.contains('show') && e.hasAttribute('inert')), true, 'dock hides when expanded');
+		assert.equal(await page.locator('.cb-traffic').count(), 2, 'draft preserved after expand');
+
+		/* Clicking the scrim collapses non-destructively, and Cancel from the dock rolls back */
+		await page.mouse.click(300, 300);
+		await page.waitForSelector('.cb-sheet-dock.show');
+		assert.equal(await page.locator('.cb-traffic').count(), 2, 'scrim click collapses instead of discarding');
+		await page.click('.cb-sheet-dock button:has-text("取消")');
+		await page.waitForFunction(() => !document.querySelector('.cb-sheet'));
+		assert.equal(await page.$eval('.cb-app', (e) => e.hasAttribute('inert')), false, 'closing customizer clears inert');
+		assert.equal(await page.locator('.cb-traffic').count(), 1);
+		assert.equal(await page.locator('.cb-wireless:not(.hidden)').count(), 1);
+
+		/* Re-open, apply Home Wi-Fi preset, add a second traffic chart, collapse & save from dock, then reload */
+		await page.click('.cb-customize-btn');
+		await page.waitForSelector('.cb-sheet.show');
+		await page.click('.cb-sheet-presets .cb-seg-btn:has-text("家用无线")');
+		await page.waitForSelector('.cb-tile-wifi');
+		assert.match(await page.textContent('.cb-tile-wifi .cb-tile-val'), /^\d+$/);
+		assert.match(await page.textContent('.cb-tile-wifi .cb-tile-sub'), /GHz/);
+		await page.click('.cb-sheet-add');
+		assert.equal(await page.locator('.cb-traffic').count(), 2);
+		await page.click('.cb-sheet-collapse');
+		await page.waitForSelector('.cb-sheet-dock.show');
+		await page.click('.cb-sheet-dock .cbi-button-save');
+		await page.waitForFunction(() => !document.querySelector('.cb-sheet'));
+		await page.screenshot({ path: path.join(SHOTS, 'custom-multi-desktop.png'), fullPage: true });
+
+		await page.reload();
+		await page.waitForSelector('.cb-tile-wifi');
+		assert.equal(await page.locator('.cb-traffic').count(), 2, 'custom layout persists across reload');
+		assert.equal(await page.locator('.cb-tile-temp').count(), 1);
+		assert.equal(await page.locator('.cb-tile-devices').count(), 0);
+		assert.deepEqual(errors, []);
+	} finally { await context.close(); }
+
+	/* 2. Phone 390px: odd tile count fills full row cleanly + bottom sheet fits viewport without overflow */
+	const phone = await open('/src/preview/index.html?lang=zh-Hans', {
+		width: 390, height: 844,
+		storage: { 'carbon.dashboard': 'hero=1;sections=monitor tiles details;monitor=traffic:auto traffic:br-lan resources;tiles=wifi temp uptime;details=clients wireless interfaces' }
+	});
+	try {
+		await dashboardReady(phone.page);
+		await phone.page.waitForFunction(() => /\d+\.\d°C/.test(document.querySelector('.cb-tile-temp .cb-tile-val')?.textContent || ''));
+		const geom = await phone.page.evaluate(() => {
+			const tiles = [...document.querySelectorAll('.cb-tile')].map((el) => ({
+				cls: el.className,
+				w: Math.round(el.getBoundingClientRect().width)
+			}));
+			const traffics = [...document.querySelectorAll('.cb-traffic')].map((el) => Math.round(el.getBoundingClientRect().width));
+			return {
+				overflow: document.documentElement.scrollWidth > innerWidth,
+				tiles,
+				traffics
+			};
+		});
+		assert.equal(geom.overflow, false, 'no horizontal overflow on phone');
+		assert.equal(geom.tiles.length, 3);
+		assert.ok(geom.tiles[2].cls.includes('cb-tile-wide'), 'odd last tile is marked wide');
+		assert.ok(geom.tiles[2].w > geom.tiles[0].w * 1.7, 'odd last tile spans full width on phone: ' + JSON.stringify(geom.tiles));
+		assert.ok(geom.traffics[0] > 300 && geom.traffics[1] > 300, 'stacked traffic charts use full phone width: ' + JSON.stringify(geom.traffics));
+		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-odd-tiles-phone.png'), fullPage: true });
+
+		await phone.page.click('.cb-customize-btn');
+		await phone.page.waitForSelector('.cb-sheet.show');
+		await phone.page.waitForTimeout(320);
+		const sheetBox = await phone.page.locator('.cb-sheet').boundingBox();
+		const phoneHandle = await phone.page.locator('.cb-sheet-collapse').boundingBox();
+		const saveBox = await phone.page.locator('.cb-sheet-foot .cbi-button-save').boundingBox();
+		assert.ok(sheetBox.x >= 0 && sheetBox.x + sheetBox.width <= 391, 'bottom sheet stays within phone viewport');
+		assert.ok(sheetBox.height <= 844 * 0.9, 'bottom sheet leaves top margin');
+		assert.ok(phoneHandle.y < sheetBox.y && phoneHandle.y + phoneHandle.height > sheetBox.y, 'phone collapse handle straddles top border');
+		assert.ok(saveBox.bottom ? saveBox.bottom <= 844 : saveBox.y + saveBox.height <= 844.5, 'sticky save button stays visible inside phone viewport');
+		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-drawer-phone.png') });
+		await phone.page.click('.cb-sheet-collapse');
+		await phone.page.waitForSelector('.cb-sheet-dock.show');
+		await phone.page.waitForTimeout(320);
+		const phoneDock = await phone.page.locator('.cb-sheet-dock').boundingBox();
+		assert.ok(phoneDock.x >= 0 && phoneDock.x + phoneDock.width <= 391 && phoneDock.y + phoneDock.height <= 844.5, 'collapsed dock fits phone viewport');
+		assert.ok(phoneDock.height <= 64, 'collapsed dock buttons stay on a single row on phone: height=' + phoneDock.height);
+		assert.equal(await phone.page.$eval('.cb-app', (e) => e.hasAttribute('inert')), false, 'phone dashboard interactive when collapsed');
+		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-collapsed-phone.png') });
+		await phone.page.click('.cb-sheet-expand');
+		await phone.page.waitForSelector('.cb-sheet.show');
+		await phone.page.keyboard.press('Escape');
+		await phone.page.waitForFunction(() => !document.querySelector('.cb-sheet'));
+		assert.deepEqual(phone.errors, []);
+	} finally { await phone.context.close(); }
+
+	/* 3. Standalone Wi-Fi tile (no clients card or devices tile) + dark-mode customizer drawer */
+	const dark = await open('/src/preview/index.html?lang=zh-Hans', {
+		width: 1440, height: 1000, appearance: 'dark',
+		storage: { 'carbon.dashboard': 'hero=1;sections=tiles monitor details;monitor=none;tiles=wifi temp;details=none' }
+	});
+	try {
+		await dark.page.waitForFunction(() => /^\d+$/.test(document.querySelector('.cb-tile-wifi .cb-tile-val')?.textContent || ''));
+		assert.match(await dark.page.textContent('.cb-tile-wifi .cb-tile-sub'), /GHz/);
+		await dark.page.click('.cb-customize-btn');
+		await dark.page.waitForSelector('.cb-sheet.show');
+		await dark.page.waitForTimeout(300);
+		await dark.page.screenshot({ path: path.join(SHOTS, 'custom-drawer-dark.png') });
+		assert.deepEqual(dark.errors, []);
+	} finally { await dark.context.close(); }
 });
 
 /* every bundled catalogue loads, translates the shell and fits the sidebar */
@@ -528,7 +731,7 @@ test('settings page: buttons, links, fields and status text share one centre lin
 			});
 			return { row: row.className, spread: Math.max(...Object.values(lines).map((m) => Math.max(...m) - Math.min(...m))) };
 		}));
-		assert.equal(rows.length, 4, JSON.stringify(rows));
+		assert.equal(rows.length, 5, JSON.stringify(rows));
 		const stray = await page.evaluate(() => [...document.querySelectorAll('#view *')].flatMap((el) => [...el.childNodes])
 			.filter((n) => n.nodeType === 3 && /^(null|undefined)$/.test(n.textContent.trim())).length);
 		assert.equal(stray, 0, 'no "null" / "undefined" text from absent children');

@@ -152,6 +152,8 @@ return baseclass.extend({
 	cellBroadcast: rpc.declare({ object: 'wwand', method: 'modem_cell_broadcast', params: [ 'modem' ], expect: {} }),
 	/* USSD: op send|cancel|status (write ACL — a code may book a tariff) */
 	ussd:      checked({ object: 'wwand', method: 'modem_ussd', params: [ 'modem', 'op', 'text' ], expect: {} }),
+	/* write ACL: a message to a short number may book an option */
+	smsSend:   checked({ object: 'wwand', method: 'modem_sms_send', params: [ 'modem', 'number', 'text' ], expect: {} }),
 	smsDelete: checked({ object: 'wwand', method: 'modem_sms_delete', params: [ 'modem', 'storage', 'index', 'indices' ], expect: {} }),
 
 	/* --- migration -------------------------------------------------------- */

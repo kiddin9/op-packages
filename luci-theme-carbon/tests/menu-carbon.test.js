@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('htdocs/luci-static/resources/menu-carbon.js', 'utf8');
 
-function load({ uci = {}, lang = 'en', info = {}, meminfo = null, trafficSource } = {}) {
+function load({ uci = {}, lang = 'en', info = {}, meminfo = null, trafficSource, dashboardAttr, dashboardRpc } = {}) {
 	const calls = [], indicators = [];
 	const poll = {
 		running: true,
@@ -22,8 +22,16 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, trafficSource 
 		if (object === 'uci' && method === 'get') return Promise.resolve((uci[args[0]] || {})[args[1]] || {});
 		if (object === 'uci' && method === 'set') { writes.push(['set', ...args]); return Promise.resolve(0); }
 		if (object === 'uci' && method === 'commit') { writes.push(['commit', ...args]); return Promise.resolve(0); }
+		if (object === 'luci.carbon_update' && method === 'set_dashboard') {
+			writes.push(['set_dashboard', ...args]);
+			if (typeof dashboardRpc === 'function') return dashboardRpc(...args);
+			return Promise.resolve({ dashboard_custom: args[0] !== 'reset' });
+		}
 		return Promise.resolve({});
 	};
+	const appEl = (trafficSource != null || dashboardAttr != null) ? {
+		dataset: Object.assign({}, trafficSource != null ? { trafficSource } : {}, dashboardAttr != null ? { dashboard: dashboardAttr } : {})
+	} : null;
 	const listeners = {};
 	const context = {
 		baseclass: { extend: (v) => v }, session: {},
@@ -38,14 +46,14 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, trafficSource 
 		window: { Carbon: { version: 'test' }, setTimeout: (fn) => fn() },
 		E: () => ({}),
 		document: {
-			querySelector: selector => selector === '.cb-app' && trafficSource != null ? { dataset: { trafficSource } } : null,
+			querySelector: selector => selector === '.cb-app' ? appEl : null,
 			getElementById: (id) => id === 'maincontent' ? { insertBefore() {} } : null,
 			documentElement: { getAttribute: () => lang },
 			addEventListener: (name, fn) => { listeners[name] = fn; }
 		}
 	};
 	const subject = vm.runInNewContext('(function() {\n' + source + '\n})()', context);
-	return { subject, poll, calls, indicators, writes, listeners, context };
+	return { subject, poll, calls, indicators, writes, listeners, context, appEl };
 }
 
 function infoProvider(options) {
@@ -192,4 +200,48 @@ test('switching language writes luci.main.lang only for installed languages', as
 	await assert.rejects(() => f.subject.language.set('ru'), /not installed/);
 	await f.subject.language.set('auto');
 	assert.equal(f.writes.length, 4);
+});
+
+test('dashboard mount passes SSR UCI layout and persists save/reset via luci.carbon_update', async () => {
+	const attr = 'hero=1;sections=tiles monitor details;monitor=traffic:auto resources;tiles=wifi temp;details=clients';
+	const f = load({ dashboardAttr: attr });
+	let mountOpts;
+	f.context.window.Carbon = {
+		dashboardLayout: {
+			serialize: () => ({ hero: '1', sections: 'monitor tiles details', monitor: 'traffic:auto traffic:br-lan resources', tiles: 'wifi', details: 'clients' }),
+			encodeAttr: () => 'hero=1;sections=monitor tiles details;monitor=traffic:auto traffic:br-lan resources;tiles=wifi;details=clients'
+		},
+		Dashboard: { mount(host, p, opts) { mountOpts = opts; } },
+		mode: { get: () => 'simple' },
+		detailsToggle() {}
+	};
+	f.subject.mountDashboard('admin', {});
+	assert.equal(mountOpts.dashboardAttr, attr);
+
+	await mountOpts.saveLayout({});
+	assert.deepEqual(JSON.parse(JSON.stringify(f.writes[0])), ['set_dashboard', 'set', '1', 'monitor tiles details', 'traffic:auto traffic:br-lan resources', 'wifi', 'clients']);
+	assert.equal(f.appEl.dataset.dashboard, 'hero=1;sections=monitor tiles details;monitor=traffic:auto traffic:br-lan resources;tiles=wifi;details=clients');
+
+	await mountOpts.resetLayout();
+	assert.deepEqual(JSON.parse(JSON.stringify(f.writes[1])), ['set_dashboard', 'reset', '', '', '', '', '']);
+	assert.equal(f.appEl.dataset.dashboard, undefined);
+});
+
+test('dashboard UCI save surfaces permission-denied errors distinctly', async () => {
+	const f = load({
+		dashboardAttr: '',
+		dashboardRpc: () => Promise.reject(new Error('RPC call to luci.carbon_update/set_dashboard failed with ubus code 6: Access denied'))
+	});
+	let mountOpts;
+	f.context.window.Carbon = {
+		dashboardLayout: {
+			serialize: () => ({ hero: '1', sections: 'monitor tiles details', monitor: 'traffic:auto', tiles: 'none', details: 'none' }),
+			encodeAttr: () => ''
+		},
+		Dashboard: { mount(host, p, opts) { mountOpts = opts; } },
+		mode: { get: () => 'simple' },
+		detailsToggle() {}
+	};
+	f.subject.mountDashboard('admin', {});
+	await assert.rejects(() => mountOpts.saveLayout({}), (err) => err && err.code === 'denied');
 });

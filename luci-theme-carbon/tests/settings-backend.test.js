@@ -118,3 +118,110 @@ test('a symlinked upload is refused', () => {
 	assert.deepEqual(b.call('set'), { error: 'logo_missing' });
 	assert.deepEqual(b.files(), []);
 });
+
+function dashboardBackend() {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbon-dash-'));
+	const uciDir = path.join(dir, 'uci');
+	fs.mkdirSync(uciDir);
+	const body = SCRIPT
+		.replace('. /usr/share/libubox/jshn.sh', `. "${JSHN}"`)
+		.replace(/\ncase "\$1" in\n\tlist\)[\s\S]*$/, '\n');
+	const lib = path.join(dir, 'backend.sh');
+	const uciStub = `
+uci_dir="${uciDir}"
+carbon_config="${dir}/carbon.cfg"
+uci() {
+	[ "$1" = -q ] && shift
+	case "$1" in
+		get)
+			[ -f "$uci_dir/$2" ] || return 1
+			cat "$uci_dir/$2"
+			;;
+		set)
+			k=\${2%%=*}; v=\${2#*=}
+			printf '%s\\n' "$v" > "$uci_dir/$k"
+			;;
+		delete)
+			rm -f "$uci_dir/$2" "$uci_dir/$2."*
+			;;
+		commit)
+			printf '%s\\n' "$2" >> "$uci_dir/.commits"
+			;;
+	esac
+}
+`;
+	fs.writeFileSync(lib, uciStub + body.replaceAll('/etc/config/carbon', '${carbon_config}') + '\n');
+	const call = (payload) => JSON.parse(execFileSync(process.env.CARBON_TEST_SH || 'sh', ['-c', `. "${lib}"; input='${JSON.stringify(payload).replace(/'/g, "'\\''")}'; set_dashboard`], { encoding: 'utf8' }));
+	const readUci = (k) => fs.existsSync(path.join(uciDir, k)) ? fs.readFileSync(path.join(uciDir, k), 'utf8').trim() : null;
+	const isCustom = () => execFileSync(process.env.CARBON_TEST_SH || 'sh', ['-c', `. "${lib}"; dashboard_custom`], { encoding: 'utf8' }).trim();
+	return { dir, call, readUci, isCustom };
+}
+
+test('set_dashboard saves validated UCI options, supports empty sections via none, and resets cleanly', () => {
+	const b = dashboardBackend();
+	assert.equal(b.isCustom(), '0');
+
+	const res = b.call({
+		action: 'set',
+		hero: '1',
+		sections: 'tiles monitor details',
+		monitor: 'traffic:auto traffic:br-lan resources',
+		tiles: 'wifi temp',
+		details: 'none'
+	});
+	assert.deepEqual(res, {
+		dashboard_custom: true,
+		hero: '1',
+		sections: 'tiles monitor details',
+		monitor: 'traffic:auto traffic:br-lan resources',
+		tiles: 'wifi temp',
+		details: 'none'
+	});
+	assert.equal(b.isCustom(), '1');
+	assert.equal(b.readUci('carbon.dashboard'), 'dashboard');
+	assert.equal(b.readUci('carbon.dashboard.hero'), '1');
+	assert.equal(b.readUci('carbon.dashboard.sections'), 'tiles monitor details');
+	assert.equal(b.readUci('carbon.dashboard.monitor'), 'traffic:auto traffic:br-lan resources');
+	assert.equal(b.readUci('carbon.dashboard.tiles'), 'wifi temp');
+	assert.equal(b.readUci('carbon.dashboard.details'), 'none');
+
+	const reset = b.call({ action: 'reset' });
+	assert.deepEqual(reset, { dashboard_custom: false });
+	assert.equal(b.isCustom(), '0');
+	assert.equal(b.readUci('carbon.dashboard'), null);
+	assert.equal(b.readUci('carbon.dashboard.hero'), null);
+});
+
+test('set_dashboard rejects invalid tokens, duplicates, >4 traffic panels, unsafe names and all-empty layouts', () => {
+	const b = dashboardBackend();
+	const base = { action: 'set', hero: '1', sections: 'monitor tiles details', monitor: 'traffic:auto resources', tiles: 'devices', details: 'clients' };
+	const invalid = [
+		{ ...base, hero: '2' },
+		{ ...base, sections: 'monitor tiles' },
+		{ ...base, sections: 'monitor monitor details' },
+		{ ...base, sections: 'monitor tiles bogus' },
+		{ ...base, monitor: 'traffic:auto traffic:br-lan traffic:wan traffic:wg0 traffic:eth0' },
+		{ ...base, monitor: 'resources resources' },
+		{ ...base, monitor: 'traffic:bad/dev' },
+		{ ...base, monitor: 'traffic:;rm' },
+		{ ...base, monitor: 'traffic:auto\nrm' },
+		{ ...base, monitor: 'traffic:' },
+		{ ...base, monitor: 'unknown' },
+		{ ...base, tiles: 'devices devices' },
+		{ ...base, tiles: 'devices bogus' },
+		{ ...base, details: 'clients clients' },
+		{ ...base, details: 'clients bogus' },
+		{ action: 'set', hero: '0', sections: 'monitor tiles details', monitor: 'none', tiles: 'none', details: 'none' },
+		{ action: 'bogus' }
+	];
+	for (const payload of invalid) {
+		assert.deepEqual(b.call(payload), { error: 'invalid_dashboard' }, JSON.stringify(payload));
+	}
+	assert.equal(b.isCustom(), '0');
+});
+
+test('settings ACL grants write access to set_dashboard only under luci.carbon_update', () => {
+	const acl = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'root/usr/share/rpcd/acl.d/luci-theme-carbon-update.json'), 'utf8'))['luci-theme-carbon-update'];
+	assert.ok(acl.write.ubus['luci.carbon_update'].includes('set_dashboard'));
+	assert.equal(acl.read.ubus['luci.carbon_update'].includes('set_dashboard'), false);
+});

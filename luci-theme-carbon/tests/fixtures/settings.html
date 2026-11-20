@@ -26,9 +26,10 @@ function E(tag, attrs, children) {
 	else if (children != null) el.innerHTML = `${children}`;
 	return el;
 }
-const L = { hasViewPermission: () => true, env: { cgi_base: '/cgi-bin' } };
+const L = { hasViewPermission: () => true, env: { cgi_base: '/cgi-bin' }, url: (...parts) => '/' + parts.join('/') };
 const data = {
 	current: '1.1.3-r1', latest: '1.1.4-r1', can_upgrade: true, manager: 'opkg', notes: '', mirror: '',
+	dashboard_custom: true,
 	logo: '../../htdocs/luci-static/carbon/logo.svg'
 };
 const stubs = {

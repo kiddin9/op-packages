@@ -355,3 +355,126 @@ test('Docker uses the whale icon and its pages get their own icons', () => {
 	assert.match(C.icon('docker'), /<rect /);
 	assert.notEqual(C.icon('nodes'), C.icon('nonexistent'));
 });
+
+test('dashboard layout defaults, UCI serialization and attribute round-trip', () => {
+	const C = load();
+	const L = C.dashboardLayout;
+	const plain = (x) => JSON.parse(JSON.stringify(x));
+	const def = plain(L.defaultLayout());
+	assert.deepEqual(def, {
+		hero: true,
+		sections: ['monitor', 'tiles', 'details'],
+		monitor: [{ type: 'traffic', source: 'auto' }, { type: 'resources' }],
+		tiles: ['devices', 'connections', 'load', 'uptime'],
+		details: ['clients', 'wireless', 'interfaces']
+	});
+	assert.equal(L.isDefault(def), true);
+	assert.equal(L.matchPreset(def), 'default');
+
+	const uci = plain(L.serialize(def));
+	assert.deepEqual(uci, {
+		hero: '1',
+		sections: 'monitor tiles details',
+		monitor: 'traffic:auto resources',
+		tiles: 'devices connections load uptime',
+		details: 'clients wireless interfaces'
+	});
+	assert.deepEqual(plain(L.normalize(uci)), def);
+
+	const custom = L.normalize({
+		hero: '0',
+		sections: 'tiles monitor details',
+		monitor: 'traffic:pppoe-wan traffic:br-lan resources',
+		tiles: 'wifi temp',
+		details: 'none'
+	});
+	assert.equal(L.isDefault(custom), false);
+	assert.deepEqual(plain(custom), {
+		hero: false,
+		sections: ['tiles', 'monitor', 'details'],
+		monitor: [
+			{ type: 'traffic', source: 'pppoe-wan' },
+			{ type: 'traffic', source: 'br-lan' },
+			{ type: 'resources' }
+		],
+		tiles: ['wifi', 'temp'],
+		details: []
+	});
+	assert.equal(L.serialize(custom).details, 'none');
+	const attr = L.encodeAttr(custom);
+	assert.deepEqual(plain(L.parseAttr(attr)), plain(custom));
+});
+
+test('dashboard layout normalization enforces bounds, deduplication and non-empty invariant', () => {
+	const C = load();
+	const L = C.dashboardLayout;
+	const plain = (x) => JSON.parse(JSON.stringify(x));
+
+	// Duplicate items, invalid names, >4 traffic panels, missing sections, unsafe device names
+	const cleaned = plain(L.normalize({
+		hero: '1',
+		sections: 'details bogus details',
+		monitor: 'traffic:auto traffic:bad/dev traffic:eth0:0 traffic:pon0.41 traffic:br-lan traffic:eth2 resources resources',
+		tiles: 'wifi bogus wifi temp',
+		details: 'interfaces bogus interfaces'
+	}));
+	assert.deepEqual(cleaned.sections, ['details', 'monitor', 'tiles']);
+	assert.deepEqual(cleaned.monitor, [
+		{ type: 'traffic', source: 'auto' },
+		{ type: 'traffic', source: 'auto' },
+		{ type: 'traffic', source: 'eth0:0' },
+		{ type: 'traffic', source: 'pon0.41' },
+		{ type: 'resources' }
+	]);
+	assert.deepEqual(cleaned.tiles, ['wifi', 'temp']);
+	assert.deepEqual(cleaned.details, ['interfaces']);
+
+	// Completely empty layout falls back to default
+	assert.deepEqual(plain(L.normalize({ hero: '0', sections: 'monitor tiles details', monitor: 'none', tiles: 'none', details: 'none' })),
+		plain(L.defaultLayout()));
+
+	// Legacy carbon.traffic seeds the default layout when no custom layout exists
+	const seeded = plain(L.defaultLayout('pon0'));
+	assert.equal(seeded.monitor[0].source, 'pon0');
+	assert.equal(L.isDefault(seeded), false);
+
+	// Presets match structurally even when traffic sources differ
+	const presets = L.presets();
+	assert.deepEqual(Array.from(presets, (p) => p.id), ['default', 'wifi', 'multi']);
+	const multi = plain(presets.find((p) => p.id === 'multi').layout);
+	multi.monitor[1].source = 'wg0';
+	assert.equal(L.matchPreset(multi), 'multi');
+});
+
+test('dashboard auto-span packing guarantees balanced 12-column rows on desktop and mobile', () => {
+	const C = load();
+	const L = C.dashboardLayout;
+	const plain = (x) => JSON.parse(JSON.stringify(x));
+	const T = { type: 'traffic', source: 'auto' }, R = { type: 'resources' };
+
+	assert.deepEqual(plain(L.monitorSpans([T, R])), [8, 4]);
+	assert.deepEqual(plain(L.monitorSpans([R, T])), [4, 8]);
+	assert.deepEqual(plain(L.monitorSpans([T, T])), [6, 6]);
+	assert.deepEqual(plain(L.monitorSpans([T, T, R])), [6, 6, 12]);
+	assert.deepEqual(plain(L.monitorSpans([R, T, T])), [4, 8, 12]);
+	assert.deepEqual(plain(L.monitorSpans([T, R, T])), [8, 4, 12]);
+	assert.deepEqual(plain(L.monitorSpans([T, T, T, R])), [6, 6, 8, 4]);
+	assert.deepEqual(plain(L.monitorSpans([T, T, T, T, R])), [6, 6, 6, 6, 12]);
+	assert.deepEqual(plain(L.monitorSpans([T])), [12]);
+	assert.deepEqual(plain(L.monitorSpans([R])), [12]);
+
+	assert.deepEqual(plain(L.tileSpans(0)), []);
+	assert.deepEqual(plain(L.tileSpans(1)), [12]);
+	assert.deepEqual(plain(L.tileSpans(2)), [6, 6]);
+	assert.deepEqual(plain(L.tileSpans(3)), [4, 4, 4]);
+	assert.deepEqual(plain(L.tileSpans(4)), [3, 3, 3, 3]);
+	assert.deepEqual(plain(L.tileSpans(5)), [4, 4, 4, 6, 6]);
+	assert.deepEqual(plain(L.tileSpans(6)), [4, 4, 4, 4, 4, 4]);
+
+	assert.deepEqual(plain(L.detailSpans(['clients', 'wireless', 'interfaces'])), [12, 6, 6]);
+	assert.deepEqual(plain(L.detailSpans(['clients', 'interfaces'])), [12, 12]);
+	assert.deepEqual(plain(L.detailSpans(['wireless', 'interfaces', 'clients'])), [6, 6, 12]);
+	assert.deepEqual(plain(L.detailSpans(['wireless', 'clients', 'interfaces'])), [12, 12, 12]);
+	assert.deepEqual(plain(L.detailSpans(['wireless', 'interfaces'])), [6, 6]);
+	assert.deepEqual(plain(L.detailSpans(['interfaces'])), [12]);
+});

@@ -223,7 +223,7 @@ openlist2_migrate_config() {
 			50:30|10:5)
 				uci set "$prefix.log_max_size=1" && uci set "$prefix.log_max_backups=3" || return 1 ;;
 		esac
-		# These switches have no implementation in OpenList 4.2.9.
+		# Inert: OpenList builds upload task managers without persistence support.
 		uci -q delete "$prefix.upload_task_persistant"
 		uci -q delete "$prefix.decompress_upload_task_persistant"
 		uci set "$prefix.config_version=2" || return 1
