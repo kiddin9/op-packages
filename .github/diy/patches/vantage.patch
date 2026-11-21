@@ -110,8 +110,8 @@
  	text-decoration: none !important;
  }
 @@ -635,7 +635,7 @@ a.vt-crumb:hover { color: var(--text); }
- /* where the picks are kept, when not for every browser */
- .vt-appear-note { max-width: 32ch; margin: 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+ /* the daily check's line of help, under its options */
+ .vt-appear-set > .vt-appear-note { margin-top: 6px; }
  .vt-appear-note[hidden] { display: none; }
 -.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); }
 +.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); display:none; }
