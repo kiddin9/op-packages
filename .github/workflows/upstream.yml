@@ -270,7 +270,7 @@ jobs:
         git_clone https://github.com/VizzleTF/luci-app-footstrap-files footstrapf && mv -f footstrapf/luci-app-footstrap-files ./;rm -rf footstrapf
         ) &
         (
-        git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/{*dae*,vmlinux-btf} ./;cp openwrt-daede/ci/patches/dae-core/.* dae/patches/;cp openwrt-daede/ci/patches/dae-core/.* daed/patches/;rm -rf openwrt-daede ci
+        git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/{*dae*,vmlinux-btf} ./;cp openwrt-daede/ci/patches/dae-core/* dae/patches/;cp openwrt-daede/ci/patches/dae-core/* daed/patches/;rm -rf openwrt-daede ci
         git_clone https://github.com/QiuSimons/luci-app-honk honk1 && mv -f honk1/{luci-app*,honk} ./;rm -rf honk1
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_clone https://github.com/linkease/istore-packages
