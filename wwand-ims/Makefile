@@ -30,8 +30,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre15
-PKG_RELEASE:=10
+PKG_VERSION:=0.2.0_pre16
+PKG_RELEASE:=11
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git

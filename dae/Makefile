@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dae
 PKG_VERSION:=2026.11.21
-PKG_RELEASE:=60
+PKG_RELEASE:=61
 
 PKG_SOURCE:=dae-src-2026.11.21-7902d18ae33c.tar.gz
 PKG_SOURCE_URL:=https://github.com/kenzok8/openwrt-daede/releases/download/dae-src
@@ -19,9 +19,6 @@ PKG_MAINTAINER:=kenzok8
 
 DAE_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_DIR:=$(DAE_BUILD_DIR)/core
-
-DAE_CORE_PATCH_DIR:=$(CURDIR)/../ci/patches/dae-core
-PKG_FILE_DEPENDS+=$(DAE_CORE_PATCH_DIR)
 
 PKG_BUILD_DEPENDS:=golang/host bpf-headers
 PKG_BUILD_PARALLEL:=1
@@ -104,8 +101,6 @@ DAE_CFLAGS:= \
 define Build/Prepare
 	mkdir -p $(DAE_BUILD_DIR)
 	$(TAR) --strip-components=1 -C $(DAE_BUILD_DIR) -xzf $(DL_DIR)/$(PKG_SOURCE)
-	@test -s "$(DAE_CORE_PATCH_DIR)/0001-keep-protocol-wrappers-in-tcp-relay.patch"
-	$(call PatchDir,$(PKG_BUILD_DIR),$(DAE_CORE_PATCH_DIR),)
 	$(if $(wildcard $(PATCH_DIR)/*.patch),$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR),))
 endef
 
