@@ -710,7 +710,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
 
     <div id="ghfu_uci_warn" class="ghfu-alert-banner" style="display:none;"></div>
     <div id="ghfu_custom_part_warn" class="ghfu-alert-banner" style="display:none;">
-        <%:Warning: Custom firmware with modified root partition size should use%> <a target="_blank" href="https://openwrt.ai">openwrt.ai</a> <%:to build custom firmware, otherwise direct online upgrade will reset partitions and lose configuration.%>
+        <%:Warning: Custom firmware with modified root partition size should use%> <a target="_blank" href="https://openwrt.ai">openwrt.ai</a> <%:to build custom firmware, otherwise direct online upgrade will reset partitions.%>
     </div>
 
     <div class="cbi-section ghfu-layout">
@@ -981,7 +981,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         }
         var partWarn = byId('ghfu_custom_part_warn');
         if (partWarn && currentDeviceInfo) {
-            partWarn.style.display = currentDeviceInfo.is_kwrt ? 'none' : 'block';
+            partWarn.style.display = currentDeviceInfo.show_part_warn ? 'block' : 'none';
         }
     }
 

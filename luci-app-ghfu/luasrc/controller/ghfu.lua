@@ -267,9 +267,126 @@ local function detect_boot_and_part_type()
     return is_efi, part_type
 end
 
+local DEFAULT_ROOTFS_PARTSIZE_MB = 1536
+
+-- Detect whether this is a soft-router block-device system and read its rootfs partition size (TARGET_ROOTFS_PARTSIZE) in MiB
+local function detect_rootfs_partsize(target, arch)
+    local t_low = (target or ""):lower()
+    local is_soft_target = (
+        t_low:match("^x86/") or
+        t_low:match("^armsr/") or
+        t_low:match("^rockchip/") or
+        t_low:match("^bcm27xx/") or
+        t_low:match("^sunxi/") or
+        t_low:match("^amlogic/") or
+        t_low:match("^meson/") or
+        arch == "x86_64"
+    ) and true or false
+
+    local function is_block_part_name(name)
+        if not name or name == "" then return false end
+        return (
+            name:match("^sd[a-z]+%d+$") or
+            name:match("^vd[a-z]+%d+$") or
+            name:match("^hd[a-z]+%d+$") or
+            name:match("^xvd[a-z]+%d+$") or
+            name:match("^nvme%d+n%d+p%d+$") or
+            name:match("^mmcblk%d+p%d+$")
+        ) and true or false
+    end
+
+    local function extract_dev_short(dev_path)
+        dev_path = trim(dev_path or "")
+        if dev_path == "" then return "" end
+        local short = dev_path:match("^/dev/(.+)$") or dev_path
+        short = short:gsub("%s.*$", "")
+        if is_block_part_name(short) then
+            return short
+        end
+        return ""
+    end
+
+    local dev_short = ""
+
+    -- 1. Check /proc/cmdline root= parameter
+    local cmdline = read_first_line("/proc/cmdline")
+    local root_arg = cmdline:match("root=([^%s]+)")
+    if root_arg and root_arg ~= "" then
+        local partuuid = root_arg:match("^PARTUUID=(.+)$")
+        local fsuuid = root_arg:match("^UUID=(.+)$")
+        if partuuid then
+            local resolved = trim(sys.exec("blkid -t PARTUUID=" .. util.shellquote(partuuid) .. " -o device 2>/dev/null | head -n1"))
+            dev_short = extract_dev_short(resolved)
+        elseif fsuuid then
+            local resolved = trim(sys.exec("blkid -t UUID=" .. util.shellquote(fsuuid) .. " -o device 2>/dev/null | head -n1"))
+            dev_short = extract_dev_short(resolved)
+        else
+            dev_short = extract_dev_short(root_arg)
+        end
+    end
+
+    -- 2. Check /sys/block/loop0/loop/backing_file (SquashFS + OverlayFS root partition)
+    if dev_short == "" then
+        local loop_backing = read_first_line("/sys/block/loop0/loop/backing_file")
+        dev_short = extract_dev_short(loop_backing)
+    end
+
+    -- 3. Check /proc/mounts for /rom or /
+    if dev_short == "" then
+        local mounts = read_lines("/proc/mounts")
+        for _, line in ipairs(mounts) do
+            local mdev, mpoint = line:match("^([^%s]+)%s+([^%s]+)")
+            if (mpoint == "/rom" or mpoint == "/") and mdev and mdev:sub(1, 5) == "/dev/" then
+                local candidate = extract_dev_short(mdev)
+                if candidate ~= "" then
+                    dev_short = candidate
+                    break
+                end
+            end
+        end
+    end
+
+    -- 4. Fallback for known soft-router targets: check common rootfs partition 2 block devices
+    if dev_short == "" and is_soft_target then
+        local common_devs = { "sda2", "vda2", "nvme0n1p2", "mmcblk0p2", "mmcblk1p2", "xvda2" }
+        for _, d in ipairs(common_devs) do
+            if fs.access("/sys/class/block/" .. d .. "/size") then
+                dev_short = d
+                break
+            end
+        end
+    end
+
+    local is_soft_router = is_soft_target or (dev_short ~= "")
+    local rootfs_partsize_mb = 0
+
+    if is_soft_router and dev_short ~= "" then
+        local sectors_raw = read_first_line("/sys/class/block/" .. dev_short .. "/size")
+        local sectors = tonumber(sectors_raw) or 0
+        if sectors > 0 then
+            rootfs_partsize_mb = math.floor(sectors / 2048 + 0.5)
+        else
+            local bytes_raw = trim(sys.exec("blockdev --getsize64 " .. util.shellquote("/dev/" .. dev_short) .. " 2>/dev/null"))
+            local bytes = tonumber(bytes_raw) or 0
+            if bytes > 0 then
+                rootfs_partsize_mb = math.floor(bytes / 1048576 + 0.5)
+            end
+        end
+    end
+
+    local show_part_warn = false
+    if is_soft_router and rootfs_partsize_mb > 0 then
+        -- Allow small sector-alignment tolerance (+/- 8 MiB) around 1536 MiB
+        if math.abs(rootfs_partsize_mb - DEFAULT_ROOTFS_PARTSIZE_MB) > 8 then
+            show_part_warn = true
+        end
+    end
+
+    return is_soft_router, rootfs_partsize_mb, show_part_warn
+end
+
 local function detect_device_info()
     local target = ""
-    local distrib_id = ""
     local distrib_rev = ""
     local distrib_desc = ""
 
@@ -278,8 +395,6 @@ local function detect_device_info()
         local k, v = line:match("^([%w_]+)=['\"]?(.-)['\"]?$")
         if k == "DISTRIB_TARGET" then
             target = trim(v)
-        elseif k == "DISTRIB_ID" then
-            distrib_id = trim(v)
         elseif k == "DISTRIB_REVISION" then
             distrib_rev = trim(v)
         elseif k == "DISTRIB_DESCRIPTION" then
@@ -316,9 +431,6 @@ local function detect_device_info()
         if ubus_board.release then
             if target == "" and ubus_board.release.target then
                 target = trim(tostring(ubus_board.release.target))
-            end
-            if distrib_id == "" and ubus_board.release.distribution then
-                distrib_id = trim(tostring(ubus_board.release.distribution))
             end
         end
         if board_name == "" and ubus_board.board_name then
@@ -380,6 +492,7 @@ local function detect_device_info()
     end
 
     local is_efi, part_type = detect_boot_and_part_type()
+    local is_soft_router, rootfs_partsize_mb, show_part_warn = detect_rootfs_partsize(target, arch)
     local sys_ver = get_system_version()
 
     return {
@@ -391,11 +504,12 @@ local function detect_device_info()
         arch = arch,
         is_efi = is_efi,
         part_type = part_type,
+        is_soft_router = is_soft_router,
+        rootfs_partsize_mb = rootfs_partsize_mb,
+        show_part_warn = show_part_warn,
         system_version = sys_ver,
-        distrib_id = distrib_id,
         distrib_rev = distrib_rev,
         distrib_desc = distrib_desc,
-        is_kwrt = (distrib_id == "Kwrt" or distrib_id == "1536"),
         candidates = candidates
     }
 end

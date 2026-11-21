@@ -721,6 +721,14 @@ return baseclass.extend({
 		rmin.depends('anchor_steering', 'auto');
 		bind(rmin);
 
+		var snet = s.taboption(tab, form.ListValue, 'steer_networks', _('Steering: networks'),
+			_('Registered network: only cells of the network the card is on. Any allowed network: for a card that may use several networks (GDSP and other global roaming SIMs) — also cells of other networks, except those on the card\'s forbidden list; a move costs a re-registration, so it needs a clear gain.'));
+		snet.value('registered', _('Registered network'));
+		snet.value('allowed', _('Any allowed network'));
+		snet.default = 'registered';
+		snet.depends('anchor_steering', 'auto');
+		bind(snet);
+
 		var sint = s.taboption(tab, form.Value, 'steer_scan_interval', _('Steering: scan interval'),
 			_('Seconds between cell scans (at least 600).'));
 		sint.datatype = 'min(600)';

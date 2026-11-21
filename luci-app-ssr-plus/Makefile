@@ -1,10 +1,8 @@
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=luci-app-ssr-plus
-LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=198
-PKG_RELEASE:=105
+PKG_RELEASE:=106
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -12,10 +10,10 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Xray \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG \
-	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_DNS2TCP \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo \
+	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_GeoData \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Kcptun \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy \
@@ -28,21 +26,21 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
 
-LUCI_TITLE:=SS/SSR/V2Ray/Trojan/NaiveProxy/Tuic/ShadowTLS/Hysteria/AnyTLS/Socks5/Clash LuCI interface
+LUCI_TITLE:=LuCI support for SSR-Plus (Multi-protocol Proxy)
 LUCI_PKGARCH:=all
 LUCI_DEPENDS:= \
 	+libuci-lua +lua +luci-compat +dns2tcp +dnsmasq-full \
-	+ip-full +lua-neturl +libuci-lua +microsocks +ipt2socks +lyaml \
+	+ip-full +lua-neturl +microsocks +ipt2socks +lyaml \
 	+resolveip +curl +nping +coreutils +coreutils-timeout \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:xray-core \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:coreutils-timeout \
+	+idn2 \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG:chinadns-ng \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS:mosdns \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:mihomo \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:v2ray-geoip \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geoip \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geosite \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG:chinadns-ng \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS:mosdns \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:xray-core \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS:shadow-tls \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Kcptun:kcptun-client \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
@@ -128,7 +126,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy
 	bool "Include HTTP(S) Proxy Server"
-	default y if (aarch64||i386||loongarch64||riscv64||x86_64)
+	default y if (aarch64||arm||i386||loongarch64||riscv64||x86_64)
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo
 	bool "Include Mihomo (Clash Support)"
