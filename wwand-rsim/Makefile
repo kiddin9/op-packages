@@ -21,8 +21,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-rsim
-PKG_VERSION:=0.1.0_p2
-PKG_RELEASE:=8
+PKG_VERSION:=0.1.1_p2
+PKG_RELEASE:=9
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-rsim.git

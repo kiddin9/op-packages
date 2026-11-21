@@ -1,0 +1,119 @@
+diff --git a/dialer/anytls/anytls.go b/dialer/anytls/anytls.go
+index 45fc282..e33228c 100644
+--- a/dialer/anytls/anytls.go
++++ b/dialer/anytls/anytls.go
+@@ -3,6 +3,7 @@ package anytls
+ import (
+ 	"crypto/tls"
+ 	"net/url"
++	"strconv"
+ 	"strings"
+ 
+ 	"github.com/daeuniverse/outbound/dialer"
+@@ -54,12 +55,26 @@ func parseAnytlsURL(link string) (*Anytls, error) {
+ 		Auth:     u.User.Username(),
+ 		Host:     u.Host,
+ 		Sni:      sni,
+-		Insecure: u.Query().Get("insecure") == "1",
++		Insecure: insecureFromQuery(u.Query()),
+ 	}
+ 
+ 	return antls, nil
+ }
+ 
++// insecureFromQuery reports whether the link asks to skip certificate
++// verification. The shared helper covers the spellings the other TLS dialers
++// accept; anytls links additionally carry "insecure", which is what daed's own
++// node form and most anytls subscriptions emit. Only this package accepts both
++// families, so the shared helper keeps its existing semantics.
++func insecureFromQuery(query url.Values) bool {
++	if dialer.AllowInsecureFromQuery(query) {
++		return true
++	}
++	// Absent or unparsable values keep verification on.
++	insecure, err := strconv.ParseBool(query.Get("insecure"))
++	return err == nil && insecure
++}
++
+ func (s *Anytls) Dialer(option *dialer.ExtraOption, nextDialer netproxy.Dialer) (netproxy.Dialer, *dialer.Property, error) {
+ 	skipVerify := s.Insecure
+ 	if option != nil && option.AllowInsecure {
+diff --git a/dialer/anytls/anytls_test.go b/dialer/anytls/anytls_test.go
+index 3a8af0a..88cd81a 100644
+--- a/dialer/anytls/anytls_test.go
++++ b/dialer/anytls/anytls_test.go
+@@ -1,6 +1,7 @@
+ package anytls
+ 
+ import (
++	"net/url"
+ 	"reflect"
+ 	"testing"
+ 
+@@ -63,3 +64,66 @@ func insecureSkipVerify(t *testing.T, d any) bool {
+ 	}
+ 	return value.Elem().FieldByName("InsecureSkipVerify").Bool()
+ }
++
++func TestInsecureFromQuery(t *testing.T) {
++	tests := []struct {
++		name  string
++		query string
++		want  bool
++	}{
++		{name: "absent", query: "", want: false},
++		{name: "insecure_1", query: "insecure=1", want: true},
++		{name: "insecure_true", query: "insecure=true", want: true},
++		{name: "insecure_0", query: "insecure=0", want: false},
++		{name: "insecure_false", query: "insecure=false", want: false},
++		{name: "insecure_invalid", query: "insecure=yes-please", want: false},
++		{name: "allowInsecure_1", query: "allowInsecure=1", want: true},
++		{name: "allow_insecure_true", query: "allow_insecure=true", want: true},
++		{name: "allowinsecure_1", query: "allowinsecure=1", want: true},
++		{name: "skipVerify", query: "skipVerify=true", want: true},
++		{name: "shared_key_wins_over_insecure_0", query: "insecure=0&allowInsecure=1", want: true},
++		{name: "insecure_wins_over_shared_0", query: "insecure=1&allowInsecure=0", want: true},
++		{name: "both_disabled", query: "insecure=0&allowInsecure=0", want: false},
++		{name: "unrelated_params", query: "sni=example.com&udp=1", want: false},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			query, err := url.ParseQuery(tt.query)
++			if err != nil {
++				t.Fatalf("ParseQuery(%q) error = %v", tt.query, err)
++			}
++			if got := insecureFromQuery(query); got != tt.want {
++				t.Fatalf("insecureFromQuery(%q) = %v, want %v", tt.query, got, tt.want)
++			}
++		})
++	}
++}
++
++func TestParseAnytlsURLHonorsInsecureAliases(t *testing.T) {
++	tests := []struct {
++		name     string
++		link     string
++		insecure bool
++		sni      string
++	}{
++		{name: "default_verifies", link: "anytls://pass@example.com:443", insecure: false, sni: "example.com"},
++		{name: "insecure_1", link: "anytls://pass@example.com:443?insecure=1", insecure: true, sni: "example.com"},
++		{name: "insecure_0", link: "anytls://pass@example.com:443?insecure=0", insecure: false, sni: "example.com"},
++		{name: "allowInsecure_1", link: "anytls://pass@example.com:443?allowInsecure=1", insecure: true, sni: "example.com"},
++		{name: "sni_override", link: "anytls://pass@example.com:443?sni=cdn.example.net&insecure=1", insecure: true, sni: "cdn.example.net"},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			s, err := parseAnytlsURL(tt.link)
++			if err != nil {
++				t.Fatalf("parseAnytlsURL(%q) error = %v", tt.link, err)
++			}
++			if s.Insecure != tt.insecure {
++				t.Fatalf("parseAnytlsURL(%q).Insecure = %v, want %v", tt.link, s.Insecure, tt.insecure)
++			}
++			if s.Sni != tt.sni {
++				t.Fatalf("parseAnytlsURL(%q).Sni = %q, want %q", tt.link, s.Sni, tt.sni)
++			}
++		})
++	}
++}

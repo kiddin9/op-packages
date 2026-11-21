@@ -1,0 +1,76 @@
+diff --git a/apps/web/src/App.tsx b/apps/web/src/App.tsx
+index c8e2614..ca1b106 100644
+--- a/apps/web/src/App.tsx
++++ b/apps/web/src/App.tsx
+@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from 'react'
+ import { Toaster } from '~/components/ui/sonner'
+ import { TooltipProvider } from '~/components/ui/tooltip'
+ import { getThemeById, themeColorsToCSSVars } from '~/constants'
+-import { QueryProvider } from '~/contexts'
+ import { Router } from '~/Router'
+ import { appStateAtom, colorSchemeAtom } from '~/store'
+ 
+@@ -72,13 +71,11 @@ export function App() {
+   }, [colorTheme, colorScheme])
+ 
+   return (
+-    <QueryProvider colorScheme={colorScheme} themeMode={themeMode} setThemeMode={setThemeMode}>
+-      <TooltipProvider>
+-        <div className="h-dvh">
+-          <Toaster />
+-          <Router />
+-        </div>
+-      </TooltipProvider>
+-    </QueryProvider>
++    <TooltipProvider>
++      <div className="h-dvh">
++        <Toaster />
++        <Router colorScheme={colorScheme} themeMode={themeMode} setThemeMode={setThemeMode} />
++      </div>
++    </TooltipProvider>
+   )
+ }
+diff --git a/apps/web/src/Router.tsx b/apps/web/src/Router.tsx
+index 27def0d..784c679 100644
+--- a/apps/web/src/Router.tsx
++++ b/apps/web/src/Router.tsx
+@@ -1,12 +1,22 @@
++import type { ThemeMode } from '~/store'
+ import { createGraphiQLFetcher } from '@graphiql/toolkit'
+ import { useStore } from '@nanostores/react'
+ import { GraphiQL } from 'graphiql'
+ import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom'
+ 
++import { QueryProvider } from '~/contexts'
+ import { MainLayout, OrchestratePage, SetupPage } from '~/pages'
+ import { endpointURLAtom, tokenAtom } from '~/store'
+ 
+-export function Router() {
++export function Router({
++  colorScheme,
++  themeMode,
++  setThemeMode,
++}: {
++  colorScheme: 'dark' | 'light'
++  themeMode: ThemeMode
++  setThemeMode: (mode: ThemeMode) => void
++}) {
+   const endpointURL = useStore(endpointURLAtom)
+   const token = useStore(tokenAtom)
+   const RouterType = import.meta.env.DEV ? BrowserRouter : HashRouter
+@@ -14,7 +24,14 @@ export function Router() {
+   return (
+     <RouterType>
+       <Routes>
+-        <Route path="/" element={<MainLayout />}>
++        <Route
++          path="/"
++          element={
++            <QueryProvider colorScheme={colorScheme} themeMode={themeMode} setThemeMode={setThemeMode}>
++              <MainLayout />
++            </QueryProvider>
++          }
++        >
+           <Route index element={<OrchestratePage />} />
+         </Route>
+ 

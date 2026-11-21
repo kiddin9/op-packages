@@ -30,12 +30,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre13
-PKG_RELEASE:=9
+PKG_VERSION:=0.2.0_pre15
+PKG_RELEASE:=10
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
-PKG_SOURCE_VERSION:=8f6915aafaffc7b761846b94bd371b0498d7cda0
+PKG_SOURCE_VERSION:=33ba8738f0b1ad216dc5a0735b281ba9437cc795
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -73,6 +73,9 @@ define Package/wwand-ims
 	+kmod-ipsec +kmod-ipsec4 +kmod-ipsec6 +kmod-vrf +ip-full \
 	+ucode-mod-fs +ucode-mod-uloop +ucode-mod-ubus +ucode-mod-socket \
 	+ucode-mod-uci +ucode-mod-digest +ucode-mod-struct
+  # modem_sms_deliver and the plugins' sms_send hook (SMS over IP),
+  # wwand 4ad3cde = v1.10.0-dev-20
+  EXTRA_DEPENDS:=wwand (>=1.10.0_pre20)
   PKGARCH:=all
 endef
 
@@ -95,14 +98,14 @@ define Package/wwand-ims-vowifi
   CATEGORY:=Network
   SUBMENU:=WWAN
   TITLE:=VoWiFi for wwand-ims (IKEv2/EAP-AKA tunnel to the ePDG)
-  DEPENDS:=+wwand-ims +ip-full +kmod-xfrm-interface \
+  DEPENDS:=+wwand-ims +ip-full +kmod-xfrm-interface +xfrm \
 	+strongswan-charon +strongswan-mod-vici +strongswan-mod-kernel-netlink \
 	+strongswan-mod-socket-default +strongswan-mod-random +strongswan-mod-kdf \
 	+strongswan-mod-aes +strongswan-mod-gcm +strongswan-mod-sha1 +strongswan-mod-sha2 \
 	+strongswan-mod-hmac +strongswan-mod-gmp +strongswan-mod-curve25519 \
 	+strongswan-mod-x509 +strongswan-mod-pubkey +strongswan-mod-pkcs1 +strongswan-mod-pem \
 	+strongswan-mod-constraints +strongswan-mod-eap-identity +strongswan-mod-eap-aka +strongswan-mod-fips-prf \
-	+strongswan-mod-ext-aka +strongswan-mod-p-cscf
+	+strongswan-mod-ext-aka +strongswan-mod-p-cscf +strongswan-mod-epdg-idr
   PKGARCH:=all
 endef
 
@@ -167,18 +170,19 @@ define Package/wwand-ims-vowifi/install
 	$(INSTALL_DIR) $(1)/usr/libexec/strongswan $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/vowifi-ext-aka.sh $(1)/usr/libexec/strongswan/ext-aka
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/wwand-ims-vowifi.sh $(1)/usr/sbin/wwand-ims-vowifi
-	# the two charon settings vici cannot carry: the P-CSCF request for the
-	# tunnel, and no virtual IP or routes of charon's own (the tunnel ends on
-	# an XFRM interface wwand-ims-vowifi sets up)
+	# the netifd proto handler that takes the tunnel's IP configuration
+	$(INSTALL_DIR) $(1)/lib/netifd/proto
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/vowifi-proto.sh $(1)/lib/netifd/proto/wwandvowifi.sh
+	# the charon settings vici cannot carry, for the tunnel's connection by
+	# name (charon's global settings stay as they are): the P-CSCF request,
+	# and the ePDG's own identity accepted (plugin epdg-idr)
 	$(INSTALL_DIR) $(1)/etc/strongswan.d/charon
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/vowifi-strongswan.conf \
 		$(1)/etc/strongswan.d/charon/wwand-ims-vowifi.conf
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/vowifi-charon.conf $(1)/etc/strongswan.d/wwand-ims-vowifi.conf
 endef
 
 define Package/wwand-ims-vowifi/conffiles
 /etc/strongswan.d/charon/wwand-ims-vowifi.conf
-/etc/strongswan.d/wwand-ims-vowifi.conf
 endef
 
 # named, not globbed (the rule luci-app-wwand follows)
