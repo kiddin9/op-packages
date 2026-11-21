@@ -237,8 +237,6 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mvdir lite-watchdog
         git_clone https://github.com/itsmaiGe/luci-theme-7dollar
         git_clone https://github.com/mrjoechen/luci-theme-carbon
-        git_clone https://github.com/xxi-arch/luci-app-device-manager
-        
         ) &
         (
         git_clone https://github.com/Arthur97172/luci-app-substore
