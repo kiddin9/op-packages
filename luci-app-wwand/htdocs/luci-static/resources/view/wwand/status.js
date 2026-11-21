@@ -484,6 +484,114 @@ const ACTION_LABEL = {
 	modem_reset:  _('reset the modem'),
 };
 
+/* Where the modem camps and why (daemon modem_common.cell_layers), and what
+   anchor steering is doing about it (steering.uc). The network's idle-mode
+   parameters are shown as the modem reports them: they answer "why does it
+   stay on this cell", which no signal figure does. A cell broadcasting another
+   network than the one registered is a hosted cell — the usual reason a fixed
+   router never gets 5G (docs/design/anchor-steering.md). */
+var STEER_STATES = {
+	idle: _('watching'), scanning: _('scanning for cells'), locking: _('locking'),
+	locked: _('locked, waiting for EN-DC'), verified: _('locked on an EN-DC anchor'),
+	releasing: _('releasing the lock'), backoff: _('lock released, waiting'), off: _('off'),
+};
+function dbmS(v) { return (v != null) ? '%d dBm'.format(v) : '—'; }
+function secsS(v) { return (v != null) ? fmtDur(v) : '—'; }
+
+function renderLayers(reply) {
+	var lay = reply.cell_layers, st = reply.steering;
+	var term = fmt.term, out = [];
+
+	if (lay && lay.serving) {
+		var sv = lay.serving, rows = [];
+		rows.push([ term(_('Serving layer'), _('The LTE cell the modem camps on: band, downlink frequency, EARFCN and PCI.')),
+			'%s · %s · EARFCN %d · PCI %s'.format(sv.band != null ? 'B' + sv.band : '—',
+				sv.dl_mhz != null ? '%.1f MHz'.format(sv.dl_mhz) : '—', sv.earfcn, sv.pci != null ? sv.pci : '—') ]);
+		if (sv.cell_plmn)
+			rows.push([ term(_('Cell network'), _('The network this cell broadcasts. When it is not the network the card is registered on, the cell is hosted by another operator (network sharing): it carries that operator\'s settings, its 5G anchoring included.')),
+				E('span', {}, [ sv.cell_plmn + ' ', sv.shared
+					? E('span', { 'class': 'label warning' }, _('hosted by another network')) : '' ]) ]);
+		rows.push([ term(_('EN-DC anchor'), _('Whether this cell offers 5G NSA (EN-DC). Without it the modem cannot add a 5G leg, whatever the 5G coverage.')),
+			sv.anchor == null ? '—' : (sv.anchor ? _('yes') : _('no')) ]);
+		/* connected, the modem reports none of these: the values are the last
+		   idle reading of this same layer, and say how old they are */
+		var aged = function(v, age) {
+			return (age != null && age > 15) ? _('%s (read %s ago, while idle)').format(v, secsS(age)) : v;
+		};
+		if (sv.resel_priority != null)
+			rows.push([ term(_('Reselection priority'), _('The priority the network gives this layer for idle-mode cell reselection (0 lowest, 7 highest). A layer ranked above all others keeps the modem on it. The modem reports it only while idle; during a connection the last idle reading of this layer is shown.')),
+				aged(String(sv.resel_priority), sv.params_age_s) ]);
+		if (sv.s_non_intra_search != null)
+			rows.push([ term(_('Other-layer search'), _('SnonIntraSearch and threshServingLow, as the modem reports them: while the serving cell is stronger than SnonIntraSearch the modem does not measure lower-priority layers at all.')),
+				'%s / %s'.format(sv.s_non_intra_search, sv.thresh_serving_low != null ? sv.thresh_serving_low : '—') ]);
+		rows.push([ term(_('Source'), _('qmi: the NAS cell location read (only while idle); at: AT+QENG="neighbourcell".')),
+			lay.source || '—' ]);
+
+		var frows = (lay.freqs || []).map(function(f) {
+			return E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td' }, [ f.band != null ? 'B' + f.band : '—' ]),
+				E('td', { 'class': 'td' }, [ String(f.earfcn) ]),
+				E('td', { 'class': 'td' }, [ f.dl_mhz != null ? '%.1f MHz'.format(f.dl_mhz) : '—' ]),
+				E('td', { 'class': 'td' }, [ f.resel_priority != null ? String(f.resel_priority) : '—' ]),
+				E('td', { 'class': 'td' }, [ '%s / %s'.format(f.thresh_x_high != null ? f.thresh_x_high : '—', f.thresh_x_low != null ? f.thresh_x_low : '—') ]),
+				E('td', { 'class': 'td' }, [ (f.cells && f.cells.length)
+					? f.cells.map(function(c) { return '%d (%s)'.format(c.pci, dbmS(c.rsrp)); }).join(', ')
+					: _('not measured') ])
+			]);
+		});
+
+		var body = [ E('h3', {}, _('Cell layers')), tbl(rows) ];
+		if (frows.length && lay.freqs_age_s != null && lay.freqs_age_s > 15)
+			body.push(E('p', { 'class': 'cbi-section-descr' },
+				[ _('Other layers as read %s ago, while the modem was idle.').format(secsS(lay.freqs_age_s)) ]));
+		if (frows.length)
+			body.push(E('table', { 'class': 'table' }, [ E('tr', { 'class': 'tr table-titles' }, [
+				E('th', { 'class': 'th' }, [ _('Band') ]), E('th', { 'class': 'th' }, [ 'EARFCN' ]),
+				E('th', { 'class': 'th' }, [ _('Frequency') ]),
+				E('th', { 'class': 'th' }, term(_('Priority'), _('Reselection priority the network gives this layer (0 lowest, 7 highest).'))),
+				E('th', { 'class': 'th' }, term(_('Thresholds'), _('threshX-High / threshX-Low as reported: how strong a cell on this layer must be before the modem moves to it.'))),
+				E('th', { 'class': 'th' }, term(_('Cells seen'), _('PCI and RSRP of the cells the modem measured on this layer. "not measured" is the normal case for a layer ranked below the serving one.')))
+			]) ].concat(frows)));
+		out.push(E('div', { 'class': 'cbi-section' }, body));
+	}
+
+	if (st) {
+		var srows = [];
+		srows.push([ term(_('State'), _('Anchor steering moves the LTE primary cell onto a cell of the registered network that offers EN-DC, with a lock that is cleared as soon as it does not deliver. Carrier aggregation is never restricted.')),
+			STEER_STATES[st.state] || st.state ]);
+		if (st.target)
+			srows.push([ _('Locked cell'), st.target ]);
+		if (st.reason)
+			srows.push([ _('Last reason'), st.reason ]);
+		srows.push([ _('Last scan'), st.last_scan_s != null
+			? _('%s ago (%s)').format(secsS(st.last_scan_s), st.scan_source || '—') : _('none yet') ]);
+		if (st.next_scan_s != null)
+			srows.push([ _('Next scan'), _('in %s').format(secsS(st.next_scan_s)) ]);
+
+		var crow = (st.cells || []).map(function(c) {
+			return E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td' }, [ c.plmn || '—' ]),
+				E('td', { 'class': 'td' }, [ c.band != null ? 'B' + c.band : '—' ]),
+				E('td', { 'class': 'td' }, [ '%d:%d'.format(c.earfcn, c.pci) ]),
+				E('td', { 'class': 'td' }, [ dbmS(c.rsrp) ]),
+				E('td', { 'class': 'td' }, [ c.anchor ? _('yes') : '—' ]),
+				E('td', { 'class': 'td' }, [ c.blocked ? _('blocked') : '' ])
+			]);
+		});
+		var sbody = [ E('h3', {}, _('Anchor steering')), tbl(srows) ];
+		if (crow.length)
+			sbody.push(E('table', { 'class': 'table' }, [ E('tr', { 'class': 'tr table-titles' }, [
+				E('th', { 'class': 'th' }, [ _('Network') ]), E('th', { 'class': 'th' }, [ _('Band') ]),
+				E('th', { 'class': 'th' }, [ 'EARFCN:PCI' ]), E('th', { 'class': 'th' }, [ 'RSRP' ]),
+				E('th', { 'class': 'th' }, term(_('Anchor'), _('Seen offering EN-DC while locked to it.'))),
+				E('th', { 'class': 'th' }, [ '' ])
+			]) ].concat(crow)));
+		out.push(E('div', { 'class': 'cbi-section' }, sbody));
+	}
+
+	return out;
+}
+
 function renderLive(name, modem, graphs, board) {
 	return Promise.all([
 		L.resolveDefault(callSignal(name), {}),   /* every tick: antenna aiming */
@@ -535,7 +643,7 @@ function renderLive(name, modem, graphs, board) {
 			return res;
 		});
 	}).then(function(res) {
-		var sig = res[0] || {}, cells = (res[1] || {}).cells || {};
+		var sig = res[0] || {}, cellsReply = res[1] || {}, cells = cellsReply.cells || {};
 		var allCtx = res[2] || {};
 		var dpath = res[4] || {};
 		var gpsInfo = res[5] || {};
@@ -1233,6 +1341,9 @@ function renderLive(name, modem, graphs, board) {
 				});
 			})));
 		}
+
+		/* --- cell layers + anchor steering --- */
+		renderLayers(cellsReply).forEach(function(n) { out.push(n); });
 
 		return E('div', {}, out);
 		});

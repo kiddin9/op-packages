@@ -1,0 +1,4 @@
+# patch文件名|上游源码内的文件|特征字符串(grep -E)
+# 特征字符串出现在上游新版本源码里，就说明该 patch 已被上游采纳，check-and-calc 会自动删掉它
+001-implement-openwrt-ap-wifi-collection.patch|agent/wifi/wifi_linux.go|func collectOpenWrtAP
+002-fix-wifi-ap.patch|internal/entities/system/system.go|AP +bool

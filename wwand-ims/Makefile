@@ -30,12 +30,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre5
-PKG_RELEASE:=7
+PKG_VERSION:=0.2.0_pre11
+PKG_RELEASE:=8
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
-PKG_SOURCE_VERSION:=192c2e6d0f84b3ea8af31c0d65d75822c35fbd57
+PKG_SOURCE_VERSION:=02ea35619f921ebe6496999e0bc799f375c51e9d
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -85,6 +85,21 @@ define Package/wwand-ims/description
  carrier MBN. Not for upstream.
 endef
 
+define Package/luci-app-wwand-ims
+  SECTION:=luci
+  CATEGORY:=LuCI
+  SUBMENU:=3. Applications
+  TITLE:=VoLTE status and settings pages for wwand-ims
+  DEPENDS:=+luci-base +wwand-ims
+  PKGARCH:=all
+endef
+
+define Package/luci-app-wwand-ims/description
+ Status -> VoLTE: the IMS registration, the phones registered at sipd, the
+ running call and the last ten calls. Network -> VoLTE: /etc/config/wwand_ims
+ (the SIP gateway, phones and trunks, the IMS modem, operator profiles).
+endef
+
 # user-edited operator/profile config; keep it across sysupgrade
 define Package/wwand-ims/conffiles
 /etc/config/wwand_ims
@@ -116,4 +131,20 @@ define Package/wwand-ims/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/asterisk-pjsip.example $(1)$(IMSLIB)/examples/
 endef
 
+# named, not globbed (the rule luci-app-wwand follows)
+define Package/luci-app-wwand-ims/install
+	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/wwand $(1)/www/luci-static/resources/wwand
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/htdocs/luci-static/resources/view/wwand/ims-status.js \
+		$(PKG_BUILD_DIR)/luci/htdocs/luci-static/resources/view/wwand/ims-config.js \
+		$(1)/www/luci-static/resources/view/wwand/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/htdocs/luci-static/resources/wwand/imsfmt.js \
+		$(1)/www/luci-static/resources/wwand/
+	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/root/usr/share/luci/menu.d/luci-app-wwand-ims.json \
+		$(1)/usr/share/luci/menu.d/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/luci/root/usr/share/rpcd/acl.d/luci-app-wwand-ims.json \
+		$(1)/usr/share/rpcd/acl.d/
+endef
+
 $(eval $(call BuildPackage,wwand-ims))
+$(eval $(call BuildPackage,luci-app-wwand-ims))

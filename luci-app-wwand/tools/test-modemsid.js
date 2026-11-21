@@ -131,6 +131,27 @@ function value(option) {
 		'untouched: an option that was never set is not written as 0');
 }
 
+/* --- a flag that defaults ON: ticking it again must switch it back on -------
+ *
+ * LuCI removes a Flag whose value equals its default, and for nitz_time the
+ * default is '1' (the daemon's bool_opt default true). Writing `disabled` in
+ * that case turned "ticked" into "off": once saved off, the clock sync could
+ * never be switched on again from the interface form.
+ */
+{
+	const uci = fakeUci({ network: {
+		wan: { '.type': 'interface', proto: 'wwand', modem: 'modem0' },
+		modem0: { '.type': 'wwand_modem', nitz_time: '0' },
+	} });
+	const m = load(uci);
+	const o = m.bindModem(Object.assign(flag('nitz_time'), { default: '1' }));
+
+	o.cfgvalue('wan');
+	o.remove('wan');                          /* ticked = the default: remove() */
+	eq(uci.get('network', 'modem0', 'nitz_time'), '1',
+		'default-on flag: ticking it writes on, where the option lives');
+}
+
 /* --- and a TEXT field keeps the blanket refusal ----------------------------
  *
  * A Value has a blank state and "the user cleared it" cannot be told from "the

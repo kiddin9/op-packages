@@ -141,7 +141,7 @@ return baseclass.extend({
 		};
 
 		o = s.taboption(tab, form.Value, 'reset_gpio', _('Modem reset GPIO'),
-			_('Named GPIO on the modem RESET line. When set, recovery pulses it (invert, wait 30 s, restore) instead of cycling USB power.'));
+			_('Named GPIO on the modem RESET line. When set, recovery pulses it (invert, hold for the repower time — 30 s unless set below — restore) instead of cycling USB power.'));
 		o.ucioption = 'reset_gpio';
 		bind(o);
 		o.load = function(section_id) {
@@ -266,13 +266,26 @@ return baseclass.extend({
 		o.optional = true;
 		bind(o);
 
-		o = s.taboption(tab, form.ListValue, 'fcc_auth', _('FCC unlock'),
-			_('RF unlock for laptop-SKU modems that boot radio-locked (Lenovo/Dell/HP variants of Quectel EM1xx, Foxconn SDX55/SDX62). Default "auto" tries the known QMI unlock messages when the modem stays in low-power after going online; MBIM modems need the explicit "quectel" method. "off" disables the unlock entirely.'));
-		o.value('', _('auto (QMI only)'));
+		/* A Value with suggestions: the pinned variants the daemon takes
+		   (foxconn:<magic>, foxconn2:<string>:<number>, fibocom:<model_id> —
+		   reference.md fcc_auth) are no choices a ListValue could show, so a
+		   save of the modem replaced them with "auto". */
+		o = s.taboption(tab, form.Value, 'fcc_auth', _('FCC unlock'),
+			_('RF unlock for laptop-SKU modems that boot radio-locked (Lenovo/Dell/HP variants of Quectel EM1xx, Foxconn SDX55/SDX62, Fibocom FM350). Empty (auto): over QMI the known unlock messages are tried when the modem stays in low power after going online; a Foxconn SDX55 in MBIM mode and a Fibocom FM350 are unlocked automatically too. A Quectel EM1xx in MBIM mode needs the explicit <code>quectel</code>. <code>off</code> disables the unlock. Pinned variants: <code>foxconn:&lt;n&gt;</code>, <code>foxconn2:&lt;string&gt;:&lt;n&gt;</code>, <code>fibocom:&lt;model_id&gt;</code>.'));
+		o.validate = function(sid, v) {
+			/* as lenient as the daemon (modem_init_qmi.uc fcc methods,
+			   fcc_fibocom.uc model_ids): off also as 0/none, a foxconn2 number
+			   that may be missing, any fibocom model id without a colon */
+			if (!v || /^(auto|off|0|none|dms|quectel|foxconn(:[0-9]+)?|foxconn2(:[^:]*)?(:[0-9]+)?|fibocom(:[^:]+)?)$/.test(v))
+				return true;
+			return _('One of auto, off, dms, quectel, foxconn[:<n>], foxconn2:<string>:<n>, fibocom[:<model_id>].');
+		};
+		o.value('', _('auto'));
 		o.value('off', _('off'));
 		o.value('dms', _('QMI DMS (Quectel EM1xx)'));
 		o.value('foxconn', _('QMI Foxconn (SDX55, DW5821e)'));
-		o.value('quectel', _('MBIM Quectel radio state'));
+		o.value('quectel', _('MBIM Quectel radio state (EM1xx in MBIM mode)'));
+		o.value('fibocom', _('Fibocom FM350 (AT GTFCCLOCK)'));
 		o.optional = true;
 		bind(o);
 
@@ -422,7 +435,7 @@ return baseclass.extend({
 		bind(o);
 
 		o = s.taboption(tab, form.Value, 'dl_datagram_max_size', _('Aggregation DL datagram size'),
-			_('Max downlink QMAP aggregation datagram in bytes (0 = board/model default).'));
+			_('Max downlink QMAP aggregation datagram in bytes (0 = 31744; the modem clamps it to what it supports).'));
 		o.placeholder = '0';
 		o.datatype = 'uinteger';
 		bind(o);
@@ -541,8 +554,20 @@ return baseclass.extend({
 	addRadio: function(s, tab, bind) {
 		var o;
 
-		o = s.taboption(tab, form.ListValue, 'modes', _('Radio technology'),
-			_('Restrict the modem to certain radio access technologies.'));
+		/* A Value with suggestions, not a ListValue: the daemon takes any
+		   comma/space list of mode names (qmi_backend.uc parse_modes), and the
+		   ModemManager migration writes combinations such as "umts,lte". A
+		   stored value that is not one of a ListValue's choices is not shown,
+		   and saving the modem then replaced it (ui.js:839-876, form.js:2156). */
+		o = s.taboption(tab, form.Value, 'modes', _('Radio technology'),
+			_('Restrict the modem to certain radio access technologies: <code>all</code>, or a comma-separated list of <code>gsm</code>, <code>umts</code>, <code>lte</code>, <code>nr5g</code>, <code>td-scdma</code>, <code>cdma</code>. Empty: the modem\'s own setting.'));
+		o.validate = function(sid, v) {
+			if (!v || v == 'all')
+				return true;
+			var ok = { gsm: 1, umts: 1, lte: 1, nr5g: 1, 'td-scdma': 1, cdma: 1 };
+			var bad = String(v).split(/[, ]+/).filter(function(m) { return m != '' && !ok[m]; });
+			return bad.length ? _('Unknown radio technology: %s').format(bad.join(', ')) : true;
+		};
 		o.value('', _('Modem default'));
 		o.value('all', _('All'));
 		o.value('lte', 'LTE');
@@ -678,6 +703,32 @@ return baseclass.extend({
 		persist.default = '0';
 		bind(persist);
 
+		/* anchor steering (daemon steering.uc): a supervised, volatile lock of
+		   the LTE primary cell onto an EN-DC anchor of the registered network.
+		   Off while a cell lock above is set — the configured lock wins. */
+		var steer = s.taboption(tab, form.ListValue, 'anchor_steering', _('Anchor steering'),
+			_('For a router that does not move: when the serving LTE cell offers no 5G anchor (EN-DC), scan for cells of the registered network, lock the primary cell onto one that does, and release the lock as soon as it is not acquired, offers no anchor, weakens or the data path stalls. Carrier aggregation is never restricted and the lock is never stored in the modem. A scan costs about 15 seconds of service and runs at most every scan interval. Has no effect while an LTE or 5G cell lock is set.'));
+		steer.value('off', _('Off'));
+		steer.value('auto', _('Automatic'));
+		steer.default = 'off';
+		bind(steer);
+
+		var rmin = s.taboption(tab, form.Value, 'steer_rsrp_min', _('Steering: minimum RSRP'),
+			_('dBm. A cell weaker than this is never chosen, and a locked cell that stays below it for 30 seconds is released.'));
+		rmin.datatype = 'range(-140,-44)';
+		rmin.placeholder = '-105';
+		rmin.optional = true;
+		rmin.depends('anchor_steering', 'auto');
+		bind(rmin);
+
+		var sint = s.taboption(tab, form.Value, 'steer_scan_interval', _('Steering: scan interval'),
+			_('Seconds between cell scans (at least 600).'));
+		sint.datatype = 'min(600)';
+		sint.placeholder = '21600';
+		sint.optional = true;
+		sint.depends('anchor_steering', 'auto');
+		bind(sint);
+
 		return { lock4g: lock4g, lock5g: lock5g };
 	},
 
@@ -740,7 +791,7 @@ return baseclass.extend({
 		bind(o);
 
 		o = s.taboption(tab, form.Value, 'zero_rx_timeout', _('Zero-RX timeout'),
-			_('Restart the connection after this many seconds without received packets (0 = off).'));
+			_('Seconds without received packets before recovery steps in: the modem is reset, and a board that can repower it does so when the reset is refused or the modem stays on the bus (0 = off).'));
 		o.placeholder = '21600';
 		o.datatype = 'uinteger';
 		bind(o);
@@ -752,13 +803,13 @@ return baseclass.extend({
 		bind(o);
 
 		o = s.taboption(tab, form.Value, 'bearer_poll_count', _('Dead-bearer poll count'),
-			_('NCM modems only. How many consecutive status polls may list no data context — with no received traffic in between — before wwand declares the bearer dead and redials. One poll per telemetry interval, so 3 is about three minutes. Lower recovers faster from a drop the modem does not announce; the minimum is 2, because a single unparsed answer on an idle link must not be enough to drop a working connection.'));
+			_('NCM modems only. How many consecutive status polls may list no data context — with no received traffic in between — before wwand declares the bearer dead and redials. One poll per 60 s context poll — a fixed period the telemetry interval does not change — so 3 is about three minutes. Lower recovers faster from a drop the modem does not announce; the minimum is 2, because a single unparsed answer on an idle link must not be enough to drop a working connection.'));
 		o.placeholder = '3';
 		o.datatype = 'min(2)';
 		bind(o);
 
 		o = s.taboption(tab, form.Value, 'stats_interval', _('Telemetry interval'),
-			_('Seconds between throughput/signal telemetry samples while connected.'));
+			_('Seconds between throughput/signal telemetry samples while connected (0 = off).'));
 		o.placeholder = '60';
 		o.datatype = 'uinteger';
 		bind(o);
@@ -784,6 +835,36 @@ return baseclass.extend({
 		o.default = '0';
 		bind(o);
 
+		/* `location` is the old name of this switch, and the daemon ORs the two
+		   (config.uc: gnss = gnss || location). With only `location '1'` set the
+		   box showed off, so GNSS could not be switched off here, and its two
+		   sub-options (depends gnss) were hidden and deleted on save while the
+		   receiver stayed on. Read either name; write the old one along when it
+		   is there, through the same bound functions (bindModem on the interface
+		   form, the plain ones on the Modems page — both use ucioption). */
+		(function(o) {
+			var cv = o.cfgvalue, wr = o.write, rm = o.remove;
+			var legacy = function(self, fn, args) {
+				var keep = self.ucioption;
+				self.ucioption = 'location';
+				try { return fn.apply(self, args); } finally { self.ucioption = keep; }
+			};
+			o.cfgvalue = function(sid) {
+				var v = cv.apply(this, arguments);
+				return (v == null || v === '') && legacy(this, cv, [ sid ]) == '1' ? '1' : v;
+			};
+			o.write = function(sid, val) {
+				wr.apply(this, arguments);
+				if (legacy(this, cv, [ sid ]) != null)
+					legacy(this, wr, [ sid, val ]);
+			};
+			o.remove = function(sid) {
+				rm.apply(this, arguments);
+				if (legacy(this, cv, [ sid ]) != null)
+					legacy(this, wr, [ sid, '0' ]);
+			};
+		})(o);
+
 		o = s.taboption(tab, form.Flag, 'gnss_set_time', _('Set the clock from GNSS'),
 			_('Let wwand step the system clock from the GNSS time — only while the clock is plainly unset, so it never fights the NTP client. Off by default. For installs with no RTC where the modem is the only time source.'));
 		o.default = '0';
@@ -806,7 +887,7 @@ return baseclass.extend({
 		bind(o);
 
 		o = s.taboption(tab, form.Flag, 'auto_correct_config', _('Auto-correct modem config'),
-			_('Let wwand reprogram mismatched modem-side settings (attach profile, etc.) when it detects them.'));
+			_('Let wwand correct what it finds: it re-applies the configured radio mode and network selection when the modem drifts from them, and writes the modem\'s IMEI into this modem\'s configuration when none is set there (that is a change to /etc/config/network). Off by default.'));
 		o.default = '0';
 		bind(o);
 	}

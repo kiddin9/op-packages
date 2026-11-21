@@ -114,11 +114,14 @@ function bindModem(o) {
 		   returns `enabled` or `disabled` and nothing else, so "the user
 		   cleared it" and "the form never resolved the modem" cannot be
 		   confused — the second is answered by seenResolved above, at render,
-		   before any save can muddy it. Off is then WRITTEN rather than
-		   removed, which the daemon reads identically (config.uc bool_opt
-		   treats '0' and absent alike), and only for an option that is
-		   currently set to something else, so a form that touched nothing
-		   writes nothing.
+		   before any save can muddy it. LuCI removes a Flag whose value equals
+		   its DEFAULT, so what is written is that default: '0' for the flags
+		   that default off, which the daemon reads like an absent one, and
+		   '1' for nitz_time, which defaults ON (config.uc bool_opt(…, true)).
+		   Writing `disabled` there turned "ticked" into "off": a clock sync
+		   once switched off could never be switched on again from this form.
+		   Only for an option currently set to something else, so a form that
+		   touched nothing writes nothing.
 
 		   `disabled` is the Flag test HERE, not in general: LuCI puts that
 		   property on TextValue too (form.js:5347). It holds because every
@@ -129,9 +132,10 @@ function bindModem(o) {
 		if (this.disabled != null && seenResolved[sid] === true) {
 			var msid = modemSid(sid);
 			var cur = msid ? uci.get('network', msid, opt) : null;
+			var want = (this.default != null) ? String(this.default) : this.disabled;
 
-			if (cur != null && cur != this.disabled)
-				uci.set('network', msid, opt, this.disabled);
+			if (cur != null && cur != want)
+				uci.set('network', msid, opt, want);
 		}
 
 		if (opt != 'device')

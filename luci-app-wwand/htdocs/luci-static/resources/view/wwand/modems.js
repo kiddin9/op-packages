@@ -218,15 +218,22 @@ return view.extend({
 		/* the currently-used dial params + PIN for a modem, reconstructed from
 		   UCI (the effective config is resolved only at dial time and is not on
 		   the status bus): PIN from the wwand_modem default, APN/auth/credentials
-		   from the first interface that points at this modem. Feeds the one-click
-		   "Save SIM" (per-ICCID override) button below. */
+		   from the first interface that points at this modem — never an IMS PDN
+		   (`option ims '1'`): its APN is not the card's data APN, and as the
+		   card's override it would become the APN of every other interface on
+		   the modem (wwand context_common.uc conn_cfg leaves only IMS PDNs out).
+		   Feeds the one-click "Save SIM" (per-ICCID override) button below. */
 		var simParamsFrom = function(sid) {
 			var out = {};
 			var pin = uci.get('network', sid, 'pincode');
 			if (pin) out.pincode = pin;
 			var iface = null;
 			uci.sections('network', 'interface', function(s) {
-				if (!iface && s.modem == sid &&
+				/* read as the daemon does (config.uc: a set ims is bool_opt —
+				   anything but 0/false/off/no is on) */
+				var ims = (s.ims != null && s.ims !== '') &&
+					[ '0', 'false', 'off', 'no' ].indexOf(String(s.ims)) < 0;
+				if (!iface && s.modem == sid && !ims &&
 				    (s.proto == 'wwand' || s.proto == 'qmi' || s.proto == 'mbim' || s.proto == 'ncm'))
 					iface = s;
 			});

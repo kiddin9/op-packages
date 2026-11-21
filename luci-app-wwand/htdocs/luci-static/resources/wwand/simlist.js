@@ -129,12 +129,27 @@ return baseclass.extend({
 		   an older daemon) just shows nothing here. */
 		var inventory = L.resolveDefault(callInventory(), {});
 
+		/* ICCID or IMSI: wwand matches a wwand_sim by either (config.uc keeps a
+		   section with one of them, modem_common.uc matches the IMSI exactly).
+		   A required ICCID made an IMSI-only section unsavable here. A trailing
+		   F (some readers print it) is accepted, as the daemon does. */
 		o = s.option(form.Value, 'iccid', _('ICCID'),
-			_('The card\'s ICCID (printed on the SIM / shown on the modem status page).'));
-		o.rmempty = false;
-		o.datatype = 'and(uinteger,minlength(6),maxlength(22))';
+			_('The card\'s ICCID (printed on the SIM / shown on the modem status page). Either this or the IMSI below.'));
+		o.rmempty = true;
+		o.validate = function(sid, v) {
+			var imsi = this.section.formvalue(sid, 'imsi');
+			if (!v)
+				return (imsi && imsi.length) ? true : _('An ICCID or an IMSI is needed.');
+			return /^[0-9]{6,22}[Ff]?$/.test(v) ? true : _('6 to 22 digits, optionally a trailing F.');
+		};
 		if (opts.prefillIccid)
 			o.default = opts.prefillIccid;
+
+		o = s.option(form.Value, 'imsi', _('IMSI'),
+			_('Match the card by its IMSI instead (exact). The IMSI is only readable after the PIN is entered, so a PIN for this card needs the ICCID.'));
+		o.modalonly = true;
+		o.rmempty = true;
+		o.datatype = 'and(uinteger,minlength(6),maxlength(15))';
 
 		/* A label for the card. With several cards in a box the ICCID alone
 		   does not say which one is which (ddimension/wwand#44); the name is
@@ -193,10 +208,15 @@ return baseclass.extend({
 		uci.sections('network', 'wwand_modem').forEach(function(sec) { o.value(sec['.name'], sec['.name']); });
 
 		/* modal-only detail: auth + credentials + PDP override */
+		/* unset is its own state (see protocol/wwand.js auth): a username and
+		   password without an auth type are dialled as PAP/CHAP, and "Save SIM"
+		   writes exactly that — shown as "none" they were hidden and deleted on
+		   the next save (form.js:2175-2176) */
 		o = s.option(form.ListValue, 'auth', _('Authentication type'),
-			_('APN authentication for this card (only needed when the operator requires a username/password).'));
+			_('APN authentication for this card (only needed when the operator requires a username/password). Automatic: none without a username, PAP/CHAP with one.'));
 		o.modalonly = true;
-		o.default = 'none';
+		o.optional = true;
+		o.value('', _('Automatic'));
 		o.value('none', _('None'));
 		o.value('pap', 'PAP');
 		o.value('chap', 'CHAP');
@@ -205,13 +225,13 @@ return baseclass.extend({
 		o = s.option(form.Value, 'username', _('PAP/CHAP username'),
 			_('Username for the APN authentication.'));
 		o.modalonly = true;
-		o.depends('auth', 'pap'); o.depends('auth', 'chap'); o.depends('auth', 'both');
+		o.depends('auth', ''); o.depends('auth', 'pap'); o.depends('auth', 'chap'); o.depends('auth', 'both');
 
 		o = s.option(form.Value, 'password', _('PAP/CHAP password'),
 			_('Password for the APN authentication.'));
 		o.modalonly = true;
 		o.password = true;
-		o.depends('auth', 'pap'); o.depends('auth', 'chap'); o.depends('auth', 'both');
+		o.depends('auth', ''); o.depends('auth', 'pap'); o.depends('auth', 'chap'); o.depends('auth', 'both');
 
 		o = s.option(form.ListValue, 'pdp_type', _('PDP type'),
 			_('IP version(s) requested for this card\'s data session, overriding the interface setting.'));
