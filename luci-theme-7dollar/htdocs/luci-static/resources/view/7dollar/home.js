@@ -18,22 +18,22 @@ const RING = 2 * Math.PI * 24;
 /* One line of what matters most for the popular apps, read from their config (never their API);
  * every other app shows name and state only. Keyed by procd service name. */
 const MODE = {
-	rule: T('按规则', 'Rule'), global: T('全局', 'Global'), direct: T('直连', 'Direct'), all: T('全局', 'Global'), custom: T('自定义', 'Custom'),
-	gfw: T('GFW 列表', 'GFW list'), gfwlist: T('GFW 列表', 'GFW list'), router: T('绕过大陆', 'Bypass mainland'), bypass_mainland_china: T('绕过大陆', 'Bypass mainland'),
-	proxy_mainland_china: T('只代理大陆', 'Mainland only'), oversea: T('海外模式', 'Overseas'),
-	none: T('未接管 DNS', 'DNS not taken over'), redirect: T('接管 53 端口', 'Takes over port 53'), 'dnsmasq-upstream': T('dnsmasq 上游', 'dnsmasq upstream'), exchange: T('替换 dnsmasq', 'Replaces dnsmasq')
+	rule: T('按规则', 'Rule', 'По правилам'), global: T('全局', 'Global', 'Глобально'), direct: T('直连', 'Direct', 'Напрямую'), all: T('全局', 'Global', 'Глобально'), custom: T('自定义', 'Custom', 'Свой'),
+	gfw: T('GFW 列表', 'GFW list', 'Список GFW'), gfwlist: T('GFW 列表', 'GFW list', 'Список GFW'), router: T('绕过大陆', 'Bypass mainland', 'В обход Китая'), bypass_mainland_china: T('绕过大陆', 'Bypass mainland', 'В обход Китая'),
+	proxy_mainland_china: T('只代理大陆', 'Mainland only', 'Только Китай'), oversea: T('海外模式', 'Overseas', 'Зарубежный режим'),
+	none: T('未接管 DNS', 'DNS not taken over', 'DNS не перехвачен'), redirect: T('接管 53 端口', 'Takes over port 53', 'Занимает порт 53'), 'dnsmasq-upstream': T('dnsmasq 上游', 'dnsmasq upstream', 'dnsmasq выше'), exchange: T('替换 dnsmasq', 'Replaces dnsmasq', 'Заменяет dnsmasq')
 };
 const sec = (cfg, s) => s[0] == '@' ? td.uciType(cfg, s.slice(1)).then(a => Object.values(a)[0] || {}) : td.uciSection(cfg, s);
 const plain = (cfg, s, f) => () => sec(cfg, s).then(c => ({ sub: f(c) }));
 /* current node: the section named in `key`, shown by its `label` field */
 const node = (cfg, s, key, label, more) => () => sec(cfg, s).then(c => (c[key] && c[key] != 'nil' ? td.uciSection(cfg, c[key]) : Promise.resolve({}))
-	.then(n => ({ sub: [ n[label] || (c[key] != 'nil' && c[key]) || T('未选节点', 'No node'), more && more(c) ].filter(Boolean).join(' · ') })));
+	.then(n => ({ sub: [ n[label] || (c[key] != 'nil' && c[key]) || T('未选节点', 'No node', 'Узел не выбран'), more && more(c) ].filter(Boolean).join(' · ') })));
 const panel = port => ({ link: `http://${location.hostname}:${port}/` });
 const shares = (cfg, type) => () => Promise.all([ td.uciType(cfg, type), td.mounts() ]).then(([ s, m ]) => {
 	const list = Object.values(s).filter(x => x.path);
 	const disk = p => m.filter(x => x.mount == '/' || x.mount == p || p.indexOf(x.mount + '/') == 0).sort((a, b) => b.mount.length - a.mount.length)[0];
 	const d = list.map(x => disk(x.path)).find(Boolean);
-	return { sub: list.map(x => x.name).join(' · '), rt: d && d.size ? T(`剩余 ${td.bytes(d.avail)} / 共 ${td.bytes(d.size)}`, `${td.bytes(d.avail)} free of ${td.bytes(d.size)}`) : '' };
+	return { sub: list.map(x => x.name).join(' · '), rt: d && d.size ? T(`剩余 ${td.bytes(d.avail)} / 共 ${td.bytes(d.size)}`, `${td.bytes(d.avail)} free of ${td.bytes(d.size)}`, `свободно ${td.bytes(d.avail)} из ${td.bytes(d.size)}`) : '' };
 });
 const APPS = {
 	openclash: () => td.uciSection('openclash', 'config').then(c => ({
@@ -46,13 +46,13 @@ const APPS = {
 	nikki: plain('nikki', 'mixin', c => MODE[c.mode]),
 	adguardhome: () => td.uciSection('AdGuardHome', 'AdGuardHome').then(c => Object.assign({ sub: MODE[c.redirect] }, panel(c.httpport || 3000))),
 	openbox: () => td.readFile('/opt/open-box/data/panel-port').then(p => panel(+String(p || '').trim() || 2026)),
-	mosdns: plain('mosdns', 'config', c => c.listen_port && T('端口 ', 'Port ') + c.listen_port),
-	smartdns: plain('smartdns', '@smartdns', c => c.port && T('端口 ', 'Port ') + c.port),
-	bandix: plain('bandix', 'general', c => c.iface && T('监控 ', 'Watching ') + c.iface),
+	mosdns: plain('mosdns', 'config', c => c.listen_port && T('端口 ', 'Port ', 'Порт ') + c.listen_port),
+	smartdns: plain('smartdns', '@smartdns', c => c.port && T('端口 ', 'Port ', 'Порт ') + c.port),
+	bandix: plain('bandix', 'general', c => c.iface && T('监控 ', 'Watching ', 'Интерфейс ') + c.iface),
 	ksmbd: shares('ksmbd', 'share'),
 	samba4: shares('samba4', 'sambashare')
 };
-const PROTO = { dhcp: T('自动获取', 'DHCP'), pppoe: T('宽带拨号', 'PPPoE'), static: T('静态地址', 'Static'), dhcpv6: 'DHCPv6', qmi: T('移动网络', 'Cellular'), ncm: T('移动网络', 'Cellular'), modemmanager: T('移动网络', 'Cellular') };
+const PROTO = { dhcp: T('自动获取', 'DHCP', 'DHCP'), pppoe: T('宽带拨号', 'PPPoE', 'PPPoE'), static: T('静态地址', 'Static', 'Статика'), dhcpv6: 'DHCPv6', qmi: T('移动网络', 'Cellular', 'Мобильная сеть'), ncm: T('移动网络', 'Cellular', 'Мобильная сеть'), modemmanager: T('移动网络', 'Cellular', 'Мобильная сеть') };
 
 return view.extend({
 	load() {
@@ -89,10 +89,10 @@ return view.extend({
 
 		const fwd = Object.values(fw || {})[0] || {};
 		const tags = [];
-		if (fwd.flow_offloading_hw == '1') tags.push(T('硬件流量卸载', 'Hardware offload'));
-		else if (fwd.flow_offloading == '1') tags.push(T('软件流量卸载', 'Software offload'));
-		if (/^Y/.test(wed || '')) tags.push(T('无线加速 WED', 'Wireless offload (WED)'));
-		if (/bbr/.test(cc || '')) tags.push(T('BBR 拥塞控制', 'BBR congestion control'));
+		if (fwd.flow_offloading_hw == '1') tags.push(T('硬件流量卸载', 'Hardware offload', 'Аппаратное ускорение'));
+		else if (fwd.flow_offloading == '1') tags.push(T('软件流量卸载', 'Software offload', 'Программное ускорение'));
+		if (/^Y/.test(wed || '')) tags.push(T('无线加速 WED', 'Wireless offload (WED)', 'Ускорение Wi‑Fi (WED)'));
+		if (/bbr/.test(cc || '')) tags.push(T('BBR 拥塞控制', 'BBR congestion control', 'Алгоритм BBR'));
 		this.s.tags = tags;
 
 		let n = 1;
@@ -101,23 +101,23 @@ return view.extend({
 
 		/* Topology follows how this box is wired: main router (upstream → this → devices) or
 		 * side router / AP, which hangs off the main router next to the other devices. */
-		const UP = { wan: [ 'modem', T('上级网络', 'Upstream') ], sta: [ 'wifi', T('上级 Wi‑Fi', 'Upstream Wi‑Fi') ], side: [ 'router', T('主路由', 'Main router') ] }[mode];
+		const UP = { wan: [ 'modem', T('上级网络', 'Upstream', 'Интернет') ], sta: [ 'wifi', T('上级 Wi‑Fi', 'Upstream Wi‑Fi', 'Внешний Wi‑Fi') ], side: [ 'router', T('主路由', 'Main router', 'Основной роутер') ] }[mode];
 		const link = (attr, tid) => `<div class="td-link"${attr}><span class="t" id="${tid}">&nbsp;</span><div class="ln"><i></i><i></i></div></div>`;
 		const nUp = `<div class="td-node" id="td-up-node"><div class="ic" id="td-up-icon">${icon(UP[0])}</div><b id="td-up-title">${esc(UP[1])}</b><small id="td-proto">—</small></div>`;
-		const nMe = `<div class="td-node me"><div class="ic">${icon('router')}</div><b>${esc(board.hostname || 'OpenWrt')}</b><small id="td-router-role">${esc(mode == 'side' ? T('旁路由', 'Side router') : T('这台路由器', 'This router'))}</small></div>`;
+		const nMe = `<div class="td-node me"><div class="ic">${icon('router')}</div><b>${esc(board.hostname || 'OpenWrt')}</b><small id="td-router-role">${esc(mode == 'side' ? T('旁路由', 'Side router', 'Боковой роутер') : T('这台路由器', 'This router', 'Этот роутер'))}</small></div>`;
 		const nDev = `<div class="td-node"><div class="ic">${icon('devices')}</div><b id="td-ndev">—</b><small id="td-ndev-s">&nbsp;</small></div>`;
 		const lUp = link(' id="td-link-up"', 'td-lat'), lLan = link('', 'td-lan-t');
 		const topo = mode == 'side' ? nMe + lUp + nUp + lLan + nDev : nUp + lUp + nMe + lLan + nDev;
 		/* A side router receives and resends the same packets on one LAN port, so "down/up" would just
 		 * be the same number twice: show one "forwarded" figure instead. */
 		const rate = (id, label, cls) => `<div class="td-rate${cls || ''}"><small><i></i>${esc(label)}</small><span class="td-big" id="td-${id}">0</span><span class="td-unit" id="td-${id}-u">Kbps</span></div>`;
-		const rates = (mode == 'side' ? rate('down', T('经过本机', 'Through this box'))
-		                              : rate('down', T('下载', 'Download')) + rate('up', T('上传', 'Upload'), ' up'))
-			+ `<div class="td-rate boot"><small>${esc(T('本次开机', 'Since boot'))}</small><span id="td-boot">—</span></div>`;
+		const rates = (mode == 'side' ? rate('down', T('经过本机', 'Through this box', 'Через этот роутер'))
+		                              : rate('down', T('下载', 'Download', 'Скачивание')) + rate('up', T('上传', 'Upload', 'Отдача'), ' up'))
+			+ `<div class="td-rate boot"><small>${esc(T('本次开机', 'Since boot', 'С момента загрузки'))}</small><span id="td-boot">—</span></div>`;
 		const os = board.release ? `${board.release.distribution} ${board.release.version}` : 'OpenWrt';
 
 		const rateCard = card('rate', 'k-rate', `
-					<div class="td-card-h"><h3>${esc(T('实时速率', 'Live traffic'))}</h3><span class="td-muted">${esc(T('过去 2 分钟', 'Last 2 minutes'))}</span></div>
+					<div class="td-card-h"><h3>${esc(T('实时速率', 'Live traffic', 'Трафик'))}</h3><span class="td-muted">${esc(T('过去 2 分钟', 'Last 2 minutes', 'Последние 2 минуты'))}</span></div>
 					<div class="td-rates">${rates}</div>
 					<svg class="td-chart" id="td-chart" viewBox="0 0 600 118" preserveAspectRatio="none" aria-hidden="true">
 						<defs><linearGradient id="td-gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.26"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs>
@@ -130,35 +130,35 @@ return view.extend({
 		const H = { dev: 6, wifi: 4, sys: 3.5, apps: 3, ports: 2, disk: 2, actions: 3 }, cols = [ [], [] ], h = [ 0, 0 ];
 		for (const [ k, html ] of [
 			[ 'dev', card('dev', 'k-dev', `
-					<div class="td-card-h"><h3>${esc(T('在线设备', 'Online devices'))}</h3><a href="${L.url('admin/clients')}">${esc(T('全部', 'All'))}${icon('chev')}</a></div>
-					<div id="td-devs"><div class="td-empty-row">${esc(T('正在读取…', 'Loading…'))}</div></div>`) ],
+					<div class="td-card-h"><h3>${esc(T('在线设备', 'Online devices', 'Устройства в сети'))}</h3><a href="${L.url('admin/clients')}">${esc(T('全部', 'All', 'Все'))}${icon('chev')}</a></div>
+					<div id="td-devs"><div class="td-empty-row">${esc(T('正在读取…', 'Loading…', 'Загрузка…'))}</div></div>`) ],
 			[ 'wifi', this.s.hasWifi ? card('wifi', 'k-wifi', `
-					<div class="td-card-h"><h3>Wi‑Fi</h3><a href="${L.url('admin/network/wireless')}">${esc(T('设置', 'Settings'))}${icon('chev')}</a></div>
+					<div class="td-card-h"><h3>Wi‑Fi</h3><a href="${L.url('admin/network/wireless')}">${esc(T('设置', 'Settings', 'Настройки'))}${icon('chev')}</a></div>
 					<div id="td-wifi"></div>`) : '' ],
 			[ 'sys', card('sys', 'k-sys', `
-					<div class="td-card-h"><h3>${esc(T('路由器状态', 'Router status'))}</h3><span class="td-muted">${esc(os)}</span></div>
+					<div class="td-card-h"><h3>${esc(T('路由器状态', 'Router status', 'Состояние роутера'))}</h3><span class="td-muted">${esc(os)}</span></div>
 					<div class="td-rings">
-						${this.ring('cpu', T('处理器', 'CPU'))}
-						${this.ring('mem', T('内存', 'Memory'))}
-						${this.ring('temp', T('温度', 'Temperature'), 'warm')}
+						${this.ring('cpu', T('处理器', 'CPU', 'ЦП'))}
+						${this.ring('mem', T('内存', 'Memory', 'Память'))}
+						${this.ring('temp', T('温度', 'Temperature', 'Температура'), 'warm')}
 					</div>
 					<div class="td-tags" id="td-tags"></div>`) ],
 			[ 'apps', apps.length ? card('apps', 'k-apps', `
-					<div class="td-card-h"><h3>${esc(T('应用', 'Apps'))}</h3><a href="${L.url('admin/apps')}">${esc(T('全部', 'All'))}${icon('chev')}</a></div>
-					<div id="td-apps"><div class="td-empty-row">${esc(T('正在读取…', 'Loading…'))}</div></div>`) : '' ],
+					<div class="td-card-h"><h3>${esc(T('应用', 'Apps', 'Приложения'))}</h3><a href="${L.url('admin/apps')}">${esc(T('全部', 'All', 'Все'))}${icon('chev')}</a></div>
+					<div id="td-apps"><div class="td-empty-row">${esc(T('正在读取…', 'Loading…', 'Загрузка…'))}</div></div>`) : '' ],
 			[ 'ports', card('ports', 'k-ports', `
-					<div class="td-card-h"><h3>${esc(T('网口', 'Ports'))}</h3><span class="td-muted" id="td-ports-n"></span></div>
+					<div class="td-card-h"><h3>${esc(T('网口', 'Ports', 'Порты'))}</h3><span class="td-muted" id="td-ports-n"></span></div>
 					<dl class="td-kv" id="td-ports"></dl>`) ],
 			[ 'disk', card('disk', 'k-disk', `
-					<div class="td-card-h"><h3>${esc(T('存储空间', 'Storage'))}</h3></div>
+					<div class="td-card-h"><h3>${esc(T('存储空间', 'Storage', 'Хранилище'))}</h3></div>
 					<div id="td-disk"></div>`) ],
 			[ 'actions', card('actions', 'k-actions', `
-					<div class="td-card-h"><h3>${esc(T('常用操作', 'Quick actions'))}</h3></div>
+					<div class="td-card-h"><h3>${esc(T('常用操作', 'Quick actions', 'Быстрые действия'))}</h3></div>
 					<div class="td-acts">
-						${this.act('admin/system/flash', 'backup', T('备份配置', 'Back up'))}
-						${software ? this.act('admin/' + software, 'box', T('软件包', 'Software')) : ''}
-						${this.act('admin/network/diagnostics', 'pulse', T('网络诊断', 'Diagnostics'))}
-						${this.act('admin/status/logs', 'doc', T('查看日志', 'Logs'))}
+						${this.act('admin/system/flash', 'backup', T('备份配置', 'Back up', 'Бэкап'))}
+						${software ? this.act('admin/' + software, 'box', T('软件包', 'Software', 'Пакеты')) : ''}
+						${this.act('admin/network/diagnostics', 'pulse', T('网络诊断', 'Diagnostics', 'Диагностика'))}
+						${this.act('admin/status/logs', 'doc', T('查看日志', 'Logs', 'Журналы'))}
 					</div>`) ]
 		]) if (html) { const c = h[1] < h[0] ? 1 : 0; cols[c].push(html); h[c] += H[k]; }
 
@@ -166,21 +166,21 @@ return view.extend({
 			<div class="td-head">
 				<div>
 					<p class="td-eyebrow" id="td-today"></p>
-					<h1 class="td-serif" id="td-greet">${esc(T('你好', 'Hello'))}</h1>
+					<h1 class="td-serif" id="td-greet">${esc(T('你好', 'Hello', 'Здравствуйте'))}</h1>
 					<p class="td-sub" id="td-summary">&nbsp;</p>
 				</div>
-				<a class="btn" href="${L.url('admin/system/reboot')}">${icon('refresh')}${esc(T('重启路由器', 'Reboot'))}</a>
+				<a class="btn" href="${L.url('admin/system/reboot')}">${icon('refresh')}${esc(T('重启路由器', 'Reboot', 'Перезагрузить'))}</a>
 			</div>
 
 			<div class="td-grid"><div class="td-pair">
 				<section class="td-card k-conn" data-card="conn">
-					<div class="td-card-h"><h3>${esc(T('网络连接', 'Connection'))}</h3><span class="td-chip" id="td-conn-chip"></span></div>
+					<div class="td-card-h"><h3>${esc(T('网络连接', 'Connection', 'Подключение'))}</h3><span class="td-chip" id="td-conn-chip"></span></div>
 					<div class="td-topo">${topo}</div>
 					<dl class="td-facts">
-						<div><dt>${esc(mode == 'side' ? T('本机地址', 'Address') : T('上网地址', 'WAN address'))}</dt><dd id="td-wanip">—</dd></div>
-						<div><dt>${esc(T('网关延迟', 'Gateway latency'))}</dt><dd id="td-ping">—</dd></div>
+						<div><dt>${esc(mode == 'side' ? T('本机地址', 'Address', 'Адрес устройства') : T('上网地址', 'WAN address', 'Адрес WAN'))}</dt><dd id="td-wanip">—</dd></div>
+						<div><dt>${esc(T('网关延迟', 'Gateway latency', 'Задержка до шлюза'))}</dt><dd id="td-ping">—</dd></div>
 						<div><dt>DNS</dt><dd id="td-dns">—</dd></div>
-						<div><dt>${esc(T('已连接', 'Connected for'))}</dt><dd id="td-wanup">—</dd></div>
+						<div><dt>${esc(T('已连接', 'Connected for', 'Подключено'))}</dt><dd id="td-wanup">—</dd></div>
 					</dl>
 					<div class="td-lines" id="td-lines"></div>
 				</section>
@@ -232,12 +232,14 @@ return view.extend({
 
 	greet() {
 		const d = new Date(), h = d.getHours();
-		const hi = T(h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好',
-		             h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
+		const zh = h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+		const en = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+		const ru = h < 5 ? 'Доброй ночи' : h < 12 ? 'Доброе утро' : h < 18 ? 'Добрый день' : 'Добрый вечер';
+		const hi = T(zh, en, ru);
 		const ok = this.s.wan && this.s.wan.up;
-		this.set('td-greet', ok ? hi + T('，一切都好', ', all good') : T('网络好像断开了', 'You seem to be offline'));
+		this.set('td-greet', ok ? hi + T('，一切都好', ', all good', ', всё в порядке') : T('网络好像断开了', 'You seem to be offline', 'Похоже, сети нет'));
 		this.set('td-today', td.ZH ? `星期${'日一二三四五六'[d.getDay()]} · ${d.getMonth() + 1} 月 ${d.getDate()} 日`
-		                           : d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' }));
+		                           : d.toLocaleDateString(td.RU ? 'ru' : 'en', { weekday: 'long', month: 'long', day: 'numeric' }));
 	},
 
 	paintStatic() {
@@ -249,11 +251,11 @@ return view.extend({
 		const dial = this.s.mode == 'wan' && w && w.proto == 'pppoe';
 		if (this.s.mode == 'wan') {
 			this.put(this.$('td-up-icon'), icon(dial ? 'globe' : 'modem'));
-			this.set('td-up-title', dial ? T('互联网', 'Internet') : T('上级网络', 'Upstream'));
+			this.set('td-up-title', dial ? T('互联网', 'Internet', 'Интернет') : T('上级网络', 'Upstream', 'Интернет'));
 		}
-		this.set('td-router-role', this.s.mode == 'side' ? T('旁路由', 'Side router') : dial ? T('本机拨号', 'PPPoE dial-up') : T('这台路由器', 'This router'));
+		this.set('td-router-role', this.s.mode == 'side' ? T('旁路由', 'Side router', 'Боковой роутер') : dial ? T('本机拨号', 'PPPoE dial-up', 'PPPoE-подключение') : T('这台路由器', 'This router', 'Этот роутер'));
 
-		this.set('td-lan-t', this.s.mode == 'side' ? T('局域网', 'LAN') : bands.length ? 'Wi‑Fi ' + bands.join(' / ') : T('有线', 'Wired'));
+		this.set('td-lan-t', this.s.mode == 'side' ? T('局域网', 'LAN', 'LAN') : bands.length ? 'Wi‑Fi ' + bands.join(' / ') : T('有线', 'Wired', 'Проводное'));
 
 		const ok = !!(w && w.up), chip = this.$('td-conn-chip');
 		this.$('td-up-node').classList.toggle('bad', !ok);
@@ -261,7 +263,7 @@ return view.extend({
 		if (chip.dataset.ok != String(ok)) {
 			chip.dataset.ok = ok;
 			chip.className = ok ? 'td-chip' : 'td-chip bad';
-			chip.innerHTML = ok ? `<span class="td-dot live"></span>${esc(T('畅通', 'Online'))}` : `<span class="td-dot"></span>${esc(T('未连接', 'Offline'))}`;
+			chip.innerHTML = ok ? `<span class="td-dot live"></span>${esc(T('畅通', 'Online', 'В сети'))}` : `<span class="td-dot"></span>${esc(T('未连接', 'Offline', 'Не в сети'))}`;
 		}
 
 		/* further lines (IPTV, a backup WAN): one quiet row each under the main one */
@@ -269,15 +271,15 @@ return view.extend({
 		this.put(this.$('td-lines'), lines);
 
 		if (!ok) {
-			this.set('td-proto', T('没有连接', 'Not connected'));
+			this.set('td-proto', T('没有连接', 'Not connected', 'Нет подключения'));
 			[ 'td-wanip', 'td-dns', 'td-wanup', 'td-ping' ].forEach(id => this.set(id, '—'));   // not the last connection's values
-			this.set('td-lat', T('未连接', 'Offline'));
+			this.set('td-lat', T('未连接', 'Offline', 'Не в сети'));
 			return;
 		}
 
-		this.set('td-proto', this.s.mode == 'side' ? w.gw || '—' : this.s.mode == 'sta' ? T('无线中继', 'Wi‑Fi uplink') : dial ? T('运营商网络', 'ISP network') : PROTO[w.proto] || w.proto || '—');
+		this.set('td-proto', this.s.mode == 'side' ? w.gw || '—' : this.s.mode == 'sta' ? T('无线中继', 'Wi‑Fi uplink', 'Wi‑Fi-мост') : dial ? T('运营商网络', 'ISP network', 'Провайдер') : PROTO[w.proto] || w.proto || '—');
 		this.set('td-wanip', w.ip || w.ip6 || '—');
-		this.set('td-dns', td.dnsName(w.dns, w.gw, this.s.mode == 'side' ? T('主路由', 'Main router') : null));
+		this.set('td-dns', td.dnsName(w.dns, w.gw, this.s.mode == 'side' ? T('主路由', 'Main router', 'Основной роутер') : null));
 		this.set('td-wanup', w.uptime ? td.duration(w.uptime) : '—');
 
 		this.paintTags();
@@ -294,7 +296,7 @@ return view.extend({
 		if (!box) return;
 
 		const radios = wifi.radios || {}, aps = wifi.aps || [];
-		const devs = k => k + ' ' + T('台', k == 1 ? 'client' : 'clients');
+		const devs = k => k + ' ' + T('台', k == 1 ? 'client' : 'clients', td.plural(k, 'клиент', 'клиента', 'клиентов'));
 		const n = aps.reduce((a, ap) => a + ap.stations.length, 0);
 		const guest = aps.find(a => (a.network || []).some(x => /guest/i.test(x)));
 		/* The headline is the network people mostly join: 5 GHz first (2.4 GHz is often the
@@ -310,16 +312,16 @@ return view.extend({
 			const mine = aps.filter(a => a.radio == r && a != guest);
 			const other = [ ...new Set(mine.filter(a => a.ssid && a.ssid != (main || {}).ssid).map(a => a.ssid)) ].join(' / ');
 			return tile(td.bandName(c.band) + (other ? ' · ' + other : ''),
-				on ? devs(mine.reduce((a, ap) => a + ap.stations.length, 0)) : T('已关闭', 'Off'),
-				on ? `${T('信道', 'Ch')} ${iw.channel || c.channel || 'auto'}${width ? ` · ${width} MHz` : ''}` : '', !on);
+				on ? devs(mine.reduce((a, ap) => a + ap.stations.length, 0)) : T('已关闭', 'Off', 'Выкл.'),
+				on ? `${T('信道', 'Ch', 'Канал')} ${iw.channel || c.channel || 'auto'}${width ? ` · ${width} MHz` : ''}` : '', !on);
 		});
 
 		if (guest)
-			tiles.push(tile(T('访客网络', 'Guest network'), guest.up ? devs(guest.stations.length) : T('未开启', 'Off'), guest.ssid, !guest.up));
+			tiles.push(tile(T('访客网络', 'Guest network', 'Гостевая сеть'), guest.up ? devs(guest.stations.length) : T('未开启', 'Off', 'Выкл.'), guest.ssid, !guest.up));
 
 		this.put(box, (main
-			? `<div class="td-ssid">${esc(main.ssid || '—')}</div><p class="td-muted td-ssid-s">${esc(n + ' ' + T('台设备已连接', n == 1 ? 'device connected' : 'devices connected'))}</p>`
-			: `<div class="td-ssid td-muted">${esc(T('未开启', 'Off'))}</div><p class="td-muted td-ssid-s">${esc(T('这台路由器还没有开启无线网络', 'No wireless network is enabled'))}</p>`)
+			? `<div class="td-ssid">${esc(main.ssid || '—')}</div><p class="td-muted td-ssid-s">${esc(n + ' ' + T('台设备已连接', n == 1 ? 'device connected' : 'devices connected', td.plural(n, 'устройство подключено', 'устройства подключены', 'устройств подключено')))}</p>`
+			: `<div class="td-ssid td-muted">${esc(T('未开启', 'Off', 'Выкл.'))}</div><p class="td-muted td-ssid-s">${esc(T('这台路由器还没有开启无线网络', 'No wireless network is enabled', 'Беспроводная сеть выключена'))}</p>`)
 			+ (tiles.length ? `<dl class="td-kv">${tiles.join('')}</dl>` : ''));
 	},
 
@@ -332,11 +334,11 @@ return view.extend({
 			if (!list.length) return box.closest('.td-card').remove();   // nothing the kernel can tell us (swconfig)
 			const lan = list.filter(p => !p.line);
 			let k = 0;
-			this.set('td-ports-n', T(`${list.filter(p => p.up).length} / ${list.length} 已接网线`, `${list.filter(p => p.up).length} of ${list.length} in use`));
+			this.set('td-ports-n', T(`${list.filter(p => p.up).length} / ${list.length} 已接网线`, `${list.filter(p => p.up).length} of ${list.length} in use`, `занято ${list.filter(p => p.up).length} из ${list.length}`));
 			this.put(box, list.map(p => {
 				const m = /^lan(\d+)$/.exec(p.name);
 				const name = p.line || (m ? 'LAN ' + m[1] : lan.length > 1 ? 'LAN ' + ++k : 'LAN');
-				const speed = !p.up ? T('未接网线', 'Unplugged') : p.speed > 0 ? (p.speed >= 1000 ? p.speed / 1000 + ' Gbps' : p.speed + ' Mbps') : T('已连接', 'Connected');
+				const speed = !p.up ? T('未接网线', 'Unplugged', 'Не занят') : p.speed > 0 ? (p.speed >= 1000 ? p.speed / 1000 + ' Gbps' : p.speed + ' Mbps') : T('已连接', 'Connected', 'Подключён');
 				return `<div${p.up ? '' : ' class="off"'}><dt>${esc(name)}</dt><dd>${esc(speed)}</dd></div>`;
 			}).join(''));
 		});
@@ -351,9 +353,9 @@ return view.extend({
 			if (!d || !d.total) return '';
 			const used = d.used != null ? d.used : d.total - d.free, pct = Math.round(used / d.total * 100);
 			const free = td.bytes((d.avail != null ? d.avail : d.free) * unit), total = td.bytes(d.total * unit);
-			return `<div class="td-meter"><p><b>${esc(label)}</b><span>${esc(T(`剩余 ${free} / 共 ${total}`, `${free} free of ${total}`))}</span></p><div class="td-bar${pct >= 90 ? ' full' : ''}"><i style="width:${pct}%"></i></div></div>`;
+			return `<div class="td-meter"><p><b>${esc(label)}</b><span>${esc(T(`剩余 ${free} / 共 ${total}`, `${free} free of ${total}`, `свободно ${free} из ${total}`))}</span></p><div class="td-bar${pct >= 90 ? ' full' : ''}"><i style="width:${pct}%"></i></div></div>`;
 		};
-		const html = row(T('系统空间', 'System'), info.root, 1024) + row(T('临时文件', 'Temporary files'), info.tmp, 1024) + row(T('虚拟内存', 'Swap'), info.swap, 1);
+		const html = row(T('系统空间', 'System', 'Системный раздел'), info.root, 1024) + row(T('临时文件', 'Temporary files', 'Временные файлы'), info.tmp, 1024) + row(T('虚拟内存', 'Swap', 'Подкачка'), info.swap, 1);
 		this.put(box, html);
 	},
 
@@ -361,8 +363,8 @@ return view.extend({
 		return td.clients(this.s.wifi, this.s.wan).then(list => {
 			const online = list.filter(c => c.online);
 			this.s.clients = online;
-			this.set('td-ndev', online.length + ' ' + T('台设备', online.length == 1 ? 'device' : 'devices'));
-			this.set('td-ndev-s', online.length ? T('正在上网', 'online') : T('暂无设备', 'none yet'));
+			this.set('td-ndev', online.length + ' ' + T('台设备', online.length == 1 ? 'device' : 'devices', td.plural(online.length, 'устройство', 'устройства', 'устройств')));
+			this.set('td-ndev-s', online.length ? T('正在上网', 'online', 'в сети') : T('暂无设备', 'none yet', 'пока нет'));
 			this.paintSummary();
 
 			const box = this.$('td-devs');
@@ -374,23 +376,24 @@ return view.extend({
 				const sub = c.conn == 'wifi' ? `Wi‑Fi ${td.bandName(c.band)} · ${sig}` : td.connName(c) + (c.ip && c.ip != c.display ? ' · ' + c.ip : '');
 				const rt = c.conn == 'wifi' && c.link
 					? `${Math.round(c.link)} Mbps<div class="td-bar"><i style="width:${td.quality(c.signal)}%"></i></div>`
-					: `${esc(c.conn == 'lan' ? T('局域网', 'LAN') : T('有线', 'Wired'))}<div class="td-bar"><i style="width:100%"></i></div>`;
-				return `<div class="td-dev"><div class="td-av">${icon(c.kind)}</div><div class="nm"><b>${esc(c.display)}</b><small>${esc(sub)}</small></div><div class="rt" title="${esc(T('连接速率 · 信号强度', 'Link rate · signal'))}">${rt}</div></div>`;
-			}).join('') + (online.length > 6 ? `<a class="td-more" href="${L.url('admin/clients')}">${esc(T(`还有 ${online.length - 6} 台设备`, `${online.length - 6} more`))}</a>` : '')
-			: `<div class="td-empty-row">${esc(T('现在没有设备在线', 'No devices online'))}</div>`);
+					: `${esc(c.conn == 'lan' ? T('局域网', 'LAN', 'LAN') : T('有线', 'Wired', 'Проводное'))}<div class="td-bar"><i style="width:100%"></i></div>`;
+				return `<div class="td-dev"><div class="td-av">${icon(c.kind)}</div><div class="nm"><b>${esc(c.display)}</b><small>${esc(sub)}</small></div><div class="rt" title="${esc(T('连接速率 · 信号强度', 'Link rate · signal', 'Скорость · сигнал'))}">${rt}</div></div>`;
+			}).join('') + (online.length > 6 ? `<a class="td-more" href="${L.url('admin/clients')}">${esc(T(`还有 ${online.length - 6} 台设备`, `${online.length - 6} more`, `ещё ${online.length - 6} ${td.plural(online.length - 6, 'устройство', 'устройства', 'устройств')}`))}</a>` : '')
+			: `<div class="td-empty-row">${esc(T('现在没有设备在线', 'No devices online', 'Сейчас нет устройств в сети'))}</div>`);
 		});
 	},
 
 	paintSummary() {
 		const info = this.s.info || {}, n = this.s.clients.length;
-		const host = (this.s.board || {}).hostname || T('路由器', 'Router');
+		const host = (this.s.board || {}).hostname || T('路由器', 'Router', 'Роутер');
 		if (!this.s.wan || !this.s.wan.up) {
-			this.set('td-summary', T('上级网络没有响应，检查一下光猫或网线是否接好。', 'The upstream network is not responding. Check the modem and cables.'));
+			this.set('td-summary', T('上级网络没有响应，检查一下光猫或网线是否接好。', 'The upstream network is not responding. Check the modem and cables.', 'Сеть провайдера не отвечает. Проверьте модем и кабели.'));
 			return;
 		}
-		this.set('td-summary', td.ZH
-			? `${host} 已平稳运行 ${td.duration(info.uptime)}，${n} 台设备在线。`
-			: `${host} has been up for ${td.duration(info.uptime)} with ${n} device${n == 1 ? '' : 's'} online.`);
+		this.set('td-summary', T(
+			`${host} 已平稳运行 ${td.duration(info.uptime)}，${n} 台设备在线。`,
+			`${host} has been up for ${td.duration(info.uptime)} with ${n} device${n == 1 ? '' : 's'} online.`,
+			`${host} работает ${td.duration(info.uptime)}, в сети ${n} ${td.plural(n, 'устройство', 'устройства', 'устройств')}.`));
 	},
 
 	sample(devText, info) {
@@ -468,7 +471,7 @@ return view.extend({
 		if (this.s.temp != null) {
 			const t = this.s.temp;
 			setRing('temp', t, Math.round(t) + '°C',
-				T('温度', 'Temp') + ' · ' + (t < 70 ? T('正常', 'normal') : t < 85 ? T('偏高', 'warm') : T('过热', 'hot')),
+				T('温度', 'Temp', 'Темп.') + ' · ' + (t < 70 ? T('正常', 'normal', 'норма') : t < 85 ? T('偏高', 'warm', 'тепло') : T('过热', 'hot', 'горячо')),
 				t < 85 ? 'warm' : 'hot');
 		}
 		else setRing('temp', 0, '—');
@@ -501,7 +504,7 @@ return view.extend({
 	pingGateway() {
 		const w = this.s.wan;
 		if (!w || !w.up || !w.gw || !/^[0-9.]+$/.test(w.gw)) {
-			this.set('td-lat', w && w.up ? T('已连接', 'Connected') : T('未连接', 'Offline'));
+			this.set('td-lat', w && w.up ? T('已连接', 'Connected', 'Подключён') : T('未连接', 'Offline', 'Не в сети'));
 			return Promise.resolve();
 		}
 		/* a gateway that never answers ping (many ISP modems) is retried every few minutes, not every 30 s */
@@ -511,8 +514,8 @@ return view.extend({
 			const m = String((r || {}).stdout || '').match(/time[=<]([\d.]+)/);
 			const v = m ? (+m[1] < 1 ? '<1' : Math.round(+m[1])) + ' ms' : null;
 			this.s.miss = v ? 0 : (this.s.miss || 0) + 1;
-			this.set('td-ping', v || T('无响应', 'No reply'));
-			this.set('td-lat', v ? T('延迟 ', 'Latency ') + v : T('已连接', 'Connected'));
+			this.set('td-ping', v || T('无响应', 'No reply', 'Нет ответа'));
+			this.set('td-lat', v ? T('延迟 ', 'Latency ', 'Задержка ') + v : T('已连接', 'Connected', 'Подключён'));
 		});
 	},
 
@@ -529,12 +532,12 @@ return view.extend({
 			const top = live.slice(0, live.length > 5 ? 4 : 5), more = live.length - top.length;
 			return Promise.all(top.map(([ p, s ]) => (fn(s) || (() => Promise.resolve({})))().then(x => [ p, x ]))).then(rows => {
 				const html = rows.length ? rows.map(([ p, x ]) => `<div class="td-dev td-run"><div class="td-av">${icon(td.appIcon(p.path))}</div>
-					<div class="nm"><a href="${L.url(p.path)}"><b>${esc(p.title)}</b></a><small>${esc([ T('运行中', 'Running'), x.sub ].filter(Boolean).join(' · '))}</small></div>
-					${x.seg ? `<div class="td-seg" data-oc="${esc(x.seg)}"><button type="button" data-m="rule">${esc(T('按规则', 'Rule'))}</button><button type="button" data-m="global">${esc(T('全局', 'Global'))}</button><button type="button" data-m="direct">${esc(T('直连', 'Direct'))}</button></div>`
-					: x.link ? `<a class="rt" href="${esc(x.link)}" target="_blank" rel="noopener">${esc(T('控制台', 'Console'))}${icon('arrow')}</a>`
+					<div class="nm"><a href="${L.url(p.path)}"><b>${esc(p.title)}</b></a><small>${esc([ T('运行中', 'Running', 'Работает'), x.sub ].filter(Boolean).join(' · '))}</small></div>
+					${x.seg ? `<div class="td-seg" data-oc="${esc(x.seg)}"><button type="button" data-m="rule">${esc(T('按规则', 'Rule', 'По правилам'))}</button><button type="button" data-m="global">${esc(T('全局', 'Global', 'Глобально'))}</button><button type="button" data-m="direct">${esc(T('直连', 'Direct', 'Напрямую'))}</button></div>`
+					: x.link ? `<a class="rt" href="${esc(x.link)}" target="_blank" rel="noopener">${esc(T('控制台', 'Console', 'Панель'))}${icon('arrow')}</a>`
 					: x.rt ? `<div class="rt">${esc(x.rt)}</div>` : ''}</div>`).join('')
-					+ (more ? `<a class="td-more" href="${L.url('admin/apps')}">${esc(T(`还有 ${more} 个在运行`, `${more} more running`))}</a>` : '')
-					: `<div class="td-empty-row">${esc(T('没有正在运行的应用', 'No apps running'))}</div>`;
+					+ (more ? `<a class="td-more" href="${L.url('admin/apps')}">${esc(T(`还有 ${more} 个在运行`, `${more} more running`, `ещё ${more} запущено`))}</a>` : '')
+					: `<div class="td-empty-row">${esc(T('没有正在运行的应用', 'No apps running', 'Приложения не запущены'))}</div>`;
 				if (box._html === html) return;
 				this.put(box, html);
 				box.querySelectorAll('[data-oc]').forEach(seg => this.ocSwitch(seg));
@@ -553,8 +556,8 @@ return view.extend({
 			const prev = mode;
 			mark(mode = b.dataset.m);
 			request.get(L.url('admin/services/openclash/switch_rule_mode'), { query: { rule_mode: mode } })
-				.then(r => { if (!r.ok) throw r; td.toast(T('已切换代理模式', 'Proxy mode switched')); })
-				.catch(() => { mark(mode = prev); td.toast(T('切换失败', 'Switch failed')); });
+				.then(r => { if (!r.ok) throw r; td.toast(T('已切换代理模式', 'Proxy mode switched', 'Режим прокси переключён')); })
+				.catch(() => { mark(mode = prev); td.toast(T('切换失败', 'Switch failed', 'Не удалось переключить')); });
 		});
 	},
 

@@ -163,6 +163,13 @@ kbd{font:11px var(--sans);padding:1px 6px;border:1px solid var(--line);border-ra
   .td-main{padding:22px 16px 100px}
   .td-top:has(>.td-pills:empty)>#indicators{position:static;margin:0 0 12px auto}
 }
+/* Russian labels are longer than the English originals: on phones give the topology
+ * nodes a little more room so the full plural ("1 устройство", "10 устройств")
+ * wraps between words instead of mid-word. */
+@media (max-width:760px){
+  html[lang^="ru"] .td-node{width:clamp(72px,23cqi,120px)}
+  html[lang^="ru"] .td-node b{font-size:12.5px}
+}
 
 /* command palette / mobile sheet */
 .td-pop{position:fixed;inset:0;z-index:1000;background:color-mix(in srgb,#141413 30%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;animation:td-fade var(--base) var(--ease)}

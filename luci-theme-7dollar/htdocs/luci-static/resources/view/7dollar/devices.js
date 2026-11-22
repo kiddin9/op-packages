@@ -7,10 +7,10 @@
 
 const T = td.T, icon = td.icon, esc = td.esc;
 const VIEWS = [
-	[ 'on', T('在线', 'Online'), c => c.online ],
+	[ 'on', T('在线', 'Online', 'В сети'), c => c.online ],
 	[ 'wifi', 'Wi‑Fi', c => c.online && c.conn == 'wifi' ],
-	[ 'wired', T('有线', 'Wired'), c => c.online && c.conn != 'wifi', T('局域网', 'LAN') ],   // a side router sees the whole LAN here
-	[ 'off', T('最近连接过', 'Recently seen'), c => !c.online ]
+	[ 'wired', T('有线', 'Wired', 'Проводное'), c => c.online && c.conn != 'wifi', T('局域网', 'LAN', 'LAN') ],   // a side router sees the whole LAN here
+	[ 'off', T('最近连接过', 'Recently seen', 'Недавние'), c => !c.online ]
 ];
 
 return view.extend({
@@ -25,11 +25,11 @@ return view.extend({
 	render(list) {
 		const root = td.html(`<div class="td-devices">
 			<div class="td-head"><div>
-				<p class="td-eyebrow">${esc(T('设备', 'Devices'))}</p>
-				<h1 class="td-serif">${esc(T('谁在用网络', 'Who is online'))}</h1>
+				<p class="td-eyebrow">${esc(T('设备', 'Devices', 'Устройства'))}</p>
+				<h1 class="td-serif">${esc(T('谁在用网络', 'Who is online', 'Кто в сети'))}</h1>
 				<p class="td-sub" id="td-dsum">&nbsp;</p>
 			</div>
-			<a class="btn" href="${L.url('admin/network/dhcp')}">${icon('lock')}${esc(T('给设备固定 IP', 'Reserve an IP'))}</a></div>
+			<a class="btn" href="${L.url('admin/network/dhcp')}">${icon('lock')}${esc(T('给设备固定 IP', 'Reserve an IP', 'Закрепить IP'))}</a></div>
 			<div class="td-stats" id="td-dstats">${VIEWS.map(([ k, n ]) => `<button type="button" class="td-stat" data-v="${k}"><small>${esc(n)}</small><b>0</b></button>`).join('')}</div>
 			<section class="td-card"><div class="td-devlist" id="td-dlist"></div></section>
 		</div>`);
@@ -51,12 +51,12 @@ return view.extend({
 		meta.push(`<span>${esc(c.mac)}</span>`);
 
 		let sub;
-		if (!c.online) sub = c.expires > 0 ? T('租约剩余 ', 'Lease ') + td.duration(c.expires) : T('离线', 'Offline');
+		if (!c.online) sub = c.expires > 0 ? T('租约剩余 ', 'Lease ', 'Аренда ещё ') + td.duration(c.expires) : T('离线', 'Offline', 'Не в сети');
 		else if (c.conn == 'wifi') {
 			const [ s ] = td.signal(c.signal);
 			sub = `Wi‑Fi ${td.bandName(c.band)} · ${s}${c.signal ? ` (${c.signal} dBm)` : ''}`;
 			if (c.link) meta.unshift(`<span><b>${Math.round(c.link)} Mbps</b></span>`);
-			if (c.since) meta.push(`<span>${esc(T('已连接 ', 'Connected ') + td.duration(c.since))}</span>`);
+			if (c.since) meta.push(`<span>${esc(T('已连接 ', 'Connected ', 'Подключено ') + td.duration(c.since))}</span>`);
 		}
 		else sub = td.connName(c);
 
@@ -69,8 +69,8 @@ return view.extend({
 		const $ = id => this.root.querySelector('#' + id);
 
 		$('td-dsum').textContent = on.length
-			? T(`现在有 ${on.length} 台设备在线。名字来自设备自己上报的主机名。`, `${on.length} device${on.length == 1 ? '' : 's'} online right now.`)
-			: T('现在没有设备在线。', 'No devices online right now.');
+			? T(`现在有 ${on.length} 台设备在线。名字来自设备自己上报的主机名。`, `${on.length} device${on.length == 1 ? '' : 's'} online right now.`, `Сейчас в сети ${on.length} ${td.plural(on.length, 'устройство', 'устройства', 'устройств')}.`)
+			: T('现在没有设备在线。', 'No devices online right now.', 'Сейчас нет устройств в сети.');
 
 		let rows = [];
 		const lan = list.some(c => c.conn == 'lan');
@@ -82,7 +82,7 @@ return view.extend({
 			b.setAttribute('aria-pressed', k == this.view);
 			if (k == this.view) rows = sel;
 		});
-		const box = $('td-dlist'), html = rows.length ? rows.map(c => this.row(c)).join('') : `<div class="td-empty-row">${esc(T('这里暂时没有设备', 'No devices here'))}</div>`;
+		const box = $('td-dlist'), html = rows.length ? rows.map(c => this.row(c)).join('') : `<div class="td-empty-row">${esc(T('这里暂时没有设备', 'No devices here', 'Здесь пока нет устройств'))}</div>`;
 		if (box._html !== html) box.innerHTML = box._html = html;   // every 5 s, but the DOM only moves when something changed
 	},
 

@@ -9,8 +9,18 @@
  * formatting and the device list used by the home and devices pages.
  */
 
-const ZH = /^zh/i.test(document.documentElement.getAttribute('lang') || '');
-const T = (zh, en) => ZH ? zh : en;
+const LANG = document.documentElement.getAttribute('lang') || '';
+const ZH = /^zh/i.test(LANG);
+const RU = /^ru/i.test(LANG);
+/* zh / en / ru string picker: the Russian text is optional (falls back to English). */
+const T = (zh, en, ru) => ZH ? zh : ((RU && ru != null) ? ru : en);
+
+/* Russian plural form: 1 устройство, 2 устройства, 5 устройств. */
+function plural(n, one, few, many) {
+	n = Math.abs(Math.floor(n || 0));
+	const m10 = n % 10, m100 = n % 100;
+	return (m10 == 1 && m100 != 11) ? one : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? few : many;
+}
 const SPRITE = '/luci-static/7dollar/icons.svg';
 const ACTIVE = /\/7dollar$/.test(L.env.media || '');
 
@@ -43,11 +53,11 @@ function cardOn(conf, key) {
 }
 
 const PALETTES = [
-	[ 'clay',     T('陶土', 'Clay') ],
-	[ 'celadon',  T('青瓷', 'Celadon') ],
-	[ 'mist',     T('雾蓝', 'Mist') ],
-	[ 'dusk',     T('暮紫', 'Dusk') ],
-	[ 'graphite', T('石墨', 'Graphite') ]
+	[ 'clay',     T('陶土', 'Clay', 'Глина') ],
+	[ 'celadon',  T('青瓷', 'Celadon', 'Селадон') ],
+	[ 'mist',     T('雾蓝', 'Mist', 'Дымка') ],
+	[ 'dusk',     T('暮紫', 'Dusk', 'Сумерки') ],
+	[ 'graphite', T('石墨', 'Graphite', 'Графит') ]
 ];
 
 /* Menu regrouping: native LuCI pages -> seven plain-language sections. `pages` are the everyday
@@ -56,18 +66,18 @@ const PALETTES = [
  * tools ...); those are apps. So System's prefixes only take LuCI's own pages, told apart by the
  * view they open (`own`), which also covers native pages added in newer LuCI versions. */
 const GROUPS = [
-	{ id: 'home', icon: 'home', label: T('总览', 'Overview'), pages: [ 'admin/home' ] },
-	{ id: 'devices', icon: 'devices', label: T('设备', 'Devices'), pages: [ 'admin/clients' ] },
+	{ id: 'home', icon: 'home', label: T('总览', 'Overview', 'Обзор'), pages: [ 'admin/home' ] },
+	{ id: 'devices', icon: 'devices', label: T('设备', 'Devices', 'Устройства'), pages: [ 'admin/clients' ] },
 	{ id: 'wifi', icon: 'wifi', label: 'Wi‑Fi', pages: [ 'admin/network/wireless', 'admin/status/channel_analysis' ] },
-	{ id: 'internet', icon: 'globe', label: T('上网', 'Internet'),
+	{ id: 'internet', icon: 'globe', label: T('上网', 'Internet', 'Интернет'),
 	  pages: [ 'admin/network/network', 'admin/network/dhcp', 'admin/network/dns', 'admin/network/diagnostics' ],
 	  more: [ 'admin/network/routes', 'admin/status/routes', 'admin/status/routesj', 'admin/network/switch' ],
 	  prefix: [ 'admin/network' ] },
-	{ id: 'security', icon: 'shield', label: T('安全', 'Security'), mob: false,
+	{ id: 'security', icon: 'shield', label: T('安全', 'Security', 'Безопасность'), mob: false,
 	  pages: [ 'admin/network/firewall', 'admin/status/nftables', 'admin/status/iptables', 'admin/system/admin' ] },
-	{ id: 'apps', icon: 'grid', label: T('应用', 'Apps'), mob: false, pages: [ 'admin/apps' ],
+	{ id: 'apps', icon: 'grid', label: T('应用', 'Apps', 'Приложения'), mob: false, pages: [ 'admin/apps' ],
 	  prefix: [ 'admin/services', 'admin/vpn', 'admin/nas', 'admin/docker', 'admin/statistics' ] },
-	{ id: 'system', icon: 'gear', label: T('系统', 'System'), short: T('更多', 'More'),
+	{ id: 'system', icon: 'gear', label: T('系统', 'System', 'Система'), short: T('更多', 'More', 'Ещё'),
 	  pages: [ 'admin/system/system', 'admin/system/appearance', 'admin/status/overview', 'admin/status/logs',
 	           'admin/system/package-manager', 'admin/system/opkg', 'admin/system/flash', 'admin/system/reboot' ],
 	  more: [ 'admin/dashboard', 'admin/status/realtime', 'admin/system/crontab', 'admin/system/startup', 'admin/status/processes', 'admin/system/mounts',
@@ -85,38 +95,38 @@ function own(node) {
 }
 
 const LABELS = {
-	'admin/home': T('总览', 'Overview'),
-	'admin/dashboard': T('仪表盘', 'Dashboard'),
-	'admin/clients': T('设备', 'Devices'),
-	'admin/apps': T('全部应用', 'All apps'),
-	'admin/network/wireless': T('无线网络', 'Wireless'),
-	'admin/status/channel_analysis': T('信道分析', 'Channel analysis'),
-	'admin/network/network': T('网络接口', 'Interfaces'),
-	'admin/network/diagnostics': T('网络诊断', 'Diagnostics'),
-	'admin/network/routes': T('静态路由', 'Static routes'),
-	'admin/status/routes': T('路由表', 'Routing table'),
-	'admin/status/routesj': T('路由表', 'Routing table'),
-	'admin/network/switch': T('交换机', 'Switch'),
-	'admin/network/firewall': T('防火墙', 'Firewall'),
-	'admin/status/nftables': T('防火墙规则', 'Firewall status'),
-	'admin/status/iptables': T('防火墙规则', 'Firewall status'),
-	'admin/system/admin': T('管理员', 'Administration'),
-	'admin/system/system': T('通用', 'General'),
-	'admin/system/appearance': T('外观与首页', 'Appearance'),
-	'admin/status/overview': T('运行状态', 'Status'),
-	'admin/status/realtime': T('实时监控', 'Realtime'),
-	'admin/status/logs': T('日志', 'Logs'),
-	'admin/status/processes': T('进程', 'Processes'),
-	'admin/system/package-manager': T('软件包', 'Software'),
-	'admin/system/opkg': T('软件包', 'Software'),
-	'admin/system/flash': T('备份与升级', 'Backup & upgrade'),
-	'admin/system/startup': T('启动项', 'Startup'),
-	'admin/system/crontab': T('计划任务', 'Scheduled tasks'),
-	'admin/system/mounts': T('挂载点', 'Mount points'),
-	'admin/system/leds': T('指示灯', 'LEDs'),
-	'admin/system/reboot': T('重启', 'Reboot'),
+	'admin/home': T('总览', 'Overview', 'Обзор'),
+	'admin/dashboard': T('仪表盘', 'Dashboard', 'Панель'),
+	'admin/clients': T('设备', 'Devices', 'Устройства'),
+	'admin/apps': T('全部应用', 'All apps', 'Все приложения'),
+	'admin/network/wireless': T('无线网络', 'Wireless', 'Wi‑Fi'),
+	'admin/status/channel_analysis': T('信道分析', 'Channel analysis', 'Анализ каналов'),
+	'admin/network/network': T('网络接口', 'Interfaces', 'Интерфейсы'),
+	'admin/network/diagnostics': T('网络诊断', 'Diagnostics', 'Диагностика'),
+	'admin/network/routes': T('静态路由', 'Static routes', 'Статические маршруты'),
+	'admin/status/routes': T('路由表', 'Routing table', 'Таблица маршрутов'),
+	'admin/status/routesj': T('路由表', 'Routing table', 'Таблица маршрутов'),
+	'admin/network/switch': T('交换机', 'Switch', 'Коммутатор'),
+	'admin/network/firewall': T('防火墙', 'Firewall', 'Межсетевой экран'),
+	'admin/status/nftables': T('防火墙规则', 'Firewall status', 'Правила межсетевого экрана'),
+	'admin/status/iptables': T('防火墙规则', 'Firewall status', 'Правила межсетевого экрана'),
+	'admin/system/admin': T('管理员', 'Administration', 'Администрирование'),
+	'admin/system/system': T('通用', 'General', 'Общие'),
+	'admin/system/appearance': T('外观与首页', 'Appearance', 'Оформление'),
+	'admin/status/overview': T('运行状态', 'Status', 'Состояние'),
+	'admin/status/realtime': T('实时监控', 'Realtime', 'Реальное время'),
+	'admin/status/logs': T('日志', 'Logs', 'Журналы'),
+	'admin/status/processes': T('进程', 'Processes', 'Процессы'),
+	'admin/system/package-manager': T('软件包', 'Software', 'Пакеты'),
+	'admin/system/opkg': T('软件包', 'Software', 'Пакеты'),
+	'admin/system/flash': T('备份与升级', 'Backup & upgrade', 'Резервная копия и обновление'),
+	'admin/system/startup': T('启动项', 'Startup', 'Автозапуск'),
+	'admin/system/crontab': T('计划任务', 'Scheduled tasks', 'Планировщик'),
+	'admin/system/mounts': T('挂载点', 'Mount points', 'Точки монтирования'),
+	'admin/system/leds': T('指示灯', 'LEDs', 'Индикаторы'),
+	'admin/system/reboot': T('重启', 'Reboot', 'Перезагрузка'),
 	'admin/services/openclash': 'OpenClash',
-	'admin/services/ksmbd': T('文件共享', 'File sharing')
+	'admin/services/ksmbd': T('文件共享', 'File sharing', 'Общий доступ')
 };
 
 const APP_ICONS = [
@@ -379,17 +389,22 @@ function duration(sec) {
 		if (h) return `${h} 小时 ${m} 分钟`;
 		return `${Math.max(m, 1)} 分钟`;
 	}
+	if (RU) {
+		if (d) return `${d} дн ${h} ч`;
+		if (h) return `${h} ч ${m} мин`;
+		return `${Math.max(m, 1)} мин`;
+	}
 	if (d) return `${d}d ${h}h`;
 	if (h) return `${h}h ${m}m`;
 	return `${Math.max(m, 1)}m`;
 }
 
 function signal(dbm) {
-	if (dbm == null || dbm == 0) return [ T('未知', 'Unknown'), 0 ];
-	if (dbm >= -55) return [ T('信号很好', 'Excellent'), 4 ];
-	if (dbm >= -65) return [ T('信号良好', 'Good'), 3 ];
-	if (dbm >= -75) return [ T('信号一般', 'Fair'), 2 ];
-	return [ T('信号较弱', 'Weak'), 1 ];
+	if (dbm == null || dbm == 0) return [ T('未知', 'Unknown', 'Неизвестно'), 0 ];
+	if (dbm >= -55) return [ T('信号很好', 'Excellent', 'Отличный'), 4 ];
+	if (dbm >= -65) return [ T('信号良好', 'Good', 'Хороший'), 3 ];
+	if (dbm >= -75) return [ T('信号一般', 'Fair', 'Средний'), 2 ];
+	return [ T('信号较弱', 'Weak', 'Слабый'), 1 ];
 }
 
 function quality(dbm) {
@@ -653,21 +668,21 @@ function ports(up) {
 }
 
 function connName(c) {
-	return c.conn == 'lan' ? T('局域网', 'LAN') : T('有线连接', 'Wired');
+	return c.conn == 'lan' ? T('局域网', 'LAN', 'LAN') : T('有线连接', 'Wired', 'Проводное подключение');
 }
 
 const DNS_NAMES = {
-	'223.5.5.5': T('阿里', 'AliDNS'), '223.6.6.6': T('阿里', 'AliDNS'),
-	'119.29.29.29': T('腾讯', 'DNSPod'), '119.28.28.28': T('腾讯', 'DNSPod'), '182.254.116.116': T('腾讯', 'DNSPod'),
+	'223.5.5.5': T('阿里', 'AliDNS', 'AliDNS'), '223.6.6.6': T('阿里', 'AliDNS', 'AliDNS'),
+	'119.29.29.29': T('腾讯', 'DNSPod', 'DNSPod'), '119.28.28.28': T('腾讯', 'DNSPod', 'DNSPod'), '182.254.116.116': T('腾讯', 'DNSPod', 'DNSPod'),
 	'114.114.114.114': '114DNS', '114.114.115.115': '114DNS',
-	'180.76.76.76': T('百度', 'Baidu'), '1.1.1.1': 'Cloudflare', '1.0.0.1': 'Cloudflare',
+	'180.76.76.76': T('百度', 'Baidu', 'Baidu'), '1.1.1.1': 'Cloudflare', '1.0.0.1': 'Cloudflare',
 	'8.8.8.8': 'Google', '8.8.4.4': 'Google', '9.9.9.9': 'Quad9'
 };
 
 function dnsName(list, gw, gwName) {
 	const names = [];
 	(list || []).forEach(ip => {
-		const n = DNS_NAMES[ip] || (ip == gw ? gwName || T('上级路由', 'Upstream') : ip);
+		const n = DNS_NAMES[ip] || (ip == gw ? gwName || T('上级路由', 'Upstream', 'Вышестоящий роутер') : ip);
 		if (names.indexOf(n) < 0) names.push(n);
 	});
 	return names.slice(0, 2).join(' · ') || '—';
@@ -695,7 +710,7 @@ const uciType = (config, type) => L.resolveDefault(callUciGetType(config, type),
 const uciSection = (config, section) => L.resolveDefault(callUciGet(config, section), {});
 
 return baseclass.extend({
-	ZH: ZH, T: T,
+	ZH: ZH, RU: RU, T: T, plural: plural,
 	active: ACTIVE,
 	PALETTES: PALETTES, OPT_IN: OPT_IN, words: words, cardOn: cardOn,
 	esc: esc, icon: icon, html: html,

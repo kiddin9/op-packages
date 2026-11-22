@@ -11,9 +11,11 @@
 	const conf = uci.get_all('7dollar', 'main') ?? {};
 	const palette = (conf.palette in [ 'clay', 'celadon', 'mist', 'dusk', 'graphite' ]) ? conf.palette : 'clay';
 	const mode = (conf.mode in [ 'light', 'dark', 'auto' ]) ? conf.mode : 'auto';
-	const zh = !!match(dispatcher.lang ?? '', /^zh/);
-	const T = (z, e) => zh ? z : e;
-	const ver = '1.0.18';
+	const lang = dispatcher.lang ?? '';
+	const zh = !!match(lang, /^zh/);
+	const ru = !!match(lang, /^ru/);
+	const T = (z, e, r) => zh ? z : ((ru && r != null) ? r : e);
+	const ver = '1.0.19';
 	const hostname = striptags(boardinfo.hostname ?? 'OpenWrt');
 	const model = striptags(boardModel(boardinfo));
 	const sprite = `${media}/icons.svg`;
@@ -54,14 +56,14 @@
 				<a class="td-brand" href="{{ dispatcher.build_url('admin') }}">
 					<b>{{ hostname }}</b><small>{{ model }}</small>
 				</a>
-				<button class="td-search" type="button" id="td-search" title="{{ T('搜索', 'Search') }}">
+				<button class="td-search" type="button" id="td-search" title="{{ T('搜索', 'Search', 'Поиск') }}">
 					<svg class="i" aria-hidden="true"><use href="{{ sprite }}#search"></use></svg>
-					<span>{{ T('搜索功能或设置', 'Search settings') }}</span><kbd>⌘K</kbd>
+					<span>{{ T('搜索功能或设置', 'Search settings', 'Поиск настроек') }}</span><kbd>⌘K</kbd>
 				</button>
-				<nav class="td-nav" id="td-nav" aria-label="{{ T('主菜单', 'Main menu') }}"></nav>
+				<nav class="td-nav" id="td-nav" aria-label="{{ T('主菜单', 'Main menu', 'Главное меню') }}"></nav>
 				<div class="td-side-foot">
-					<button class="td-icon-btn" type="button" id="td-mode" title="{{ T('切换深浅色', 'Toggle dark mode') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#moon"></use></svg></button>
-					<a class="td-icon-btn" href="{{ dispatcher.build_url('admin/logout') }}" title="{{ T('退出登录', 'Log out') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#logout"></use></svg></a>
+					<button class="td-icon-btn" type="button" id="td-mode" title="{{ T('切换深浅色', 'Toggle dark mode', 'Переключить тему') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#moon"></use></svg></button>
+					<a class="td-icon-btn" href="{{ dispatcher.build_url('admin/logout') }}" title="{{ T('退出登录', 'Log out', 'Выход') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#logout"></use></svg></a>
 				</div>
 			</aside>
 

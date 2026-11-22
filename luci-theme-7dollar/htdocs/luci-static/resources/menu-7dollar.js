@@ -111,7 +111,7 @@ return baseclass.extend({
 		const rest = items.filter(p => g.pages.indexOf(p.path) < 0);
 		const fold = rest.length > 1 && rest.indexOf(current) < 0;
 		box.innerHTML = (fold ? items.filter(p => rest.indexOf(p) < 0) : items).map(p => pill(p)).join('')
-			+ (fold ? `<a href="#" role="button" class="fold">${esc(T('更多', 'More'))}${icon('chev')}</a>` : '');
+			+ (fold ? `<a href="#" role="button" class="fold">${esc(T('更多', 'More', 'Ещё'))}${icon('chev')}</a>` : '');
 		if (fold)
 			box.lastChild.addEventListener('click', ev => {
 				ev.preventDefault();
@@ -172,9 +172,9 @@ return baseclass.extend({
 		if (document.querySelector('.td-pop:not(.td-out)')) return;
 
 		const from = document.activeElement;
-		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('搜索', 'Search'))}">
+		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('搜索', 'Search', 'Поиск'))}">
 			<div class="td-pop-box">
-				<label class="td-pop-in">${icon('search')}<input type="search" aria-label="${esc(T('搜索功能或设置', 'Search pages and settings'))}" placeholder="${esc(T('搜索功能或设置，例如“端口转发”', 'Search pages and settings'))}" autocomplete="off"><kbd>Esc</kbd></label>
+				<label class="td-pop-in">${icon('search')}<input type="search" aria-label="${esc(T('搜索功能或设置', 'Search pages and settings', 'Поиск по страницам и настройкам'))}" placeholder="${esc(T('搜索功能或设置，例如“端口转发”', 'Search pages and settings', 'Поиск страниц и настроек'))}" autocomplete="off"><kbd>Esc</kbd></label>
 				<div class="td-pop-list"></div>
 			</div></div>`);
 		document.body.appendChild(pop);
@@ -190,7 +190,7 @@ return baseclass.extend({
 			sel = Math.min(sel, Math.max(0, shown.length - 1));
 			list.innerHTML = shown.length ? shown.map((e, i) =>
 				`<a href="${L.url(e.path)}" class="${i == sel ? 'on' : ''}" data-i="${i}">${icon(e.icon)}<span>${esc(e.title)}</span><small>${esc(e.group)}</small></a>`).join('')
-				: `<div class="td-pop-empty">${esc(T('没有找到相关功能', 'Nothing found'))}</div>`;
+				: `<div class="td-pop-empty">${esc(T('没有找到相关功能', 'Nothing found', 'Ничего не найдено'))}</div>`;
 			const on = list.querySelector('.on');
 			if (on) on.scrollIntoView({ block: 'nearest' });
 		};
@@ -224,12 +224,12 @@ return baseclass.extend({
 		const body = rest.map(g => `<div class="grp">${esc(g.label)}</div>` +
 			g.list.map(p => `<a href="${L.url(p.path)}"${this.current === p ? ' class="on" aria-current="page"' : ''}>${icon(g.id == 'apps' ? td.appIcon(p.path) : g.icon)}<span>${esc(p.title)}</span></a>`).join('')).join('');
 
-		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('更多', 'More'))}"><div class="td-pop-box">
+		const pop = td.html(`<div class="td-pop" role="dialog" aria-modal="true" aria-label="${esc(T('更多', 'More', 'Ещё'))}"><div class="td-pop-box">
 			<div class="td-pop-list">${body}</div>
 			<div class="td-sheet-tools">
-				<button class="btn" type="button" data-act="search">${icon('search')}${esc(T('搜索', 'Search'))}</button>
-				<button class="btn" type="button" data-act="mode">${icon('moon')}${esc(T('深浅色', 'Theme'))}</button>
-				<a class="btn" href="${L.url('admin/logout')}">${icon('logout')}${esc(T('退出', 'Log out'))}</a>
+				<button class="btn" type="button" data-act="search">${icon('search')}${esc(T('搜索', 'Search', 'Поиск'))}</button>
+				<button class="btn" type="button" data-act="mode">${icon('moon')}${esc(T('深浅色', 'Theme', 'Тема'))}</button>
+				<a class="btn" href="${L.url('admin/logout')}">${icon('logout')}${esc(T('退出', 'Log out', 'Выход'))}</a>
 			</div></div></div>`);
 
 		document.body.appendChild(pop);
@@ -264,7 +264,7 @@ return baseclass.extend({
 			if (!btn) return;
 			const dark = document.documentElement.getAttribute('data-theme') == 'dark';
 			btn.innerHTML = icon(dark ? 'sun' : 'moon');
-			btn.title = dark ? T('切换到浅色', 'Light mode') : T('切换到深色', 'Dark mode');
+			btn.title = dark ? T('切换到浅色', 'Light mode', 'Светлая тема') : T('切换到深色', 'Dark mode', 'Тёмная тема');
 		};
 
 		if (btn) btn.addEventListener('click', () => this.toggleMode());

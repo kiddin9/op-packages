@@ -9,8 +9,10 @@
 	import { model } from 'luci.7dollar';
 
 	const board = ubus.call('system', 'board') ?? {};
-	const zh = !!match(dispatcher.lang ?? '', /^zh/);
-	const T = (z, e) => zh ? z : e;
+	const lang = dispatcher.lang ?? '';
+	const zh = !!match(lang, /^zh/);
+	const ru = !!match(lang, /^ru/);
+	const T = (z, e, r) => zh ? z : ((ru && r != null) ? r : e);
 	const sprite = `${media}/icons.svg`;
 	const user = duser ?? 'root';
 	const custom = fuser && fuser != user;
@@ -21,30 +23,30 @@
 	<svg class="arcs" viewBox="0 0 600 600" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="600" cy="600" r="160"/><circle cx="600" cy="600" r="250"/><circle cx="600" cy="600" r="340"/><circle cx="600" cy="600" r="430"/><circle cx="600" cy="600" r="520"/></svg>
 
 	<form class="td-lbox" method="post" id="td-login">
-		<h1 class="td-serif">{{ T('欢迎回来', 'Welcome back') }}</h1>
+		<h1 class="td-serif">{{ T('欢迎回来', 'Welcome back', 'С возвращением') }}</h1>
 		<p class="td-sub">{{ striptags(board.hostname ?? 'OpenWrt') }} · {{ striptags(model(board)) }}</p>
 
 		{% if (fuser): %}
-		<div class="td-lerr" role="alert">{{ T('密码不正确，请再试一次。', 'Wrong password, please try again.') }}</div>
+		<div class="td-lerr" role="alert">{{ T('密码不正确，请再试一次。', 'Wrong password, please try again.', 'Неверный пароль, попробуйте ещё раз.') }}</div>
 		{% endif %}
 
 		<label class="td-field" id="td-ufield"{% if (!custom): %} hidden{% endif %}>
 			<svg class="i" aria-hidden="true"><use href="{{ sprite }}#devices"></use></svg>
-			<input name="luci_username" id="luci_username" type="text" autocomplete="username" value="{{ entityencode(custom ? fuser : user, true) }}" placeholder="{{ T('用户名', 'Username') }}" autocapitalize="off" spellcheck="false">
+			<input name="luci_username" id="luci_username" type="text" autocomplete="username" value="{{ entityencode(custom ? fuser : user, true) }}" placeholder="{{ T('用户名', 'Username', 'Имя пользователя') }}" autocapitalize="off" spellcheck="false">
 		</label>
 
 		<label class="td-field">
 			<svg class="i" aria-hidden="true"><use href="{{ sprite }}#lock"></use></svg>
-			<input name="luci_password" id="luci_password" type="password" autocomplete="current-password" placeholder="{{ T('管理密码', 'Password') }}" autofocus>
-			<button class="eye" type="button" id="td-eye" title="{{ T('显示密码', 'Show password') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#eye"></use></svg></button>
+			<input name="luci_password" id="luci_password" type="password" autocomplete="current-password" placeholder="{{ T('管理密码', 'Password', 'Пароль') }}" autofocus>
+			<button class="eye" type="button" id="td-eye" title="{{ T('显示密码', 'Show password', 'Показать пароль') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#eye"></use></svg></button>
 		</label>
 
-		<button class="btn primary" type="submit" id="td-go">{{ T('进入', 'Sign in') }} <svg class="i" aria-hidden="true"><use href="{{ sprite }}#arrow"></use></svg></button>
+		<button class="btn primary" type="submit" id="td-go">{{ T('进入', 'Sign in', 'Войти') }} <svg class="i" aria-hidden="true"><use href="{{ sprite }}#arrow"></use></svg></button>
 
-		<p class="td-luser" id="td-luser"{% if (custom): %} hidden{% endif %}>{{ T('将以', 'Signing in as') }} <b>{{ entityencode(user) }}</b> {{ T('身份登录', '') }} · <button type="button" id="td-switch">{{ T('换个用户', 'Other user') }}</button></p>
+		<p class="td-luser" id="td-luser"{% if (custom): %} hidden{% endif %}>{{ T('将以', 'Signing in as', 'Вход как') }} <b>{{ entityencode(user) }}</b> {{ T('身份登录', '', '') }} · <button type="button" id="td-switch">{{ T('换个用户', 'Other user', 'Другой пользователь') }}</button></p>
 	</form>
 
-	<div class="td-lfoot">{{ version.distname }} {{ version.distversion }} · {{ T('仅限局域网访问', 'Local network only') }}</div>
+	<div class="td-lfoot">{{ version.distname }} {{ version.distversion }} · {{ T('仅限局域网访问', 'Local network only', 'Только локальная сеть') }}</div>
 </div>
 
 <script>
@@ -67,9 +69,15 @@
 			u.focus();
 		});
 
+		/* The spinner is only feedback. The button stays enabled: a second click just submits
+		 * again, and a browser that does not send the form is not left with a dead page. */
 		form.addEventListener('submit', function() {
-			go.disabled = true;
 			go.classList.add('spinning');
+		});
+
+		/* coming back to this page (back button, cancelled navigation) shows it as it was left */
+		window.addEventListener('pageshow', function() {
+			go.classList.remove('spinning');
 		});
 
 		pw.focus();
