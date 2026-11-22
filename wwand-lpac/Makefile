@@ -12,7 +12,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-lpac
 PKG_VERSION:=2.3.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_LICENSE:=AGPL-3.0-only GPL-3.0-or-later curl
 PKG_MAINTAINER:=
@@ -160,6 +160,35 @@ define Build/Compile
 	+$(MAKE) -C $(LPAC_BUILD)
 endef
 
+# The curl TOOL of the same build: curl's `make install` above already puts it
+# into $(PREFIX)/bin, linked statically against the bundled libcurl and
+# wolfSSL — the TLS stack the SM-DP+ legs prove. wwand-esim-transfer's TS.43
+# client talks HTTPS through it, because it hands back EVERY response header:
+# uclient's ucode binding keeps one Set-Cookie per name (ucode.c
+# uc_uclient_get_headers), and an entitlement server behind a CDN sets several
+# (Vodafone DE: four, HW-seen 2026-11-21). Self-contained like lpac — no
+# libcurl/mbedtls/nghttp2 .so whose ABI an older image does not match — and
+# installed where it does not stand in for the system's curl.
+define Package/wwand-lpac-curl
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=curl tool from wwand-lpac's static libcurl (wolfSSL, HTTPS only)
+  URL:=https://curl.se
+endef
+
+define Package/wwand-lpac-curl/description
+ The curl command-line tool from the same static build as wwand-lpac: a
+ minimal libcurl (HTTPS only) and wolfSSL linked in, no shared libraries.
+ Installed as /usr/libexec/wwand/curl for wwand's own HTTPS clients (the TS.43
+ entitlement client of wwand-esim-transfer), not as /usr/bin/curl.
+endef
+
+define Package/wwand-lpac-curl/install
+	$(INSTALL_DIR) $(1)/usr/libexec/wwand
+	$(INSTALL_BIN) $(PREFIX)/bin/curl $(1)/usr/libexec/wwand/curl
+endef
+
 define Package/wwand-lpac/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_BIN) $(LPAC_BUILD)/output/lpac $(1)/usr/lib/lpac
@@ -168,3 +197,4 @@ define Package/wwand-lpac/install
 endef
 
 $(eval $(call BuildPackage,wwand-lpac))
+$(eval $(call BuildPackage,wwand-lpac-curl))

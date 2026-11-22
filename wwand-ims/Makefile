@@ -30,19 +30,19 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre19
-PKG_RELEASE:=14
+PKG_VERSION:=0.2.0_pre21
+PKG_RELEASE:=15
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
-PKG_SOURCE_VERSION:=d38a49715ff0f99c7baf95fe8d39579145db9720
+PKG_SOURCE_VERSION:=19af07673c9f1d6de9a97da28dd7ded97c967d45
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=
 
 # the host ucode is the bytecode compiler (as in wwand/Makefile)
-PKG_BUILD_DEPENDS:=ucode/host
+PKG_BUILD_DEPENDS:=ucode/host strongswan
 PKG_CONFIG_DEPENDS:=CONFIG_WWAND_UCODE_SOURCE
 
 include $(INCLUDE_DIR)/package.mk
@@ -51,7 +51,24 @@ include $(INCLUDE_DIR)/cmake.mk
 CMAKE_BINARY_SUBDIR:=build
 CMAKE_OPTIONS += \
 	-DUCODE_COMPILER=$(STAGING_DIR_HOSTPKG)/bin/ucode \
-	-DUCODE_PRECOMPILE=$(if $(CONFIG_WWAND_UCODE_SOURCE),OFF,ON)
+	-DUCODE_PRECOMPILE=$(if $(CONFIG_WWAND_UCODE_SOURCE),OFF,ON) \
+	-DSTRONGSWAN_PLUGINS=ON \
+	-DSTRONGSWAN_INCLUDE_DIR=$(STAGING_DIR)/usr/include/strongswan \
+	-DSTRONGSWAN_LIB_DIR=$(STAGING_DIR)/usr/lib/ipsec
+
+# the charon plugins (src/strongswan) are built against this strongSwan's
+# headers (its Build/InstallDev) and tied to its ABI: bump with the feed's
+# strongswan PKG_VERSION/PKG_RELEASE
+SW_VERSION:=6.0.7
+SW_RELEASE:=118
+SW_ABI:=$(SW_VERSION)-r$(SW_RELEASE)
+# The plugin packages' own version: strongSwan's with its release as a 4th
+# component, so it stays above the 6.0.7-r117 they had when the strongswan
+# package built them (apk: 6.0.7.118 > 6.0.7) and follows each strongSwan
+# bump. SW_PLUGIN_REL counts changes of the plugins' sources in between —
+# raise it then, or devices keep the older build.
+SW_PLUGIN_REL:=1
+SW_PLUGIN_VERSION:=$(SW_VERSION).$(SW_RELEASE)-r$(SW_PLUGIN_REL)
 
 UCDIR:=/usr/share/ucode/wwand
 IMSLIB:=/usr/share/wwand-ims
@@ -114,6 +131,61 @@ define Package/wwand-ims-vowifi/description
  (EAP-AKA through the modem's USIM, the P-CSCF from the ePDG), the IMS
  traffic on an XFRM interface in a VRF of its own. On with ims_modem option
  access 'vowifi'; `wwand-ims-vowifi up|down|status` drives the tunnel by hand.
+endef
+
+# The two charon plugins, out of strongSwan's tree (wwand-ims src/strongswan,
+# no patch to strongswan): the package names are the ones the feed's
+# strongswan built them under before, so configs and dependents stay.
+define Package/strongswan-mod-ext-aka
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=VPN
+  TITLE:=StrongSwan EAP-AKA card backed by an external program (a USIM elsewhere) plugin
+  DEPENDS:=+strongswan-charon +strongswan-libsimaka
+  EXTRA_DEPENDS:=strongswan-charon (=$(SW_ABI))
+  VERSION:=$(SW_PLUGIN_VERSION)
+endef
+
+define Package/strongswan-mod-ext-aka/description
+ charon's EAP-AKA card for a USIM it cannot reach itself: AUTHENTICATE runs
+ in an external program (/usr/libexec/strongswan/ext-aka; wwand-ims-vowifi
+ puts the modem's or a card reader's USIM there).
+endef
+
+define Package/strongswan-mod-epdg-idr
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=VPN
+  TITLE:=StrongSwan plugin accepting the IKEv2 responder identity an ePDG answers with
+  DEPENDS:=+strongswan-charon
+  EXTRA_DEPENDS:=strongswan-charon (=$(SW_ABI))
+  VERSION:=$(SW_PLUGIN_VERSION)
+endef
+
+define Package/strongswan-mod-epdg-idr/description
+ For the EAP-only connections it names (charon.plugins.epdg-idr.connections):
+ the IMS APN goes out as IDr (TS 24.302 7.2.2), the identity the ePDG answers
+ with is accepted.
+endef
+
+define Package/strongswan-mod-ext-aka/install
+	$(INSTALL_DIR) $(1)/usr/lib/ipsec/plugins $(1)/etc/strongswan.d/charon
+	$(CP) $(CMAKE_BINARY_DIR)/src/strongswan/libstrongswan-ext-aka.so $(1)/usr/lib/ipsec/plugins/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/strongswan-ext-aka.conf $(1)/etc/strongswan.d/charon/ext-aka.conf
+endef
+
+define Package/strongswan-mod-ext-aka/conffiles
+/etc/strongswan.d/charon/ext-aka.conf
+endef
+
+define Package/strongswan-mod-epdg-idr/install
+	$(INSTALL_DIR) $(1)/usr/lib/ipsec/plugins $(1)/etc/strongswan.d/charon
+	$(CP) $(CMAKE_BINARY_DIR)/src/strongswan/libstrongswan-epdg-idr.so $(1)/usr/lib/ipsec/plugins/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/strongswan-epdg-idr.conf $(1)/etc/strongswan.d/charon/epdg-idr.conf
+endef
+
+define Package/strongswan-mod-epdg-idr/conffiles
+/etc/strongswan.d/charon/epdg-idr.conf
 endef
 
 define Package/luci-app-wwand-ims
@@ -205,4 +277,6 @@ endef
 
 $(eval $(call BuildPackage,wwand-ims))
 $(eval $(call BuildPackage,wwand-ims-vowifi))
+$(eval $(call BuildPackage,strongswan-mod-ext-aka))
+$(eval $(call BuildPackage,strongswan-mod-epdg-idr))
 $(eval $(call BuildPackage,luci-app-wwand-ims))
