@@ -54,7 +54,7 @@ define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C "$(LINUX_DIR)" \
 		$(KERNEL_MAKE_FLAGS) \
 		M="$(PKG_BUILD_DIR)/$(MAKE_PATH)/" \
-		KBUILD_CFLAGS="$(EXTRA_CFLAGS)" \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
 		modules
 endef
 
