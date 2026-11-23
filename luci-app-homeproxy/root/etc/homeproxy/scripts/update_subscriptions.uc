@@ -37,9 +37,12 @@ const allow_insecure = uci.get(uciconfig, ucisubscription, 'allow_insecure') || 
       user_agent = uci.get(uciconfig, ucisubscription, 'user_agent'),
       via_proxy = uci.get(uciconfig, ucisubscription, 'update_via_proxy') || '0';
 
-const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_mainalnd_china';
+const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_mainland_china';
 let main_node, main_udp_node;
-if (routing_mode !== 'custom') {
+/* custom and simple provide their own outbounds: never touch main_node here,
+ * or a subscription update could silently re-enable proxying after switching
+ * back to a legacy mode. */
+if (routing_mode !== 'custom' && routing_mode !== 'simple') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
 	main_udp_node = uci.get(uciconfig, ucimain, 'main_udp_node') || 'nil';
 }
@@ -596,8 +599,19 @@ function main() {
 	uci.commit(uciconfig);
 
 	let need_restart = (via_proxy !== '1');
-	if (!isEmpty(main_node)) {
-		const first_server = uci.get_first(uciconfig, ucinode);
+	/* 'nil' means the user disabled the main node, so never replace it with a
+	 * real node here, otherwise a subscription update would silently enable
+	 * proxying again. */
+	if (!isEmpty(main_node) && main_node !== 'nil') {
+		/* Never fall back to the built-in direct node (or any other direct
+		 * node): it would silently turn all traffic into direct connections
+		 * when a subscription update removes the current main node. */
+		let first_server = null;
+		uci.foreach(uciconfig, ucinode, (cfg) => {
+			if (isEmpty(first_server) &&
+			    uci.get(uciconfig, cfg['.name'], 'type') !== 'direct')
+				first_server = cfg['.name'];
+		});
 		if (first_server) {
 			let main_urltest_nodes;
 			if (main_node === 'urltest') {
@@ -618,7 +632,7 @@ function main() {
 				log('Main node is gone, switching to the first node.');
 			}
 
-			if (!isEmpty(main_udp_node) && main_udp_node !== 'same') {
+			if (!isEmpty(main_udp_node) && main_udp_node !== 'same' && main_udp_node !== 'nil') {
 				let main_udp_urltest_nodes;
 				if (main_udp_node === 'urltest') {
 					main_udp_urltest_nodes = filter(uci.get(uciconfig, ucimain, 'main_udp_urltest_nodes'), (v) => {

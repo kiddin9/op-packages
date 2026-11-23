@@ -14,6 +14,11 @@
 'require homeproxy as hp';
 'require tools.widgets as widgets';
 
+/* Share links usually omit the port: TLS/QUIC based protocols default to 443. */
+function defaultSharePort(proto) {
+	return ['anytls', 'https', 'hysteria', 'hysteria2', 'hy2', 'trojan', 'tuic', 'vless'].includes(proto) ? '443' : '80';
+}
+
 function allowInsecureConfirm(ev, _section_id, value) {
 	if (value === '1' && !confirm(_('Are you sure to allow insecure?')))
 		ev.target.firstElementChild.checked = null;
@@ -38,7 +43,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'anytls',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				password: url.username ? decodeURIComponent(url.username) : null,
 				tls: '1',
 				tls_sni: params.get('sni'),
@@ -54,7 +59,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'http',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				username: url.username ? decodeURIComponent(url.username) : null,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				tls: (uri[0] === 'https') ? '1' : '0'
@@ -74,7 +79,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'hysteria',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				hysteria_protocol: params.get('protocol') || 'udp',
 				hysteria_auth_type: params.get('auth') ? 'string' : null,
 				hysteria_auth_payload: params.get('auth'),
@@ -101,7 +106,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'hysteria2',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				password: url.username ? (
 					decodeURIComponent(url.username + (url.password ? (':' + url.password) : ''))
 				) : null,
@@ -124,7 +129,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'socks',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				username: url.username ? decodeURIComponent(url.username) : null,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				socks_version: (uri[0].includes('4')) ? '4' : '5'
@@ -171,7 +176,7 @@ function parseShareLink(uri, features) {
 					label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 					type: 'shadowsocks',
 					address: url.hostname,
-					port: url.port || '80',
+					port: url.port || defaultSharePort(uri[0]),
 					shadowsocks_encrypt_method: userinfo[0],
 					password: userinfo[1],
 					shadowsocks_plugin: plugin,
@@ -208,7 +213,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'trojan',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				password: decodeURIComponent(url.username),
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: '1',
@@ -243,7 +248,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'tuic',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				uuid: url.username,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				tuic_congestion_control: params.get('congestion_control'),
@@ -272,7 +277,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'vless',
 				address: url.hostname,
-				port: url.port || '80',
+				port: url.port || defaultSharePort(uri[0]),
 				uuid: url.username,
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: ['tls', 'xtls', 'reality'].includes(params.get('security')) ? '1' : '0',
@@ -396,7 +401,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	s.modaltitle = L.bind(hp.loadModalTitle, this, _('Node'), _('Add a node'), data[0]);
 	s.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
 
-	if (routing_mode !== 'custom') {
+	if (!['custom', 'simple'].includes(routing_mode)) {
 		o = s.option(form.Button, '_apply', _('Apply'));
 		o.editable = true;
 		o.modalonly = false;
@@ -540,6 +545,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends({'type': 'hysteria2', 'hysteria_hopping_port': /[\s\S]/});
 	o.modalonly = true;
 
+	/* Kept for share-link import compatibility; sing-box has no such option. */
 	o = s.option(form.ListValue, 'hysteria_protocol', _('Protocol'));
 	o.value('udp');
 	/* WeChat-Video / FakeTCP are unsupported by sing-box currently

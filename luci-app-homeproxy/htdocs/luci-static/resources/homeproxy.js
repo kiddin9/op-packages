@@ -21,6 +21,185 @@ return baseclass.extend({
 		'ipv6_only': _('IPv6 only')
 	},
 
+	/* Curated rule sets from MetaCubeX/meta-rules-dat@sing/geo.
+	 * Keys are "<category>/<name>" identifiers, expanded to download URLs
+	 * by generate_client.uc. Names are proper nouns and need no translation. */
+	simple_rule_sets: {
+		/* These China domain sets have different scopes and do not fully
+		 * contain each other: cn is the broad list (tld-cn is a subset of
+		 * it), geolocation-cn is geography based. Select both for full
+		 * coverage of domestic domains. */
+		'geosite/geolocation-cn': 'GeoSite · geolocation-cn (China, by geography)',
+		'geosite/geolocation-!cn': 'GeoSite · geolocation-!cn (non-China)',
+		'geosite/cn': 'GeoSite · cn (China, broad)',
+		'geosite/gfw': 'GeoSite · gfw',
+		'geosite/private': 'GeoSite · private (LAN)',
+		'geosite/category-ads-all': 'GeoSite · category-ads-all',
+		'geosite/category-ai-!cn': 'GeoSite · category-ai-!cn',
+		'geosite/category-dev': 'GeoSite · category-dev',
+		'geosite/category-games': 'GeoSite · category-games',
+		'geosite/category-media': 'GeoSite · category-media',
+		'geosite/category-scholar-!cn': 'GeoSite · category-scholar-!cn',
+		'geosite/category-social-media-!cn': 'GeoSite · category-social-media-!cn',
+		'geosite/openai': 'GeoSite · openai',
+		'geosite/google': 'GeoSite · google',
+		'geosite/youtube': 'GeoSite · youtube',
+		'geosite/github': 'GeoSite · github',
+		'geosite/telegram': 'GeoSite · telegram',
+		'geosite/twitter': 'GeoSite · twitter',
+		'geosite/facebook': 'GeoSite · facebook',
+		'geosite/instagram': 'GeoSite · instagram',
+		'geosite/apple': 'GeoSite · apple',
+		'geosite/microsoft': 'GeoSite · microsoft',
+		'geosite/netflix': 'GeoSite · netflix',
+		'geosite/disney': 'GeoSite · disney',
+		'geosite/spotify': 'GeoSite · spotify',
+		'geosite/bilibili': 'GeoSite · bilibili',
+		'geosite/steam': 'GeoSite · steam',
+		'geosite/tiktok': 'GeoSite · tiktok',
+		'geosite/discord': 'GeoSite · discord',
+		'geosite/reddit': 'GeoSite · reddit',
+		/* Additional categories */
+		'geosite/category-porn': 'GeoSite · category-porn (adult)',
+		'geosite/category-finance': 'GeoSite · category-finance',
+		'geosite/category-entertainment': 'GeoSite · category-entertainment',
+		'geosite/category-cryptocurrency': 'GeoSite · category-cryptocurrency',
+		'geosite/category-speedtest': 'GeoSite · category-speedtest',
+		'geosite/tld-cn': 'GeoSite · tld-cn (China TLDs, included in cn)',
+		/* AI services */
+		'geosite/anthropic': 'GeoSite · anthropic (Claude)',
+		'geosite/huggingface': 'GeoSite · huggingface',
+		'geosite/deepseek': 'GeoSite · deepseek',
+		'geosite/perplexity': 'GeoSite · perplexity',
+		'geosite/xai': 'GeoSite · xai (Grok)',
+		/* Streaming and video */
+		'geosite/hbo': 'GeoSite · hbo (HBO Max)',
+		'geosite/primevideo': 'GeoSite · primevideo (Prime Video)',
+		'geosite/hulu': 'GeoSite · hulu',
+		'geosite/abema': 'GeoSite · abema (Japan)',
+		'geosite/niconico': 'GeoSite · niconico (Japan)',
+		'geosite/bahamut': 'GeoSite · bahamut (Taiwan)',
+		'geosite/twitch': 'GeoSite · twitch (live streaming)',
+		'geosite/dailymotion': 'GeoSite · dailymotion',
+		/* Messaging and social */
+		'geosite/whatsapp': 'GeoSite · whatsapp',
+		'geosite/signal': 'GeoSite · signal',
+		'geosite/line': 'GeoSite · line',
+		'geosite/messenger': 'GeoSite · messenger',
+		'geosite/linkedin': 'GeoSite · linkedin',
+		/* Game platforms */
+		'geosite/playstation': 'GeoSite · playstation',
+		'geosite/xbox': 'GeoSite · xbox',
+		'geosite/nintendo': 'GeoSite · nintendo',
+		'geosite/epicgames': 'GeoSite · epicgames',
+		'geosite/ea': 'GeoSite · ea (Electronic Arts)',
+		'geosite/blizzard': 'GeoSite · blizzard',
+		/* Cloud and development */
+		'geosite/cloudflare': 'GeoSite · cloudflare',
+		'geosite/docker': 'GeoSite · docker',
+		'geosite/aws': 'GeoSite · aws (Amazon Web Services)',
+		'geosite/gitlab': 'GeoSite · gitlab',
+		/* Payments */
+		'geosite/paypal': 'GeoSite · paypal',
+		'geosite/stripe': 'GeoSite · stripe',
+		/* Mainland China services */
+		'geosite/baidu': 'GeoSite · baidu',
+		'geosite/alibaba': 'GeoSite · alibaba',
+		'geosite/tencent': 'GeoSite · tencent',
+		'geosite/douyin': 'GeoSite · douyin (TikTok China)',
+		'geosite/iqiyi': 'GeoSite · iqiyi',
+		'geosite/youku': 'GeoSite · youku',
+		'geoip/cn': 'GeoIP · cn (China)',
+		'geoip/private': 'GeoIP · private (LAN)',
+		/* Service / provider IP sets: small and ideal for apps dialing IPs directly */
+		'geoip/cloudflare': 'GeoIP · cloudflare',
+		'geoip/cloudfront': 'GeoIP · cloudfront (AWS CDN)',
+		'geoip/facebook': 'GeoIP · facebook (Meta)',
+		'geoip/fastly': 'GeoIP · fastly (CDN)',
+		'geoip/google': 'GeoIP · google (Google / YouTube)',
+		'geoip/netflix': 'GeoIP · netflix',
+		'geoip/telegram': 'GeoIP · telegram',
+		'geoip/tor': 'GeoIP · tor (Tor nodes)',
+		'geoip/twitter': 'GeoIP · twitter (X)',
+		/* Country / region IP sets */
+		'geoip/ae': 'GeoIP · ae',
+		'geoip/ar': 'GeoIP · ar',
+		'geoip/at': 'GeoIP · at',
+		'geoip/au': 'GeoIP · au',
+		'geoip/be': 'GeoIP · be',
+		'geoip/br': 'GeoIP · br',
+		'geoip/ca': 'GeoIP · ca',
+		'geoip/ch': 'GeoIP · ch',
+		'geoip/cz': 'GeoIP · cz',
+		'geoip/de': 'GeoIP · de',
+		'geoip/dk': 'GeoIP · dk',
+		'geoip/es': 'GeoIP · es',
+		'geoip/fi': 'GeoIP · fi',
+		'geoip/fr': 'GeoIP · fr',
+		'geoip/gb': 'GeoIP · gb',
+		'geoip/hk': 'GeoIP · hk',
+		'geoip/id': 'GeoIP · id',
+		'geoip/ie': 'GeoIP · ie',
+		'geoip/il': 'GeoIP · il',
+		'geoip/in': 'GeoIP · in',
+		'geoip/it': 'GeoIP · it',
+		'geoip/jp': 'GeoIP · jp',
+		'geoip/kr': 'GeoIP · kr',
+		'geoip/mx': 'GeoIP · mx',
+		'geoip/my': 'GeoIP · my',
+		'geoip/nl': 'GeoIP · nl',
+		'geoip/no': 'GeoIP · no',
+		'geoip/nz': 'GeoIP · nz',
+		'geoip/ph': 'GeoIP · ph',
+		'geoip/pl': 'GeoIP · pl',
+		'geoip/pt': 'GeoIP · pt',
+		'geoip/ru': 'GeoIP · ru',
+		'geoip/sa': 'GeoIP · sa',
+		'geoip/se': 'GeoIP · se',
+		'geoip/sg': 'GeoIP · sg',
+		'geoip/th': 'GeoIP · th',
+		'geoip/tr': 'GeoIP · tr',
+		'geoip/tw': 'GeoIP · tw',
+		'geoip/ua': 'GeoIP · ua',
+		'geoip/us': 'GeoIP · us',
+		'geoip/vn': 'GeoIP · vn',
+		'geoip/za': 'GeoIP · za'
+	},
+
+	/* Base URLs the "category/name" identifiers above are appended to. */
+	simple_ruleset_url_bases: {
+		'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN'),
+		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN (Fastly)'),
+		'https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo': _('GitHub raw')
+	},
+
+	/* Normalize the order of a selected rule set list before it is written to
+	 * UCI. Known sets follow the order of the dropdown (passed as `order`),
+	 * any leftover value is sorted alphabetically at the end. Pass no `order`
+	 * for a plain alphabetical sort. The widget itself is left untouched, so
+	 * newly picked items still appear at the bottom until the form is saved. */
+	sortRuleSetValues: function(values, order) {
+		if (!Array.isArray(values))
+			return values;
+
+		let rank = Object.create(null), i = 0;
+		for (let key in order || {})
+			rank[key] = i++;
+
+		return values.slice().sort((a, b) => {
+			let ra = rank[a], rb = rank[b];
+
+			if (ra != null && rb != null)
+				return ra - rb;
+			if (ra != null)
+				return -1;
+			if (rb != null)
+				return 1;
+
+			return (a < b) ? -1 : (a > b) ? 1 : 0;
+		});
+	},
+
 	shadowsocks_encrypt_length: {
 		/* AEAD */
 		'aes-128-gcm': 0,
@@ -82,6 +261,22 @@ return baseclass.extend({
 		renderWidget: function(/* ... */) {
 			let dl = form.DynamicList.prototype.renderWidget.apply(this, arguments);
 			dl.querySelector('.add-item ul > li[data-value="-"]')?.remove();
+
+			/* DynamicList only greys out a choice when it is picked from the
+			 * dropdown. Values loaded from UCI are rendered as items directly,
+			 * so editing an existing section would leave them selectable. */
+			if (!this.allowduplicates) {
+				let values = [];
+				dl.querySelectorAll('.item > input[type="hidden"]').forEach((input) => {
+					values.push(input.value);
+				});
+
+				dl.querySelectorAll('.add-item ul > li[data-value]').forEach((li) => {
+					if (values.includes(li.getAttribute('data-value')))
+						li.setAttribute('unselectable', '');
+				});
+			}
+
 			return dl;
 		}
 	}),
@@ -283,14 +478,14 @@ return baseclass.extend({
 
 	validatePortRange(section_id, value) {
 		if (section_id && value) {
-			value = value.match(/^(\d+)?\:(\d+)?$/);
-			if (value && (value[1] || value[2])) {
-				if (!value[1])
-					value[1] = 0;
-				else if (!value[2])
-					value[2] = 65535;
+			let m = value.match(/^(\d+)?\:(\d+)?$/);
+			if (m && (m[1] || m[2])) {
+				/* Capture groups are strings: comparing them directly would
+				 * use lexicographic order ("5" < "100" is false). */
+				let start = m[1] ? parseInt(m[1], 10) : 0,
+				    end = m[2] ? parseInt(m[2], 10) : 65535;
 
-				if (value[1] < value[2] && value[2] <= 65535)
+				if (start >= 0 && start < end && end <= 65535)
 					return true;
 			}
 

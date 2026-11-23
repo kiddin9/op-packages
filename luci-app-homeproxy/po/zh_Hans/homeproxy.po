@@ -2820,6 +2820,11 @@ msgstr "更新时间"
 msgid "Update via proxy"
 msgstr "使用代理更新"
 
+#: htdocs/luci-static/resources/view/homeproxy/status.js:158
+#: htdocs/luci-static/resources/view/homeproxy/status.js:188
+msgid "Updating..."
+msgstr "正在更新..."
+
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1104
 msgid "Upload ECH config"
 msgstr "上传 ECH 配置"
@@ -3101,3 +3106,175 @@ msgstr "有效端口值"
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
 msgstr "有效 uuid"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing."
+msgstr "可填写完整的 .srs URL，或 geosite/netflix 这样的标识。只填名称时默认按 geosite 规则集处理。自定义 URL 需在路径中包含 /geosite/ 才会参与 DNS 分流；GeoIP 规则集仅用于数据路由。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat."
+msgstr "用于解析 MetaCubeX/meta-rules-dat 内置规则集名称的下载地址前缀。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Built-in rule sets"
+msgstr "内置规则集"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom IPv4 / IPv6 addresses or CIDR ranges."
+msgstr "自定义 IPv4 / IPv6 地址或 CIDR 网段。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom domains. Subdomains are matched automatically."
+msgstr "自定义域名，自动匹配子域名。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom rule sets"
+msgstr "自定义规则集"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set download node"
+msgstr "规则集下载节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS node"
+msgstr "远程 DNS 节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "WAN DNS only"
+msgstr "仅使用 WAN DNS"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Fallback nodes"
+msgstr "备用节点"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "GitHub raw"
+msgstr "GitHub raw"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check URL"
+msgstr "健康检查地址"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check interval"
+msgstr "健康检查间隔"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How often remote rule sets are refreshed, e.g. 1d."
+msgstr "远程规则集的刷新周期，例如 1d。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "IP / CIDR"
+msgstr "IP / CIDR"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In seconds. A failed node is re-evaluated on the next check; use the failback tolerance below to also switch back to a recovered primary."
+msgstr "单位为秒。故障节点会在下一次检查时重新评估；如需在恢复后切回主节点，请设置下方的回切容差。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS."
+msgstr "用于下载远程规则集的节点。自动模式复用第一个分流出站及其备用节点；直连不通过代理下载。此选项不再控制 DNS。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy."
+msgstr "远程 DNS 的访问方式。自动模式让 DNS 与匹配的数据出站保持一致；仅使用 WAN DNS 会停用远程 DNS 和国内 DNS 分流；直连会不经代理访问所配置的远程 DNS。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node."
+msgstr "按先后顺序排列的备用节点。前一个节点健康检查失败时依次向下切换；调小回切容差后，也允许切回更快的节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy."
+msgstr "未被下方任何分流规则匹配的流量所使用的出站。直连不会自动代理非中国流量；如需「绕过大陆」策略，请显式添加相应规则。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS server used through a proxy node. Support UDP, TCP, DoH, DoQ, DoT."
+msgstr "通过代理节点访问的远程 DNS 服务器，支持 UDP、TCP、DoH、DoQ、DoT。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set URL base"
+msgstr "规则集地址前缀"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set update interval"
+msgstr "规则集更新间隔"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule sets from MetaCubeX/meta-rules-dat (sing/geo). Select several to route them all through the same node."
+msgstr "来自 MetaCubeX/meta-rules-dat (sing/geo) 的规则集。可多选，让多个规则集共用同一个节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple Routing"
+msgstr "简洁分流"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple routing"
+msgstr "简洁分流"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "The primary node for this rule."
+msgstr "该规则的主节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Automatic"
+msgstr "自动"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Used to test node availability. By default the first healthy node in the configured order is selected and kept until it fails; lowering the failback tolerance also allows switching to a faster node."
+msgstr "用于检测节点可用性。默认按配置顺序选择第一个健康的节点并一直使用到它故障；调小回切容差后，也允许切换到更快的节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 10 and 1800"
+msgstr "10 到 1800 之间的数值"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN"
+msgstr "jsDelivr CDN"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN (Fastly)"
+msgstr "jsDelivr CDN（Fastly）"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "valid URL or rule set name"
+msgstr "有效的 URL 或规则集名称"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a duration such as 1d or 12h"
+msgstr "1d 或 12h 这样的时长"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Add"
+msgstr "添加"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains."
+msgstr "国内域名将由该服务器直连解析。设为「禁用」则所有域名都使用上方的 DNS 服务器。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "DNS cache size"
+msgstr "DNS 缓存条数"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Number of DNS records cached by dnsmasq and sing-box. Larger values use more RAM but keep repeated lookups away from upstream DNS. Set to 0 to keep the current dnsmasq setting and the sing-box default."
+msgstr "dnsmasq 与 sing-box 缓存的 DNS 记录条数。数值越大占用内存越多，但重复查询可直接命中缓存，无需访问上游 DNS。设为 0 表示保持 dnsmasq 现有设置和 sing-box 默认值。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Optimistic DNS cache"
+msgstr "乐观 DNS 缓存"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses."
+msgstr "立即返回已过期的缓存结果并在后台刷新（需要 sing-box 1.14+，默认陈旧窗口为 3 天）。可降低解析延迟，但 CDN 或节点变化后可能短暂继续使用旧地址。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Failback tolerance"
+msgstr "回切容差"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In milliseconds. The default 30000 keeps the current node until it fails, so a recovered primary is not reselected automatically. Lower it, e.g. to 50, to let a node that is faster by more than this value take over, including a recovered primary. Small values may cause frequent switches and interrupt existing connections."
+msgstr "单位为毫秒。默认 30000 会一直使用当前节点直到其故障，因此恢复的主节点不会自动被重新选中。调小（例如 50）后，延迟比当前节点低超过该值的节点（包括已恢复的主节点）会重新接管。数值越小切换越频繁，可能中断已有连接。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 1 and 30000"
+msgstr "1 到 30000 之间的数值"

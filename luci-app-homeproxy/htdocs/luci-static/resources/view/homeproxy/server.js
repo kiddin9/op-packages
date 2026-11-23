@@ -247,6 +247,7 @@ return view.extend({
 		o.modalonly = true;
 
 		/* Hysteria (2) config start */
+		/* Kept for share-link import compatibility; sing-box has no such option. */
 		o = s.option(form.ListValue, 'hysteria_protocol', _('Protocol'));
 		o.value('udp');
 		/* WeChat-Video / FakeTCP are unsupported by sing-box currently

@@ -10,6 +10,7 @@
 'require poll';
 'require rpc';
 'require uci';
+'require ui';
 'require validation';
 'require view';
 
@@ -72,6 +73,42 @@ let stubValidator = {
 	}
 };
 
+function isValidHttpURL(value) {
+	if (!value)
+		return false;
+
+	try {
+		let url = new URL(value);
+		return !!url.hostname && ['http:', 'https:'].includes(url.protocol);
+	} catch (e) {
+		return false;
+	}
+}
+
+/* DNS servers may be a bare IP or any protocol URL supported by sing-box
+ * (udp/tcp/tls/quic/https), so do not restrict the scheme to http(s). */
+function isValidDNSServer(value, allowNil) {
+	if (!value)
+		return false;
+	/* 'nil' only means "disable" for china_dns_server. */
+	if (value === 'wan' || (allowNil && value === 'nil'))
+		return true;
+	if (stubValidator.apply('ipaddr', value))
+		return true;
+
+	try {
+		let url = new URL(value.replace(/^[A-Za-z0-9+.-]+:\/\//, 'http://'));
+		let host = url.hostname.replace(/^\[|\]$/g, '');
+		return stubValidator.apply('hostname', host) || stubValidator.apply('ipaddr', host);
+	} catch (e) {
+		return false;
+	}
+}
+
+/* Modes that rely on the classic single main node. "custom" and "simple"
+ * both provide their own outbounds and must not show main-node widgets. */
+const legacyModes = /^(gfwlist|bypass_mainland_china|proxy_mainland_china|global)$/;
+
 return view.extend({
 	load() {
 		return Promise.all([
@@ -125,7 +162,7 @@ return view.extend({
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
 		o.default = 'nil';
-		o.depends({'routing_mode': 'custom', '!reverse': true});
+		o.depends('routing_mode', legacyModes);
 		o.rmempty = false;
 
 		o = s.taboption('routing', hp.CBIStaticList, 'main_urltest_nodes', _('URLTest nodes'),
@@ -154,7 +191,7 @@ return view.extend({
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
 		o.default = 'nil';
-		o.depends({'routing_mode': /^((?!custom).)+$/, 'proxy_mode': /^((?!redirect$).)+$/});
+		o.depends({'routing_mode': legacyModes, 'proxy_mode': /^((?!redirect$).)+$/});
 		o.rmempty = false;
 
 		o = s.taboption('routing', hp.CBIStaticList, 'main_udp_urltest_nodes', _('URLTest nodes'),
@@ -188,7 +225,7 @@ return view.extend({
 		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
 		o.default = '8.8.8.8';
 		o.rmempty = false;
-		o.depends({'routing_mode': 'custom', '!reverse': true});
+		o.depends('routing_mode', legacyModes);
 		o.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
 				if (!value)
@@ -253,11 +290,12 @@ return view.extend({
 		o.value('bypass_mainland_china', _('Bypass mainland China'));
 		o.value('proxy_mainland_china', _('Only proxy mainland China'));
 		o.value('custom', _('Custom routing'));
+		o.value('simple', _('Simple routing'));
 		o.value('global', _('Global'));
 		o.default = 'bypass_mainland_china';
 		o.rmempty = false;
 		o.onchange = function(ev, section_id, value) {
-			if (section_id && value === 'custom')
+			if (section_id && ['custom', 'simple'].includes(value))
 				this.map.save(null, true);
 		}
 
@@ -297,6 +335,271 @@ return view.extend({
 		o = s.taboption('routing', form.Flag, 'ipv6_support', _('IPv6 support'));
 		o.default = o.enabled;
 		o.rmempty = false;
+
+		/* Simple routing settings start */
+		s.tab('simple', _('Simple Routing'));
+
+		o = s.taboption('simple', form.SectionValue, '_simple', form.NamedSection, 'simple', 'homeproxy');
+		o.depends('routing_mode', 'simple');
+
+		ss = o.subsection;
+		so = ss.option(form.ListValue, 'default_outbound', _('Default outbound'),
+			_('Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy.'));
+		so.value('direct-out', _('Direct'));
+		so.value('block-out', _('Block'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.default = 'direct-out';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'dns_server', _('DNS server'),
+			_('Remote DNS server used through a proxy node. Support UDP, TCP, DoH, DoQ, DoT.'));
+		so.value('wan', _('WAN DNS (read from interface)'));
+		so.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
+		so.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
+		so.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		so.default = '8.8.8.8';
+		so.rmempty = false;
+		so.validate = function(section_id, value) {
+			if (section_id && value && !isValidDNSServer(value))
+				return _('Expecting: %s').format(_('valid DNS server address'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'china_dns_server', _('China DNS server'),
+			_('Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains.'));
+		so.value('nil', _('Disable'));
+		so.value('wan', _('WAN DNS (read from interface)'));
+		so.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		so.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
+		so.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));
+		so.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
+		so.rmempty = false;
+		so.validate = function(section_id, value) {
+			if (section_id && value && !isValidDNSServer(value, true))
+				return _('Expecting: %s').format(_('valid DNS server address'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'health_check_url', _('Health check URL'),
+			_('Used to test node availability. By default the first healthy node in the configured order is selected and kept until it fails; lowering the failback tolerance also allows switching to a faster node.'));
+		so.placeholder = 'https://www.gstatic.com/generate_204';
+		so.validate = function(section_id, value) {
+			if (section_id && value && !isValidHttpURL(value))
+				return _('Expecting: %s').format(_('valid URL'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'health_check_interval', _('Health check interval'),
+			_('In seconds. A failed node is re-evaluated on the next check; use the failback tolerance below to also switch back to a recovered primary.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '180';
+		so.validate = function(section_id, value) {
+			if (section_id && value && (parseInt(value) < 10 || parseInt(value) > 1800))
+				return _('Expecting: %s').format(_('a value between 10 and 1800'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'failback_tolerance', _('Failback tolerance'),
+			_('In milliseconds. The default 30000 keeps the current node until it fails, so a recovered primary is not reselected automatically. Lower it, e.g. to 50, to let a node that is faster by more than this value take over, including a recovered primary. Small values may cause frequent switches and interrupt existing connections.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '30000';
+		so.default = '30000';
+		so.validate = function(section_id, value) {
+			if (section_id && value && (parseInt(value) < 1 || parseInt(value) > 30000))
+				return _('Expecting: %s').format(_('a value between 1 and 30000'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'ruleset_url_base', _('Rule set URL base'),
+			_('Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat.'));
+		for (let i in hp.simple_ruleset_url_bases)
+			so.value(i, hp.simple_ruleset_url_bases[i]);
+		so.default = 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo';
+		so.rmempty = false;
+		so.validate = function(section_id, value) {
+			if (section_id && value && !isValidHttpURL(value))
+				return _('Expecting: %s').format(_('valid URL'));
+
+			return true;
+		}
+
+		so = ss.option(form.ListValue, 'ruleset_download_detour', _('Rule set download node'),
+			_('Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS.'));
+		so.value('', _('Automatic'));
+		so.value('direct-out', _('Direct'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.default = '';
+		so.rmempty = true;
+		so.optional = true;
+
+		so = ss.option(form.ListValue, 'remote_dns_detour', _('Remote DNS node'),
+			_('How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy.'));
+		so.value('', _('Automatic'));
+		so.value('wan', _('WAN DNS only'));
+		so.value('direct-out', _('Direct'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.default = '';
+		so.rmempty = true;
+		so.optional = true;
+
+		so = ss.option(form.Value, 'ruleset_update_interval', _('Rule set update interval'),
+			_('How often remote rule sets are refreshed, e.g. 1d.'));
+		so.placeholder = '1d';
+		so.validate = function(section_id, value) {
+			if (section_id && value && !/^\d+(ms|s|m|h|d)$/.test(value))
+				return _('Expecting: %s').format(_('a duration such as 1d or 12h'));
+
+			return true;
+		}
+
+		/* Simple DNS cache start */
+		so = ss.option(form.Value, 'dns_cache_size', _('DNS cache size'),
+			_('Number of DNS records cached by dnsmasq and sing-box. Larger values use more RAM but keep repeated lookups away from upstream DNS. Set to 0 to keep the current dnsmasq setting and the sing-box default.'));
+		so.datatype = 'range(0,10000)';
+		so.default = '4096';
+		so.rmempty = false;
+
+		so = ss.option(form.Flag, 'dns_optimistic', _('Optimistic DNS cache'),
+			_('Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses.'));
+		so.default = so.disabled;
+		so.rmempty = false;
+		/* Simple DNS cache end */
+		/* Simple global settings end */
+
+		/* Simple routing rules start */
+		o = s.taboption('simple', form.SectionValue, '_simple_rule', form.GridSection, 'simple_rule');
+		o.depends('routing_mode', 'simple');
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Routing rule'), _('Add a routing rule'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+
+		/* A row only needs a display label, so do not ask for a UCI identifier.
+		 * Generate a unique one on click and create the row immediately. */
+		ss.renderSectionAdd = function(extra_class) {
+			const self = this;
+			const createEl = E('div', { 'class': 'cbi-section-create' });
+
+			if (extra_class != null)
+				createEl.classList.add(extra_class);
+
+			createEl.appendChild(E('button', {
+				'class': 'cbi-button cbi-button-add',
+				'title': _('Add a routing rule'),
+				'click': ui.createHandlerFn(this, (ev) => {
+					let name, idx = 0;
+					do {
+						name = 'rule' + (++idx);
+					} while (uci.get(data[0], name));
+
+					return self.handleAdd(ev, name);
+				}),
+				'disabled': this.map.readonly || null
+			}, [ _('Add') ]));
+
+			return createEl;
+		};
+
+		so = ss.option(form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'simple_rule', 'label');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(hp.CBIStaticList, 'rule_sets', _('Built-in rule sets'),
+			_('Rule sets from MetaCubeX/meta-rules-dat (sing/geo). Select several to route them all through the same node.'));
+		for (let i in hp.simple_rule_sets)
+			so.value(i, hp.simple_rule_sets[i]);
+		so.modalonly = true;
+		/* Keep the widget order as-is (new picks append at the bottom) and
+		 * only sort the values written to UCI when the form is saved. */
+		so.forcewrite = true;
+		const writeRuleSets = so.write;
+		so.write = function(section_id, value) {
+			return writeRuleSets.call(this, section_id,
+				hp.sortRuleSetValues(value, hp.simple_rule_sets));
+		};
+
+		so = ss.option(form.DynamicList, 'rule_set_urls', _('Custom rule sets'),
+			_('A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing.'));
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				let values = Array.isArray(value) ? value : [value];
+				for (let v of values)
+					if (!isValidHttpURL(v) && !/^(?:(?:geosite|geoip)\/)?[A-Za-z0-9!@._-]+$/.test(v))
+						return _('Expecting: %s').format(_('valid URL or rule set name'));
+			}
+
+			return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'domains', _('Domains'),
+			_('Custom domains. Subdomains are matched automatically.'));
+		so.datatype = 'hostname';
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'ip_cidrs', _('IP / CIDR'),
+			_('Custom IPv4 / IPv6 addresses or CIDR ranges.'));
+		so.datatype = 'or(ip4addr, cidr4, ip6addr, cidr6)';
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'node', _('Node'),
+			_('The primary node for this rule.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.editable = true;
+		so.width = '16em';
+		/* Some themes shrink a select inside a table cell down to the arrow,
+		 * hiding the selected node name. Keep a readable width and expose the
+		 * full label as a tooltip. */
+		so.renderWidget = function(/* ... */) {
+			let widget = form.ListValue.prototype.renderWidget.apply(this, arguments);
+			let select = widget?.matches?.('select.cbi-input-select') ? widget :
+				widget?.querySelector?.('select.cbi-input-select');
+			if (select) {
+				select.style.minWidth = '14em';
+				let updateTitle = () => {
+					select.title = select.options[select.selectedIndex]?.text || '';
+				};
+				updateTitle();
+				select.addEventListener('change', updateTitle);
+			}
+			return widget;
+		};
+		/* The generator repairs dangling references (promotes a fallback or
+		 * fails closed), so do not block saving the whole form just because a
+		 * node was deleted meanwhile. */
+		so.validate = function(section_id, value) {
+			if (section_id && !value)
+				return _('Expecting: %s').format(_('non-empty value'));
+
+			return true;
+		}
+
+		so = ss.option(hp.CBIStaticList, 'fallback_nodes', _('Fallback nodes'),
+			_('Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.modalonly = true;
+		/* Simple routing rules end */
+		/* Simple routing settings end */
 
 		/* Custom routing settings start */
 		/* Routing settings start */
@@ -528,7 +831,7 @@ return view.extend({
 		so.placeholder = '180';
 		so.validate = function(section_id, value) {
 			if (section_id && value) {
-				let idle_timeout = this.section.formvalue(section_id, 'idle_timeout') || '1800';
+				let idle_timeout = this.section.formvalue(section_id, 'urltest_idle_timeout') || '1800';
 				if (parseInt(value) > parseInt(idle_timeout))
 					return _('Test interval must be less or equal than idle timeout.');
 			}
@@ -1442,13 +1745,13 @@ return view.extend({
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_gaming_mode_mac_addrs', _('Gaming mode MAC-s'), null, hosts);
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv4_ips', _('Global proxy IPv4 IP-s'), null, 'ipv4', hosts, true);
-		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.depends('homeproxy.config.routing_mode', legacyModes);
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv6_ips', _('Global proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
-		so.depends({'homeproxy.config.routing_mode': /^((?!custom).)+$/, 'homeproxy.config.ipv6_support': '1'});
+		so.depends({'homeproxy.config.routing_mode': legacyModes, 'homeproxy.config.ipv6_support': '1'});
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_global_proxy_mac_addrs', _('Global proxy MAC-s'), null, hosts);
-		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.depends('homeproxy.config.routing_mode', legacyModes);
 		/* LAN IP policy end */
 
 		/* WAN IP policy start */
@@ -1476,7 +1779,7 @@ return view.extend({
 		so.rows = 10;
 		so.monospace = true;
 		so.datatype = 'hostname';
-		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.depends('homeproxy.config.routing_mode', legacyModes);
 		so.load = function(/* ... */) {
 			return L.resolveDefault(callReadDomainList('proxy_list')).then((res) => {
 				return res.content;
@@ -1485,11 +1788,12 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('proxy_list', value);
 		}
-		so.remove = function(/* ... */) {
-			let routing_mode = this.section.formvalue('config', 'routing_mode');
-			if (routing_mode !== 'custom')
-				return callWriteDomainList('proxy_list', '');
-			return true;
+		so.remove = function(section_id) {
+			/* Keep the file when depends() hides this field in custom/simple,
+			 * but still let the user clear it while the field is active. */
+			if (section_id && !this.isActive(section_id))
+				return true;
+			return callWriteDomainList('proxy_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)
@@ -1508,7 +1812,7 @@ return view.extend({
 		so.rows = 10;
 		so.monospace = true;
 		so.datatype = 'hostname';
-		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.depends('homeproxy.config.routing_mode', legacyModes);
 		so.load = function(/* ... */) {
 			return L.resolveDefault(callReadDomainList('direct_list')).then((res) => {
 				return res.content;
@@ -1517,11 +1821,12 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('direct_list', value);
 		}
-		so.remove = function(/* ... */) {
-			let routing_mode = this.section.formvalue('config', 'routing_mode');
-			if (routing_mode !== 'custom')
-				return callWriteDomainList('direct_list', '');
-			return true;
+		so.remove = function(section_id) {
+			/* Keep the file when depends() hides this field in custom/simple,
+			 * but still let the user clear it while the field is active. */
+			if (section_id && !this.isActive(section_id))
+				return true;
+			return callWriteDomainList('direct_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)

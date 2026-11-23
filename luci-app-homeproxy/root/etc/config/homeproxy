@@ -20,6 +20,7 @@ config homeproxy 'infra'
 
 config homeproxy 'migration'
 	option crontab '1'
+	option simple_dns_split '1'
 
 config homeproxy 'config'
 	option main_node 'nil'
@@ -55,6 +56,20 @@ config homeproxy 'routing'
 	option default_outbound 'direct-out'
 	option default_outbound_dns 'default-dns'
 
+config homeproxy 'simple'
+	option default_outbound 'direct-out'
+	option dns_server '8.8.8.8'
+	option china_dns_server '223.5.5.5'
+	option health_check_url 'https://www.gstatic.com/generate_204'
+	option health_check_interval '180'
+	option failback_tolerance '30000'
+	option ruleset_url_base 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo'
+	option ruleset_download_detour ''
+	option remote_dns_detour ''
+	option ruleset_update_interval '1d'
+	option dns_cache_size '4096'
+	option dns_optimistic '0'
+
 config homeproxy 'dns'
 	option dns_strategy 'prefer_ipv4'
 	option default_server 'local-dns'
@@ -73,4 +88,9 @@ config homeproxy 'subscription'
 config homeproxy 'server'
 	option enabled '0'
 	option log_level 'warn'
+
+# Built-in direct outbound, selectable as a node in every routing mode.
+config node 'builtin_direct'
+	option type 'direct'
+	option label 'Direct'
 

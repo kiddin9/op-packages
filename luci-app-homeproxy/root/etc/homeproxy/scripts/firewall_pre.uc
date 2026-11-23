@@ -4,7 +4,7 @@
 
 import { writefile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty, RUN_DIR } from 'homeproxy';
+import { RUN_DIR } from 'homeproxy';
 
 const cfgname = 'homeproxy';
 const uci = cursor();
@@ -17,6 +17,8 @@ let outbound_node, tun_name;
 if (match(proxy_mode, /tun/)) {
 	if (routing_mode === 'custom')
 		outbound_node = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
+	else if (routing_mode === 'simple')
+		outbound_node = uci.get(cfgname, 'simple', 'default_outbound') || 'direct-out';
 	else
 		outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
 
@@ -44,8 +46,7 @@ if (server_enabled === '1') {
 	});
 }
 
-if (!isEmpty(forward))
-	writefile(RUN_DIR + '/fw4_forward.nft', join('\n', forward) + '\n');
-
-if (!isEmpty(input))
-	writefile(RUN_DIR + '/fw4_input.nft', join('\n', input) + '\n');
+/* Always (re)write both includes, even when empty, so stale rules from a
+ * previous configuration cannot survive a reload. */
+writefile(RUN_DIR + '/fw4_forward.nft', join('\n', forward) + '\n');
+writefile(RUN_DIR + '/fw4_input.nft', join('\n', input) + '\n');

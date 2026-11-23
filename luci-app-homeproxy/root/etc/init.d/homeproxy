@@ -35,10 +35,12 @@ start_service() {
 	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
 
 	local outbound_node
-	if [ "$routing_mode" != "custom" ]; then
-		config_get outbound_node "config" "main_node" "nil"
-	else
+	if [ "$routing_mode" = "custom" ]; then
 		config_get outbound_node "routing" "default_outbound" "nil"
+	elif [ "$routing_mode" = "simple" ]; then
+		config_get outbound_node "simple" "default_outbound" "direct-out"
+	else
+		config_get outbound_node "config" "main_node" "nil"
 	fi
 
 	local server_enabled
@@ -52,7 +54,10 @@ start_service() {
 
 	if [ "$outbound_node" != "nil" ]; then
 		# Generate/Validate client config
-		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
+		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
+			log "Error: failed to generate client configuration."
+			return 1
+		fi
 
 		if [ ! -e "$RUN_DIR/sing-box-c.json" ]; then
 			log "Error: failed to generate client configuration."
@@ -79,7 +84,7 @@ start_service() {
 		mkdir -p "$DNSMASQ_DIR"
 		echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf"
 		case "$routing_mode" in
-		"bypass_mainland_china"|"custom"|"global")
+		"bypass_mainland_china"|"custom"|"simple"|"global")
 			cat <<-EOF >> "$DNSMASQ_DIR/redirect-dns.conf"
 				no-poll
 				no-resolv
@@ -98,7 +103,31 @@ start_service() {
 			;;
 		esac
 
-		if [ "$routing_mode" != "custom" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
+		if [ "$routing_mode" = "simple" ]; then
+			# Repeated LAN lookups can be answered from dnsmasq's in-memory
+			# cache without entering sing-box at all. Only raise the size;
+			# never shrink a value configured in /etc/config/dhcp.
+			local dns_cache_size system_cache_size
+			config_get dns_cache_size "simple" "dns_cache_size" "4096"
+			system_cache_size="$(uci -q get "dhcp.@dnsmasq[0].cachesize" 2>/dev/null)"
+			# cachesize=0 explicitly disables dnsmasq caching; do not override it.
+			if [ "$system_cache_size" = "0" ]; then
+				dns_cache_size=0
+			fi
+
+			case "$dns_cache_size" in ''|*[!0-9]*) dns_cache_size=0 ;; esac
+			case "$system_cache_size" in ''|*[!0-9]*) system_cache_size=0 ;; esac
+			if [ "$dns_cache_size" -gt 10000 ]; then
+				dns_cache_size=10000
+			fi
+
+			if [ "$dns_cache_size" -gt "$system_cache_size" ]; then
+				echo "cache-size=$dns_cache_size" >> "$DNSMASQ_DIR/redirect-dns.conf"
+				log "Simple routing: dnsmasq DNS cache size $dns_cache_size."
+			fi
+		fi
+
+		if [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
 			local wan_nftset_v6
 			[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
 			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
@@ -113,7 +142,7 @@ start_service() {
 		"redirect_tproxy")
 			local outbound_udp_node
 			config_get outbound_udp_node "config" "main_udp_node" "nil"
-			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ]; then
+			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ] || [ "$routing_mode" = "simple" ]; then
 				local tproxy_mark
 				config_get tproxy_mark "infra" "tproxy_mark" "101"
 
@@ -152,7 +181,10 @@ start_service() {
 		# QUIC-GO GSO is broken on kernel 6.6 currently
 		uname -r | grep -Eq "^6\.6" && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
-		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
+		# custom needs the local ruleset directory; simple caches remote rule sets
+	# in cache.db and has not been verified inside ujail yet. Both therefore
+	# deliberately run outside the sandbox until verified on a device.
+	if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
 			procd_add_jail "sing-box-c" log procfs
 			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
 			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
@@ -226,7 +258,7 @@ start_service() {
 	procd_close_instance
 
 	case "$routing_mode" in
-	"bypass_mainland_china")
+	"bypass_mainland_china"|"simple")
 		# Prepare cache db
 		[ -e "$RUN_DIR/cache.db" ] || touch "$RUN_DIR/cache.db"
 		;;
@@ -280,12 +312,14 @@ stop_service() {
 	ip -6 rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
 
 	# Nftables rules
-	for i in "homeproxy_dstnat_redir" "homeproxy_output_redir" \
+	# "dstnat" is owned by fw4 and must never be deleted. Chain names below
+	# must match the ones defined in firewall_post.ut.
+	for i in "homeproxy_output_redir" \
 		 "homeproxy_redirect" "homeproxy_redirect_proxy" \
 		 "homeproxy_redirect_proxy_port" "homeproxy_redirect_lanac" \
 		 "homeproxy_mangle_prerouting" "homeproxy_mangle_output" \
 		 "homeproxy_mangle_tproxy" "homeproxy_mangle_tproxy_port" \
-		 "homeproxy_mangle_tproxy_lanac" "homeproxy_mangle_mark" \
+		 "homeproxy_mangle_lanac" "homeproxy_mangle_mark" \
 		 "homeproxy_mangle_tun" "homeproxy_mangle_tun_mark"; do
 		nft flush chain inet fw4 "$i"
 		nft delete chain inet fw4 "$i"
