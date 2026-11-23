@@ -509,8 +509,6 @@ index 000000000000..a00fff9c79b3
  msgstr "自动"
  
 
-diff --git a/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua b/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
-index 1283e25..3e32e97 100644
 --- a/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
 +++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
 @@ -467,29 +467,35 @@ o:depends({ tls = true })
@@ -557,8 +555,7 @@ index 1283e25..3e32e97 100644
  o.cfgvalue = function(self, section)
  	return (m:get(section, "tls_certificate_pem") or ""):gsub("\\n", "\n")
  end
-diff --git a/luci-app-passwall/luasrc/passwall/util_xray.lua b/luci-app-passwall/luasrc/passwall/util_xray.lua
-index f9890d3..b81c205 100644
+
 --- a/luci-app-passwall/luasrc/passwall/util_xray.lua
 +++ b/luci-app-passwall/luasrc/passwall/util_xray.lua
 @@ -181,11 +181,12 @@ function gen_outbound(flag, node, tag, proxy_table)
