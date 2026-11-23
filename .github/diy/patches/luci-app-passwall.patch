@@ -25,7 +25,7 @@
  	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
 -	+microsocks +resolveip +tcping +lyaml
 +	+microsocks +resolveip +tcping +lyaml \
-+	+ipt2socks \
++	+ipt2socks +openssl-util \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Geoview:geoview \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_SmartDNS:smartdns \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
