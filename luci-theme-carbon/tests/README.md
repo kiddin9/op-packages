@@ -10,7 +10,7 @@
 | Unit: release body — one bilingual file per release, each language read through once, legacy notes (`release-notes.test.js`) | `npm test` | Node 18+, `sh` |
 | Browser: preview pages, accessibility, minified build parity | `npm run test:browser` | `npm ci`, `npx playwright install chromium` |
 | Installer control flow (stub apk/opkg/uci) | `npm test` | Node 18+, `sh`, `tar` |
-| Installer with real apk (25.12) and opkg (24.10) | `python3 tests/installer-integration.py` | Docker, network |
+| Installer with real apk (25.12) and opkg (23.05 / 24.10) | `python3 tests/installer-integration.py` | Docker, network |
 | Theme templates rendered by OpenWrt's ucode | see below | Docker |
 | Updater (APK and IPK) | see [online-update.md](../docs/online-update.md#maintainers) | Docker |
 
@@ -23,6 +23,7 @@ Realtime graph regressions (`node --test tests/browser/realtime.test.js`) execut
 Render the templates with the real ucode runtime:
 
 ```bash
+docker run --rm --mount "type=bind,source=$PWD,target=/source,readonly" openwrt/rootfs:x86_64-23.05.6 sh /source/tests/template-render.sh
 docker run --rm --mount "type=bind,source=$PWD,target=/source,readonly" openwrt/rootfs:x86_64-24.10.8 sh /source/tests/template-render.sh
 ```
 

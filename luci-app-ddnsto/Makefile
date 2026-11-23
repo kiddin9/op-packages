@@ -9,7 +9,7 @@ LUCI_TITLE:=LuCI support for ddnsto
 LUCI_DEPENDS:=+ddnsto +block-mount
 LUCI_PKGARCH:=all
 PKG_VERSION:=4.2.2-r3
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 define Package/luci-app-ddnsto/postinst
 #!/bin/sh

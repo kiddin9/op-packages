@@ -1312,21 +1312,31 @@ function action_status()
         return
     end
 
-    local updatelogs = ""
-    local fw_dir_url = (latest and latest.html_url and latest.html_url ~= "") and latest.html_url:gsub("/+$", "") or ""
-    if fw_dir_url ~= "" and fw_dir_url ~= FIRMWARE_BASE_URL then
-        updatelogs = trim(http_get(fw_dir_url .. "/updatelogs.txt", 8))
-        local low = updatelogs:lower()
-        if low:match("^<!doctype") or low:match("^<html") then
-            updatelogs = ""
+    local function fetch_valid_updatelogs(base_dir_url)
+        if not base_dir_url or base_dir_url == "" then
+            return ""
         end
+        local txt = trim(http_get(base_dir_url:gsub("/+$", "") .. "/updatelogs.txt", 8))
+        local low = txt:lower()
+        if low:match("^<!doctype") or low:match("^<html") then
+            return ""
+        end
+        return txt
+    end
+
+    local base_url_clean = FIRMWARE_BASE_URL:gsub("/+$", "")
+    local fw_dir_url = (latest and latest.html_url and latest.html_url ~= "") and latest.html_url:gsub("/+$", "") or ""
+    local parent_target_url = (fw_dir_url ~= "") and (fw_dir_url:match("^(.*)/[^/]+$") or "") or ""
+
+    local updatelogs = ""
+    if fw_dir_url ~= "" and fw_dir_url ~= base_url_clean then
+        updatelogs = fetch_valid_updatelogs(fw_dir_url)
+    end
+    if updatelogs == "" and parent_target_url ~= "" and parent_target_url ~= fw_dir_url and parent_target_url ~= base_url_clean and parent_target_url:sub(1, #base_url_clean + 1) == (base_url_clean .. "/") then
+        updatelogs = fetch_valid_updatelogs(parent_target_url)
     end
     if updatelogs == "" then
-        updatelogs = trim(http_get(FIRMWARE_BASE_URL .. "/updatelogs.txt", 8))
-        local low = updatelogs:lower()
-        if low:match("^<!doctype") or low:match("^<html") then
-            updatelogs = ""
-        end
+        updatelogs = fetch_valid_updatelogs(base_url_clean)
     end
 
     latest.release_total_count = (latest.assets and #latest.assets) or 0
@@ -1642,6 +1652,9 @@ function action_download_status()
         ok = true,
         done = done,
         download_ok = download_ok,
+        progress_pct = progress_pct,
+        downloaded_size = downloaded_size,
+        total_size = total_size,
         fw_name = fw_name,
         validation = validation,
         logs = logs,

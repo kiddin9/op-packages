@@ -18,16 +18,15 @@ v1.1.0 / v1.1.1 的旧菜单名称缓存问题已在 v1.1.2 修复。可以直�
 
 ## 下载镜像（可选）
 
-GitHub 下载缓慢或无法访问时，在同一页面的「下载镜像」中填写一个 HTTPS 前缀，例如 `https://mirror.example.com/`。下载地址变为前缀加原始链接：`https://mirror.example.com/https://github.com/mrjoechen/luci-theme-carbon/releases/download/…`。设置保存在 `/etc/config/carbon`（`carbon.update.mirror`），升级时保留。
+默认优先从 `api.github.com` 检查稳定版并从 GitHub Releases 下载安装包；当 GitHub API 受限、失败、超时或返回异常数据时，自动回退到项目 GitHub Pages 托管的 `updates/latest.json`，安装包从 GitHub Releases 下载失败、超时或校验不匹配时同样会自动回退到 `updates/<tag>/`。如果 GitHub 下载缓慢或无法访问，也可以在同一页面的「下载镜像」中填写一个 HTTPS 前缀，例如 `https://mirror.example.com/`。下载地址变为前缀加原始链接：`https://mirror.example.com/https://github.com/mrjoechen/luci-theme-carbon/releases/download/…`。设置保存在 `/etc/config/carbon`（`carbon.update.mirror`），升级时保留。
 
-- 镜像只用于下载安装包。版本、文件大小和 SHA-256 仍直接从 `api.github.com` 读取；镜像返回的文件必须与之完全一致，APK 还要通过签名校验。镜像无法篡改要安装的内容。
-- 镜像失败或文件不一致时，自动改用 GitHub 直连；日志会显示每次尝试的来源。
+- 镜像只用于下载安装包。版本、文件大小和 SHA-256 优先从 `api.github.com` 读取，受限、失败、超时或响应异常时回退到官方 Pages 清单；镜像返回的文件必须与之完全一致，APK 还要通过签名校验。镜像无法篡改要安装的内容。
+- 镜像失败或文件不一致时，依次尝试 GitHub Releases 和官方 Pages；日志会显示每次尝试的来源。
 - 只接受 `https://` 前缀，主机名和路径仅允许字母、数字及 `. _ ~ % + -`，最长 200 字符。留空即关闭。
-- 检查更新本身仍需能访问 `api.github.com`。
 
 ## 签名与下载
 
-- 固定来源：`mrjoechen/luci-theme-carbon` 的最新非草稿、非预发布 GitHub Release。
+- 固定来源：`mrjoechen/luci-theme-carbon` 的最新非草稿、非预发布 GitHub Release（GitHub API 或 Releases 下载受限、失败、超时时自动回退到官方 GitHub Pages 托管的同版本清单与安装包）。
 - APK：检查 GitHub 发布附件的 SHA-256、大小、实际包名和版本，再通过 `/usr/share/carbon/keys/carbon-apk.pem` 验证签名。安装时再次启用 APK 原生签名校验。没有 `--allow-untrusted`、自动下载新密钥或全局关闭验签的回退。
 - 包内公钥仅用于 Carbon 更新器的独立信任目录，不会自动加入系统 `/etc/apk/keys`。标准 LuCI 上传仍按 [APK 配置说明](apk-install.md)导入公钥。
 - APK 使用本地包及已安装依赖，跳过远端固件索引。缺失依赖时会失败，请先修复软件源并安装依赖。
@@ -40,7 +39,7 @@ GitHub 下载缓慢或无法访问时，在同一页面的「下载镜像」中�
 - **没有更新入口**：旧版未包含更新器，先安装新包并重新登录。确认 `rpcd` 已加载 `luci.carbon_update`。
 - **提示「请先通过系统包管理器安装一次 Carbon」**：主题是复制文件安装的（`--files` 或 v1.1.3 之前的安装脚本），apk/opkg 中没有记录。重新运行一次当前的 `carbon-install.sh`：它会通过包管理器安装内置的签名包，无需导入公钥；也可以手动安装 APK/IPK。更新器本身不会把未登记的文件强制接管给包管理器。
 - **缺少工具**：需要 `curl`、`ca-bundle` 和 `flock`，通常随包依赖安装。不要为解决 HTTPS 问题关闭证书校验。
-- **下载失败**：检查路由器时间、DNS、外网和 GitHub 连通性；GitHub API 限流也会导致检查失败，稍后重试。
+- **下载失败**：检查路由器时间、DNS、外网和 GitHub / GitHub Pages 连通性。GitHub API 受限或超时时会自动回退到官方 Pages；若两者均无法访问，请稍后重试或配置下载镜像。
 - **签名/校验失败**：没有执行安装。重新检查并下载；若持续失败，请提供错误和日志，不要禁用签名验证。
 - **安装失败或中断**：查看日志及已安装版本。包管理器可能已部分执行，先处理其报错再重试；不要在安装过程中强行中止。
 - **原始 SDK/Actions 临时产物**：在线更新只使用正式 Release 中的已签名 APK，不使用未签名的 CI 构建产物。
@@ -57,12 +56,14 @@ Preferences and router configuration are retained. Installs made by copying file
 
 ### Download mirror
 
-If GitHub downloads are slow or blocked, set an optional HTTPS prefix under **Download mirror** on the same page (stored as `carbon.update.mirror` in `/etc/config/carbon`). The package URL becomes `<prefix>https://github.com/…`. Only the package bytes use the mirror: release metadata, size and SHA-256 still come from `api.github.com`, and APKs are signature-checked as before, so a mirror cannot change what gets installed. If the mirror fails or returns a mismatching file, the updater falls back to GitHub. Checking for updates still needs `api.github.com`.
+By default the updater checks `api.github.com` and downloads packages from GitHub Releases. If GitHub API is rate-limited, unreachable, times out or returns invalid data, it automatically falls back to the project’s GitHub Pages manifest (`updates/latest.json`); if a Releases package download fails, times out or fails checksum verification, it falls back to the staged package under `updates/<tag>/`. If downloads are slow or blocked, you can also set an optional HTTPS prefix under **Download mirror** on the same page (stored as `carbon.update.mirror` in `/etc/config/carbon`). The package URL becomes `<prefix>https://github.com/…`. Only the package bytes use the mirror: release metadata, size and SHA-256 come from `api.github.com` (falling back to the official Pages manifest), and APKs are signature-checked as before, so a mirror cannot change what gets installed. If the mirror fails or returns a mismatching file, the updater tries GitHub Releases and then GitHub Pages.
 
 ## Maintainers
 
 Publish version tags matching `Makefile`; GitHub Release asset names must remain `luci-theme-carbon-VERSION-rN.apk` and `luci-theme-carbon_VERSION-rN_all.ipk`. GitHub supplies each asset's SHA-256 digest through its release API. Upload APKs only after signing. Keep `root/usr/share/carbon/version` in sync with the package version and the bundled public key identical to `keys/carbon-apk.pem`. The CI checks both.
 
-Run `python tests/update-integration.py` with Docker to test the production RPC script against OpenWrt's real APK manager, disposable signed packages and deterministic download fixtures. Signing and installation are never mocked. This suite checks bad signatures, bad checksums, incorrect metadata, network errors, expired requests, downgrades, concurrency, progress recovery, configuration preservation, mirror validation and fallback from a failing or tampered mirror.
+`.github/workflows/pages.yml` stages the latest stable release into `updates/latest.json` and `updates/<tag>/` (verified against strict package names, file sizes and SHA-256 digests) on GitHub Pages when `Build` completes a release (`workflow_run`, running on `main`) or via `workflow_dispatch`. If a Pages deployment fails or a release is edited/deleted manually in the GitHub UI, re-run `pages.yml` via `workflow_dispatch`; note GitHub Pages CDN caching (`max-age=600`) may cause a brief propagation delay right after publication (routers still read directly from GitHub first).
 
-Run `python tests/opkg-update.py` for the native OpenWrt 24.10 IPK upgrade regression, including legacy removal hooks that reset the theme. Both suites run before Release publication.
+Run `python tests/update-integration.py` with Docker to test the production RPC script against OpenWrt's real APK manager, disposable signed packages and deterministic download fixtures. Signing and installation are never mocked. This suite checks bad signatures, bad checksums, incorrect metadata, network errors, expired requests, downgrades, concurrency, progress recovery, configuration preservation, GitHub-to-Pages fallback, mirror validation and fallback from a failing or tampered mirror.
+
+Run `python tests/opkg-update.py` for the native OpenWrt 23.05 and 24.10 IPK upgrade regressions, including detached workers without `setsid`, 23.05 SDK `-1` package revisions, Pages fallback and legacy removal hooks that reset the theme. Both suites run before Release publication.

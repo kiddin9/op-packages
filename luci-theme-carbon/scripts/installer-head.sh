@@ -87,13 +87,18 @@ pkg_version() {
 	esac
 }
 
+# Normalize OpenWrt 23.05 opkg revisions (X.Y.Z-N → X.Y.Z-rN) before comparing.
+norm_opkg_version() { printf '%s\n' "$1" | sed 's/^\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)-\([0-9][0-9]*\)$/\1-r\2/'; }
+
 # Prints <, = or > comparing version $2 with $3.
 version_cmp() {
 	case "$1" in
 		apk) apk version -t "$2" "$3" 2>/dev/null ;;
 		opkg)
-			if opkg compare-versions "$2" '<<' "$3"; then echo '<'
-			elif opkg compare-versions "$2" '=' "$3"; then echo '='
+			_v1=$(norm_opkg_version "$2")
+			_v2=$(norm_opkg_version "$3")
+			if opkg compare-versions "$_v1" '<<' "$_v2"; then echo '<'
+			elif opkg compare-versions "$_v1" '=' "$_v2"; then echo '='
 			else echo '>'; fi ;;
 	esac
 }

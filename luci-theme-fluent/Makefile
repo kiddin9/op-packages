@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-fluent
 PKG_VERSION:=1.0.9
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKG_LICENSE:=Apache-2.0
 
 LUCI_TITLE:=Fluent Theme for LuCI

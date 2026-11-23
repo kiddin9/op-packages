@@ -127,6 +127,29 @@ test('opkg: installs the embedded ipk; same version reinstalls; newer installed 
 	assert.equal(r.version(), '9.0.0-r1');
 });
 
+test('opkg: compares OpenWrt 23.05 SDK versions without -r prefix consistently', () => {
+	const base = VERSION.replace(/-r\d+$/, '');
+	const rel = Number(VERSION.replace(/^.*-r/, ''));
+	// Same logical version built by 23.05 SDK (X.Y.Z-N vs embedded X.Y.Z-rN) reinstalls cleanly
+	let r = router('opkg', { installed: { 'luci-theme-carbon': `${base}-${rel}`, 'luci-base': '1', curl: '1', 'ca-bundle': '1', flock: '1' } });
+	let res = r.run();
+	assert.equal(res.code, 0, res.out);
+	assert.match(r.log(), /opkg install --force-reinstall \S+\.ipk/);
+
+	// Newer revision built by 23.05 SDK (X.Y.Z-(N+1)) must not be downgraded by X.Y.Z-rN
+	r = router('opkg', { installed: { 'luci-theme-carbon': `${base}-${rel + 1}`, 'luci-base': '1', curl: '1', 'ca-bundle': '1', flock: '1' } });
+	res = r.run();
+	assert.equal(res.code, 0, res.out);
+	assert.match(res.out, /newer than this installer/);
+	assert.equal(r.version(), `${base}-${rel + 1}`);
+
+	// Older 23.05 SDK version upgrades normally
+	r = router('opkg', { installed: { 'luci-theme-carbon': '1.0.0-1', 'luci-base': '1', curl: '1', 'ca-bundle': '1', flock: '1' } });
+	res = r.run();
+	assert.equal(res.code, 0, res.out);
+	assert.equal(r.version(), VERSION);
+});
+
 test('a failed upgrade of a registered package stops instead of copying files', () => {
 	const r = router('apk', { installed: { 'luci-theme-carbon': '1.0.0-r1', 'luci-base': '1', curl: '1', 'ca-bundle': '1', flock: '1' } });
 	const { code, out } = r.run([], { APK_ADD_RC: '1' });

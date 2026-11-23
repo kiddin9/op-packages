@@ -1,4 +1,4 @@
-"""carbon-install.sh against the real apk (OpenWrt 25.12) and opkg (24.10) managers.
+"""carbon-install.sh against the real apk (OpenWrt 25.12) and opkg (23.05 / 24.10) managers.
 
 Usage: python3 tests/installer-integration.py      (requires Docker and network access)
 Fixture packages are disposable: the APK is signed with a throwaway test key, the
@@ -17,6 +17,7 @@ OUT = ROOT / '.cache' / 'installer-tests'
 ALPINE = 'alpine:3.23@sha256:469c9ea410b9215eaee7976ba6c0639039b444be8e5d638f7abbada189971eb2'
 APK_IMAGE = 'openwrt/rootfs:x86_64-25.12.6@sha256:14401c04218c2e0da0448f099710ada2460636a92395f353351cc616cf3f67af'
 OPKG_IMAGE = 'openwrt/rootfs:x86_64-24.10.8@sha256:9972a4b4747cd136abd597475d7b88c51a49fd849d0d53f069a2f4bf446061b9'
+OPKG_23_IMAGE = 'openwrt/rootfs:x86_64-23.05.6@sha256:f53afb386d05651ada9a4a964e0779930f30962a2abc2fadf1b03bfcbcbabb14'
 DEPS = "CARBON_DEPS='curl ca-bundle flock'"   # luci-base is not needed by the fixtures
 PREPARE = ('mkdir -p /usr/share/ucode/luci/template /var/lock && touch /usr/share/ucode/luci/template/header.ut /etc/config/luci && '
            'uci set luci.main=core && uci set luci.themes=internal && uci commit luci')
@@ -47,10 +48,13 @@ def archive(files):
     return out.getvalue()
 
 
-def fixture_ipk(path):
-    control = archive({'control': 'Package: luci-theme-carbon\nVersion: 1.1.0-r1\nDepends: curl, ca-bundle, flock\n'
-                                   'Architecture: all\nDescription: installer test fixture\n'})
-    data = archive({'www/luci-static/carbon/marker': 'ipk\n', 'usr/share/carbon/version': '1.1.0-r1\n'})
+def fixture_ipk(path, version='1.1.0-r1', deps='curl, ca-bundle, flock'):
+    lines = [f'Package: luci-theme-carbon', f'Version: {version}']
+    if deps:
+        lines.append(f'Depends: {deps}')
+    lines.extend(['Architecture: all', 'Description: installer test fixture', ''])
+    control = archive({'control': '\n'.join(lines)})
+    data = archive({'www/luci-static/carbon/marker': f'ipk-{version}\n', 'usr/share/carbon/version': f'{version}\n'})
     path.write_bytes(archive({'debian-binary': '2.0\n', 'control.tar.gz': control, 'data.tar.gz': data}))
 
 
@@ -62,7 +66,9 @@ def build(name, *args):
 
 class Router:
     def __init__(self, image):
-        self.id = docker('run', '-d', '--mount', f'type=bind,source={ROOT},target=/source,readonly', image, 'sleep', '900')[1].strip()
+        self.id = docker('run', '-d', '--platform', 'linux/amd64',
+                         '--mount', f'type=bind,source={ROOT},target=/source,readonly',
+                         image, 'sleep', '900')[1].strip()
         self.sh(PREPARE)
 
     def sh(self, command, check=True):
@@ -124,14 +130,14 @@ class InstallerTests(unittest.TestCase):
     def test_apk_script_only_install_is_migrated(self):
         r = self.router(APK_IMAGE)
         self.assertEqual(r.sh(f'sh {self.good} --files', check=False)[0], 0)
-        self.assertEqual(r.sh('cat /www/luci-static/carbon/marker')[1], 'ipk\n')
+        self.assertEqual(r.sh('cat /www/luci-static/carbon/marker')[1], 'ipk-1.1.0-r1\n')
         self.assertEqual(r.sh('apk list --installed luci-theme-carbon')[1].strip(), '')
         code, out = r.sh(f'{DEPS} sh {self.good}', check=False)
         self.assertEqual(code, 0, out)
         self.assertIn('luci-theme-carbon-1.1.0-r1', r.sh('apk list --installed luci-theme-carbon')[1])
 
-    def test_opkg_native_install_and_uninstall(self):
-        r = self.router(OPKG_IMAGE)
+    def assert_opkg_lifecycle(self, image):
+        r = self.router(image)
         self.assertEqual(r.sh(f'sh {self.good} --files', check=False)[0], 0)
         code, out = r.sh(f'{DEPS} sh {self.good}', check=False)
         self.assertEqual(code, 0, out)
@@ -141,12 +147,33 @@ class InstallerTests(unittest.TestCase):
         self.assertRegex(status, r'Status: .* installed')
         owned = r.sh('opkg files luci-theme-carbon')[1]
         self.assertIn('/www/luci-static/carbon/marker', owned)
-        self.assertEqual(r.sh('cat /www/luci-static/carbon/marker', check=False)[1], 'ipk\n', owned)
+        self.assertEqual(r.sh('cat /www/luci-static/carbon/marker', check=False)[1], 'ipk-1.1.0-r1\n', owned)
 
         code, out = r.sh(f'sh {self.good} uninstall', check=False)
         self.assertEqual(code, 0, out)
         self.assertNotIn('Version:', r.sh('opkg status luci-theme-carbon', check=False)[1])
         self.assertEqual(r.sh('test -e /www/luci-static/carbon/marker', check=False)[0], 1)
+
+    def test_opkg_native_install_and_uninstall_24_10(self):
+        self.assert_opkg_lifecycle(OPKG_IMAGE)
+
+    def test_opkg_native_install_and_uninstall_23_05(self):
+        self.assert_opkg_lifecycle(OPKG_23_IMAGE)
+
+    def test_opkg_23_05_sdk_version_not_downgraded_and_same_reinstalls(self):
+        fixture_ipk(OUT / 'sdk-newer.ipk', version='1.1.0-2', deps='')
+        fixture_ipk(OUT / 'sdk-same.ipk', version='1.1.0-1', deps='')
+        r = self.router(OPKG_23_IMAGE)
+        r.sh('opkg install /source/.cache/installer-tests/sdk-newer.ipk')
+        code, out = r.sh(f'{DEPS} sh {self.good}', check=False)
+        self.assertEqual(code, 0, out)
+        self.assertIn('newer than this installer', out)
+        self.assertIn('Version: 1.1.0-2', r.sh('opkg status luci-theme-carbon')[1])
+
+        r.sh('opkg remove luci-theme-carbon && opkg install /source/.cache/installer-tests/sdk-same.ipk')
+        code, out = r.sh(f'{DEPS} sh {self.good}', check=False)
+        self.assertEqual(code, 0, out)
+        self.assertIn('Version: 1.1.0-r1', r.sh('opkg status luci-theme-carbon')[1])
 
 
 if __name__ == '__main__':
