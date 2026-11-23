@@ -1,41 +1,273 @@
 #!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2024-2026 OpenWrt.org
 
 START=99
 STOP=15
 USE_PROCD=1
 
-SERVICE=clouddrive2
-PROGDIR=/usr/share/clouddrive2/clouddrive
+PROG=/usr/share/clouddrive2/clouddrive
+PROG_DIR=/usr/share/clouddrive2
 
-load_config() {
-    config_load 'clouddrive2'
-    config_get_bool enabled main enabled 1
-    config_get port main port 19798
-    config_get mount_point main mount_point '/mnt/clouddrive'
+validate_clouddrive2_section() {
+	uci_validate_section clouddrive2 clouddrive2 "${1:-main}" \
+		'enabled:bool:0' \
+		'port:port:19798' \
+		'https_enabled:bool:0' \
+		'https_port:port:19799' \
+		'open_firewall:bool:0' \
+		'config_dir:string:/etc/clouddrive2' \
+		'mount_point:string:/mnt/clouddrive' \
+		'cache_dir:string:/tmp/clouddrive2' \
+		'shared_mount:bool:1' \
+		'allow_other:bool:1' \
+		'startup_delay:uinteger:0' \
+		'max_open_files:uinteger:65535' \
+		'proxy:string' \
+		'enable_run_after_start:bool:0' \
+		'run_after_start:string' \
+		'log_stdout:bool:1' \
+		'log_stderr:bool:1' \
+		'extra_env:list(string)'
+}
+
+cleanup_mounts() {
+	local mp_base="$1"
+	[ -n "$mp_base" ] || return 0
+	mp_base="${mp_base%/}"
+	[ -n "$mp_base" ] || return 0
+
+	awk -v base="$mp_base" '
+		$3 ~ /^fuse/ {
+			mp = $2
+			gsub(/\\040/, " ", mp)
+			if (mp == base || index(mp, base "/") == 1)
+				print length(mp), mp
+		}
+	' /proc/mounts 2>/dev/null | sort -rn | cut -d' ' -f2- | while IFS= read -r target; do
+		[ -n "$target" ] || continue
+		fusermount3 -u "$target" 2>/dev/null || \
+			fusermount3 -uz "$target" 2>/dev/null || \
+			umount -l "$target" 2>/dev/null || true
+	done
+}
+
+prepare_fuse() {
+	local mp="$1"
+	local shared="$2"
+	local allow="$3"
+	local mp_root
+
+	[ -c /dev/fuse ] || modprobe fuse 2>/dev/null || true
+
+	if [ "$allow" -eq 1 ]; then
+		if [ -f /etc/fuse.conf ]; then
+			if grep -q '^[[:space:]]*#[[:space:]]*user_allow_other' /etc/fuse.conf; then
+				sed -i 's/^[[:space:]]*#[[:space:]]*user_allow_other/user_allow_other/' /etc/fuse.conf
+			elif ! grep -q '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
+				echo "user_allow_other" >> /etc/fuse.conf
+			fi
+		else
+			echo "user_allow_other" > /etc/fuse.conf
+		fi
+	fi
+
+	mkdir -p "$mp"
+
+	if [ "$shared" -eq 1 ]; then
+		mp_root="$(df -P "$mp" 2>/dev/null | awk 'NR==2 {print $6}')"
+		[ -n "$mp_root" ] && mount --make-shared "$mp_root" 2>/dev/null || true
+	fi
+}
+
+sync_runtime_files() {
+	local cfg_dir="$1"
+	local tmp_dir="$2"
+	local ras_en="$3"
+	local ras_cmd="$4"
+	local http_port="$5"
+	local https_en="$6"
+	local https_port="$7"
+	local settings_file="${cfg_dir}/systemsettings.json"
+	local toml_file="${cfg_dir}/config.toml"
+
+	mkdir -p "$cfg_dir" "${cfg_dir}/log" "$tmp_dir"
+
+	if command -v ucode >/dev/null 2>&1; then
+		SETTINGS_FILE="$settings_file" \
+		CD2_TEMP_DIR="$tmp_dir" \
+		CD2_RAS_ENABLED="$ras_en" \
+		CD2_RAS_CMD="$ras_cmd" \
+		ucode -e '
+			import { readfile, writefile } from "fs";
+			let path = getenv("SETTINGS_FILE");
+			let raw = readfile(path);
+			let data = {};
+			if (raw && length(trim(raw)) > 0) {
+				try { data = json(raw); } catch (e) { exit(0); }
+			}
+			if (type(data) != "object") exit(0);
+			let td = getenv("CD2_TEMP_DIR");
+			if (td) data.temp_dir = td;
+			if (getenv("CD2_RAS_ENABLED") == "1" && length(getenv("CD2_RAS_CMD") || "") > 0)
+				data.run_after_start = getenv("CD2_RAS_CMD");
+			else
+				delete data.run_after_start;
+			writefile(path, sprintf("%.2J\n", data));
+		' 2>/dev/null || true
+	elif [ ! -s "$settings_file" ]; then
+		json_init
+		[ -n "$tmp_dir" ] && json_add_string "temp_dir" "$tmp_dir"
+		if [ "$ras_en" -eq 1 ] && [ -n "$ras_cmd" ]; then
+			json_add_string "run_after_start" "$ras_cmd"
+		fi
+		json_dump > "$settings_file"
+		json_cleanup
+	fi
+
+	if [ -f "$toml_file" ]; then
+		if [ -n "$http_port" ]; then
+			sed -i -E \
+				-e "s/^([[:space:]]*(http_port|port)[[:space:]]*=[[:space:]]*)[0-9]+/\1${http_port}/" \
+				"$toml_file" 2>/dev/null || true
+		fi
+		if [ "$https_en" -eq 1 ] && [ -n "$https_port" ]; then
+			sed -i -E \
+				-e "s/^([[:space:]]*https_port[[:space:]]*=[[:space:]]*)[0-9]+/\1${https_port}/" \
+				"$toml_file" 2>/dev/null || true
+		fi
+	fi
+}
+
+append_extra_env() {
+	local kv="$1"
+	case "$kv" in
+		[A-Za-z_]*=*)
+			procd_append_param env "$kv"
+			;;
+	esac
+}
+
+boot() {
+	local enabled startup_delay
+	config_load 'clouddrive2'
+	config_get_bool enabled main enabled 0
+	config_get startup_delay main startup_delay 0
+
+	[ "$enabled" -eq 1 ] || return 0
+
+	if [ "${startup_delay:-0}" -gt 0 ] 2>/dev/null; then
+		( sleep "$startup_delay" && /etc/init.d/clouddrive2 start ) </dev/null >/dev/null 2>&1 &
+		return 0
+	fi
+
+	start "$@"
+}
+
+start_service() {
+	local enabled port https_enabled https_port open_firewall
+	local config_dir mount_point cache_dir shared_mount allow_other
+	local startup_delay max_open_files proxy
+	local enable_run_after_start run_after_start log_stdout log_stderr
+
+	config_load 'clouddrive2'
+	validate_clouddrive2_section main || {
+		logger -t clouddrive2 -p daemon.err "Configuration validation failed"
+		return 1
+	}
+
+	[ "$enabled" -eq 1 ] || return 0
+
+	if [ ! -x "$PROG" ]; then
+		logger -t clouddrive2 -p daemon.err "Binary not found or not executable: $PROG"
+		return 1
+	fi
+
+	prepare_fuse "$mount_point" "$shared_mount" "$allow_other"
+	sync_runtime_files "$config_dir" "$cache_dir" "$enable_run_after_start" "$run_after_start" "$port" "$https_enabled" "$https_port"
+
+	local zonename
+	zonename="$(uci -q get system.@system[0].zonename)"
+	[ -n "$zonename" ] || zonename="Asia/Shanghai"
+
+	procd_open_instance "clouddrive2"
+	procd_set_param command /bin/sh -c 'cd "$1" && shift && exec "$@"' _ "$PROG_DIR" "$PROG"
+	procd_set_param env \
+		HOME="/root" \
+		CLOUDDRIVE_HOME="$config_dir" \
+		TMPDIR="$cache_dir" \
+		TZ="$zonename"
+
+	if [ -n "$proxy" ]; then
+		procd_append_param env \
+			HTTP_PROXY="$proxy" \
+			HTTPS_PROXY="$proxy" \
+			ALL_PROXY="$proxy" \
+			http_proxy="$proxy" \
+			https_proxy="$proxy" \
+			all_proxy="$proxy"
+	fi
+
+	if [ "$enable_run_after_start" -eq 1 ] && [ -n "$run_after_start" ]; then
+		procd_append_param env ENABLE_RUN_AFTER_START="true"
+	fi
+
+	config_list_foreach main extra_env append_extra_env
+
+	procd_set_param limits nofile="${max_open_files} ${max_open_files}" core="0 0"
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout "$log_stdout"
+	procd_set_param stderr "$log_stderr"
+	procd_set_param pidfile "/var/run/clouddrive2.pid"
+
+	if [ "$open_firewall" -eq 1 ]; then
+		procd_open_data
+		json_add_array firewall
+			json_add_object ""
+			json_add_string type rule
+			json_add_string name "Allow-CloudDrive2-HTTP"
+			json_add_string src "*"
+			json_add_string dest_port "$port"
+			json_add_string proto tcp
+			json_add_string target ACCEPT
+			json_close_object
+			if [ "$https_enabled" -eq 1 ] && [ -n "$https_port" ]; then
+				json_add_object ""
+				json_add_string type rule
+				json_add_string name "Allow-CloudDrive2-HTTPS"
+				json_add_string src "*"
+				json_add_string dest_port "$https_port"
+				json_add_string proto tcp
+				json_add_string target ACCEPT
+				json_close_object
+			fi
+		json_close_array
+		procd_close_data
+	fi
+
+	procd_close_instance
+}
+
+stop_service() {
+	local mount_point
+	config_load 'clouddrive2'
+	config_get mount_point main mount_point '/mnt/clouddrive'
+	cleanup_mounts "$mount_point"
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_started() {
+	procd_set_config_changed firewall
+}
+
+service_stopped() {
+	procd_set_config_changed firewall
 }
 
 service_triggers() {
 	procd_add_reload_trigger "clouddrive2"
-}
-
-start_service() {
-    load_config
-    [ "$enabled" = "1" ] || return
-
-    [ -d "$mount_point" ] || mkdir -p "$mount_point"
-
-    procd_open_instance
-    procd_set_param command "$PROGDIR"
-    procd_append_param command -p "$port"
-    procd_append_param command -m "$mount_point"
-    procd_set_param respawn
-    procd_close_instance
-    echo "$SERVICE started on port $port, mounted at $mount_point"
-}
-
-stop_service() {
-    load_config
-    echo "Stopping $SERVICE"
-    killall -q clouddrive
-    [ -d "$mount_point" ] && fusermount -u "$mount_point"
 }

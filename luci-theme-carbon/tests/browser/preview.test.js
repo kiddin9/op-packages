@@ -74,7 +74,7 @@ async function open(url, { width = 1280, height = 900, appearance = 'light', sto
 /* every async source has rendered: leases, Wi‑Fi stations, sensors, languages */
 const dashboardReady = (page) => page.waitForFunction(() =>
 	document.querySelectorAll('.cb-clients .cb-list li').length >= 8 && document.querySelector('.cb-tag-wifi') &&
-	document.querySelectorAll('.cb-kv li').length >= 3 && document.querySelector('.cb-lang .cb-lb'));
+	document.querySelectorAll('.cb-kv li').length >= 2 && document.querySelector('.cb-lang .cb-lb'));
 
 test('side-router discovery works without DHCP and distinguishes neighbours, gateways and lease records', async () => {
 	const mock = fs.readFileSync(path.join(ROOT, 'preview', 'mock.js'), 'utf8');

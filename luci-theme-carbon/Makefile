@@ -9,8 +9,8 @@ LUCI_TITLE:=Carbon Theme (Apple-style, beginner friendly)
 LUCI_DEPENDS:=+luci-base +curl +ca-bundle +flock
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=1.1.8
-PKG_RELEASE:=13
+PKG_VERSION:=1.1.9
+PKG_RELEASE:=14
 PKG_LICENSE:=Apache-2.0
 
 # Keep modern CSS/JS intact (csstidy/jsmin do not understand
