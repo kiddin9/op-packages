@@ -467,29 +467,35 @@ o:depends({ tls = true })
 o:depends({ protocol = "hysteria2" })
 o:depends({ protocol = "masque" })
 
-o = s:option(Value, "tls_pinSHA256", translate("TLS Chain Fingerprint (SHA256)"))
-o:depends({ tls = true, reality = false })
-o:depends({ protocol = "hysteria2" })
-o:depends({ protocol = "masque" })
-o.description = translate("Once set, connects only when the server’s chain fingerprint matches.") ..
-		string.format("<a href='javascript:void(0)' onclick='javascript:fetchCertSha256(this)'>%s</a>", "→ " .. translate("Fetch Manually"))
-
-o = s:option(Value, "tls_CertByName", translate("TLS Certificate Name (CertName)"), translate("TLS is used to verify the leaf certificate name."))
-o:depends({ tls = true, reality = false })
-o:depends({ protocol = "hysteria2" })
-o:depends({ protocol = "masque" })
-
-o = s:option(Flag, "tls_certificate", translate("TLS Certificate (PEM)"))
+o = s:option(Flag, "tls_allowInsecure", translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
 o.default = "0"
 o:depends({ tls = true, reality = false })
 o:depends({ protocol = "hysteria2" })
 o:depends({ protocol = "masque" })
 
+o = s:option(Value, "tls_pinSHA256", translate("TLS Chain Fingerprint (SHA256)"))
+o:depends({ tls = true, reality = false, tls_allowInsecure = false })
+o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
+o:depends({ protocol = "masque", tls_allowInsecure = false })
+o.description = translate("Once set, connects only when the server’s chain fingerprint matches.") ..
+		string.format("<a href='javascript:void(0)' onclick='javascript:fetchCertSha256(this)'>%s</a>", "→ " .. translate("Fetch Manually"))
+
+o = s:option(Value, "tls_CertByName", translate("TLS Certificate Name (CertName)"), translate("TLS is used to verify the leaf certificate name."))
+o:depends({ tls = true, reality = false, tls_allowInsecure = false })
+o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
+o:depends({ protocol = "masque", tls_allowInsecure = false })
+
+o = s:option(Flag, "tls_certificate", translate("TLS Certificate (PEM)"))
+o.default = "0"
+o:depends({ tls = true, reality = false, tls_allowInsecure = false })
+o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
+o:depends({ protocol = "masque", tls_allowInsecure = false })
+
 o = s:option(TextValue, "tls_certificate_pem", "　", translate("Full certificate (chain), PEM format."))
 o.default = ""
 o.rows = 5
 o.wrap = "off"
-o:depends({ tls_certificate = true })
+o:depends({ tls_certificate = true, tls_allowInsecure = false })
 o.cfgvalue = function(self, section)
 	return (m:get(section, "tls_certificate_pem") or ""):gsub("\\n", "\n")
 end

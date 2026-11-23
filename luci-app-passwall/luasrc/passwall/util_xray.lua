@@ -181,11 +181,12 @@ function gen_outbound(flag, node, tag, proxy_table)
 				security = node.stream_security,
 				tlsSettings = (node.stream_security == "tls") and {
 					serverName = node.tls_serverName,
+					allowInsecure = (node.tls_allowInsecure == "1") and true or nil,
 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
-					pinnedPeerCertSha256 = (node.tls_pinSHA256 and node.tls_pinSHA256 ~= "") and api.sha256_sb_xray(node.tls_pinSHA256) or "",
-					verifyPeerCertByName = node.tls_CertByName or "",
+					pinnedPeerCertSha256 = (node.tls_allowInsecure ~= "1" and node.tls_pinSHA256 and node.tls_pinSHA256 ~= "") and api.sha256_sb_xray(node.tls_pinSHA256) or "",
+					verifyPeerCertByName = (node.tls_allowInsecure ~= "1" and node.tls_CertByName) or "",
 					echConfigList = (node.ech == "1") and node.ech_config or nil,
-					certificates = (node.tls_certificate == "1" and node.tls_certificate_pem ~= "") and {
+					certificates = (node.tls_allowInsecure ~= "1" and node.tls_certificate == "1" and node.tls_certificate_pem ~= "") and {
 						certificate = api.split(node.tls_certificate_pem:gsub("\\n", "\n"), "\n"),
 						usage = "verify"
 					} or nil,
