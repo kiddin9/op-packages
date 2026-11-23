@@ -19,7 +19,7 @@ body.cb-login {
 .cb-login-logo {
 	width: 72px;
 	height: 72px;
-	border-radius: 17px;
+	border-radius: 25%;
 	box-shadow: 0 12px 30px -8px rgba(79, 91, 234, .55);
 }
 .cb-login-logo[data-custom] { object-fit: contain; box-shadow: none; }

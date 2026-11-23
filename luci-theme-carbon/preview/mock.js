@@ -165,8 +165,7 @@
 		hostHints: () => wait({ '00:11:32:AA:BB:CC': { name: 'DiskStation', ipaddrs: ['192.168.1.5'] } }),
 		conntrack: () => wait([String(Math.round(1284 + rnd(-60, 60))), '16384']),
 		temperatures: () => wait([
-			{ name: 'cpu-thermal', value: Math.round(52300 + rnd(-800, 800)) },
-			{ name: 'mt7986_phy1', value: Math.round(47800 + rnd(-500, 500)) }
+			{ name: 'cpu-thermal', value: Math.round(52300 + rnd(-800, 800)) }
 		])
 	};
 })();

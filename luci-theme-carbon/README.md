@@ -18,6 +18,8 @@ A clean, glass-style LuCI theme for OpenWrt — built for everyday users.
 
 **[Live demo](https://mrjoechen.github.io/luci-theme-carbon/) · [English demo](https://mrjoechen.github.io/luci-theme-carbon/?lang=en)**
 
+<p align="center"><img src=".github/screenshots/intro.png" alt="Carbon desktop and mobile preview" width="100%"></p>
+
 https://github.com/user-attachments/assets/d6d8d161-65fa-456c-acbc-d3b2c0737bd9
 
 </div>

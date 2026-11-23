@@ -512,3 +512,21 @@ test('dashboard auto-span packing guarantees balanced 12-column rows on desktop 
 	assert.deepEqual(plain(L.detailSpans(['wireless', 'interfaces'])), [6, 6]);
 	assert.deepEqual(plain(L.detailSpans(['interfaces'])), [12]);
 });
+
+test('inline hero logo stays in sync with logo.svg and uses unique defs IDs per render', () => {
+	const C = load();
+	const first = C.logo();
+	const second = C.logo();
+	const file = fs.readFileSync('htdocs/luci-static/carbon/logo.svg', 'utf8').trim();
+	const ids = (svg) => [...svg.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+	const refs = (svg) => [...svg.matchAll(/\burl\(#([^)]+)\)/g)].map((m) => m[1]);
+	const normalize = (svg) => svg
+		.replace(/^<svg\b[^>]*>/, '<svg>')
+		.replace(/\bcb-(?:logo|h\d+)-/g, 'cb-x-');
+
+	assert.ok(ids(first).length > 0, 'logo defines gradients/clipPaths');
+	for (const ref of refs(first)) assert.ok(ids(first).includes(ref), `unresolved ref ${ref}`);
+	assert.equal(new Set(ids(first)).size, ids(first).length, 'no duplicate IDs within one logo');
+	for (const id of ids(first)) assert.ok(!ids(second).includes(id), `reused ID ${id} across renders`);
+	assert.equal(normalize(first), normalize(file), 'inline hero logo matches logo.svg geometry');
+});

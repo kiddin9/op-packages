@@ -270,7 +270,7 @@ test('dashboard shows merged devices, Wi-Fi details, IPv6, sensors and a traffic
 	assert.ok(info.nas, 'static-IP device from ARP named by host hints');
 	assert.equal(info.gateway, false, 'upstream gateway is not a LAN device');
 	assert.equal(info.ipv6, '240e:3a1:4c2:8f0::1');
-	assert.deepEqual(info.sensors, ['Temperature · cpu', 'Temperature · mt7986 phy1']);
+	assert.deepEqual(info.sensors, ['Temperature']);
 	assert.match(info.tile, /^\d+ on Wi-Fi$/);
 
 	/* the traffic picker is a Carbon listbox (same control as the language switch), grouped like <optgroup> */

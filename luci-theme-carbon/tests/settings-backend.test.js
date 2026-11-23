@@ -75,6 +75,8 @@ test('plain SVG logos are accepted, including DOCTYPE and raster data: images', 
 	const b = backend();
 	b.upload(SVG);
 	assert.match(b.call('set').logo, /logo\.svg/);
+	b.upload(fs.readFileSync('htdocs/luci-static/carbon/logo.svg'));
+	assert.match(b.call('set').logo, /logo\.svg/);
 	b.upload('<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,iVBORw0KGgo="/></svg>');
 	assert.match(b.call('set').logo, /logo\.svg/);
 });
