@@ -12,19 +12,6 @@
 'require uci';
 'require ui';
 
-const TRANSPORT_NONE_HINT = _('No TCP transport, plain HTTP is merged into the HTTP transport.');
-const TRANSPORT_HTTP_HINT = _('TLS is not enforced. If TLS is not configured, plain HTTP 1.1 is used.');
-const TRANSPORT_QUIC_HINT = _('No additional encryption support: It\'s basically duplicate encryption.');
-
-const HTTP_IDLE_HEALTH_CHECK_HINT = _('Specifies the period of time (in seconds) after which a health check will be performed using a ping frame if no frames have been received on the connection.<br/>' +
-	'Please note that a ping response is considered a received frame, so if there is no other traffic on the connection, the health check will be executed every interval.');
-const HTTP_IDLE_GOAWAY_HINT = _('Specifies the time (in seconds) until idle clients should be closed with a GOAWAY frame. PING frames are not considered as activity.');
-const HTTP_IDLE_KEEPALIVE_HINT = _('If the transport doesn\'t see any activity after a duration of this time (in seconds), it pings the client to check if the connection is still active.');
-
-const HTTP_PING_HEALTH_CHECK_HINT = _('Specifies the timeout duration (in seconds) after sending a PING frame, within which a response must be received.<br/>' +
-	'If a response to the PING frame is not received within the specified timeout duration, the connection will be closed.');
-const HTTP_PING_KEEPALIVE_HINT = _('The timeout (in seconds) that after performing a keepalive check, the client will wait for activity. If no activity is detected, the connection will be closed.');
-
 return baseclass.extend({
 	dns_strategy: {
 		'': _('Default'),
@@ -35,23 +22,28 @@ return baseclass.extend({
 	},
 
 	shadowsocks_encrypt_length: {
+		/* AEAD */
 		'aes-128-gcm': 0,
 		'aes-192-gcm': 0,
 		'aes-256-gcm': 0,
 		'chacha20-ietf-poly1305': 0,
 		'xchacha20-ietf-poly1305': 0,
+		/* AEAD 2022 */
 		'2022-blake3-aes-128-gcm': 16,
 		'2022-blake3-aes-256-gcm': 32,
 		'2022-blake3-chacha20-poly1305': 32
 	},
 
 	shadowsocks_encrypt_methods: [
+		/* Stream */
 		'none',
+		/* AEAD */
 		'aes-128-gcm',
 		'aes-192-gcm',
 		'aes-256-gcm',
 		'chacha20-ietf-poly1305',
 		'xchacha20-ietf-poly1305',
+		/* AEAD 2022 */
 		'2022-blake3-aes-128-gcm',
 		'2022-blake3-aes-256-gcm',
 		'2022-blake3-chacha20-poly1305'
@@ -94,219 +86,8 @@ return baseclass.extend({
 		}
 	}),
 
-	renderTransportOptions(section, options) {
-		const features = options.features || {},
-		      side = options.side || 'client';
-		let o;
-
-		o = section.option(form.ListValue, 'transport', _('Transport'), TRANSPORT_NONE_HINT);
-		o.value('', _('None'));
-		o.value('grpc', _('gRPC'));
-		o.value('http', _('HTTP'));
-		o.value('httpupgrade', _('HTTPUpgrade'));
-		o.value('quic', _('QUIC'));
-		o.value('ws', _('WebSocket'));
-		o.depends('type', 'trojan');
-		o.depends('type', 'vless');
-		o.depends('type', 'vmess');
-		o.onchange = function(ev, section_id, value) {
-			let desc = this.map.findElement('id', 'cbid.homeproxy.%s.transport'.format(section_id)).nextElementSibling;
-			if (value === 'http')
-				desc.innerHTML = TRANSPORT_HTTP_HINT;
-			else if (value === 'quic')
-				desc.innerHTML = TRANSPORT_QUIC_HINT;
-			else
-				desc.innerHTML = TRANSPORT_NONE_HINT;
-
-			let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
-			if ((value === 'http' && tls.checked) || (value === 'grpc' && !features.with_grpc)) {
-				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
-					(side === 'server') ? HTTP_IDLE_GOAWAY_HINT : HTTP_IDLE_HEALTH_CHECK_HINT;
-
-				if (side !== 'server')
-					this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
-						HTTP_PING_HEALTH_CHECK_HINT;
-			} else if (value === 'grpc' && features.with_grpc) {
-				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
-					HTTP_IDLE_KEEPALIVE_HINT;
-
-				if (side !== 'server')
-					this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
-						HTTP_PING_KEEPALIVE_HINT;
-			}
-		}
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'grpc_servicename', _('gRPC service name'));
-		o.depends('transport', 'grpc');
-		o.modalonly = true;
-
-		if (side !== 'server' && features.with_grpc) {
-			o = section.option(form.Flag, 'grpc_permit_without_stream', _('gRPC permit without stream'),
-				_('If enabled, the client transport sends keepalive pings even with no active connections.'));
-			o.depends('transport', 'grpc');
-			o.modalonly = true;
-		}
-
-		o = section.option(form.DynamicList, 'http_host', _('Host'));
-		o.datatype = 'hostname';
-		o.depends('transport', 'http');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'httpupgrade_host', _('Host'));
-		o.datatype = 'hostname';
-		o.depends('transport', 'httpupgrade');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'http_path', _('Path'));
-		o.depends('transport', 'http');
-		o.depends('transport', 'httpupgrade');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'http_method', _('Method'));
-		if (side !== 'server') {
-			o.value('GET', _('GET'));
-			o.value('PUT', _('PUT'));
-		}
-		o.depends('transport', 'http');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'http_idle_timeout', _('Idle timeout'),
-			(side === 'server') ? HTTP_IDLE_GOAWAY_HINT : HTTP_IDLE_HEALTH_CHECK_HINT);
-		o.datatype = 'uinteger';
-		o.depends('transport', 'grpc');
-		o.depends({'transport': 'http', 'tls': '1'});
-		o.modalonly = true;
-
-		if (side !== 'server' || features.with_grpc) {
-			o = section.option(form.Value, 'http_ping_timeout', _('Ping timeout'),
-				(side === 'server') ? HTTP_PING_KEEPALIVE_HINT : HTTP_PING_HEALTH_CHECK_HINT);
-			o.datatype = 'uinteger';
-			o.depends('transport', 'grpc');
-			if (side !== 'server')
-				o.depends({'transport': 'http', 'tls': '1'});
-			o.modalonly = true;
-		}
-
-		o = section.option(form.Value, 'ws_host', _('Host'));
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'ws_path', _('Path'));
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'websocket_early_data', _('Early data'),
-			_('Allowed payload size is in the request.'));
-		o.datatype = 'uinteger';
-		o.value('2048');
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'websocket_early_data_header', _('Early data header name'),
-			(side === 'server') ? (_('Early data is sent in path instead of header by default.') +
-				'<br/>' +
-				_('To be compatible with Xray-core, set this to <code>Sec-WebSocket-Protocol</code>.')) : undefined);
-		o.value('Sec-WebSocket-Protocol');
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		if (side !== 'server') {
-			o = section.option(form.ListValue, 'packet_encoding', _('Packet encoding'));
-			o.value('', _('none'));
-			o.value('packetaddr', _('packet addr (v2ray-core v5+)'));
-			o.value('xudp', _('Xudp (Xray-core)'));
-			o.depends('type', 'vless');
-			o.depends('type', 'vmess');
-			o.modalonly = true;
-		}
-
-		return o;
-	},
-
-	renderTlsOptions(section, options) {
-		const side = options.side || 'client';
-		let o;
-
-		o = section.option(form.Flag, 'tls', _('TLS'));
-		for (let t of (options.type_depends || []))
-			o.depends('type', t);
-		if (side === 'server')
-			o.rmempty = false;
-		o.validate = function(section_id, _value) {
-			if (section_id) {
-				let type = this.map.lookupOption('type', section_id)[0].formvalue(section_id);
-				let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
-
-				if ((options.tls_forced_types || []).includes(type)) {
-					tls.checked = true;
-					tls.disabled = true;
-				} else {
-					tls.disabled = null;
-				}
-			}
-
-			return true;
-		}
-		o.modalonly = true;
-
-		o = section.option(form.Value, 'tls_sni', _('TLS SNI'),
-			_('Used to verify the hostname on the returned certificates unless insecure is given.'));
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = section.option(form.DynamicList, 'tls_alpn', _('TLS ALPN'),
-			_('List of supported application level protocols, in order of preference.'));
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		if (side !== 'server') {
-			o = section.option(form.Flag, 'tls_insecure', _('Allow insecure'),
-				_('Allow insecure connection at TLS client.') +
-				'<br/>' +
-				_('This is <strong>DANGEROUS</strong>, your traffic is almost like <strong>PLAIN TEXT</strong>! Use at your own risk!'));
-			o.depends('tls', '1');
-			o.onchange = options.oninsecurechange;
-			o.modalonly = true;
-		}
-
-		o = section.option(form.ListValue, 'tls_min_version', _('Minimum TLS version'),
-			_('The minimum TLS version that is acceptable.'));
-		o.value('', _('default'));
-		for (let i of this.tls_versions)
-			o.value(i);
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = section.option(form.ListValue, 'tls_max_version', _('Maximum TLS version'),
-			_('The maximum TLS version that is acceptable.'));
-		o.value('', _('default'));
-		for (let i of this.tls_versions)
-			o.value(i);
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = section.option(this.CBIStaticList, 'tls_cipher_suites', _('Cipher suites'),
-			_('The elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used.'));
-		for (let i of this.tls_cipher_suites)
-			o.value(i);
-		o.depends('tls', '1');
-		o.optional = true;
-		o.modalonly = true;
-
-		if (side !== 'server') {
-			o = section.option(form.Value, 'tls_handshake_timeout', _('Handshake timeout (1.14)'),
-				_('TLS handshake timeout in seconds. 15s is used by default.'));
-			o.datatype = 'uinteger';
-			o.placeholder = '15';
-			o.depends('tls', '1');
-			o.modalonly = true;
-		}
-
-		return o;
-	},
-
 	calcStringMD5(e) {
+		/* Thanks to https://stackoverflow.com/a/41602636 */
 		let h = (a, b) => {
 			let c, d, e, f, g;
 			c = a & 2147483648;
@@ -383,6 +164,7 @@ return baseclass.extend({
 		if (!str)
 			return null;
 
+		/* Thanks to luci-app-ssr-plus */
 		str = str.replace(/-/g, '+').replace(/_/g, '/');
 		let padding = (4 - str.length % 4) % 4;
 		if (padding)
@@ -409,12 +191,14 @@ return baseclass.extend({
 			byteArr = crypto.getRandomValues(new Uint8Array(length));
 		switch (type) {
 			case 'base64':
+				/* Thanks to https://stackoverflow.com/questions/9267899 */
 				return btoa(String.fromCharCode.apply(null, byteArr));
 			case 'hex':
 				return Array.from(byteArr, (byte) =>
 					(byte & 255).toString(16).padStart(2, '0')
 				).join('');
 			case 'uuid':
+				/* Thanks to https://stackoverflow.com/a/2117523 */
 				return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, (c) =>
 					(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
 				);
@@ -481,6 +265,7 @@ return baseclass.extend({
 	},
 
 	validateBase64Key(length, section_id, value) {
+		/* Thanks to luci-proto-wireguard */
 		if (section_id && value)
 			if (value.length !== length || !value.match(/^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/) || value[length-1] !== '=')
 				return _('Expecting: %s').format(_('valid base64 key with %d characters').format(length));
@@ -505,7 +290,7 @@ return baseclass.extend({
 				else if (!value[2])
 					value[2] = 65535;
 
-				if (parseInt(value[1], 10) < parseInt(value[2], 10) && value[2] <= 65535)
+				if (value[1] < value[2] && value[2] <= 65535)
 					return true;
 			}
 

@@ -27,9 +27,11 @@ const uciinfra = 'infra',
       uciroutingrule = 'routing_rule',
       uciserver = 'server';
 
+/* chinadns-ng has been removed */
 if (uci.get(uciconfig, uciinfra, 'china_dns_port'))
 	uci.delete(uciconfig, uciinfra, 'china_dns_port');
 
+/* chinadns server now only accepts single server */
 const china_dns_server = uci.get(uciconfig, ucimain, 'china_dns_server');
 if (type(china_dns_server) === 'array') {
 	uci.set(uciconfig, ucimain, 'china_dns_server', china_dns_server[0]);
@@ -40,41 +42,57 @@ if (type(china_dns_server) === 'array') {
 		uci.set(uciconfig, ucimain, 'china_dns_server', split(china_dns_server, ',')[0]);
 }
 
+/* github_token option has been moved to config section */
 const github_token = uci.get(uciconfig, uciinfra, 'github_token');
 if (github_token) {
 	uci.set(uciconfig, ucimain, 'github_token', github_token);
 	uci.delete(uciconfig, uciinfra, 'github_token')
 }
 
+/* ntp_server was introduced */
 if (!uci.get(uciconfig, uciinfra, 'ntp_server'))
 	uci.set(uciconfig, uciinfra, 'ntp_server', 'nil');
 
+/* sniff_override was deprecated in sb 1.11 */
+if (!isEmpty(uci.get(uciconfig, uciinfra, 'sniff_override')))
+	uci.delete(uciconfig, uciinfra, 'sniff_override');
+if (!isEmpty(uci.get(uciconfig, ucirouting, 'sniff_override')))
+	uci.delete(uciconfig, ucirouting, 'sniff_override');
+
+/* tun_gso was deprecated in sb 1.11 */
 if (!isEmpty(uci.get(uciconfig, uciinfra, 'tun_gso')))
 	uci.delete(uciconfig, uciinfra, 'tun_gso');
 
+/* create migration section */
 if (!uci.get(uciconfig, ucimigration))
 	uci.set(uciconfig, ucimigration, uciconfig);
 
+/* delete old crontab command */
 const migration_crontab = uci.get(uciconfig, ucimigration, 'crontab');
 if (!migration_crontab) {
-	system('sed -i "/update_crond.sh/d" "/etc/crontabs/root" 2>/dev/null');
+	system('sed -i "/update_crond.sh/d" "/etc/crontabs/root" 2>"/dev/null"');
 	uci.set(uciconfig, ucimigration, 'crontab', '1');
 }
 
+/* log_level was introduced */
 if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 	uci.set(uciconfig, ucimain, 'log_level', 'warn');
 
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
 
+/* empty value defaults to all ports now */
 if (uci.get(uciconfig, ucimain, 'routing_port') === 'all')
 	uci.delete(uciconfig, ucimain, 'routing_port');
 
+/* experimental section was removed */
 if (uci.get(uciconfig, 'experimental'))
 	uci.delete(uciconfig, 'experimental');
 
+/* block-dns was removed from built-in dns servers */
 const default_dns_server = uci.get(uciconfig, ucidns, 'default_server');
 if (default_dns_server === 'block-dns') {
+	/* append a rule at last to block all DNS queries */
 	uci.set(uciconfig, '_migration_dns_final_block', ucidnsrule);
 	uci.set(uciconfig, '_migration_dns_final_block', 'label', 'migration_final_block_dns');
 	uci.set(uciconfig, '_migration_dns_final_block', 'enabled', '1');
@@ -82,13 +100,18 @@ if (default_dns_server === 'block-dns') {
 	uci.set(uciconfig, '_migration_dns_final_block', 'action', 'reject');
 	uci.set(uciconfig, ucidns, 'default_server', 'default-dns');
 }
-else if (default_dns_server === 'local-dns')
-	uci.set(uciconfig, ucidns, 'default_server', 'default-dns');
+
+/* independent_cache was deprecated in sb 1.14 */
+if (!isEmpty(uci.get(uciconfig, ucidns, 'independent_cache')))
+	uci.delete(uciconfig, ucidns, 'independent_cache');
 
 const dns_server_migration = {};
+/* DNS servers options */
 uci.foreach(uciconfig, ucidnsserver, (cfg) => {
+	/* legacy format was deprecated in sb 1.12 */
 	if (cfg.address) {
 		const addr = parseURL((!match(cfg.address, /:\/\//) ? 'udp://' : '') + (validation('ip6addr', cfg.address) ? `[${cfg.address}]` : cfg.address));
+		/* RCode was moved into DNS rules */
 		if (addr.protocol === 'rcode') {
 			dns_server_migration[cfg['.name']] = { action: 'predefined' };
 			switch (addr.hostname) {
@@ -141,7 +164,9 @@ uci.foreach(uciconfig, ucidnsserver, (cfg) => {
 	}
 });
 
+/* DNS rules options */
 uci.foreach(uciconfig, ucidnsrule, (cfg) => {
+	/* outbound was removed in sb 1.12 */
 	if (cfg.outbound) {
 		uci.delete(uciconfig, cfg['.name']);
 		if (!cfg.enabled)
@@ -156,7 +181,7 @@ uci.foreach(uciconfig, ucidnsrule, (cfg) => {
 				uci.set(uciconfig, ucirouting, 'default_outbound_dns', cfg.server);
 				break;
 			default:
-				uci.set(uciconfig, outbound, 'domain_resolver', cfg.server);
+				uci.set(uciconfig, cfg.outbound, 'domain_resolver', cfg.server);
 				break;
 			}
 		});
@@ -164,16 +189,20 @@ uci.foreach(uciconfig, ucidnsrule, (cfg) => {
 		return;
 	}
 
+	/* rule_set_ipcidr_match_source was renamed in sb 1.10 */
 	if (cfg.rule_set_ipcidr_match_source === '1')
 		uci.rename(uciconfig, cfg['.name'], 'rule_set_ipcidr_match_source', 'rule_set_ip_cidr_match_source');
 
+	/* block-dns was moved into action in sb 1.11 */
 	if (cfg.server === 'block-dns') {
 		uci.set(uciconfig, cfg['.name'], 'action', 'reject');
 		uci.delete(uciconfig, cfg['.name'], 'server');
 	} else if (!cfg.action) {
+		/* add missing 'action' field */
 		uci.set(uciconfig, cfg['.name'], 'action', 'route');
 	}
 
+	/* strategy and client_subnet were moved into dns rules */
 	if (dns_server_migration[cfg.server]) {
 		if (dns_server_migration[cfg.server].strategy)
 			uci.set(uciconfig, cfg['.name'], 'strategy', dns_server_migration[cfg.server].strategy);
@@ -189,61 +218,53 @@ uci.foreach(uciconfig, ucidnsrule, (cfg) => {
 	}
 });
 
+/* nodes options */
 uci.foreach(uciconfig, ucinode, (cfg) => {
+	/* tls_ech_tls_disable_drs is useless and deprecated in sb 1.12 */
 	if (!isEmpty(cfg.tls_ech_tls_disable_drs))
 		uci.delete(uciconfig, cfg['.name'], 'tls_ech_tls_disable_drs');
 
+	/* tls_ech_enable_pqss is useless and deprecated in sb 1.12 */
 	if (!isEmpty(cfg.tls_ech_enable_pqss))
 		uci.delete(uciconfig, cfg['.name'], 'tls_ech_enable_pqss');
 
+	/* wireguard_gso was deprecated in sb 1.11 */
 	if (!isEmpty(cfg.wireguard_gso))
 		uci.delete(uciconfig, cfg['.name'], 'wireguard_gso');
-
-	if (!isEmpty(cfg.hysteria_revc_window))
-		uci.rename(uciconfig, cfg['.name'], 'hysteria_revc_window', 'hysteria_recv_window');
 });
 
-if (!isEmpty(uci.get(uciconfig, ucidns, 'independent_cache')))
-	uci.delete(uciconfig, ucidns, 'independent_cache');
-
-const legacy_store_rdrc = uci.get(uciconfig, ucidns, 'cache_file_store_rdrc');
-if (!isEmpty(legacy_store_rdrc)) {
-	uci.set(uciconfig, ucidns, 'cache_file_store_dns', legacy_store_rdrc);
-	uci.delete(uciconfig, ucidns, 'cache_file_store_rdrc');
-}
-if (!isEmpty(uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout')))
-	uci.delete(uciconfig, ucidns, 'cache_file_rdrc_timeout');
-
-uci.foreach(uciconfig, ucidnsrule, (cfg) => {
-	if (!isEmpty(cfg.domain_strategy))
-		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
-	if (!isEmpty(cfg.rule_set_ip_cidr_accept_empty))
-		uci.delete(uciconfig, cfg['.name'], 'rule_set_ip_cidr_accept_empty');
-});
-
+/* routing rules options */
 uci.foreach(uciconfig, uciroutingrule, (cfg) => {
+	/* rule_set_ipcidr_match_source was renamed in sb 1.10 */
 	if (cfg.rule_set_ipcidr_match_source === '1')
 		uci.rename(uciconfig, cfg['.name'], 'rule_set_ipcidr_match_source', 'rule_set_ip_cidr_match_source');
 
+	/* block-out was moved into action in sb 1.11 */
 	if (cfg.outbound === 'block-out') {
 		uci.set(uciconfig, cfg['.name'], 'action', 'reject');
 		uci.delete(uciconfig, cfg['.name'], 'outbound');
 	} else if (!cfg.action) {
+		/* add missing 'action' field */
 		uci.set(uciconfig, cfg['.name'], 'action', 'route');
 	}
 });
 
+/* server options */
+/* auto_firewall was moved into server options */
 const auto_firewall = uci.get(uciconfig, uciserver, 'auto_firewall');
 if (!isEmpty(auto_firewall))
 	uci.delete(uciconfig, uciserver, 'auto_firewall');
 
 uci.foreach(uciconfig, uciserver, (cfg) => {
+	/* auto_firewall was moved into server options */
 	if (auto_firewall === '1')
 		uci.set(uciconfig, cfg['.name'], 'firewall' , '1');
 
+	/* sniff_override was deprecated in sb 1.11 */
 	if (!isEmpty(cfg.sniff_override))
 		uci.delete(uciconfig, cfg['.name'], 'sniff_override');
 
+	/* domain_strategy is now pointless without sniff override */
 	if (!isEmpty(cfg.domain_strategy))
 		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
 });

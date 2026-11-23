@@ -14,6 +14,6 @@ while true; do
 	sleep 180
 	for i in "$main_log_file" "$singc_log_file" "$sings_log_file"; do
 		[ -s "$i" ] || continue
-		[ "$(( $(wc -c < "$i") / 1024 >= log_max_size))" -eq "0" ] || : > "$i"
+		[ "$(( $(ls -l "$i" | awk -F ' ' '{print $5}') / 1024 >= log_max_size))" -eq "0" ] || echo "" > "$i"
 	done
 done

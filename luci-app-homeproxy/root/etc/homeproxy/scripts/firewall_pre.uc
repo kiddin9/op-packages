@@ -4,7 +4,7 @@
 
 import { writefile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty, RUN_DIR, validation } from 'homeproxy';
+import { isEmpty, RUN_DIR } from 'homeproxy';
 
 const cfgname = 'homeproxy';
 const uci = cursor();
@@ -20,10 +20,8 @@ if (match(proxy_mode, /tun/)) {
 	else
 		outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
 
-	if (outbound_node !== 'nil') {
-		const raw_tun = trim(uci.get(cfgname, 'infra', 'tun_name') ?? '');
-		tun_name = match(raw_tun, /^[A-Za-z0-9._-]{1,15}$/) ? raw_tun : 'singtun0';
-	}
+	if (outbound_node !== 'nil')
+		tun_name = uci.get(cfgname, 'infra', 'tun_name') || 'singtun0';
 }
 
 const server_enabled = uci.get(cfgname, 'server', 'enabled');
@@ -41,17 +39,7 @@ if (server_enabled === '1') {
 		if (s.enabled !== '1' || s.firewall !== '1')
 			return;
 
-		if (!validation('port', s.port)) {
-			print(`WARN: skipping server ${s['.name']}: invalid port "${s.port}".`);
-			return;
-		}
-
 		let proto = s.network || '{ tcp, udp }';
-		if (!(proto in ['tcp', 'udp', '{ tcp, udp }'])) {
-			print(`WARN: skipping server ${s['.name']}: invalid network "${proto}".`);
-			return;
-		}
-
 		push(input, `meta l4proto ${proto} th dport ${s.port} counter accept comment "!${cfgname}: accept server ${s['.name']}"`);
 	});
 }

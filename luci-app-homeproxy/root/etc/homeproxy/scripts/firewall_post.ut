@@ -1,20 +1,9 @@
 #!/usr/bin/utpl -S
 
 {%-
-/*
- * Declares every homeproxy_* fw4 chain/set. The inventory of those objects is
- * tracked in scripts/fw4_names.sh, which init.d/homeproxy uses to clean them up
- * on stop; add/remove entries there together with any change below.
- * tests/ucode/test_fw4_names.sh compares both lists, and
- * tests/ucode/test_firewall_template.sh renders this template and checks the
- * objects actually survive into the generated nftables script.
- *
- * Keep this comment inside the ucode block: text placed before `{%-` has its
- * trailing newline trimmed, which would glue it onto the first nft statement.
- */
 import { readfile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty, isValidCIDR } from '/etc/homeproxy/scripts/homeproxy.uc';
+import { isEmpty } from '/etc/homeproxy/scripts/homeproxy.uc';
 
 const fw4 = require('fw4');
 
@@ -36,24 +25,7 @@ function resolve_ipv6(str) {
 	if (ipv6.bits > -1)
 		return `${ipv6.addr}/${ipv6.bits}`;
 	else
-		return ipv6.addr;
-}
-
-/* Normalize a list of IPv6 entries into an nftables anonymous set
-   (or null when empty), so IPv6 ACLs match in a single set lookup
-   instead of one rule per address. */
-function ipv6_to_nftarr(list) {
-	if (isEmpty(list))
-		return null;
-
-	let out = [];
-	for (let ip in list) {
-		const r = resolve_ipv6(ip);
-		if (!isEmpty(r))
-			push(out, r);
-	}
-
-	return isEmpty(out) ? null : `{ ${join(', ', out)} }`;
+		return `& ${ipv6.mask} == ${ipv6.addr}`;
 }
 
 function resolve_mark(str) {
@@ -74,61 +46,6 @@ function resolve_mark(str) {
 		return `mark xor ${fw4.hex(mark.mark)}`;
 	else
 		return `mark and ${fw4.hex(~mark.mask & 0xffffffff)} xor ${fw4.hex(mark.mark)}`;
-}
-
-/*
- * Everything below is interpolated into an nftables script. fw4 loads its
- * includes in one atomic transaction, so a single unparseable value does not
- * just break this rule: every later `fw4 reload` fails and the whole firewall
- * stops being updated. The UI validates its fields, but the values can also
- * come from `uci set`, so each one is checked here as well and dropped when it
- * is not the type the rule expects.
- */
-const iface_re = /^[A-Za-z0-9._-]{1,15}$/;
-const mac_re = /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/;
-
-function filter_iface(list, fallback) {
-	if (isEmpty(list))
-		return list;
-
-	let out = [];
-	for (let i in list)
-		if (match(trim(i), iface_re))
-			push(out, trim(i));
-
-	if (isEmpty(out) && !isEmpty(fallback))
-		push(out, fallback);
-
-	return out;
-}
-
-function filter_mac(list) {
-	if (isEmpty(list))
-		return list;
-
-	let out = [];
-	for (let m in list)
-		if (match(trim(m), mac_re))
-			push(out, trim(m));
-
-	return out;
-}
-
-function filter_ipv4(list) {
-	if (isEmpty(list))
-		return list;
-
-	let out = [];
-	for (let ip in list)
-		if (isValidCIDR(ip, 4))
-			push(out, trim(ip));
-
-	return out;
-}
-
-function resolve_port(str, fallback) {
-	const port = trim(str ?? '');
-	return match(port, /^\d{1,5}$/) && int(port) > 0 && int(port) <= 65535 ? port : fallback;
 }
 
 /* Misc config */
@@ -155,19 +72,6 @@ let routing_port = uci.get(cfgname, 'config', 'routing_port');
 if (routing_port === 'common')
 	routing_port = uci.get(cfgname, 'infra', 'common_port') || '22,53,80,143,443,465,587,853,873,993,995,8080,8443,9418';
 
-/* the port list is interpolated into an nftables set: keep only real ports,
-   and fall back to "no list" (the guards below then skip the set and its
-   rules) when nothing survives */
-if (routing_port) {
-	let ports = [];
-	for (let port in split(routing_port, ',')) {
-		const p = trim(port);
-		if (match(p, /^\d{1,5}$/) && int(p) > 0 && int(p) <= 65535)
-			push(ports, p);
-	}
-	routing_port = length(ports) ? join(',', ports) : null;
-}
-
 const proxy_mode = uci.get(cfgname, 'config', 'proxy_mode') || 'redirect_tproxy',
       ipv6_support = uci.get(cfgname, 'config', 'ipv6_support') || '0';
 
@@ -176,19 +80,16 @@ let self_mark, redirect_port,
     tun_name, tun_mark;
 
 if (match(proxy_mode, /redirect/)) {
-	/* print as a valid mark expression; a hand-edited "value/mask" would
-	   otherwise reach nft verbatim and break the whole file */
-	self_mark = resolve_mark(uci.get(cfgname, 'infra', 'self_mark')) || resolve_mark('100');
-	redirect_port = resolve_port(uci.get(cfgname, 'infra', 'redirect_port'), '5331');
+	self_mark = uci.get(cfgname, 'infra', 'self_mark') || '100';
+	redirect_port = uci.get(cfgname, 'infra', 'redirect_port') || '5331';
 }
 if (match(proxy_mode, /tproxy/))
 	if (outbound_udp_node !== 'nil' || routing_mode === 'custom') {
-		tproxy_port = resolve_port(uci.get(cfgname, 'infra', 'tproxy_port'), '5332');
+		tproxy_port = uci.get(cfgname, 'infra', 'tproxy_port') || '5332';
 		tproxy_mark = resolve_mark(uci.get(cfgname, 'infra', 'tproxy_mark') || '101');
 	}
 if (match(proxy_mode, /tun/)) {
-	const tun_name_raw = trim(uci.get(cfgname, 'infra', 'tun_name') ?? '');
-	tun_name = match(tun_name_raw, iface_re) ? tun_name_raw : 'singtun0';
+	tun_name = uci.get(cfgname, 'infra', 'tun_name') || 'singtun0';
 	tun_mark = resolve_mark(uci.get(cfgname, 'infra', 'tun_mark') || '102');
 }
 
@@ -203,26 +104,12 @@ const control_options = [
 ];
 const control_info = {};
 
-for (let i in control_options) {
-	const raw = uci.get(cfgname, 'control', i);
-
-	if (match(i, /_mac_addrs$/))
-		control_info[i] = filter_mac(raw);
-	else if (match(i, /_ipv4_ips$/))
-		control_info[i] = filter_ipv4(raw);
-	else if (i === 'listen_interfaces')
-		/* fail closed: a configured but unusable interface list must not turn
-		   into "every interface" (that is exactly what the option restricts) */
-		control_info[i] = filter_iface(raw, '__hp_invalid_iface__');
-	else
-		control_info[i] = raw;
-}
+for (let i in control_options)
+	control_info[i] = uci.get(cfgname, 'control', i);
 
 const dns_redirect = uci.get(cfgname, 'infra', 'dns_redirect') || '1';
-/* dnsmasq's port, not sing-box's dns_port (the hijack hands the query to
-   dnsmasq, which forwards to the sing-box listener itself) */
 const dns_hijacked = uci.get('dhcp', '@dnsmasq[0]', 'dns_redirect') || '0',
-      dnsmasq_port = resolve_port(uci.get('dhcp', '@dnsmasq[0]', 'port'), '53');
+      dns_port = uci.get('dhcp', '@dnsmasq[0]', 'port') || '53';
 /* UCI config end */
 -%}
 
@@ -295,9 +182,7 @@ set homeproxy_mainland_addr_v4 {
 	auto-merge
 	elements = {
 		{% for (let cnip4 in split(trim(readfile(resources_dir + '/china_ip4.txt')), /[\r\n]/)): %}
-		{% if (isValidCIDR(cnip4, 4)): %}
 		{{ cnip4 }},
-		{% endif %}
 		{% endfor %}
 	}
 }
@@ -308,9 +193,7 @@ set homeproxy_mainland_addr_v6 {
 	auto-merge
 	elements = {
 		{% for (let cnip6 in split(trim(readfile(resources_dir + '/china_ip6.txt')), /[\r\n]/)): %}
-		{% if (isValidCIDR(cnip6, 6)): %}
 		{{ cnip6 }},
-		{% endif %}
 		{% endfor %}
 	}
 }
@@ -373,7 +256,7 @@ chain dstnat {
 	{% if (control_info.listen_interfaces): %}
 	meta iifname {{ array_to_nftarr(control_info.listen_interfaces) }}
 	{%- endif /* listen_interfaces */ %}
-	meta nfproto { ipv4, ipv6 } udp dport 53 counter redirect to :{{ dnsmasq_port }} comment "!{{ cfgname }}: DNS hijack"
+	meta nfproto { ipv4, ipv6 } udp dport 53 counter redirect to :{{ dns_port }} comment "!{{ cfgname }}: DNS hijack"
 {% endif /* dns_hijacked */ %}
 {% if (match(proxy_mode, /redirect/)): %}
 	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto tcp jump homeproxy_redirect_lanac
@@ -403,9 +286,9 @@ chain homeproxy_redirect_lanac {
 	{% if (!isEmpty(control_info.lan_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_proxy_ipv4_ips) }} counter goto homeproxy_redirect
 	{% endif /* lan_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_proxy_ipv6_ips) }} counter goto homeproxy_redirect
-	{% endif /* lan_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_redirect
+	{% endfor /* lan_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_proxy_mac_addrs) }} counter goto homeproxy_redirect
 	{% endif /* lan_proxy_mac_addrs */ %}
@@ -413,9 +296,9 @@ chain homeproxy_redirect_lanac {
 	{% if (!isEmpty(control_info.lan_direct_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_direct_ipv4_ips) }} counter return
 	{% endif /* lan_direct_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_direct_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_direct_ipv6_ips) }} counter return
-	{% endif /* lan_direct_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_direct_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter return
+	{% endfor /* lan_direct_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_direct_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_direct_mac_addrs) }} counter return
 	{% endif /* lan_direct_mac_addrs */ %}
@@ -443,9 +326,9 @@ chain homeproxy_redirect {
 	{% if (!isEmpty(control_info.lan_global_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_global_proxy_ipv4_ips) }} counter goto homeproxy_redirect_proxy_port
 	{% endif /* lan_global_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_global_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_global_proxy_ipv6_ips) }} counter goto homeproxy_redirect_proxy_port
-	{% endif /* lan_global_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_global_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_redirect_proxy_port
+	{% endfor /* lan_global_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_global_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_global_proxy_mac_addrs) }} counter goto homeproxy_redirect_proxy_port
 	{% endif /* lan_global_proxy_mac_addrs */ %}
@@ -476,9 +359,9 @@ chain homeproxy_redirect {
 	{% if (!isEmpty(control_info.lan_gaming_mode_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_gaming_mode_ipv4_ips) }} counter goto homeproxy_redirect_proxy
 	{% endif /* lan_gaming_mode_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_gaming_mode_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_gaming_mode_ipv6_ips) }} counter goto homeproxy_redirect_proxy
-	{% endif /* lan_gaming_mode_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_gaming_mode_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_redirect_proxy
+	{% endfor /* lan_gaming_mode_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_gaming_mode_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_gaming_mode_mac_addrs) }} counter goto homeproxy_redirect_proxy
 	{% endif /* lan_gaming_mode_mac_addrs */ %}
@@ -526,9 +409,9 @@ chain homeproxy_mangle_lanac {
 	{% if (!isEmpty(control_info.lan_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_proxy_ipv4_ips) }} counter goto homeproxy_mangle_prerouting
 	{% endif /* lan_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_proxy_ipv6_ips) }} counter goto homeproxy_mangle_prerouting
-	{% endif /* lan_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_mangle_prerouting
+	{% endfor /* lan_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_proxy_mac_addrs) }} counter goto homeproxy_mangle_prerouting
 	{% endif /* lan_proxy_mac_addrs */ %}
@@ -536,9 +419,9 @@ chain homeproxy_mangle_lanac {
 	{% if (!isEmpty(control_info.lan_direct_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_direct_ipv4_ips) }} counter return
 	{% endif /* lan_direct_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_direct_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_direct_ipv6_ips) }} counter return
-	{% endif /* lan_direct_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_direct_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter return
+	{% endfor /* lan_direct_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_direct_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_direct_mac_addrs) }} counter return
 	{% endif /* lan_direct_mac_addrs */ %}
@@ -564,9 +447,9 @@ chain homeproxy_mangle_prerouting {
 	{% if (!isEmpty(control_info.lan_global_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_global_proxy_ipv4_ips) }} counter goto homeproxy_mangle_tproxy_port
 	{% endif /* lan_global_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_global_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_global_proxy_ipv6_ips) }} counter goto homeproxy_mangle_tproxy_port
-	{% endif /* lan_global_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_global_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_mangle_tproxy_port
+	{% endfor /* lan_global_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_global_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_global_proxy_mac_addrs) }} counter goto homeproxy_mangle_tproxy_port
 	{% endif /* lan_global_proxy_mac_addrs */ %}
@@ -582,14 +465,14 @@ chain homeproxy_mangle_prerouting {
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr != @homeproxy_gfw_list_v6 counter return
 	{% endif /* ipv6_support */ %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Fuck you QUIC"
 	{% elif (routing_mode === 'bypass_mainland_china' || bypass_cn_traffic === '1'): %}
 	ip daddr @homeproxy_mainland_addr_v4 counter return
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr @homeproxy_mainland_addr_v6 counter return
 	{% endif /* ipv6_support */ %}
 	{% if (routing_mode !== 'custom'): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Fuck you QUIC"
 	{% endif /* routing_mode */ %}
 	{% elif (routing_mode === 'proxy_mainland_china'): %}
 	ip daddr != @homeproxy_mainland_addr_v4 counter return
@@ -601,9 +484,9 @@ chain homeproxy_mangle_prerouting {
 	{% if (!isEmpty(control_info.lan_gaming_mode_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_gaming_mode_ipv4_ips) }} counter goto homeproxy_mangle_tproxy
 	{% endif /* lan_gaming_mode_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_gaming_mode_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_gaming_mode_ipv6_ips) }} counter goto homeproxy_mangle_tproxy
-	{% endif /* lan_gaming_mode_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_gaming_mode_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_mangle_tproxy
+	{% endfor /* lan_gaming_mode_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_gaming_mode_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_gaming_mode_mac_addrs) }} counter goto homeproxy_mangle_tproxy
 	{% endif /* lan_gaming_mode_mac_addrs */ %}
@@ -672,9 +555,9 @@ chain homeproxy_mangle_lanac {
 	{% if (!isEmpty(control_info.lan_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_proxy_ipv4_ips) }} counter goto homeproxy_mangle_tun
 	{% endif /* lan_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_proxy_ipv6_ips) }} counter goto homeproxy_mangle_tun
-	{% endif /* lan_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_mangle_tun
+	{% endfor /* lan_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_proxy_mac_addrs) }} counter goto homeproxy_mangle_tun
 	{% endif /* lan_proxy_mac_addrs */ %}
@@ -682,9 +565,9 @@ chain homeproxy_mangle_lanac {
 	{% if (!isEmpty(control_info.lan_direct_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_direct_ipv4_ips) }} counter return
 	{% endif /* lan_direct_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_direct_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_direct_ipv6_ips) }} counter return
-	{% endif /* lan_direct_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_direct_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter return
+	{% endfor /* lan_direct_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_direct_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_direct_mac_addrs) }} counter return
 	{% endif /* lan_direct_mac_addrs */ %}
@@ -723,9 +606,9 @@ chain homeproxy_mangle_tun {
 	{% if (!isEmpty(control_info.lan_global_proxy_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_global_proxy_ipv4_ips) }} counter goto homeproxy_mangle_tun_mark
 	{% endif /* lan_global_proxy_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_global_proxy_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_global_proxy_ipv6_ips) }} counter goto homeproxy_mangle_tun_mark
-	{% endif /* lan_global_proxy_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_global_proxy_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter goto homeproxy_mangle_tun_mark
+	{% endfor /* lan_global_proxy_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_global_proxy_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_global_proxy_mac_addrs) }} counter goto homeproxy_mangle_tun_mark
 	{% endif /* lan_global_proxy_mac_addrs */ %}
@@ -743,14 +626,14 @@ chain homeproxy_mangle_tun {
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr != @homeproxy_gfw_list_v6 counter return
 	{% endif /* ipv6_support */ %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Fuck you QUIC"
 	{% elif (routing_mode === 'bypass_mainland_china' || bypass_cn_traffic === '1'): %}
 	ip daddr @homeproxy_mainland_addr_v4 counter return
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr @homeproxy_mainland_addr_v6 counter return
 	{% endif /* ipv6_support */ %}
 	{% if (routing_mode !== 'custom'): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Fuck you QUIC"
 	{% endif /* routing_mode */ %}
 	{% elif (routing_mode === 'proxy_mainland_china'): %}
 	ip daddr != @homeproxy_mainland_addr_v4 counter return
@@ -762,9 +645,9 @@ chain homeproxy_mangle_tun {
 	{% if (!isEmpty(control_info.lan_gaming_mode_ipv4_ips)): %}
 	ip saddr {{ array_to_nftarr(control_info.lan_gaming_mode_ipv4_ips) }} counter meta mark set {{ tun_mark }}
 	{% endif /* lan_gaming_mode_ipv4_ips */ %}
-	{% if (!isEmpty(control_info.lan_gaming_mode_ipv6_ips)): %}
-	ip6 saddr {{ ipv6_to_nftarr(control_info.lan_gaming_mode_ipv6_ips) }} counter meta mark set {{ tun_mark }}
-	{% endif /* lan_gaming_mode_ipv6_ips */ %}
+	{% for (let ipv6 in control_info.lan_gaming_mode_ipv6_ips): %}
+	ip6 saddr {{ resolve_ipv6(ipv6) }} counter meta mark set {{ tun_mark }}
+	{% endfor /* lan_gaming_mode_ipv6_ips */ %}
 	{% if (!isEmpty(control_info.lan_gaming_mode_mac_addrs)): %}
 	ether saddr {{ array_to_nftarr(control_info.lan_gaming_mode_mac_addrs) }} counter meta mark set {{ tun_mark }}
 	{% endif /* lan_gaming_mode_mac_addrs */ %}

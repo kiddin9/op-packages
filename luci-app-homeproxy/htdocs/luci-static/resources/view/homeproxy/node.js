@@ -26,9 +26,11 @@ function parseShareLink(uri, features) {
 	if (uri[0] && uri[1]) {
 		switch (uri[0]) {
 		case 'anytls':
+			/* https://github.com/anytls/anytls-go/blob/v0.0.8/docs/uri_scheme.md */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
+			/* Check if password exists */
 			if (!url.username)
 				return null;
 
@@ -60,9 +62,11 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'hysteria':
+			/* https://github.com/HyNetwork/hysteria/wiki/URI-Scheme */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
+			/* WeChat-Video / FakeTCP are unsupported by sing-box currently */
 			if (!features.with_quic || (params.get('protocol') && params.get('protocol') !== 'udp'))
 				return null;
 
@@ -86,6 +90,7 @@ function parseShareLink(uri, features) {
 			break;
 		case 'hysteria2':
 		case 'hy2':
+			/* https://v2.hysteria.network/docs/developers/URI-Scheme/ */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
@@ -105,25 +110,6 @@ function parseShareLink(uri, features) {
 				tls: '1',
 				tls_sni: params.get('sni'),
 				tls_insecure: params.get('insecure') ? '1' : '0'
-			};
-
-			break;
-		case 'snell':
-			url = new URL('http://' + uri[1]);
-			params = url.searchParams;
-
-			config = {
-				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
-				type: 'snell',
-				address: url.hostname,
-				port: url.port || '80',
-				password: url.username ? decodeURIComponent(url.username)
-					: (params.get('psk') ? decodeURIComponent(params.get('psk')) : null),
-				snell_version: params.get('version') || '4',
-				snell_userkey: params.get('userkey'),
-				snell_obfs_mode: (params.get('obfs') === 'http') ? 'http' : null,
-				snell_obfs_host: params.get('obfs-host'),
-				snell_reuse: (params.get('reuse') === '1') ? '1' : '0'
 			};
 
 			break;
@@ -147,6 +133,7 @@ function parseShareLink(uri, features) {
 			break;
 		case 'ss':
 			try {
+				/* "Lovely" Shadowrocket format */
 				try {
 					let suri = uri[1].split('#'), slabel = '';
 					if (suri.length <= 2) {
@@ -156,12 +143,15 @@ function parseShareLink(uri, features) {
 					}
 				} catch(e) { }
 
+				/* SIP002 format https://shadowsocks.org/guide/sip002.html */
 				url = new URL('http://' + uri[1]);
 
 				let userinfo;
 				if (url.username && url.password) {
+					/* User info encoded with URIComponent */
 					userinfo = [url.username, decodeURIComponent(url.password)];
 				} else if (url.username) {
+					/* User info encoded with base64 */
 					userinfo = hp.decodeBase64Str(decodeURIComponent(url.username)).split(':');
 					if (userinfo.length > 1)
 						userinfo = [userinfo[0], userinfo.slice(1).join(':')]
@@ -174,8 +164,6 @@ function parseShareLink(uri, features) {
 				if (url.search && url.searchParams.get('plugin')) {
 					let plugin_info = url.searchParams.get('plugin').split(';');
 					plugin = plugin_info[0];
-					if (plugin === 'simple-obfs')
-						plugin = 'obfs-local';
 					plugin_opts = (plugin_info.length > 1) ? plugin_info.slice(1).join(';') : null;
 				}
 
@@ -190,6 +178,7 @@ function parseShareLink(uri, features) {
 					shadowsocks_plugin_opts: plugin_opts
 				};
 			} catch(e) {
+				/* Legacy format https://github.com/shadowsocks/shadowsocks-org/commit/78ca46cd6859a4e9475953ed34a2d301454f579e */
 				uri = uri[1].split('@');
 				if (uri.length < 2)
 					return null;
@@ -207,9 +196,11 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'trojan':
+			/* https://p4gefau1t.github.io/trojan-go/developer/url/ */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
+			/* Check if password exists */
 			if (!url.username)
 				return null;
 
@@ -240,9 +231,11 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'tuic':
+			/* https://github.com/daeuniverse/dae/discussions/182 */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
+			/* Check if uuid exists */
 			if (!url.username)
 				return null;
 
@@ -262,13 +255,16 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'vless':
+			/* https://github.com/XTLS/Xray-core/discussions/716 */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
 
+			/* Unsupported protocol */
 			if (params.get('type') === 'kcp')
 				return null;
 			else if (params.get('type') === 'quic' && ((params.get('quicSecurity') && params.get('quicSecurity') !== 'none') || !features.with_quic))
 				return null;
+			/* Check if uuid and type exist */
 			if (!url.username || !params.get('type'))
 				return null;
 
@@ -286,7 +282,7 @@ function parseShareLink(uri, features) {
 				tls_reality_public_key: params.get('pbk') ? decodeURIComponent(params.get('pbk')) : null,
 				tls_reality_short_id: params.get('sid'),
 				tls_utls: features.with_utls ? params.get('fp') : null,
-				vless_flow: (['tls', 'reality'].includes(params.get('security')) && params.get('flow') === 'xtls-rprx-vision') ? params.get('flow') : null
+				vless_flow: ['tls', 'reality'].includes(params.get('security')) ? params.get('flow') : null
 			};
 			switch (params.get('type')) {
 			case 'grpc':
@@ -316,17 +312,24 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'vmess':
-			if (uri[1].includes('&'))
+			/* "Lovely" shadowrocket format */
+			if (uri.includes('&'))
 				return null;
 
+			/* https://github.com/2dust/v2rayN/wiki/Description-of-VMess-share-link */
 			uri = JSON.parse(hp.decodeBase64Str(uri[1]));
 
 			if (uri.v != '2')
 				return null;
+			/* Unsupported protocols */
 			else if (uri.net === 'kcp')
 				return null;
 			else if (uri.net === 'quic' && ((uri.type && uri.type !== 'none') || !features.with_quic))
 				return null;
+			/* https://www.v2fly.org/config/protocols/vmess.html#vmess-md5-%E8%AE%A4%E8%AF%81%E4%BF%A1%E6%81%AF-%E6%B7%98%E6%B1%B0%E6%9C%BA%E5%88%B6
+			 * else if (uri.aid && parseInt(uri.aid) !== 0)
+			 * 	return null;
+			 */
 
 			config = {
 				label: uri.ps,
@@ -464,7 +467,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends('type', 'http');
 	o.depends('type', 'hysteria2');
 	o.depends('type', 'shadowsocks');
-	o.depends('type', 'snell');
 	o.depends('type', 'ssh');
 	o.depends('type', 'trojan');
 	o.depends('type', 'tuic');
@@ -474,7 +476,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.validate = function(section_id, value) {
 		if (section_id) {
 			let type = this.section.formvalue(section_id, 'type');
-			let required_type = [ 'anytls', 'shadowsocks', 'shadowtls', 'snell', 'trojan' ];
+			let required_type = [ 'anytls', 'shadowsocks', 'shadowtls', 'trojan' ];
 
 			if (required_type.includes(type)) {
 				if (type === 'shadowsocks') {
@@ -491,6 +493,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	}
 	o.modalonly = true;
 
+	/* Direct config */
 	o = s.option(form.ListValue, 'proxy_protocol', _('Proxy protocol'),
 		_('Write proxy protocol in the connection header.'));
 	o.value('', _('Disable'));
@@ -499,6 +502,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends('type', 'direct');
 	o.modalonly = true;
 
+	/* AnyTLS config start */
 	o = s.option(form.Value, 'anytls_idle_session_check_interval', _('Idle session check interval'),
 		_('Interval checking for idle sessions, in seconds.'));
 	o.datatype = 'uinteger';
@@ -519,7 +523,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.placeholder = '0';
 	o.depends('type', 'anytls');
 	o.modalonly = true;
+	/* AnyTLS config end */
 
+	/* Hysteria (2) config start */
 	o = s.option(form.DynamicList, 'hysteria_hopping_port', _('Hopping port'));
 	o.depends('type', 'hysteria');
 	o.depends('type', 'hysteria2');
@@ -534,15 +540,12 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends({'type': 'hysteria2', 'hysteria_hopping_port': /[\s\S]/});
 	o.modalonly = true;
 
-	o = s.option(form.Value, 'hysteria_hop_interval_max', _('Max hop interval (1.14)'),
-		_('Maximum port hopping interval in seconds; the actual interval is randomized between the two values. Hysteria2 only.'));
-	o.datatype = 'uinteger';
-	o.placeholder = '300';
-	o.depends({'type': 'hysteria2', 'hysteria_hopping_port': /[\s\S]/});
-	o.modalonly = true;
-
 	o = s.option(form.ListValue, 'hysteria_protocol', _('Protocol'));
 	o.value('udp');
+	/* WeChat-Video / FakeTCP are unsupported by sing-box currently
+	 * o.value('wechat-video');
+	 * o.value('faketcp');
+	 */
 	o.default = 'udp';
 	o.depends('type', 'hysteria');
 	o.rmempty = false;
@@ -564,7 +567,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o = s.option(form.ListValue, 'hysteria_obfs_type', _('Obfuscate type'));
 	o.value('', _('Disable'));
 	o.value('salamander', _('Salamander'));
-	o.value('gecko', _('Gecko (1.14)'));
 	o.depends('type', 'hysteria2');
 	o.modalonly = true;
 
@@ -572,20 +574,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.password = true;
 	o.depends('type', 'hysteria');
 	o.depends({'type': 'hysteria2', 'hysteria_obfs_type': /[\s\S]/});
-	o.modalonly = true;
-
-	o = s.option(form.Value, 'hysteria_obfs_min_packet_size', _('Min obfs packet size (1.14)'),
-		_('Minimum on-wire packet size in bytes. Gecko only.'));
-	o.datatype = 'uinteger';
-	o.placeholder = '512';
-	o.depends({'type': 'hysteria2', 'hysteria_obfs_type': 'gecko'});
-	o.modalonly = true;
-
-	o = s.option(form.Value, 'hysteria_obfs_max_packet_size', _('Max obfs packet size (1.14)'),
-		_('Maximum on-wire packet size in bytes. Gecko only.'));
-	o.datatype = 'uinteger';
-	o.placeholder = '1200';
-	o.depends({'type': 'hysteria2', 'hysteria_obfs_type': 'gecko'});
 	o.modalonly = true;
 
 	o = s.option(form.Value, 'hysteria_down_mbps', _('Max download speed'),
@@ -602,22 +590,29 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends('type', 'hysteria2');
 	o.modalonly = true;
 
-	o = s.option(form.ListValue, 'hysteria_bbr_profile', _('BBR profile (1.14)'),
-		_('BBR congestion control algorithm profile. Hysteria2 only.'));
-	o.value('', _('Standard (default)'));
-	o.value('conservative', _('Conservative'));
-	o.value('aggressive', _('Aggressive'));
-	o.depends('type', 'hysteria2');
+	o = s.option(form.Value, 'hysteria_recv_window_conn', _('QUIC stream receive window'),
+		_('The QUIC stream-level flow control window for receiving data.'));
+	o.datatype = 'uinteger';
+	o.depends('type', 'hysteria');
 	o.modalonly = true;
 
-	o = s.option(form.Flag, 'hysteria_disable_chrome_parrot', _('Disable Chrome QUIC fingerprint (1.14)'),
-		_('Disable Chrome QUIC handshake parroting, which is enabled by default since sing-box 1.14. Turn this on only when the server uses an Ed25519 certificate or the handshake otherwise fails.'));
-	o.depends('type', 'hysteria2');
+	o = s.option(form.Value, 'hysteria_revc_window', _('QUIC connection receive window'),
+		_('The QUIC connection-level flow control window for receiving data.'));
+	o.datatype = 'uinteger';
+	o.depends('type', 'hysteria');
 	o.modalonly = true;
 
+	o = s.option(form.Flag, 'hysteria_disable_mtu_discovery', _('Disable Path MTU discovery'),
+		_('Disables Path MTU Discovery (RFC 8899). Packets will then be at most 1252 (IPv4) / 1232 (IPv6) bytes in size.'));
+	o.depends('type', 'hysteria');
+	o.modalonly = true;
+	/* Hysteria (2) config end */
+
+	/* Shadowsocks config start */
 	o = s.option(form.ListValue, 'shadowsocks_encrypt_method', _('Encrypt method'));
 	for (let i of hp.shadowsocks_encrypt_methods)
 		o.value(i);
+	/* Stream ciphers */
 	o.value('aes-128-ctr');
 	o.value('aes-192-ctr');
 	o.value('aes-256-ctr');
@@ -643,7 +638,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends('shadowsocks_plugin', 'obfs-local');
 	o.depends('shadowsocks_plugin', 'v2ray-plugin');
 	o.modalonly = true;
+	/* Shadowsocks config end */
 
+	/* ShadowTLS config */
 	o = s.option(form.ListValue, 'shadowtls_version', _('ShadowTLS version'));
 	o.value('1', _('v1'));
 	o.value('2', _('v2'));
@@ -653,6 +650,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.rmempty = false;
 	o.modalonly = true;
 
+	/* Socks config */
 	o = s.option(form.ListValue, 'socks_version', _('Socks version'));
 	o.value('4', _('Socks4'));
 	o.value('4a', _('Socks4A'));
@@ -662,6 +660,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.rmempty = false;
 	o.modalonly = true;
 
+	/* SSH config start */
 	o = s.option(form.Value, 'ssh_client_version', _('Client version'),
 		_('Random version will be used if empty.'));
 	o.depends('type', 'ssh');
@@ -685,7 +684,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.password = true;
 	o.depends('type', 'ssh');
 	o.modalonly = true;
+	/* SSH config end */
 
+	/* TUIC config start */
 	o = s.option(form.Value, 'uuid', _('UUID'));
 	o.password = true;
 	o.depends('type', 'tuic');
@@ -729,7 +730,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.default = '10';
 	o.depends('type', 'tuic');
 	o.modalonly = true;
+	/* Tuic config end */
 
+	/* VMess / VLESS config start */
 	o = s.option(form.ListValue, 'vless_flow', _('Flow'));
 	o.value('', _('None'));
 	o.value('xtls-rprx-vision');
@@ -764,9 +767,132 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 		_('Protocol parameter. Enable length block encryption.'));
 	o.depends('type', 'vmess');
 	o.modalonly = true;
+	/* VMess config end */
 
-	hp.renderTransportOptions(s, { features: features, side: 'client' });
+	/* Transport config start */
+	o = s.option(form.ListValue, 'transport', _('Transport'),
+		_('No TCP transport, plain HTTP is merged into the HTTP transport.'));
+	o.value('', _('None'));
+	o.value('grpc', _('gRPC'));
+	o.value('http', _('HTTP'));
+	o.value('httpupgrade', _('HTTPUpgrade'));
+	o.value('quic', _('QUIC'));
+	o.value('ws', _('WebSocket'));
+	o.depends('type', 'trojan');
+	o.depends('type', 'vless');
+	o.depends('type', 'vmess');
+	o.onchange = function(ev, section_id, value) {
+		let desc = this.map.findElement('id', 'cbid.homeproxy.%s.transport'.format(section_id)).nextElementSibling;
+		if (value === 'http')
+			desc.innerHTML = _('TLS is not enforced. If TLS is not configured, plain HTTP 1.1 is used.');
+		else if (value === 'quic')
+			desc.innerHTML = _('No additional encryption support: It\'s basically duplicate encryption.');
+		else
+			desc.innerHTML = _('No TCP transport, plain HTTP is merged into the HTTP transport.');
 
+		let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
+		if ((value === 'http' && tls.checked) || (value === 'grpc' && !features.with_grpc)) {
+			this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
+				_('Specifies the period of time (in seconds) after which a health check will be performed using a ping frame if no frames have been received on the connection.<br/>' +
+					'Please note that a ping response is considered a received frame, so if there is no other traffic on the connection, the health check will be executed every interval.');
+
+			this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
+				_('Specifies the timeout duration (in seconds) after sending a PING frame, within which a response must be received.<br/>' +
+					'If a response to the PING frame is not received within the specified timeout duration, the connection will be closed.');
+		} else if (value === 'grpc' && features.with_grpc) {
+			this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
+				_('If the transport doesn\'t see any activity after a duration of this time (in seconds), it pings the client to check if the connection is still active.');
+
+			this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
+				_('The timeout (in seconds) that after performing a keepalive check, the client will wait for activity. If no activity is detected, the connection will be closed.');
+		}
+	}
+	o.modalonly = true;
+
+	/* gRPC config start */
+	o = s.option(form.Value, 'grpc_servicename', _('gRPC service name'));
+	o.depends('transport', 'grpc');
+	o.modalonly = true;
+
+	if (features.with_grpc) {
+		o = s.option(form.Flag, 'grpc_permit_without_stream', _('gRPC permit without stream'),
+			_('If enabled, the client transport sends keepalive pings even with no active connections.'));
+		o.depends('transport', 'grpc');
+		o.modalonly = true;
+	}
+	/* gRPC config end */
+
+	/* HTTP(Upgrade) config start */
+	o = s.option(form.DynamicList, 'http_host', _('Host'));
+	o.datatype = 'hostname';
+	o.depends('transport', 'http');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'httpupgrade_host', _('Host'));
+	o.datatype = 'hostname';
+	o.depends('transport', 'httpupgrade');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'http_path', _('Path'));
+	o.depends('transport', 'http');
+	o.depends('transport', 'httpupgrade');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'http_method', _('Method'));
+	o.value('GET', _('GET'));
+	o.value('PUT', _('PUT'));
+	o.depends('transport', 'http');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'http_idle_timeout', _('Idle timeout'),
+		_('Specifies the period of time (in seconds) after which a health check will be performed using a ping frame if no frames have been received on the connection.<br/>' +
+			'Please note that a ping response is considered a received frame, so if there is no other traffic on the connection, the health check will be executed every interval.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'grpc');
+	o.depends({'transport': 'http', 'tls': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'http_ping_timeout', _('Ping timeout'),
+		_('Specifies the timeout duration (in seconds) after sending a PING frame, within which a response must be received.<br/>' +
+			'If a response to the PING frame is not received within the specified timeout duration, the connection will be closed.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'grpc');
+	o.depends({'transport': 'http', 'tls': '1'});
+	o.modalonly = true;
+	/* HTTP config end */
+
+	/* WebSocket config start */
+	o = s.option(form.Value, 'ws_host', _('Host'));
+	o.depends('transport', 'ws');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'ws_path', _('Path'));
+	o.depends('transport', 'ws');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'websocket_early_data', _('Early data'),
+		_('Allowed payload size is in the request.'));
+	o.datatype = 'uinteger';
+	o.value('2048');
+	o.depends('transport', 'ws');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'websocket_early_data_header', _('Early data header name'));
+	o.value('Sec-WebSocket-Protocol');
+	o.depends('transport', 'ws');
+	o.modalonly = true;
+	/* WebSocket config end */
+
+	o = s.option(form.ListValue, 'packet_encoding', _('Packet encoding'));
+	o.value('', _('none'));
+	o.value('packetaddr', _('packet addr (v2ray-core v5+)'));
+	o.value('xudp', _('Xudp (Xray-core)'));
+	o.depends('type', 'vless');
+	o.depends('type', 'vmess');
+	o.modalonly = true;
+	/* Transport config end */
+
+	/* Wireguard config start */
 	o = s.option(form.DynamicList, 'wireguard_local_address', _('Local address'),
 		_('List of IP (v4 or v6) addresses prefixes to be assigned to the interface.'));
 	o.datatype = 'cidr';
@@ -782,7 +908,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.rmempty = false;
 	o.modalonly = true;
 
-	o = s.option(form.Value, 'wireguard_peer_public_key', _('Peer pubkic key'),
+	o = s.option(form.Value, 'wireguard_peer_public_key', _('Peer public key'),
 		_('WireGuard peer public key.'));
 	o.depends('type', 'wireguard');
 	o.validate = L.bind(hp.validateBase64Key, this, 44);
@@ -812,7 +938,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.datatype = 'uinteger';
 	o.depends('type', 'wireguard');
 	o.modalonly = true;
+	/* Wireguard config end */
 
+	/* Mux config start */
 	o = s.option(form.Flag, 'multiplex', _('Multiplex'));
 	o.depends('type', 'shadowsocks');
 	o.depends('type', 'trojan');
@@ -869,51 +997,77 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.datatype = 'uinteger';
 	o.depends('multiplex_brutal', '1');
 	o.modalonly = true;
+	/* Mux config end */
 
-	o = s.option(form.ListValue, 'snell_version', _('Snell version'),
-		_('sing-box implements Snell v4/v5 wire as v4 and v6. The pre-shared key (Password above) must be 12-255 bytes for v6.'));
-	o.value('4', _('v4'));
-	o.value('6', _('v6'));
-	o.default = '4';
-	o.depends('type', 'snell');
+	/* TLS config start */
+	o = s.option(form.Flag, 'tls', _('TLS'));
+	o.depends('type', 'anytls');
+	o.depends('type', 'http');
+	o.depends('type', 'hysteria');
+	o.depends('type', 'hysteria2');
+	o.depends('type', 'shadowtls');
+	o.depends('type', 'trojan');
+	o.depends('type', 'tuic');
+	o.depends('type', 'vless');
+	o.depends('type', 'vmess');
+	o.validate = function(section_id, _value) {
+		if (section_id) {
+			let type = this.map.lookupOption('type', section_id)[0].formvalue(section_id);
+			let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
+
+			if (['anytls', 'hysteria', 'hysteria2', 'shadowtls', 'tuic'].includes(type)) {
+				tls.checked = true;
+				tls.disabled = true;
+			} else {
+				tls.disabled = null;
+			}
+		}
+
+		return true;
+	}
 	o.modalonly = true;
 
-	o = s.option(form.Value, 'snell_userkey', _('User key'),
-		_('Optional; only required when connecting to a multi-user Snell server.'));
-	o.depends('type', 'snell');
+	o = s.option(form.Value, 'tls_sni', _('TLS SNI'),
+		_('Used to verify the hostname on the returned certificates unless insecure is given.'));
+	o.depends('tls', '1');
 	o.modalonly = true;
 
-	o = s.option(form.Flag, 'snell_reuse', _('Connection reuse'),
-		_('Enable connection reuse (the Snell v2 CONNECT command).'));
-	o.depends('type', 'snell');
+	o = s.option(form.DynamicList, 'tls_alpn', _('TLS ALPN'),
+		_('List of supported application level protocols, in order of preference.'));
+	o.depends('tls', '1');
 	o.modalonly = true;
 
-	o = s.option(form.ListValue, 'snell_obfs_mode', _('Obfuscation mode'),
-		_('HTTP obfuscation. v4 only.'));
-	o.value('', _('none'));
-	o.value('http', _('http'));
-	o.depends({'type': 'snell', 'snell_version': '4'});
+	o = s.option(form.Flag, 'tls_insecure', _('Allow insecure'),
+		_('Allow insecure connection at TLS client.') +
+		'<br/>' +
+		_('This is <strong>DANGEROUS</strong>, your traffic is almost like <strong>PLAIN TEXT</strong>! Use at your own risk!'));
+	o.depends('tls', '1');
+	o.onchange = allowInsecureConfirm;
 	o.modalonly = true;
 
-	o = s.option(form.Value, 'snell_obfs_host', _('Obfuscation host'),
-		_('HTTP Host header sent when obfuscation mode is http. bing.com is used by default.'));
-	o.depends({'type': 'snell', 'snell_version': '4', 'snell_obfs_mode': 'http'});
-	o.modalonly = true;
-
-	o = s.option(form.ListValue, 'snell_mode', _('Traffic shaping mode'),
-		_('v6 only.'));
+	o = s.option(form.ListValue, 'tls_min_version', _('Minimum TLS version'),
+		_('The minimum TLS version that is acceptable.'));
 	o.value('', _('default'));
-	o.value('unshaped', _('unshaped'));
-	o.value('unsafe-raw', _('unsafe-raw'));
-	o.depends({'type': 'snell', 'snell_version': '6'});
+	for (let i of hp.tls_versions)
+		o.value(i);
+	o.depends('tls', '1');
 	o.modalonly = true;
 
-	hp.renderTlsOptions(s, {
-		side: 'client',
-		type_depends: [ 'anytls', 'http', 'hysteria', 'hysteria2', 'shadowtls', 'trojan', 'tuic', 'vless', 'vmess' ],
-		tls_forced_types: [ 'anytls', 'hysteria', 'hysteria2', 'shadowtls', 'tuic' ],
-		oninsecurechange: allowInsecureConfirm
-	});
+	o = s.option(form.ListValue, 'tls_max_version', _('Maximum TLS version'),
+		_('The maximum TLS version that is acceptable.'));
+	o.value('', _('default'));
+	for (let i of hp.tls_versions)
+		o.value(i);
+	o.depends('tls', '1');
+	o.modalonly = true;
+
+	o = s.option(hp.CBIStaticList, 'tls_cipher_suites', _('Cipher suites'),
+		_('The elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used.'));
+	for (let i of hp.tls_cipher_suites)
+		o.value(i);
+	o.depends('tls', '1');
+	o.optional = true;
+	o.modalonly = true;
 
 	o = s.option(form.Flag, 'tls_self_sign', _('Append self-signed certificate'),
 		_('If you have the root certificate, use this option instead of allowing insecure.'));
@@ -1001,7 +1155,9 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 		o.depends('tls_reality', '1');
 		o.modalonly = true;
 	}
+	/* TLS config end */
 
+	/* Extra settings start */
 	o = s.option(form.Flag, 'tcp_fast_open', _('TCP fast open'));
 	o.modalonly = true;
 
@@ -1024,6 +1180,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.default = '2';
 	o.depends('udp_over_tcp', '1');
 	o.modalonly = true;
+	/* Extra settings end */
 
 	return s;
 }
@@ -1042,6 +1199,7 @@ return view.extend({
 		let routing_mode = uci.get(data[0], 'config', 'routing_mode');
 		let features = data[1];
 
+		/* Cache subscription information, it will be called multiple times */
 		let subinfo = [];
 		for (let suburl of (uci.get(data[0], 'subscription', 'subscription_url') || [])) {
 			const url = new URL(suburl);
@@ -1054,6 +1212,8 @@ return view.extend({
 
 		s = m.section(form.NamedSection, 'subscription', 'homeproxy');
 
+		/* Node settings start */
+		/* User nodes start */
 		s.tab('node', _('Nodes'));
 		o = s.taboption('node', form.SectionValue, '_node', form.GridSection, 'node');
 		ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode);
@@ -1065,6 +1225,8 @@ return view.extend({
 
 			return true;
 		}
+		/* Import subscription links start */
+		/* Thanks to luci-app-shadowsocks-libev */
 		ss.handleLinkImport = function() {
 			let textarea = new ui.Textarea();
 			ui.showModal(_('Import share links'), [
@@ -1081,6 +1243,7 @@ return view.extend({
 						click: ui.createHandlerFn(this, () => {
 							let input_links = textarea.getValue().trim().split('\n');
 							if (input_links && input_links[0]) {
+								/* Remove duplicate lines */
 								input_links = input_links.reduce((pre, cur) =>
 									(!pre.includes(cur) && pre.push(cur), pre), []);
 
@@ -1088,12 +1251,7 @@ return view.extend({
 								let packet_encoding = uci.get(data[0], 'subscription', 'packet_encoding');
 								let imported_node = 0;
 								input_links.forEach((l) => {
-									let config;
-									try {
-										config = parseShareLink(l, features);
-									} catch (e) {
-										config = null;
-									}
+									let config = parseShareLink(l, features);
 									if (config) {
 										if (config.tls === '1' && allow_insecure === '1')
 											config.tls_insecure = '1'
@@ -1101,12 +1259,7 @@ return view.extend({
 											config.packet_encoding = packet_encoding
 
 										let nameHash = hp.calcStringMD5(config.label);
-										let previous = uci.get(data[0], nameHash) || {};
 										let sid = uci.add(data[0], 'node', nameHash);
-										Object.keys(previous).forEach((k) => {
-											if (k.charAt(0) !== '.' && !(k in config))
-												uci.unset(data[0], sid, k);
-										});
 										Object.keys(config).forEach((k) => {
 											uci.set(data[0], sid, k, config[k]);
 										});
@@ -1161,7 +1314,10 @@ return view.extend({
 
 			return el;
 		}
+		/* Import subscription links end */
+		/* User nodes end */
 
+		/* Subscription nodes start */
 		for (const info of subinfo) {
 			s.tab('sub_' + info.hash, _('Sub (%s)').format(info.title));
 			o = s.taboption('sub_' + info.hash, form.SectionValue, '_sub_' + info.hash, form.GridSection, 'node');
@@ -1170,7 +1326,10 @@ return view.extend({
 				return (uci.get(data[0], section_id, 'grouphash') === info.hash);
 			}
 		}
+		/* Subscription nodes end */
+		/* Node settings end */
 
+		/* Subscriptions settings start */
 		s.tab('subscription', _('Subscriptions'));
 
 		o = s.taboption('subscription', form.Flag, 'auto_update', _('Auto update'),
@@ -1299,6 +1458,7 @@ return view.extend({
 
 			return this.map.save(null, true);
 		}
+		/* Subscriptions settings end */
 
 		return m.render();
 	}

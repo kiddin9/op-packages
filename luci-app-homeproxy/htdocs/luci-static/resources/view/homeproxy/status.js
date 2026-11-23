@@ -14,10 +14,13 @@
 'require ui';
 'require view';
 
+/* Thanks to luci-app-aria2 */
 const css = '				\
+#log_textarea {				\
 	padding: 10px;			\
 	text-align: left;		\
 }					\
+#log_textarea pre {			\
 	padding: .5rem;			\
 	word-break: break-all;		\
 	margin: 0;			\
@@ -252,14 +255,6 @@ return view.extend({
 
 		o = s.option(form.DummyValue, '_gfw_list_version', _('GFW list version'));
 		o.cfgvalue = L.bind(getResVersion, this, o, 'gfw_list');
-		o.rawhtml = true;
-
-		o = s.option(form.DummyValue, '_geoip_cn_version', _('GeoIP CN rule-set version'));
-		o.cfgvalue = L.bind(getResVersion, this, o, 'geoip_cn');
-		o.rawhtml = true;
-
-		o = s.option(form.DummyValue, '_geosite_cn_version', _('GeoSite CN rule-set version'));
-		o.cfgvalue = L.bind(getResVersion, this, o, 'geosite_cn');
 		o.rawhtml = true;
 
 		o = s.option(form.Value, 'github_token', _('GitHub token'));
