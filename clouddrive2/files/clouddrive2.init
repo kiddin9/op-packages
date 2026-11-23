@@ -31,6 +31,34 @@ validate_clouddrive2_section() {
 		'extra_env:list(string)'
 }
 
+kill_lingering_processes() {
+	local pids n=0
+	pids="$(pgrep -f "^${PROG}" 2>/dev/null)"
+	[ -n "$pids" ] || return 0
+
+	kill -TERM $pids 2>/dev/null || true
+	while [ "$n" -lt 3 ]; do
+		sleep 1
+		pids="$(pgrep -f "^${PROG}" 2>/dev/null)"
+		[ -z "$pids" ] && return 0
+		n=$((n + 1))
+	done
+
+	kill -KILL $pids 2>/dev/null || true
+}
+
+cleanup_orphan_workers() {
+	local pid cmdline ppid_arg
+	for pid in $(pgrep -f "^${PROG} Start-Service" 2>/dev/null); do
+		[ -r "/proc/$pid/cmdline" ] || continue
+		cmdline="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
+		ppid_arg="$(printf '%s' "$cmdline" | awk '{print $3}')"
+		if [ -z "$ppid_arg" ] || [ ! -d "/proc/$ppid_arg" ]; then
+			kill -KILL "$pid" 2>/dev/null || true
+		fi
+	done
+}
+
 cleanup_mounts() {
 	local mp_base="$1"
 	[ -n "$mp_base" ] || return 0
@@ -93,36 +121,39 @@ sync_runtime_files() {
 
 	mkdir -p "$cfg_dir" "${cfg_dir}/log" "$tmp_dir"
 
-	if command -v ucode >/dev/null 2>&1; then
-		SETTINGS_FILE="$settings_file" \
-		CD2_TEMP_DIR="$tmp_dir" \
-		CD2_RAS_ENABLED="$ras_en" \
-		CD2_RAS_CMD="$ras_cmd" \
-		ucode -e '
-			import { readfile, writefile } from "fs";
-			let path = getenv("SETTINGS_FILE");
-			let raw = readfile(path);
-			let data = {};
-			if (raw && length(trim(raw)) > 0) {
+	# Never pre-create a partial systemsettings.json: CloudDrive2 requires all
+	# SystemSettings fields (e.g., dir_cache_ttl_secs) when parsing an existing file,
+	# and automatically uses built-in defaults when systemsettings.json is absent.
+	if [ -f "$settings_file" ]; then
+		if ! grep -q '"dir_cache_ttl_secs"' "$settings_file" 2>/dev/null; then
+			logger -t clouddrive2 -p daemon.warn "Removing incomplete $settings_file so CloudDrive2 can initialize defaults"
+			rm -f "$settings_file"
+		elif command -v ucode >/dev/null 2>&1; then
+			SETTINGS_FILE="$settings_file" \
+			CD2_TEMP_DIR="$tmp_dir" \
+			CD2_RAS_ENABLED="$ras_en" \
+			CD2_RAS_CMD="$ras_cmd" \
+			ucode -e '
+				import { readfile, writefile, rename, unlink } from "fs";
+				let path = getenv("SETTINGS_FILE");
+				let raw = readfile(path);
+				if (!raw || length(trim(raw)) == 0) exit(0);
+				let data = null;
 				try { data = json(raw); } catch (e) { exit(0); }
-			}
-			if (type(data) != "object") exit(0);
-			let td = getenv("CD2_TEMP_DIR");
-			if (td) data.temp_dir = td;
-			if (getenv("CD2_RAS_ENABLED") == "1" && length(getenv("CD2_RAS_CMD") || "") > 0)
-				data.run_after_start = getenv("CD2_RAS_CMD");
-			else
-				delete data.run_after_start;
-			writefile(path, sprintf("%.2J\n", data));
-		' 2>/dev/null || true
-	elif [ ! -s "$settings_file" ]; then
-		json_init
-		[ -n "$tmp_dir" ] && json_add_string "temp_dir" "$tmp_dir"
-		if [ "$ras_en" -eq 1 ] && [ -n "$ras_cmd" ]; then
-			json_add_string "run_after_start" "$ras_cmd"
+				if (type(data) != "object" || data.dir_cache_ttl_secs == null) exit(0);
+				let td = getenv("CD2_TEMP_DIR");
+				if (td) data.temp_dir = td;
+				if (getenv("CD2_RAS_ENABLED") == "1" && length(getenv("CD2_RAS_CMD") || "") > 0)
+					data.run_after_start = getenv("CD2_RAS_CMD");
+				else
+					delete data.run_after_start;
+				let tmp = path + ".tmp";
+				if (writefile(tmp, sprintf("%.2J\n", data)))
+					rename(tmp, path);
+				else
+					unlink(tmp);
+			' 2>/dev/null || true
 		fi
-		json_dump > "$settings_file"
-		json_cleanup
 	fi
 
 	if [ -f "$toml_file" ]; then
@@ -175,6 +206,8 @@ start_service() {
 		logger -t clouddrive2 -p daemon.err "Configuration validation failed"
 		return 1
 	}
+
+	cleanup_orphan_workers
 
 	[ "$enabled" -eq 1 ] || return 0
 
@@ -248,13 +281,6 @@ start_service() {
 	procd_close_instance
 }
 
-stop_service() {
-	local mount_point
-	config_load 'clouddrive2'
-	config_get mount_point main mount_point '/mnt/clouddrive'
-	cleanup_mounts "$mount_point"
-}
-
 reload_service() {
 	stop
 	start
@@ -265,6 +291,12 @@ service_started() {
 }
 
 service_stopped() {
+	local mount_point
+	config_load 'clouddrive2'
+	config_get mount_point main mount_point '/mnt/clouddrive'
+
+	kill_lingering_processes
+	cleanup_mounts "$mount_point"
 	procd_set_config_changed firewall
 }
 
