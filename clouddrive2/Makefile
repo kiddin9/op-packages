@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=clouddrive2
 PKG_VERSION:=1.1.3
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 ifeq ($(ARCH),aarch64)
 	CD2_ARCH:=aarch64
@@ -47,7 +47,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(HOST_TAR) -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR) --strip-components=1
+	$(HOST_TAR) -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
 endef
 
 define Build/Compile
@@ -61,8 +61,8 @@ define Package/clouddrive2/install
 	$(INSTALL_CONF) $(CURDIR)/files/clouddrive2.config $(1)/etc/config/clouddrive2
 
 	$(INSTALL_DIR) $(1)/usr/share/clouddrive2
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/clouddrive $(1)/usr/share/clouddrive2/clouddrive
-	$(CP) $(PKG_BUILD_DIR)/wwwroot $(1)/usr/share/clouddrive2/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/clouddrive-2-linux-$(CD2_ARCH)-$(PKG_VERSION)/clouddrive $(1)/usr/share/clouddrive2/clouddrive
+	$(CP) $(PKG_BUILD_DIR)/clouddrive-2-linux-$(CD2_ARCH)-$(PKG_VERSION)/wwwroot $(1)/usr/share/clouddrive2/
 endef
 
 $(eval $(call BuildPackage,clouddrive2))
