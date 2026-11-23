@@ -53,8 +53,8 @@ EXTRA_CFLAGS:= \
 define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C "$(LINUX_DIR)" \
 		$(KERNEL_MAKE_FLAGS) \
+		KCFLAGS="$(KERNEL_CFLAGS) $(EXTRA_KCFLAGS)" \
 		M="$(PKG_BUILD_DIR)/$(MAKE_PATH)/" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
 		modules
 endef
 
