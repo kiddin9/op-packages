@@ -19,15 +19,3 @@
  endef
  
  define KernelPackage/fast-classifier
-
---- a/shortcut-fe/simulated-driver/Makefile
-+++ b/shortcut-fe/simulated-driver/Makefile
-@@ -54,7 +54,7 @@ define Build/Compile
- 	$(MAKE) $(PKG_JOBS) -C "$(LINUX_DIR)" \
- 		$(KERNEL_MAKE_FLAGS) \
- 		M="$(PKG_BUILD_DIR)/$(MAKE_PATH)/" \
--		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
-+		KBUILD_CFLAGS="$(EXTRA_CFLAGS)" \
- 		modules
- endef
-
