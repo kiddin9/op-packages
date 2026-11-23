@@ -626,12 +626,24 @@ function renderLive(name, modem, graphs, board) {
 		if (modem.euicc && modem.euicc.ipa == 'ipae')
 			euicc = null;
 
-		return (euicc
+		/* the card's own description (GetEUICCInfo2): a property of the card,
+		   not of the moment — read once an hour, beside the profile list */
+		var infoP = euicc
+			? cachedCall(name, 'esiminfo', 3600, function() {
+				return wrpc.esimInfo(name, euicc.physical);
+			})
+			: Promise.resolve(null);
+
+		return Promise.all([ euicc
 			? cachedCall(name, 'profiles', 60, function() {
 				return wrpc.esimProfiles(name, euicc.physical);
 			})
-			: Promise.resolve(null)
-		).then(function(pr) {
+			: Promise.resolve(null), infoP ]
+		).then(function(both) {
+			var pr = both[0], ei = both[1];
+
+			/* the same rule as the profiles: a failed or denied read is {} */
+			res[7] = (ei && ei.ok !== false && ei.svn) ? ei : null;
 			/* KEY OFF `profiles`, not off truthiness. cachedCall substitutes {}
 			   for a denied or failed read (L.resolveDefault) and caches THAT for
 			   60 s — and `{}.profiles || []` is an empty list, so the slot said
@@ -1182,6 +1194,8 @@ function renderLive(name, modem, graphs, board) {
 					   fetched on the floor */
 					profiles: (probedSlot && probedSlot.physical === sl.physical)
 						? (res[6] || null) : null,
+					cardInfo: (probedSlot && probedSlot.physical === sl.physical)
+						? (res[7] || null) : null,
 					showLogical: showLogical,
 					buttons: fmt.slotSwitchable(sl) ? [
 						E('button', { 'class': 'btn cbi-button cbi-button-apply',

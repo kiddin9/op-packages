@@ -117,6 +117,9 @@ return baseclass.extend({
 	   read-only operator was denied the status page on every eUICC box. */
 	esimProfiles: rpc.declare({ object: 'wwand', method: 'modem_esim_profiles',
 		params: [ 'modem', 'slot' ], expect: {} }),
+	/* READ-ONLY too: what the eUICC itself says it is (GetEUICCInfo2, SGP.32) */
+	esimInfo:   rpc.declare({ object: 'wwand', method: 'modem_esim_info',
+		params: [ 'modem', 'slot' ], expect: {} }),
 
 	esim:       callEsim,
 	/* Enabling or disabling a profile changes the card in use just as a slot

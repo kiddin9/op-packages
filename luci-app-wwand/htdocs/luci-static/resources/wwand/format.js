@@ -279,6 +279,29 @@ return baseclass.extend({
 			: base;
 	},
 
+	/* One line from GetEUICCInfo2: SGP.22 version (unless the eUICC row
+	   above already says it), SGP.32, category, free memory. null when the
+	   card was not read. */
+	cardInfoText: function(ci, eu) {
+		if (!ci || !ci.svn)
+			return null;
+
+		var cat = { basicEuicc: _('basic eUICC'), mediumEuicc: _('medium eUICC'),
+		            contactlessEuicc: _('contactless eUICC') }[ci.category];
+		var parts = [];
+
+		if (!(eu && eu.svn == ci.svn))
+			parts.push('SGP.22 %s'.format(ci.svn));
+		if (ci.sgp32 === true && !(eu && eu.sgp32))
+			parts.push(_('SGP.32 IoT eUICC'));
+		if (cat)
+			parts.push(cat);
+		if (ci.free_nvm != null)
+			parts.push(_('%s KiB free').format((ci.free_nvm / 1024).toFixed(1)));
+
+		return parts.length ? parts.join(' \u00b7 ') : null;
+	},
+
 	/* Which IoT Profile Assistant runs an SGP.32 card. The card's own (IPAe)
 	   keeps ES10 to itself, so the router cannot list or switch its profiles;
 	   it changes them on its eIM's order and rolls back by itself. null when
@@ -498,6 +521,17 @@ return baseclass.extend({
 
 			if (ipaTxt)
 				rows.push([ _('IPA'), ipaTxt ]);
+
+			/* o.cardInfo: what the card itself says (GetEUICCInfo2, read by
+			   modem_esim_info) — the SGP.22 version it implements, its
+			   category and free memory, and the RSP features it announces */
+			var ci = o.cardInfo, ciTxt = this.cardInfoText(ci, eu);
+
+			if (ciTxt)
+				rows.push([ _('Card'), ciTxt ]);
+
+			if (ci && ci.rsp_capability && ci.rsp_capability.length)
+				rows.push([ _('RSP features'), ci.rsp_capability.join(', ') ]);
 
 			/* the per-slot surface some AT modems expose (ESLOTSINFO-class):
 			   the INACTIVE slot's PIN and service state is exactly what decides

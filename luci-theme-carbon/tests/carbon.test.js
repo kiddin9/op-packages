@@ -381,6 +381,15 @@ test('Docker uses the whale icon and its pages get their own icons', () => {
 	assert.notEqual(C.icon('nodes'), C.icon('nonexistent'));
 });
 
+test('FlowCone, HONK and irqbalance reuse existing semantic sidebar icons', () => {
+	const C = load();
+	assert.equal(C.pageIcon('flowcone', 'network'), 'zap');
+	assert.equal(C.pageIcon('honk', 'services'), 'send');
+	assert.equal(C.pageIcon('irqbalance', 'services'), 'cpu');
+	for (const name of ['zap', 'send', 'cpu'])
+		assert.notEqual(C.icon(name), C.icon('nonexistent'));
+});
+
 test('dashboard layout defaults, UCI serialization and attribute round-trip', () => {
 	const C = load();
 	const L = C.dashboardLayout;

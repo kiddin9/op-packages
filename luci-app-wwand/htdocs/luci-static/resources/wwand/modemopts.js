@@ -757,14 +757,28 @@ return baseclass.extend({
 		bind(o);
 
 		/* The three hardware rungs' attempt counts (recovery_steps). The
-		   daemon refuses a list that does not rise and keeps 8/16/24, with a
-		   config warning; the check here only catches the shape early. */
+		   daemon refuses a list that does not make a ladder and keeps
+		   8/16/24, with a config warning — so the check here is the daemon's
+		   own (recovery.uc steps_from): 1-3 whole numbers from 1, the first
+		   ones replacing 8 16 24 in order, the result rising strictly. "20"
+		   alone is refused too: 20 16 24 does not rise. */
 		o = s.taboption(tab, form.Value, 'recovery_steps', _('Recovery steps'),
 			_('Failed attempts at which the recovery ladder cycles the radio, resets the modem and pulses the reset line / repowers it, e.g. "2 6 12". One or two numbers replace only the first steps. Empty = 8 16 24. An earlier radio cycle helps after a registration reject, which the modem may only retry after a switch-off.'));
 		o.placeholder = '8 16 24';
 		o.validate = function(section_id, value) {
-			if (!value || /^\s*\d+([\s,]+\d+){0,2}\s*$/.test(value))
+			if (!value)
 				return true;
+
+			/* separated like config.uc steps_opt splits: spaces and commas */
+			if (/^\s*\d+([ ,]+\d+){0,2}\s*$/.test(value)) {
+				var steps = [ 8, 16, 24 ];
+
+				String(value).trim().split(/[ ,]+/).forEach(function(n, i) { steps[i] = +n; });
+
+				if (steps[0] >= 1 && steps[1] > steps[0] && steps[2] > steps[1])
+					return true;
+			}
+
 			return _('One to three whole numbers, rising, e.g. "2 6 12"');
 		};
 		bind(o);

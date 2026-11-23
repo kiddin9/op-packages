@@ -803,6 +803,16 @@ eq(fmt.euiccText({ sgp32: true, ipae_supported: true, svn: '2.5.0', ipa: 'ipae' 
    'SGP.32 IoT eUICC (on SGP.22 2.5.0)', 'euicc: SGP.32 names the SGP.22 base');
 eq(fmt.euiccText({ sgp32: false, svn: '2.2.2' }), 'SGP.22 2.2.2', 'euicc: an SGP.22 card');
 eq(fmt.euiccText(null), null, 'euicc: nothing read, nothing said');
+
+/* the card's own GetEUICCInfo2 (modem_esim_info), as read from the RG650E's eUICC */
+var ci = { svn: '2.2.2', category: 'mediumEuicc', free_nvm: 233744, sgp32: false };
+eq(fmt.cardInfoText(ci, null), 'SGP.22 2.2.2 \u00b7 medium eUICC \u00b7 228.3 KiB free',
+   'card info: version, category, free memory');
+eq(fmt.cardInfoText(ci, { svn: '2.2.2' }), 'medium eUICC \u00b7 228.3 KiB free',
+   'card info: the version the eUICC row already shows is not repeated');
+eq(fmt.cardInfoText({ svn: '2.3.0', sgp32: true }, null), 'SGP.22 2.3.0 \u00b7 SGP.32 IoT eUICC',
+   'card info: SGP.32 said when the eUICC row did not');
+eq(fmt.cardInfoText({}, null), null, 'card info: not read, nothing said');
 eq(fmt.ipaText({ sgp32: true, ipae_supported: true, ipa: 'ipae' }),
    'in the card (IPAe) — the card and its eIM manage the profiles; the router has no ES10 access (modem setting “SGP.32 IPA” hands it over)',
    'ipa: the card runs itself');

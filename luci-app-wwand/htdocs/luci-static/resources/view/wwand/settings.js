@@ -519,8 +519,12 @@ return view.extend({
 									return ui.addNotification(null,
 										E('p', {}, [ _('Selecting the carrier configuration failed.') ]), 'error');
 
-								ui.addNotification(null, E('p', {},
-									[ _('Carrier configuration selected. It takes effect after a modem reset.') ]));
+								/* a Quectel would pick its own MBN again at that
+								   reset; the daemon switched that off (#96) */
+								ui.addNotification(null, E('p', {}, [
+									_('Carrier configuration selected. It takes effect after a modem reset.'),
+									(r && r.autosel == 'off') ? ' ' + _('The modem\'s automatic selection by SIM is now off, so the choice stays after a reboot.') : '',
+									(r && r.autosel_note) ? ' ' + _('The modem may pick its own configuration again at the reset: %s').format(r.autosel_note) : '' ]));
 							});
 						}, c.id) }, [ _('Select') ]),
 				]),
@@ -535,6 +539,18 @@ return view.extend({
 				E('p', {}, [ _('The carrier profile (MBN) the modem applies: APN defaults, IMS settings, band and roaming policy for a given network. The wrong one leaves the modem technically working but subtly wrong on that network — a rejected attach, no IMS, a missing band.') ]),
 				sel.pending ? E('p', { 'style': 'color:#b8860b' },
 					[ _('A different configuration is selected and waiting for a modem reset — the radio is still running the previous one.') ]) : '',
+				/* a Quectel can pick its MBN by the SIM by itself (AutoSel);
+				   selecting one above switches that off, this switches it on */
+				/quectel/i.test((data.info || {}).manufacturer || '') ? E('p', {}, [
+					E('button', { 'class': 'btn cbi-button', 'click': ui.createHandlerFn(this, function() {
+						return wrpc.carrierConfig(data.modem, 'auto', '').then(function(r) {
+							ui.addNotification(null, E('p', {}, [ (r && r.ok === false)
+								? _('Switching on the automatic selection failed.')
+								: _('Automatic selection by SIM is on. The modem picks its configuration at the next reset.') ]),
+								(r && r.ok === false) ? 'error' : null);
+						});
+					}) }, [ _('Automatic selection by SIM') ]),
+				]) : '',
 				E('table', { 'class': 'table' }, [
 					E('tr', { 'class': 'tr table-titles' }, [
 						E('th', { 'class': 'th' }, [ _('Configuration') ]),

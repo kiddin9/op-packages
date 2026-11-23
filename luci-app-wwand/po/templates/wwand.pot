@@ -1,13 +1,13 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:713
+#: htdocs/luci-static/resources/view/wwand/settings.js:729
 msgid ""
 "\"%s\" is already a \"%s\" section in /etc/config/network — refusing to "
 "overwrite it. Pick a different name."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:599
+#: htdocs/luci-static/resources/wwand/modemopts.js:624
 msgid "\"%s\" is listed twice"
 msgstr ""
 
@@ -21,6 +21,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/wwand/graph.js:561
 msgid "%d (avg %.1f, peak %d)"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:229
+msgid "%d attempts left"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/simlist.js:30
@@ -71,20 +75,36 @@ msgstr ""
 msgid "%d parsed, %d not"
 msgstr ""
 
+#: htdocs/luci-static/resources/view/wwand/settings.js:1196
+msgid "%d part(s) had already been sent."
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/sims.js:28
 msgid "%d s ago"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:393
+#: htdocs/luci-static/resources/wwand/format.js:416
 msgid "%d slots"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:883
+#: htdocs/luci-static/resources/view/wwand/status.js:1003
 msgid "%d timeouts on %s, moving now"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:786
+#: htdocs/luci-static/resources/view/wwand/status.js:906
 msgid "%s (%d attempts)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:519
+msgid "%s (read %s ago, while idle)"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:300
+msgid "%s KiB free"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:567
+msgid "%s ago (%s)"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:373
@@ -96,7 +116,7 @@ msgstr ""
 msgid "%s · slot %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:836
+#: htdocs/luci-static/resources/view/wwand/status.js:956
 msgid ""
 "%s — reported by the daemon; this page is older than that step and cannot "
 "describe it."
@@ -106,24 +126,28 @@ msgstr ""
 msgid "%s, slot %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1033
+#: htdocs/luci-static/resources/wwand/esim.js:266
+msgid "(%d attempts left)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1049
 msgid "(incomplete)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:219
+#: htdocs/luci-static/resources/wwand/simlist.js:239
 msgid "(interface default)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:913
+#: htdocs/luci-static/resources/view/wwand/status.js:1033
 msgid "(last attempt)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:621
-#: htdocs/luci-static/resources/wwand/simlist.js:232
+#: htdocs/luci-static/resources/wwand/modemopts.js:646
+#: htdocs/luci-static/resources/wwand/simlist.js:252
 msgid "(none)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1114
+#: htdocs/luci-static/resources/wwand/format.js:1148
 msgid "(roaming)"
 msgstr ""
 
@@ -136,7 +160,7 @@ msgid "(slot without a name)"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/esim.js:102
-#: htdocs/luci-static/resources/wwand/format.js:576
+#: htdocs/luci-static/resources/wwand/format.js:610
 #: htdocs/luci-static/resources/wwand/netsel.js:118
 msgid "(unnamed)"
 msgstr ""
@@ -145,12 +169,12 @@ msgstr ""
 msgid "+ add a non-listed band"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:865
-#: htdocs/luci-static/resources/view/wwand/status.js:867
+#: htdocs/luci-static/resources/view/wwand/status.js:985
+#: htdocs/luci-static/resources/view/wwand/status.js:987
 msgid ", then"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:441
+#: htdocs/luci-static/resources/wwand/modemopts.js:454
 msgid "0 — leave as-is"
 msgstr ""
 
@@ -177,7 +201,7 @@ msgstr ""
 msgid "3GPP frequency band of the cell (B… = LTE, n… = 5G NR)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:986
+#: htdocs/luci-static/resources/view/wwand/status.js:1106
 msgid ""
 "3GPP frequency band of the serving cell (B… = LTE, n… = 5G NR) — lower bands "
 "travel further, higher bands carry more bandwidth"
@@ -187,65 +211,73 @@ msgstr ""
 msgid "4 — embedded"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:914
-#: htdocs/luci-static/resources/wwand/modemopts.js:643
+#: htdocs/luci-static/resources/view/wwand/settings.js:930
+#: htdocs/luci-static/resources/wwand/modemopts.js:696
 msgid "5G NR SA cell lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:562
+#: htdocs/luci-static/resources/wwand/modemopts.js:587
 msgid "5G NR mode"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1221
+#: htdocs/luci-static/resources/view/wwand/status.js:1343
 msgid "5G NR neighbour cells"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1326
+#: htdocs/luci-static/resources/view/wwand/settings.js:1530
 msgid ""
 "5G bands for non-standalone operation, where a 5G carrier rides on an LTE "
 "anchor. Which of the two lists applies depends on the network: the Status "
 "page names the mode the modem is actually in."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1324
+#: htdocs/luci-static/resources/view/wwand/settings.js:1528
 msgid ""
 "5G bands for standalone operation, where the modem talks 5G only with no LTE "
 "anchor."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1322
+#: htdocs/luci-static/resources/view/wwand/settings.js:1526
 msgid ""
 "5G bands. This modem has one 5G band list for standalone and non-standalone "
 "operation alike."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1007
+#: htdocs/luci-static/resources/view/wwand/status.js:1127
 msgid "5G cell"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1014
+#: htdocs/luci-static/resources/view/wwand/status.js:1134
 msgid ""
 "5G frequency range as the modem reports it: FR1 = sub-6 GHz, FR2 = mmWave "
 "(24 GHz and above)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:398
+#: htdocs/luci-static/resources/wwand/simlist.js:143
+msgid "6 to 22 digits, optionally a trailing F."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:406
 msgid ""
 "A SIM override for ICCID %s already exists (section %s) — edit it in the "
 "SIMs list below."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:359
+#: htdocs/luci-static/resources/view/wwand/settings.js:1308
+msgid "A USSD request is still out; wait for its answer."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:372
 msgid "A datapath name: lowercase letters, digits, underscore and hyphen."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:537
+#: htdocs/luci-static/resources/view/wwand/settings.js:541
 msgid ""
 "A different configuration is selected and waiting for a modem reset — the "
 "radio is still running the previous one."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:145
+#: htdocs/luci-static/resources/wwand/simlist.js:160
 msgid ""
 "A name for this card, e.g. \"Work\" or \"Travel\". Shown on the SIM cards "
 "page and the modem status."
@@ -257,23 +289,37 @@ msgid ""
 "write access."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:915
+#: htdocs/luci-static/resources/view/wwand/settings.js:1211
+msgid ""
+"A number with its country code, or a short number such as a provider's "
+"service number. A long text goes out as several parts; every click sends "
+"once."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1351
+msgid ""
+"A service code such as *100# for the balance, sent to the network as it is. "
+"Codes are the operator's: one may change your tariff or book an option, so "
+"send only codes you know."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:931
 msgid "A single 5G SA cell as \"pci:arfcn:scs:band\"."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:792
-#: htdocs/luci-static/resources/wwand/simlist.js:186
+#: htdocs/luci-static/resources/view/wwand/modems.js:805
+#: htdocs/luci-static/resources/wwand/simlist.js:201
 msgid "APN"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:945
+#: htdocs/luci-static/resources/view/wwand/status.js:1065
 msgid "APN %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:197
+#: htdocs/luci-static/resources/wwand/simlist.js:216
 msgid ""
 "APN authentication for this card (only needed when the operator requires a "
-"username/password)."
+"username/password). Automatic: none without a username, PAP/CHAP with one."
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:224
@@ -288,11 +334,11 @@ msgid "AT control TTY"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:398
-#: htdocs/luci-static/resources/view/wwand/settings.js:604
+#: htdocs/luci-static/resources/view/wwand/settings.js:620
 msgid "Access technologies"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:538
+#: htdocs/luci-static/resources/view/wwand/modems.js:551
 msgid "Actions"
 msgstr ""
 
@@ -310,7 +356,7 @@ msgid ""
 "the interface page."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:730
+#: htdocs/luci-static/resources/view/wwand/settings.js:746
 msgid "Add entry"
 msgstr ""
 
@@ -318,7 +364,7 @@ msgstr ""
 msgid "Add modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:484
+#: htdocs/luci-static/resources/wwand/esim.js:538
 msgid ""
 "After a download or profile change the eUICC queues notifications that "
 "confirm the operation to the operator. Send them once the router has "
@@ -333,25 +379,33 @@ msgstr ""
 msgid "Aggregated carriers"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:424
+#: htdocs/luci-static/resources/wwand/modemopts.js:437
 msgid "Aggregation DL datagram size"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:547
+#: htdocs/luci-static/resources/wwand/modemopts.js:572
 msgid "All"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:775
+#: htdocs/luci-static/resources/wwand/modemopts.js:892
 msgid "All sentences"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:622
+#: htdocs/luci-static/resources/wwand/simlist.js:142
+msgid "An ICCID or an IMSI is needed."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:742
 msgid ""
 "An environmental limit the modem reports (temperature, voltage or charge "
 "state). It is not throttling the radio."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:437
+#: htdocs/luci-static/resources/wwand/modemopts.js:678
+msgid "An identifier 0-65535, or a range like 4370-4399"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:450
 msgid ""
 "An interface bound to a SIM card (its “SIM card” setting) overrides this: "
 "its start switches to the slot or eSIM profile that holds the card, and the "
@@ -359,23 +413,43 @@ msgid ""
 "The slot set here applies only while no such interface needs another card."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:690
+#: htdocs/luci-static/resources/view/wwand/status.js:810
 msgid ""
 "An optional package holds this modem's radio off. Its interfaces stay down "
 "until the reason is gone, then the radio is switched on again by itself."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:829
+#: htdocs/luci-static/resources/view/wwand/status.js:586
+msgid "Anchor"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:581
+#: htdocs/luci-static/resources/wwand/modemopts.js:709
+msgid "Anchor steering"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:560
+msgid ""
+"Anchor steering moves the LTE primary cell onto a cell of the registered "
+"network that offers EN-DC, with a lock that is cleared as soon as it does "
+"not deliver. Carrier aggregation is never restricted."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:727
+msgid "Any allowed network"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:845
 msgid ""
 "Applied, except the RAT priority: the modem accepted it and kept its own "
 "order. Its firmware does not take a priority this way."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:820
+#: htdocs/luci-static/resources/view/wwand/settings.js:836
 msgid "Applied, except the band settings — the modem refused them (%s)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1339
+#: htdocs/luci-static/resources/view/wwand/settings.js:1543
 msgid "Apply"
 msgstr ""
 
@@ -383,8 +457,8 @@ msgstr ""
 msgid "Asking the modem directly…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:494
-#: htdocs/luci-static/resources/view/wwand/modems.js:529
+#: htdocs/luci-static/resources/view/wwand/modems.js:507
+#: htdocs/luci-static/resources/view/wwand/modems.js:542
 msgid "Attach"
 msgstr ""
 
@@ -392,7 +466,7 @@ msgstr ""
 msgid "Attach APN"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1020
+#: htdocs/luci-static/resources/view/wwand/status.js:1140
 msgid "Attach TAI"
 msgstr ""
 
@@ -400,7 +474,7 @@ msgstr ""
 msgid "Attach authentication"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:491
+#: htdocs/luci-static/resources/view/wwand/modems.js:504
 msgid "Attach failed: %s."
 msgstr ""
 
@@ -408,7 +482,7 @@ msgstr ""
 msgid "Attach password"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:480
+#: htdocs/luci-static/resources/view/wwand/modems.js:493
 msgid ""
 "Attach the modem to the network again; its interfaces reconnect on their own."
 msgstr ""
@@ -426,16 +500,18 @@ msgid ""
 "Authentication for the attach bearer. Only used together with an attach APN."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:196
+#: htdocs/luci-static/resources/wwand/simlist.js:215
 msgid "Authentication type"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:780
+#: htdocs/luci-static/resources/wwand/modemopts.js:897
 msgid "Auto-correct modem config"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:58
-#: htdocs/luci-static/resources/wwand/modemopts.js:353
+#: htdocs/luci-static/resources/wwand/modemopts.js:366
+#: htdocs/luci-static/resources/wwand/modemopts.js:712
+#: htdocs/luci-static/resources/wwand/simlist.js:219
 msgid "Automatic"
 msgstr ""
 
@@ -450,13 +526,25 @@ msgstr ""
 msgid "Automatic network selection enabled."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:197
+#: htdocs/luci-static/resources/view/wwand/settings.js:552
+msgid "Automatic selection by SIM"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:549
+msgid ""
+"Automatic selection by SIM is on. The modem picks its configuration at the "
+"next reset."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:198
 #: htdocs/luci-static/resources/view/wwand/status.js:360
 msgid "Backend"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:47
-#: htdocs/luci-static/resources/view/wwand/status.js:986
+#: htdocs/luci-static/resources/view/wwand/status.js:549
+#: htdocs/luci-static/resources/view/wwand/status.js:584
+#: htdocs/luci-static/resources/view/wwand/status.js:1106
 msgid "Band"
 msgstr ""
 
@@ -464,7 +552,7 @@ msgstr ""
 msgid "Band power (RSSI)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:523
+#: htdocs/luci-static/resources/view/wwand/modems.js:536
 msgid "Band, operator, SIM, eSIM and SMS tools for this modem"
 msgstr ""
 
@@ -480,7 +568,11 @@ msgstr ""
 msgid "Bind by USB serial"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:440
+#: htdocs/luci-static/resources/wwand/modemopts.js:670
+msgid "Broadcast channels"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:448
 msgid "Cancel"
 msgstr ""
 
@@ -488,39 +580,65 @@ msgstr ""
 msgid "Cancelled."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:592
+#: htdocs/luci-static/resources/view/wwand/status.js:712
 msgid "Capabilities"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:529
+#: htdocs/luci-static/resources/wwand/format.js:531
+msgid "Card"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:542
 msgid "Card (IPAe, default)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1144
+#: htdocs/luci-static/resources/view/wwand/status.js:1266
 msgid "Carrier aggregation"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:534
+#: htdocs/luci-static/resources/view/wwand/settings.js:538
 msgid "Carrier configuration"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:523
+#: htdocs/luci-static/resources/view/wwand/settings.js:525
 msgid "Carrier configuration selected. It takes effect after a modem reset."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:850
-#: htdocs/luci-static/resources/view/wwand/settings.js:911
+#: htdocs/luci-static/resources/view/wwand/settings.js:1266
+#: htdocs/luci-static/resources/wwand/modemopts.js:662
+msgid "Cell Broadcast"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1241
+msgid ""
+"Cell Broadcast is not switched on for this modem (Modems → Radio & Cell)."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:543
+msgid "Cell layers"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:866
+#: htdocs/luci-static/resources/view/wwand/settings.js:927
 msgid "Cell lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:898
+#: htdocs/luci-static/resources/view/wwand/settings.js:914
 msgid "Cell lock saved. Reconnect the interface to apply."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:890
+#: htdocs/luci-static/resources/view/wwand/status.js:511
+msgid "Cell network"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1010
 msgid ""
 "Cell/frequency locks the modem currently has armed — the read-back of the "
 "cell-lock editor, showing what the modem ACTUALLY locked"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:553
+msgid "Cells seen"
 msgstr ""
 
 #: htdocs/luci-static/resources/statistics/rrdtool/definitions/wwand.js:32
@@ -535,11 +653,19 @@ msgid ""
 "edits the modem, \"Tools\" opens band/operator/SIM/eSIM/SMS tools for it."
 msgstr ""
 
+#: htdocs/luci-static/resources/wwand/esim.js:277
+msgid "Change PIN"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1247
+msgid "Channel"
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/status.js:50
 msgid "Channel bandwidth of the carrier"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:965
+#: htdocs/luci-static/resources/view/wwand/settings.js:981
 msgid "Choose a storage and click Load."
 msgstr ""
 
@@ -547,42 +673,46 @@ msgstr ""
 msgid "Class"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:947
+#: htdocs/luci-static/resources/view/wwand/settings.js:963
 msgid "Clear lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:241
+#: htdocs/luci-static/resources/view/wwand/settings.js:1344
+msgid "Code or answer"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:249
 msgid "Config"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:540
+#: htdocs/luci-static/resources/view/wwand/settings.js:556
 msgid "Configuration"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1084
+#: htdocs/luci-static/resources/wwand/format.js:1118
 msgid "Configuration warnings"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:720
-#: htdocs/luci-static/resources/view/wwand/modems.js:724
+#: htdocs/luci-static/resources/view/wwand/modems.js:733
+#: htdocs/luci-static/resources/view/wwand/modems.js:737
 msgid "Configure"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:771
+#: htdocs/luci-static/resources/view/wwand/settings.js:787
 msgid "Configured list restored to the modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:373
+#: htdocs/luci-static/resources/wwand/esim.js:427
 msgid "Confirm install to operator"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:474
+#: htdocs/luci-static/resources/wwand/esim.js:528
 msgid ""
 "Confirm the install to the operator automatically (recommended; uncheck only "
 "for testing)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:202
+#: htdocs/luci-static/resources/view/wwand/modems.js:203
 msgid "Connections"
 msgstr ""
 
@@ -590,11 +720,11 @@ msgstr ""
 msgid "Contacting SM-DP+"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:384
+#: htdocs/luci-static/resources/wwand/esim.js:438
 msgid "Contacting operator…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:672
+#: htdocs/luci-static/resources/view/wwand/modems.js:685
 msgid ""
 "Control devices present on the system without a modem configuration. "
 "Configure stages a prefilled modem section — press Save & Apply afterwards, "
@@ -606,21 +736,21 @@ msgstr ""
 msgid "Control protocol"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:569
+#: htdocs/luci-static/resources/view/wwand/status.js:689
 msgid ""
 "Control protocol wwand uses to drive this modem: QMI (Qualcomm native), MBIM "
 "(the USB standard) or NCM (AT commands with an ethernet-style data port)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:722
+#: htdocs/luci-static/resources/view/wwand/modems.js:735
 msgid "Could not configure modem: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1130
+#: htdocs/luci-static/resources/view/wwand/settings.js:1146
 msgid "Could not read messages: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:656
+#: htdocs/luci-static/resources/view/wwand/settings.js:672
 msgid "Could not read the %s list: %s"
 msgstr ""
 
@@ -628,7 +758,7 @@ msgstr ""
 msgid "Could not read the system log: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:467
+#: htdocs/luci-static/resources/wwand/esim.js:521
 msgid "Could not start:"
 msgstr ""
 
@@ -640,7 +770,7 @@ msgstr ""
 msgid "Create"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:389
+#: htdocs/luci-static/resources/view/wwand/modems.js:397
 msgid ""
 "Create a per-ICCID SIM override for the inserted card (ICCID %s), pre-filled "
 "with the modem's current PIN and the interface APN/auth. Edit it in the SIMs "
@@ -651,7 +781,7 @@ msgstr ""
 msgid "Create settings for this SIM card"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:402
+#: htdocs/luci-static/resources/view/wwand/modems.js:410
 msgid ""
 "Created SIM override for ICCID %s — review it in the SIMs list below, then "
 "Save & Apply."
@@ -677,7 +807,7 @@ msgstr ""
 msgid "Data endpoint type"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:348
+#: htdocs/luci-static/resources/wwand/modemopts.js:361
 msgid "Data multiplexing"
 msgstr ""
 
@@ -689,40 +819,40 @@ msgstr ""
 msgid "Datapath counters (parent)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:726
+#: htdocs/luci-static/resources/wwand/modemopts.js:813
 msgid "Dead-bearer poll count"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:535
+#: htdocs/luci-static/resources/wwand/modemopts.js:548
 msgid ""
 "Default SIM PIN for this modem, entered on each start. Empty = unlocked SIM. "
 "Per-card overrides live in the SIMs list."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:311
+#: htdocs/luci-static/resources/wwand/esim.js:365
 msgid "Delete"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1098
+#: htdocs/luci-static/resources/view/wwand/settings.js:1114
 msgid "Delete %d selected"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1067
+#: htdocs/luci-static/resources/view/wwand/settings.js:1083
 msgid "Delete %d selected message(s)?"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:643
+#: htdocs/luci-static/resources/view/wwand/modems.js:656
 msgid "Delete modem \"%s\"?"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:641
+#: htdocs/luci-static/resources/view/wwand/modems.js:654
 msgid ""
 "Delete modem \"%s\"? It is still used by: %s. Those interfaces lose their "
 "modem and their connection when you Save & Apply."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1087
-#: htdocs/luci-static/resources/view/wwand/settings.js:1099
+#: htdocs/luci-static/resources/view/wwand/settings.js:1103
+#: htdocs/luci-static/resources/view/wwand/settings.js:1115
 msgid "Delete selected"
 msgstr ""
 
@@ -730,7 +860,7 @@ msgstr ""
 msgid "Delete the override for SIM %s? Its PIN and APN settings are lost."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:755
+#: htdocs/luci-static/resources/view/wwand/settings.js:771
 msgid "Delete the saved list \"%s\"?"
 msgstr ""
 
@@ -738,34 +868,34 @@ msgstr ""
 msgid "Delete this SIM override? Its PIN and APN settings are lost."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1081
+#: htdocs/luci-static/resources/view/wwand/settings.js:1097
 msgid ""
 "Deleted %d of %d storage slots; %d could not be deleted. A message spanning "
 "several slots may be partly left behind."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:494
-#: htdocs/luci-static/resources/view/wwand/modems.js:529
+#: htdocs/luci-static/resources/view/wwand/modems.js:507
+#: htdocs/luci-static/resources/view/wwand/modems.js:542
 msgid "Detach"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:491
+#: htdocs/luci-static/resources/view/wwand/modems.js:504
 msgid "Detach failed: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:484
+#: htdocs/luci-static/resources/view/wwand/modems.js:497
 msgid ""
 "Detach modem \"%s\" from the network? Its connections stop and stay down "
 "until you attach it again."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:671
+#: htdocs/luci-static/resources/view/wwand/modems.js:684
 msgid "Detected modems (unconfigured)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:191
-#: htdocs/luci-static/resources/view/wwand/modems.js:676
-#: htdocs/luci-static/resources/view/wwand/modems.js:791
+#: htdocs/luci-static/resources/view/wwand/modems.js:192
+#: htdocs/luci-static/resources/view/wwand/modems.js:689
+#: htdocs/luci-static/resources/view/wwand/modems.js:804
 msgid "Device"
 msgstr ""
 
@@ -777,15 +907,15 @@ msgstr ""
 msgid "Dilution of precision"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:305
+#: htdocs/luci-static/resources/wwand/esim.js:359
 msgid "Disable"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:225
+#: htdocs/luci-static/resources/wwand/esim.js:272
 msgid "Disable PIN"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:302
+#: htdocs/luci-static/resources/wwand/esim.js:356
 msgid "Disable the active profile %s?"
 msgstr ""
 
@@ -794,7 +924,7 @@ msgid ""
 "Disable the currently enabled (test) profile first, then enable this profile."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:386
+#: htdocs/luci-static/resources/wwand/esim.js:440
 msgid "Done."
 msgstr ""
 
@@ -810,7 +940,7 @@ msgstr ""
 msgid "Downlink centre frequency derived from the channel number"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:988
+#: htdocs/luci-static/resources/view/wwand/status.js:1108
 msgid "Downlink centre frequency of the serving cell · channel bandwidth"
 msgstr ""
 
@@ -818,15 +948,15 @@ msgstr ""
 msgid "Downlink packets / frame"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:471
+#: htdocs/luci-static/resources/wwand/esim.js:525
 msgid "Download"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:455
+#: htdocs/luci-static/resources/wwand/esim.js:509
 msgid "Download profile"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:384
+#: htdocs/luci-static/resources/wwand/esim.js:438
 msgid "Downloading profile…"
 msgstr ""
 
@@ -836,7 +966,7 @@ msgid ""
 "tables, NR-ARFCN) channel number of the carrier"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:991
+#: htdocs/luci-static/resources/view/wwand/status.js:1111
 msgid ""
 "EARFCN = LTE channel number of the carrier; PCI = Physical Cell ID. "
 "EARFCN:PCI identifies the exact cell (usable for the cell lock)"
@@ -846,8 +976,16 @@ msgstr ""
 msgid "EARFCN:PCI value to copy into the cell-lock field of the modem settings"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:947
+#: htdocs/luci-static/resources/view/wwand/status.js:514
+msgid "EN-DC anchor"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1067
 msgid "EPS attach"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1233
+msgid "ETWS warning"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:252
@@ -870,38 +1008,44 @@ msgstr ""
 msgid "Elevation"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:298
+#: htdocs/luci-static/resources/wwand/esim.js:352
 msgid "Enable"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:223
+#: htdocs/luci-static/resources/wwand/esim.js:270
 msgid "Enable PIN"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:295
+#: htdocs/luci-static/resources/wwand/esim.js:349
 msgid "Enable profile %s? The connection will re-establish."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:228
-msgid ""
-"Enabling or disabling the PIN query needs the current PIN. Disabling lets "
-"the SIM boot without a PIN."
+#: htdocs/luci-static/resources/view/wwand/settings.js:1349
+msgid "End session"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:466
+#: htdocs/luci-static/resources/view/wwand/modems.js:478
 msgid "Enter PIN"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:437
+#: htdocs/luci-static/resources/view/wwand/modems.js:445
 msgid "Enter PUK — SIM %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:461
+#: htdocs/luci-static/resources/view/wwand/settings.js:1178
+msgid "Enter a message text."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:515
 msgid "Enter an activation code first."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:204
-msgid "Enter the current SIM PIN first."
+#: htdocs/luci-static/resources/wwand/esim.js:240
+msgid "Enter the current SIM PIN (4-8 digits) first."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1173
+msgid "Enter the recipient as digits, optionally with a leading +."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:143
@@ -916,19 +1060,26 @@ msgid ""
 "inactive slots appear once the slot list has been read."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:430
+#: htdocs/luci-static/resources/wwand/esim.js:282
+msgid ""
+"Every operation needs the current PIN, and a wrong one costs an attempt. "
+"Disabling lets the SIM boot without a PIN. After a change the configured PIN "
+"follows by itself when it was the old one."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:443
 msgid "Extra AT init commands"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:885
+#: htdocs/luci-static/resources/view/wwand/status.js:1005
 msgid "FCC lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:269
+#: htdocs/luci-static/resources/wwand/modemopts.js:273
 msgid "FCC unlock"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:676
+#: htdocs/luci-static/resources/wwand/modemopts.js:763
 msgid ""
 "Failed attempts at which the recovery ladder cycles the radio, resets the "
 "modem and pulses the reset line / repowers it, e.g. \"2 6 12\". One or two "
@@ -937,8 +1088,8 @@ msgid ""
 "after a switch-off."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:835
-#: htdocs/luci-static/resources/wwand/esim.js:507
+#: htdocs/luci-static/resources/view/wwand/settings.js:851
+#: htdocs/luci-static/resources/wwand/esim.js:561
 #: htdocs/luci-static/resources/wwand/netsel.js:51
 msgid "Failed:"
 msgstr ""
@@ -947,15 +1098,19 @@ msgstr ""
 msgid "Fetching profile"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:587
+#: htdocs/luci-static/resources/wwand/modemopts.js:288
+msgid "Fibocom FM350 (AT GTFCCLOCK)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:707
 msgid "Firmware"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1410
+#: htdocs/luci-static/resources/view/wwand/settings.js:1614
 msgid "Firmware protocol mode"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:587
+#: htdocs/luci-static/resources/view/wwand/status.js:707
 msgid ""
 "Firmware version reported by the modem — relevant when comparing behaviour "
 "or looking for carrier-specific builds"
@@ -969,19 +1124,30 @@ msgstr ""
 msgid "Fix age"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:774
+#: htdocs/luci-static/resources/wwand/modemopts.js:891
 msgid "Fix only (less CPU)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:742
+#: htdocs/luci-static/resources/wwand/modemopts.js:710
+msgid ""
+"For a router that does not move: when the serving LTE cell offers no 5G "
+"anchor (EN-DC), scan for cells of the registered network, lock the primary "
+"cell onto one that does, and release the lock as soon as it is not acquired, "
+"offers no anchor, weakens or the data path stalls. Carrier aggregation is "
+"never restricted and the lock is never stored in the modem. A scan costs "
+"about 15 seconds of service and runs at most every scan interval. Has no "
+"effect while an LTE or 5G cell lock is set."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:758
 msgid "Forbidden"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:599
+#: htdocs/luci-static/resources/view/wwand/settings.js:615
 msgid "Forbidden list (FPLMN, EF 6F7B)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:367
+#: htdocs/luci-static/resources/view/wwand/modems.js:375
 msgid ""
 "Force a network re-registration (deregister + re-attach) so automatic "
 "selection re-scans. Use when the modem stays on a network you manually "
@@ -990,23 +1156,28 @@ msgid ""
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:49
-#: htdocs/luci-static/resources/view/wwand/status.js:988
+#: htdocs/luci-static/resources/view/wwand/status.js:550
+#: htdocs/luci-static/resources/view/wwand/status.js:1108
 msgid "Frequency"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1014
+#: htdocs/luci-static/resources/view/wwand/status.js:1134
 msgid "Frequency range"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1297
+msgid "From the network:"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:334
 msgid "GNSS"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:771
+#: htdocs/luci-static/resources/wwand/modemopts.js:888
 msgid "GNSS NMEA output"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:754
+#: htdocs/luci-static/resources/wwand/modemopts.js:841
 msgid "GNSS receiver"
 msgstr ""
 
@@ -1020,23 +1191,23 @@ msgid ""
 "neither unit has to be converted in your head."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:349
+#: htdocs/luci-static/resources/view/wwand/modems.js:357
 msgid ""
 "Hard-repower modem \"%s\" now? This cuts and restores the modem's power/"
 "reset line."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:346
+#: htdocs/luci-static/resources/view/wwand/modems.js:354
 msgid ""
 "Hardware repower: pulse the reset GPIO (or power-cycle the modem) — recovers "
 "a hung or vanished modem. Needs a reset_gpio on multi-modem boxes."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:871
+#: htdocs/luci-static/resources/view/wwand/status.js:991
 msgid "Hardware step"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:797
+#: htdocs/luci-static/resources/view/wwand/settings.js:813
 msgid "Home PLMN (6F62)"
 msgstr ""
 
@@ -1063,7 +1234,7 @@ msgid ""
 "only roughly right."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:207
+#: htdocs/luci-static/resources/view/wwand/modems.js:208
 msgid ""
 "How many configured interfaces use this modem. Several can share one modem "
 "through different mux channels."
@@ -1085,7 +1256,7 @@ msgstr ""
 msgid "How many wwand lines to show"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:880
+#: htdocs/luci-static/resources/view/wwand/status.js:1000
 msgid ""
 "How often the kernel found the modem's transmit queue stuck (its \"NETDEV "
 "WATCHDOG\" message), counted since wwand started watching this modem. A "
@@ -1094,11 +1265,12 @@ msgid ""
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:90
-#: htdocs/luci-static/resources/wwand/simlist.js:132
+#: htdocs/luci-static/resources/wwand/simlist.js:136
 msgid "ICCID"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:93
+#: htdocs/luci-static/resources/wwand/simlist.js:148
 msgid "IMSI"
 msgstr ""
 
@@ -1106,22 +1278,22 @@ msgstr ""
 msgid "IP"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:217
+#: htdocs/luci-static/resources/wwand/simlist.js:237
 msgid ""
 "IP version(s) requested for this card's data session, overriding the "
 "interface setting."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:500
+#: htdocs/luci-static/resources/wwand/format.js:523
 msgid "IPA"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:114
-#: htdocs/luci-static/resources/wwand/simlist.js:221
+#: htdocs/luci-static/resources/wwand/simlist.js:241
 msgid "IPv4"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:220
+#: htdocs/luci-static/resources/wwand/simlist.js:240
 msgid "IPv4 + IPv6"
 msgstr ""
 
@@ -1135,7 +1307,7 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:122
 #: htdocs/luci-static/resources/view/wwand/status.js:128
-#: htdocs/luci-static/resources/wwand/simlist.js:222
+#: htdocs/luci-static/resources/wwand/simlist.js:242
 msgid "IPv6"
 msgstr ""
 
@@ -1148,11 +1320,11 @@ msgstr ""
 msgid "IPv6 gateway"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:542
+#: htdocs/luci-static/resources/view/wwand/settings.js:558
 msgid "Id"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:690
+#: htdocs/luci-static/resources/wwand/modemopts.js:777
 msgid ""
 "If the modem has not answered since boot or since the outage began, pulse "
 "its reset GPIO once after this many seconds. Only a modem with its own reset "
@@ -1171,7 +1343,7 @@ msgstr ""
 msgid "Incomplete request — a required value was missing."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1113
+#: htdocs/luci-static/resources/view/wwand/status.js:1235
 msgid ""
 "Inferred from how many logical slots are in use. That is a lower bound: a "
 "modem with a second radio stack whose other slot is empty looks exactly like "
@@ -1182,7 +1354,7 @@ msgstr ""
 msgid "Installing profile"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:789
+#: htdocs/luci-static/resources/view/wwand/modems.js:802
 #: htdocs/luci-static/resources/view/wwand/status.js:95
 msgid "Interface"
 msgstr ""
@@ -1194,11 +1366,11 @@ msgid ""
 "anyway?"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1285
+#: htdocs/luci-static/resources/view/wwand/settings.js:1489
 msgid "Interfaces"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:785
+#: htdocs/luci-static/resources/view/wwand/modems.js:798
 msgid ""
 "Interfaces still using a stock cellular protocol (qmi / mbim / ncm / "
 "modemmanager) that wwand does not manage yet. Select the ones to migrate and "
@@ -1209,15 +1381,20 @@ msgid ""
 "modem's control port."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:721
+#: htdocs/luci-static/resources/view/wwand/status.js:841
 msgid "International Mobile Equipment Identity — the modem hardware serial"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:582
+#: htdocs/luci-static/resources/wwand/esim.js:280
+msgid ""
+"Keep the PIN in the configuration, so the modem can unlock the card at start"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:607
 msgid "Keep the modem's order"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:349
+#: htdocs/luci-static/resources/wwand/modemopts.js:362
 msgid ""
 "Kernel datapath that carries this modem's data sessions. Leave on automatic "
 "unless a modem misbehaves — under automatic an installed vendor datapath "
@@ -1233,7 +1410,7 @@ msgstr ""
 msgid "LTE"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1319
+#: htdocs/luci-static/resources/view/wwand/settings.js:1523
 msgid "LTE bands"
 msgstr ""
 
@@ -1241,16 +1418,16 @@ msgstr ""
 msgid "LTE carriers"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:912
-#: htdocs/luci-static/resources/wwand/modemopts.js:632
+#: htdocs/luci-static/resources/view/wwand/settings.js:928
+#: htdocs/luci-static/resources/wwand/modemopts.js:685
 msgid "LTE cell lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1215
+#: htdocs/luci-static/resources/view/wwand/status.js:1337
 msgid "LTE neighbour cells (inter-frequency)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1179
+#: htdocs/luci-static/resources/view/wwand/status.js:1301
 msgid "LTE neighbour cells (intra-frequency)"
 msgstr ""
 
@@ -1258,7 +1435,15 @@ msgstr ""
 msgid "Last error"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1309
+#: htdocs/luci-static/resources/view/wwand/status.js:565
+msgid "Last reason"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:566
+msgid "Last scan"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1513
 msgid "Lasts until the next modem start:"
 msgstr ""
 
@@ -1270,40 +1455,43 @@ msgstr ""
 msgid "Latitude and longitude as the receiver last reported them."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1328
+#: htdocs/luci-static/resources/view/wwand/settings.js:1532
 msgid ""
 "Leave every band unchecked (and the fallback empty) to let the modem use all "
 "supported bands."
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:178
-#: htdocs/luci-static/resources/wwand/modemopts.js:564
-#: htdocs/luci-static/resources/wwand/modemopts.js:773
+#: htdocs/luci-static/resources/wwand/modemopts.js:589
+#: htdocs/luci-static/resources/wwand/modemopts.js:664
+#: htdocs/luci-static/resources/wwand/modemopts.js:890
 msgid "Leave modem setting unchanged"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:781
+#: htdocs/luci-static/resources/wwand/modemopts.js:898
 msgid ""
-"Let wwand reprogram mismatched modem-side settings (attach profile, etc.) "
-"when it detects them."
+"Let wwand correct what it finds: it re-applies the configured radio mode and "
+"network selection when the modem drifts from them, and writes the modem's "
+"IMEI into this modem's configuration when none is set there (that is a "
+"change to /etc/config/network). Off by default."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:760
+#: htdocs/luci-static/resources/wwand/modemopts.js:877
 msgid ""
 "Let wwand step the system clock from the GNSS time — only while the clock is "
 "plainly unset, so it never fights the NTP client. Off by default. For "
 "installs with no RTC where the modem is the only time source."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:498
+#: htdocs/luci-static/resources/wwand/esim.js:552
 msgid "List pending"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:487
+#: htdocs/luci-static/resources/wwand/esim.js:541
 msgid "Listing pending notifications…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1442
+#: htdocs/luci-static/resources/view/wwand/status.js:1567
 msgid ""
 "Live cellular signal and cell environment — updates about once per second. "
 "Aim the antenna for the highest RSRP / SINR: the graphs keep the last few "
@@ -1311,16 +1499,17 @@ msgid ""
 "not stored on the router and starts empty after a reload."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:609
+#: htdocs/luci-static/resources/view/wwand/modems.js:622
 msgid "Live status page (signal, cells, connection) for this modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:744
-#: htdocs/luci-static/resources/view/wwand/settings.js:1145
+#: htdocs/luci-static/resources/view/wwand/settings.js:760
+#: htdocs/luci-static/resources/view/wwand/settings.js:1218
 msgid "Load"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1124
+#: htdocs/luci-static/resources/view/wwand/settings.js:1140
+#: htdocs/luci-static/resources/view/wwand/settings.js:1232
 msgid "Loading…"
 msgstr ""
 
@@ -1328,12 +1517,12 @@ msgstr ""
 msgid "Lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:633
+#: htdocs/luci-static/resources/wwand/modemopts.js:686
 msgid ""
 "Lock to LTE cells, one \"earfcn:pci\" per entry (several = a cell list)."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:644
+#: htdocs/luci-static/resources/wwand/modemopts.js:697
 msgid ""
 "Lock to a 5G SA cell: \"pci:arfcn:scs:band\" — the subcarrier spacing is in "
 "kHz (15, 30, 60 …). The \"Lock this 5G cell\" button fills in 30 as a "
@@ -1341,31 +1530,35 @@ msgid ""
 "your band before saving."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:890
+#: htdocs/luci-static/resources/view/wwand/status.js:563
+msgid "Locked cell"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1010
 msgid "Locked to"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:416
+#: htdocs/luci-static/resources/wwand/esim.js:470
 msgid "Lost contact with the download — reload to see its result."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:429
+#: htdocs/luci-static/resources/wwand/esim.js:483
 msgid "Lost contact with the download: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:275
-msgid "MBIM Quectel radio state"
+#: htdocs/luci-static/resources/wwand/modemopts.js:287
+msgid "MBIM Quectel radio state (EM1xx in MBIM mode)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:678
+#: htdocs/luci-static/resources/view/wwand/status.js:798
 msgid "MBIM, over the QMI passthrough"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:606
+#: htdocs/luci-static/resources/wwand/modemopts.js:631
 msgid "MCC"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:611
+#: htdocs/luci-static/resources/wwand/modemopts.js:636
 msgid "MNC"
 msgstr ""
 
@@ -1373,7 +1566,7 @@ msgstr ""
 msgid "MTU"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:276
+#: htdocs/luci-static/resources/wwand/esim.js:330
 msgid "Managed card"
 msgstr ""
 
@@ -1381,7 +1574,7 @@ msgstr ""
 msgid "Manual network selection applied."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:584
+#: htdocs/luci-static/resources/view/wwand/status.js:704
 msgid "Manufacturer"
 msgstr ""
 
@@ -1392,39 +1585,58 @@ msgid ""
 "empty). Handy for dual-SIM or eUICC profiles with different PINs."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:425
+#: htdocs/luci-static/resources/wwand/simlist.js:149
 msgid ""
-"Max downlink QMAP aggregation datagram in bytes (0 = board/model default)."
+"Match the card by its IMSI instead (exact). The IMSI is only readable after "
+"the PIN is entered, so a PIN for this card needs the ICCID."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:438
+msgid ""
+"Max downlink QMAP aggregation datagram in bytes (0 = 31744; the modem clamps "
+"it to what it supports)."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:149
 msgid "Max rate"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1111
+#: htdocs/luci-static/resources/view/wwand/settings.js:1127
+#: htdocs/luci-static/resources/view/wwand/settings.js:1248
 msgid "Message"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:784
+#: htdocs/luci-static/resources/wwand/modemopts.js:671
+msgid ""
+"Message identifiers to receive, single (<code>919</code>) or as a range "
+"(<code>4370-4399</code>). Empty = the public warning channels, 4352-4359 and "
+"4370-4399."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1165
+msgid "Message text"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:797
 msgid "Migratable interfaces"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:769
+#: htdocs/luci-static/resources/view/wwand/modems.js:782
 msgid ""
 "Migrate %d interface(s) to proto wwand? Each is converted in place — its "
 "name, firewall zone and IP settings are kept — and wwand takes over managing "
 "it."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:781
+#: htdocs/luci-static/resources/view/wwand/modems.js:794
 msgid "Migrate selected"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:774
+#: htdocs/luci-static/resources/view/wwand/modems.js:787
 msgid "Migrated %d interface(s); reloading…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:778
+#: htdocs/luci-static/resources/view/wwand/modems.js:791
 msgid "Migration failed: %s"
 msgstr ""
 
@@ -1432,7 +1644,7 @@ msgstr ""
 msgid "Minimum severity"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:607
+#: htdocs/luci-static/resources/wwand/modemopts.js:632
 msgid "Mobile Country Code for manual network selection."
 msgstr ""
 
@@ -1440,22 +1652,22 @@ msgstr ""
 msgid "Mobile Modems"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:612
+#: htdocs/luci-static/resources/wwand/modemopts.js:637
 msgid "Mobile Network Code (requires MCC)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:569
+#: htdocs/luci-static/resources/view/wwand/status.js:689
 msgid "Mode"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:585
+#: htdocs/luci-static/resources/view/wwand/status.js:705
 msgid "Model"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/modems.js:128
-#: htdocs/luci-static/resources/view/wwand/status.js:893
-#: htdocs/luci-static/resources/view/wwand/status.js:1376
-#: htdocs/luci-static/resources/wwand/simlist.js:190
+#: htdocs/luci-static/resources/view/wwand/status.js:1013
+#: htdocs/luci-static/resources/view/wwand/status.js:1501
+#: htdocs/luci-static/resources/wwand/simlist.js:205
 #: root/usr/share/luci/menu.d/luci-app-wwand.json:3
 msgid "Modem"
 msgstr ""
@@ -1464,35 +1676,35 @@ msgstr ""
 msgid "Modem & SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1440
+#: htdocs/luci-static/resources/view/wwand/status.js:1565
 msgid "Modem Status"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1247
+#: htdocs/luci-static/resources/view/wwand/settings.js:1451
 #: root/usr/share/luci/menu.d/luci-app-wwand.json:52
 msgid "Modem Tools"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:489
+#: htdocs/luci-static/resources/view/wwand/modems.js:502
 msgid "Modem attached (%s)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:600
+#: htdocs/luci-static/resources/view/wwand/status.js:720
 msgid ""
 "Modem baseband temperature. Whether the module is actually throttling is "
 "reported separately below — the modem itself says so, no guessing from the "
 "number needed."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:937
+#: htdocs/luci-static/resources/view/wwand/settings.js:953
 msgid "Modem currently locked: %s — the live read-back of the lock editor."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:546
+#: htdocs/luci-static/resources/wwand/modemopts.js:571
 msgid "Modem default"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:489
+#: htdocs/luci-static/resources/view/wwand/modems.js:502
 msgid "Modem detached (%s)."
 msgstr ""
 
@@ -1500,7 +1712,7 @@ msgstr ""
 msgid "Modem device"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:660
+#: htdocs/luci-static/resources/wwand/modemopts.js:747
 msgid "Modem init delay"
 msgstr ""
 
@@ -1510,11 +1722,11 @@ msgid ""
 "registers."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:961
+#: htdocs/luci-static/resources/view/wwand/settings.js:977
 msgid "Modem memory"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:353
+#: htdocs/luci-static/resources/view/wwand/modems.js:361
 msgid "Modem repowered (%s)."
 msgstr ""
 
@@ -1526,17 +1738,17 @@ msgstr ""
 msgid "Modem reset failed: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:312
+#: htdocs/luci-static/resources/view/wwand/modems.js:320
 #: htdocs/luci-static/resources/wwand/modemopts.js:194
 msgid "Modem reset triggered (%s)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:833
+#: htdocs/luci-static/resources/view/wwand/settings.js:849
 msgid "Modem settings applied."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/modems.js:122
-#: htdocs/luci-static/resources/view/wwand/settings.js:1281
+#: htdocs/luci-static/resources/view/wwand/settings.js:1485
 #: root/usr/share/luci/menu.d/luci-app-wwand.json:39
 msgid "Modems"
 msgstr ""
@@ -1553,11 +1765,11 @@ msgstr ""
 msgid "Mux channel %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:742
+#: htdocs/luci-static/resources/view/wwand/settings.js:758
 msgid "NAS"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:787
+#: htdocs/luci-static/resources/view/wwand/settings.js:803
 msgid ""
 "NAS = QMI preferred-networks list; User = SIM EF 6F60 (preference, not a "
 "lock); Forbidden = SIM EF 6F7B (FPLMN) — networks the modem must NOT use. "
@@ -1565,7 +1777,7 @@ msgid ""
 "before every radio-on (survives modem reboots)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:597
+#: htdocs/luci-static/resources/view/wwand/settings.js:613
 msgid "NAS preferred networks"
 msgstr ""
 
@@ -1573,14 +1785,15 @@ msgstr ""
 msgid "NCM (AT + ethernet data port)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:727
+#: htdocs/luci-static/resources/wwand/modemopts.js:814
 msgid ""
 "NCM modems only. How many consecutive status polls may list no data context "
 "— with no received traffic in between — before wwand declares the bearer "
-"dead and redials. One poll per telemetry interval, so 3 is about three "
-"minutes. Lower recovers faster from a drop the modem does not announce; the "
-"minimum is 2, because a single unparsed answer on an idle link must not be "
-"enough to drop a working connection."
+"dead and redials. One poll per 60 s context poll — a fixed period the "
+"telemetry interval does not change — so 3 is about three minutes. Lower "
+"recovers faster from a drop the modem does not announce; the minimum is 2, "
+"because a single unparsed answer on an idle link must not be enough to drop "
+"a working connection."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:233
@@ -1591,29 +1804,29 @@ msgstr ""
 msgid "NMEA stream"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1325
+#: htdocs/luci-static/resources/view/wwand/settings.js:1529
 msgid "NR5G NSA bands"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1323
+#: htdocs/luci-static/resources/view/wwand/settings.js:1527
 msgid "NR5G SA bands"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1321
+#: htdocs/luci-static/resources/view/wwand/settings.js:1525
 msgid "NR5G bands"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:565
+#: htdocs/luci-static/resources/wwand/modemopts.js:590
 msgid "NSA and SA"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:566
+#: htdocs/luci-static/resources/wwand/modemopts.js:591
 msgid "NSA only"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:791
+#: htdocs/luci-static/resources/view/wwand/settings.js:807
 #: htdocs/luci-static/resources/view/wwand/sims.js:89
-#: htdocs/luci-static/resources/wwand/simlist.js:144
+#: htdocs/luci-static/resources/wwand/simlist.js:159
 msgid "Name"
 msgstr ""
 
@@ -1628,10 +1841,12 @@ msgstr ""
 #: htdocs/luci-static/resources/wwand/modemopts.js:144
 msgid ""
 "Named GPIO on the modem RESET line. When set, recovery pulses it (invert, "
-"wait 30 s, restore) instead of cycling USB power."
+"hold for the repower time — 30 s unless set below — restore) instead of "
+"cycling USB power."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:696
+#: htdocs/luci-static/resources/view/wwand/status.js:584
+#: htdocs/luci-static/resources/view/wwand/status.js:816
 msgid "Network"
 msgstr ""
 
@@ -1643,11 +1858,11 @@ msgid ""
 "QRTR bus (no cdc-wdm); its data device is the interface's L3 device."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:374
+#: htdocs/luci-static/resources/view/wwand/modems.js:382
 msgid "Network re-attach triggered (%s)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:901
+#: htdocs/luci-static/resources/view/wwand/status.js:1021
 msgid "Network registration state: home / roaming / searching / denied"
 msgstr ""
 
@@ -1655,19 +1870,31 @@ msgstr ""
 msgid "Network selection"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:238
+#: htdocs/luci-static/resources/wwand/esim.js:292
 msgid "Network → Modems"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:431
+#: htdocs/luci-static/resources/view/wwand/modems.js:439
 msgid "New PIN (4-8 digits)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:569
+msgid "Next scan"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:212
+msgid "No PIN is configured for this modem."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:85
 msgid "No SIM card seen yet."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:815
+#: htdocs/luci-static/resources/view/wwand/settings.js:1309
+msgid "No answer from the network."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:831
 msgid "No change — the modem already runs these settings."
 msgstr ""
 
@@ -1675,19 +1902,23 @@ msgstr ""
 msgid "No change — the modem already runs this selection."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:658
+#: htdocs/luci-static/resources/view/wwand/status.js:778
 msgid "No exchange has succeeded in the selected protocol yet."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:767
+#: htdocs/luci-static/resources/view/wwand/modems.js:780
 msgid "No interface selected."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:987
+#: htdocs/luci-static/resources/view/wwand/settings.js:1240
+msgid "No message received since the daemon started."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1003
 msgid "No messages stored."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1156
+#: htdocs/luci-static/resources/view/wwand/settings.js:1360
 msgid "No modem present."
 msgstr ""
 
@@ -1707,15 +1938,15 @@ msgstr ""
 msgid "No operators returned — %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:492
+#: htdocs/luci-static/resources/wwand/esim.js:546
 msgid "No pending notifications."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:568
+#: htdocs/luci-static/resources/wwand/format.js:602
 msgid "No profiles installed"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:775
+#: htdocs/luci-static/resources/view/wwand/settings.js:791
 msgid ""
 "No saved list is attached to this modem yet — edit above and \"Save as list "
 "& attach\"."
@@ -1737,7 +1968,7 @@ msgstr ""
 msgid "No usable channel to the SIM on this modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:852
+#: htdocs/luci-static/resources/view/wwand/settings.js:868
 msgid "No wwand interface found — the cell lock is stored on the modem."
 msgstr ""
 
@@ -1745,25 +1976,31 @@ msgstr ""
 msgid "No wwand lines matched."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:200
+#: htdocs/luci-static/resources/wwand/simlist.js:220
 msgid "None"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:627
+#: htdocs/luci-static/resources/view/wwand/settings.js:643
 msgid ""
 "Not written: %d entries of this list are reported by the modem by name "
 "without a complete MCC/MNC, and writing the list would drop them."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:149
+#: htdocs/luci-static/resources/wwand/simlist.js:164
 msgid "Now"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:181
+#: htdocs/luci-static/resources/wwand/modemopts.js:666
+#: htdocs/luci-static/resources/wwand/modemopts.js:711
 msgid "Off"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:795
+#: htdocs/luci-static/resources/wwand/modemopts.js:665
+msgid "On"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:811
 msgid "On the card"
 msgstr ""
 
@@ -1775,8 +2012,20 @@ msgstr ""
 msgid "On, card detected at low level"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:681
+#: htdocs/luci-static/resources/wwand/modemopts.js:281
+msgid ""
+"One of auto, off, dms, quectel, foxconn[:<n>], foxconn2:<string>:<n>, "
+"fibocom[:<model_id>]."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:768
 msgid "One to three whole numbers, rising, e.g. \"2 6 12\""
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:222
+msgid ""
+"Only %d PIN attempt is left. A wrong PIN locks the card, and only the PUK "
+"unlocks it again. Continue?"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/logbox.js:168
@@ -1792,37 +2041,45 @@ msgid "Only this subsystem"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:397
-#: htdocs/luci-static/resources/view/wwand/settings.js:603
-#: htdocs/luci-static/resources/view/wwand/status.js:959
-#: htdocs/luci-static/resources/wwand/format.js:480
+#: htdocs/luci-static/resources/view/wwand/settings.js:619
+#: htdocs/luci-static/resources/view/wwand/status.js:1079
+#: htdocs/luci-static/resources/wwand/format.js:503
 #: htdocs/luci-static/resources/wwand/netsel.js:130
 msgid "Operator"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:796
+#: htdocs/luci-static/resources/view/wwand/settings.js:812
 msgid "Operator-controlled (6F61)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:187
+#: htdocs/luci-static/resources/wwand/simlist.js:202
 msgid "Optional APN for this card, overriding the interface/default APN."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:619
+#: htdocs/luci-static/resources/wwand/modemopts.js:644
 msgid ""
 "Optional: a saved PLMN list (config wwand_plmnlist) the daemon restores "
 "before every radio-on. Edit lists on the modem status page."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:229
+#: htdocs/luci-static/resources/wwand/simlist.js:249
 msgid ""
 "Optional: a saved PLMN list to restore for this SIM (type NAS or user is set "
 "on the list). Wins over the modem's list."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:191
+#: htdocs/luci-static/resources/wwand/simlist.js:206
 msgid ""
 "Optional: bind this override to one modem (its wwand_modem name). Empty = "
 "any modem holding this card."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:546
+msgid "Other layers as read %s ago, while the modem was idle."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:525
+msgid "Other-layer search"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/modems.js:157
@@ -1845,45 +2102,47 @@ msgstr ""
 msgid "PAP or CHAP"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:210
+#: htdocs/luci-static/resources/wwand/simlist.js:230
 msgid "PAP/CHAP password"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:205
+#: htdocs/luci-static/resources/wwand/simlist.js:225
 msgid "PAP/CHAP username"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:216
+#: htdocs/luci-static/resources/view/wwand/status.js:553
+msgid ""
+"PCI and RSRP of the cells the modem measured on this layer. \"not measured\" "
+"is the normal case for a layer ranked below the serving one."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/simlist.js:236
 msgid "PDP type"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:434
-#: htdocs/luci-static/resources/wwand/format.js:492
-#: htdocs/luci-static/resources/wwand/simlist.js:175
+#: htdocs/luci-static/resources/view/wwand/modems.js:442
+#: htdocs/luci-static/resources/wwand/format.js:515
+#: htdocs/luci-static/resources/wwand/simlist.js:190
 msgid "PIN"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:209
-msgid "PIN change failed: %s"
-msgstr ""
-
-#: htdocs/luci-static/resources/wwand/esim.js:219
+#: htdocs/luci-static/resources/wwand/esim.js:265
 msgid "PIN query:"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:463
+#: htdocs/luci-static/resources/view/wwand/modems.js:475
 msgid "PIN release requested — the modem restarts its bring-up."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:547
+#: htdocs/luci-static/resources/wwand/format.js:581
 msgid "PIN required"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:505
+#: htdocs/luci-static/resources/wwand/format.js:539
 msgid "PIN state"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:549
+#: htdocs/luci-static/resources/wwand/format.js:583
 msgid "PIN2 required"
 msgstr ""
 
@@ -1891,15 +2150,15 @@ msgstr ""
 msgid "PLMN"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:430
+#: htdocs/luci-static/resources/view/wwand/modems.js:438
 msgid "PUK (8 digits)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:548
+#: htdocs/luci-static/resources/wwand/format.js:582
 msgid "PUK required — the PIN is blocked"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:550
+#: htdocs/luci-static/resources/wwand/format.js:584
 msgid "PUK2 required"
 msgstr ""
 
@@ -1907,11 +2166,11 @@ msgstr ""
 msgid "Parent device"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:703
+#: htdocs/luci-static/resources/wwand/modemopts.js:790
 msgid "Park the radio when idle"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:211
+#: htdocs/luci-static/resources/wwand/simlist.js:231
 msgid "Password for the APN authentication."
 msgstr ""
 
@@ -1919,11 +2178,11 @@ msgstr ""
 msgid "Password for the attach bearer."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:677
+#: htdocs/luci-static/resources/view/wwand/modems.js:690
 msgid "Path"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:492
+#: htdocs/luci-static/resources/wwand/esim.js:546
 msgid "Pending notifications:"
 msgstr ""
 
@@ -1934,19 +2193,19 @@ msgid ""
 "place but not hear."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:237
+#: htdocs/luci-static/resources/wwand/esim.js:291
 msgid "Per-card PIN/APN overrides (matched by ICCID or IMSI) are managed on"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:308
+#: htdocs/luci-static/resources/wwand/esim.js:362
 msgid "Permanently DELETE profile %s from the eUICC?"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:916
+#: htdocs/luci-static/resources/view/wwand/settings.js:932
 msgid "Persist in modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:648
+#: htdocs/luci-static/resources/wwand/modemopts.js:701
 msgid "Persist lock in modem"
 msgstr ""
 
@@ -1956,7 +2215,7 @@ msgid ""
 "addresses one specific cell"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:436
+#: htdocs/luci-static/resources/wwand/modemopts.js:449
 msgid ""
 "Physical SIM slot to activate on multi-slot / eSIM modems (0 = leave as-is). "
 "The list shows the slots the modem reports."
@@ -1982,16 +2241,16 @@ msgstr ""
 msgid "Position"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:784
+#: htdocs/luci-static/resources/view/wwand/settings.js:800
 msgid "Preferred PLMN lists"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:785
+#: htdocs/luci-static/resources/view/wwand/settings.js:801
 msgid "Preferred-PLMN editor —"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:618
-#: htdocs/luci-static/resources/wwand/simlist.js:228
+#: htdocs/luci-static/resources/wwand/modemopts.js:643
+#: htdocs/luci-static/resources/wwand/simlist.js:248
 msgid "Preferred-PLMN list"
 msgstr ""
 
@@ -2003,7 +2262,11 @@ msgstr ""
 msgid "Primary SIM set to slot %d (persisted)."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:914
+#: htdocs/luci-static/resources/view/wwand/status.js:551
+msgid "Priority"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1034
 msgid "Problem"
 msgstr ""
 
@@ -2011,11 +2274,11 @@ msgstr ""
 msgid "Profile"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:388
+#: htdocs/luci-static/resources/wwand/esim.js:442
 msgid "Profile downloaded (install not yet confirmed to the operator)."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:389
+#: htdocs/luci-static/resources/wwand/esim.js:443
 msgid "Profile downloaded and confirmed — the eUICC will re-initialise."
 msgstr ""
 
@@ -2029,43 +2292,47 @@ msgid ""
 "establishes in a few seconds."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:590
+#: htdocs/luci-static/resources/wwand/format.js:624
 msgid "Profiles (%d)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:564
+#: htdocs/luci-static/resources/wwand/format.js:598
 msgid "Profiles are readable only while this slot is the active one"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:532
+#: htdocs/luci-static/resources/wwand/format.js:566
 msgid "Profiles: kept by the card — its own IPA manages them with the eIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:563
+#: htdocs/luci-static/resources/wwand/format.js:597
 msgid "Profiles: not read"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:790
+#: htdocs/luci-static/resources/view/wwand/modems.js:803
 msgid "Protocol"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1428
+#: htdocs/luci-static/resources/view/wwand/settings.js:1632
 msgid "Protocol switch failed: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1427
+#: htdocs/luci-static/resources/view/wwand/settings.js:1631
 msgid "Protocol switch to %s issued — the modem resets."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:329
+#: htdocs/luci-static/resources/wwand/esim.js:383
 msgid "Provider"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:483
+#: htdocs/luci-static/resources/wwand/esim.js:537
 msgid "Provider confirmations (notifications)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:704
+#: htdocs/luci-static/resources/view/wwand/settings.js:1233
+msgid "Public warning"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:791
 msgid ""
 "Put the modem's radio into low power once no interface on this modem is up — "
 "for battery and solar installs, where an idle modem still spends a couple of "
@@ -2074,19 +2341,19 @@ msgid ""
 "network until the interface is brought up again."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:678
+#: htdocs/luci-static/resources/view/wwand/status.js:798
 msgid "QMI"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:273
+#: htdocs/luci-static/resources/wwand/modemopts.js:285
 msgid "QMI DMS (Quectel EM1xx)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:274
+#: htdocs/luci-static/resources/wwand/modemopts.js:286
 msgid "QMI Foxconn (SDX55, DW5821e)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:575
+#: htdocs/luci-static/resources/wwand/modemopts.js:600
 msgid ""
 "QMI and MBIM modems: the order in which the modem searches the radio "
 "technologies, most preferred first, e.g. <code>nr5g,lte</code>. wwand writes "
@@ -2105,7 +2372,7 @@ msgstr ""
 msgid "QRTR node"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:772
+#: htdocs/luci-static/resources/wwand/modemopts.js:889
 msgid ""
 "Quectel and ASR modems: which NMEA sentences the receiver streams. Written "
 "when wwand starts the receiver; saving a change restarts this modem's bring-"
@@ -2132,22 +2399,30 @@ msgstr ""
 msgid "RAT"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1313
-#: htdocs/luci-static/resources/wwand/modemopts.js:574
+#: htdocs/luci-static/resources/view/wwand/settings.js:1517
+#: htdocs/luci-static/resources/wwand/modemopts.js:599
 msgid "RAT priority"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:270
+#: htdocs/luci-static/resources/wwand/modemopts.js:274
 msgid ""
 "RF unlock for laptop-SKU modems that boot radio-locked (Lenovo/Dell/HP "
-"variants of Quectel EM1xx, Foxconn SDX55/SDX62). Default \"auto\" tries the "
-"known QMI unlock messages when the modem stays in low-power after going "
-"online; MBIM modems need the explicit \"quectel\" method. \"off\" disables "
-"the unlock entirely."
+"variants of Quectel EM1xx, Foxconn SDX55/SDX62, Fibocom FM350). Empty "
+"(auto): over QMI the known unlock messages are tried when the modem stays in "
+"low power after going online; a Foxconn SDX55 in MBIM mode and a Fibocom "
+"FM350 are unlocked automatically too. A Quectel EM1xx in MBIM mode needs the "
+"explicit <code>quectel</code>. <code>off</code> disables the unlock. Pinned "
+"variants: <code>foxconn:&lt;n&gt;</code>, "
+"<code>foxconn2:&lt;string&gt;:&lt;n&gt;</code>, "
+"<code>fibocom:&lt;model_id&gt;</code>."
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/graph.js:144
 msgid "RSCP 3G"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:534
+msgid "RSP features"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/graph.js:143
@@ -2182,8 +2457,8 @@ msgstr ""
 msgid "RSSI LTE"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:579
-#: htdocs/luci-static/resources/view/wwand/status.js:690
+#: htdocs/luci-static/resources/view/wwand/status.js:699
+#: htdocs/luci-static/resources/view/wwand/status.js:810
 msgid "Radio"
 msgstr ""
 
@@ -2191,25 +2466,25 @@ msgstr ""
 msgid "Radio & Cell"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:592
+#: htdocs/luci-static/resources/view/wwand/status.js:712
 msgid "Radio access technologies this modem hardware reports to support"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:963
+#: htdocs/luci-static/resources/view/wwand/status.js:1083
 msgid ""
 "Radio access technology of the current connection (LTE, 5G NSA = 5G carrier "
 "on an LTE anchor, 5G SA = standalone 5G, NB-IoT/LTE-M = IoT modes)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:512
+#: htdocs/luci-static/resources/wwand/format.js:546
 msgid "Radio stack"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1298
+#: htdocs/luci-static/resources/view/wwand/settings.js:1502
 msgid "Radio technologies"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:544
+#: htdocs/luci-static/resources/wwand/modemopts.js:562
 msgid "Radio technology"
 msgstr ""
 
@@ -2217,24 +2492,24 @@ msgstr ""
 msgid "Radio technology, manual operator selection and cell lock."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:370
+#: htdocs/luci-static/resources/view/wwand/modems.js:378
 msgid ""
 "Re-attach modem \"%s\" to the network now? It briefly deregisters and re-"
 "registers; the connection recovers automatically."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:376
+#: htdocs/luci-static/resources/view/wwand/modems.js:384
 msgid "Re-attach unavailable: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:326
+#: htdocs/luci-static/resources/view/wwand/modems.js:334
 msgid ""
 "Re-initialise the SIM card in the active slot: power it off and on and read "
 "it again, e.g. after swapping the card. The connection drops and recovers on "
 "its own; not a modem reset."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:329
+#: htdocs/luci-static/resources/view/wwand/modems.js:337
 msgid ""
 "Re-initialise the SIM of modem \"%s\" now? Its connection drops and recovers "
 "automatically."
@@ -2250,7 +2525,7 @@ msgid ""
 "technologies). Change it with the modem vendor's command."
 msgstr ""
 
-#: root/usr/share/rpcd/acl.d/luci-app-wwand.json:66
+#: root/usr/share/rpcd/acl.d/luci-app-wwand.json:71
 msgid ""
 "Read the system log for the wwand log viewer on the modem status page. "
 "SEPARATE ROLE ON PURPOSE: rpcd cannot filter a method's arguments or its "
@@ -2265,38 +2540,47 @@ msgstr ""
 msgid "Reader"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:379
-#: htdocs/luci-static/resources/view/wwand/modems.js:528
+#: htdocs/luci-static/resources/view/wwand/modems.js:387
+#: htdocs/luci-static/resources/view/wwand/modems.js:541
 msgid "Reattach"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:318
-#: htdocs/luci-static/resources/view/wwand/modems.js:530
+#: htdocs/luci-static/resources/view/wwand/modems.js:326
+#: htdocs/luci-static/resources/view/wwand/modems.js:543
 msgid "Reboot"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:666
+#: htdocs/luci-static/resources/wwand/modemopts.js:753
 msgid "Reboot after N failures"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:695
+#: htdocs/luci-static/resources/wwand/modemopts.js:782
 msgid "Reboot after N protocol errors"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:696
+#: htdocs/luci-static/resources/wwand/modemopts.js:783
 msgid ""
 "Reboot after this many consecutive control-protocol errors. Gated by the "
 "failure-reboot setting above — with reboot disabled it never fires."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:667
+#: htdocs/luci-static/resources/wwand/modemopts.js:754
 msgid ""
 "Reboot the router after this many failed connection attempts. 0 = never "
 "reboot — the hardware recovery rungs (op-mode cycle, modem reset, GPIO/"
 "repower) still run and the ladder then keeps retrying."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1110
+#: htdocs/luci-static/resources/wwand/modemopts.js:663
+msgid ""
+"Receive Cell Broadcast messages — public warnings (ETWS, EU-Alert / CMAS) "
+"and the channels listed below. Messages are shown under Modem Tools and sent "
+"as the <code>cell_broadcast</code> event. \"Leave unchanged\" does not touch "
+"the modem's own setting."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1126
+#: htdocs/luci-static/resources/view/wwand/settings.js:1246
 msgid "Received"
 msgstr ""
 
@@ -2305,12 +2589,16 @@ msgstr ""
 msgid "Receiver"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:654
-#: htdocs/luci-static/resources/view/wwand/status.js:785
+#: htdocs/luci-static/resources/view/wwand/settings.js:1163
+msgid "Recipient"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:774
+#: htdocs/luci-static/resources/view/wwand/status.js:905
 msgid "Recovery"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:675
+#: htdocs/luci-static/resources/wwand/modemopts.js:762
 msgid "Recovery steps"
 msgstr ""
 
@@ -2333,6 +2621,7 @@ msgstr ""
 msgid "Reference signal quality (RSRQ)"
 msgstr ""
 
+#: htdocs/luci-static/resources/view/wwand/settings.js:1268
 #: htdocs/luci-static/resources/wwand/logbox.js:278
 msgid "Refresh"
 msgstr ""
@@ -2341,56 +2630,68 @@ msgstr ""
 msgid "Register manually to %s (%s)? The connection may briefly drop."
 msgstr ""
 
+#: htdocs/luci-static/resources/wwand/modemopts.js:726
+msgid "Registered network"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:725
+msgid ""
+"Registered network: only cells of the network the card is on. Any allowed "
+"network: for a card that may use several networks (GDSP and other global "
+"roaming SIMs) — also cells of other networks, except those on the card's "
+"forbidden list; a move costs a re-registration, so it needs a clear gain."
+msgstr ""
+
 #: htdocs/luci-static/resources/wwand/netsel.js:36
 msgid "Registered operator"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:212
-#: htdocs/luci-static/resources/view/wwand/status.js:901
+#: htdocs/luci-static/resources/view/wwand/modems.js:213
+#: htdocs/luci-static/resources/view/wwand/status.js:1021
 msgid "Registration"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:914
+#: htdocs/luci-static/resources/view/wwand/status.js:1034
 msgid ""
 "Registration problem reported by the network — the 3GPP reject cause "
 "explains why the attach was refused"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:338
-#: htdocs/luci-static/resources/view/wwand/modems.js:527
+#: htdocs/luci-static/resources/view/wwand/modems.js:346
+#: htdocs/luci-static/resources/view/wwand/modems.js:540
 msgid "Reinit SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:438
+#: htdocs/luci-static/resources/view/wwand/modems.js:446
 msgid "Release PIN — SIM %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:279
+#: htdocs/luci-static/resources/wwand/modemopts.js:292
 msgid "Release secondary AT port"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:731
+#: htdocs/luci-static/resources/view/wwand/settings.js:747
 msgid "Reload from modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:682
+#: htdocs/luci-static/resources/view/wwand/status.js:802
 msgid "Remote SIM supported"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:708
+#: htdocs/luci-static/resources/view/wwand/status.js:828
 msgid "Reported by the optional package %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:359
-#: htdocs/luci-static/resources/view/wwand/modems.js:531
+#: htdocs/luci-static/resources/view/wwand/modems.js:367
+#: htdocs/luci-static/resources/view/wwand/modems.js:544
 msgid "Repower"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:708
+#: htdocs/luci-static/resources/wwand/modemopts.js:795
 msgid "Repower / reset duration"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:355
+#: htdocs/luci-static/resources/view/wwand/modems.js:363
 msgid "Repower unavailable: %s."
 msgstr ""
 
@@ -2398,7 +2699,16 @@ msgstr ""
 msgid "Reselect"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:280
+#: htdocs/luci-static/resources/view/wwand/status.js:522
+msgid "Reselection priority"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:551
+msgid ""
+"Reselection priority the network gives this layer (0 lowest, 7 highest)."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:293
 msgid ""
 "Reserve the modem's second AT port for external tools (gpsd, own scripts): "
 "wwand never opens it and runs telemetry over the control channel instead. "
@@ -2409,7 +2719,7 @@ msgstr ""
 msgid "Reset GPIO fallback"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:689
+#: htdocs/luci-static/resources/wwand/modemopts.js:776
 msgid "Reset a never-answering modem after (s)"
 msgstr ""
 
@@ -2417,7 +2727,7 @@ msgstr ""
 msgid "Reset modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:308
+#: htdocs/luci-static/resources/view/wwand/modems.js:316
 msgid ""
 "Reset modem \"%s\" now? Its connection(s) will drop briefly and recover "
 "automatically."
@@ -2427,11 +2737,11 @@ msgstr ""
 msgid "Reset modem now"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1344
+#: htdocs/luci-static/resources/view/wwand/settings.js:1548
 msgid "Reset radio/band/usage/roaming settings to defaults?"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:721
+#: htdocs/luci-static/resources/wwand/modemopts.js:808
 msgid ""
 "Reset the modem when, with a connection up, the kernel reports its transmit "
 "queue stuck for this many seconds, i.e. the modem has stopped taking packets "
@@ -2447,16 +2757,16 @@ msgid ""
 "or dropped off USB."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1388
+#: htdocs/luci-static/resources/view/wwand/settings.js:1592
 msgid "Reset to defaults"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:314
+#: htdocs/luci-static/resources/view/wwand/modems.js:322
 #: htdocs/luci-static/resources/wwand/modemopts.js:196
 msgid "Reset unavailable: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:305
+#: htdocs/luci-static/resources/view/wwand/modems.js:313
 msgid ""
 "Reset/reboot this modem: its own soft reset first, so it can shut down "
 "cleanly; a configured reset GPIO is pulsed only if the modem does not "
@@ -2471,59 +2781,58 @@ msgstr ""
 msgid "Restart modem now"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:715
-msgid ""
-"Restart the connection after this many seconds without received packets (0 = "
-"off)."
-msgstr ""
-
-#: htdocs/luci-static/resources/view/wwand/settings.js:772
+#: htdocs/luci-static/resources/view/wwand/settings.js:788
 msgid "Restore failed: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:766
+#: htdocs/luci-static/resources/view/wwand/settings.js:782
 msgid "Restore now"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1320
+#: htdocs/luci-static/resources/view/wwand/settings.js:1524
 msgid ""
 "Restrict LTE to these bands. Leave everything unchecked to let the modem use "
 "all bands it supports — a narrowed list is a way to pin a known-good band, "
 "not a way to improve a working link."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:545
-msgid "Restrict the modem to certain radio access technologies."
+#: htdocs/luci-static/resources/wwand/modemopts.js:563
+msgid ""
+"Restrict the modem to certain radio access technologies: <code>all</code>, "
+"or a comma-separated list of <code>gsm</code>, <code>umts</code>, <code>lte</"
+"code>, <code>nr5g</code>, <code>td-scdma</code>, <code>cdma</code>. Empty: "
+"the modem's own setting."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:589
+#: htdocs/luci-static/resources/view/wwand/status.js:709
 msgid "Revision"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1433
+#: htdocs/luci-static/resources/view/wwand/settings.js:1637
 msgid ""
 "Rewrites the modem firmware mode (QMI ↔ MBIM). The modem resets; use only "
 "when the other mode is known to work on this module. The daemon clears a "
 "contradicting \"Control protocol\" pin when the switch succeeds."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1317
+#: htdocs/luci-static/resources/view/wwand/settings.js:1521
 msgid "Roaming"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:530
+#: htdocs/luci-static/resources/wwand/modemopts.js:543
 msgid "Router (IPAd)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:567
+#: htdocs/luci-static/resources/wwand/modemopts.js:592
 msgid "SA only"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:527
+#: htdocs/luci-static/resources/wwand/modemopts.js:540
 msgid "SGP.32 IPA"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/format.js:278
+#: htdocs/luci-static/resources/wwand/format.js:296
 msgid "SGP.32 IoT eUICC"
 msgstr ""
 
@@ -2531,34 +2840,42 @@ msgstr ""
 msgid "SGP.32 IoT eUICC (on %s)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:210
+#: htdocs/luci-static/resources/view/wwand/modems.js:211
 #: htdocs/luci-static/resources/wwand/esim.js:185
 msgid "SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:216
-#: htdocs/luci-static/resources/wwand/modemopts.js:534
+#: htdocs/luci-static/resources/wwand/esim.js:262
+#: htdocs/luci-static/resources/wwand/modemopts.js:547
 msgid "SIM PIN"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:176
+#: htdocs/luci-static/resources/wwand/esim.js:258
+msgid "SIM PIN changed."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/simlist.js:191
 msgid ""
 "SIM PIN for this card. Overrides the modem's default PIN; wwand never "
 "retries a PIN when only one attempt is left."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:211
+#: htdocs/luci-static/resources/wwand/esim.js:227
+msgid "SIM PIN operation failed: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:244
 msgid "SIM PIN query disabled."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:211
+#: htdocs/luci-static/resources/wwand/esim.js:244
 msgid "SIM PIN query enabled."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:960
+#: htdocs/luci-static/resources/view/wwand/settings.js:976
 #: htdocs/luci-static/resources/view/wwand/status.js:110
-#: htdocs/luci-static/resources/view/wwand/status.js:664
-#: htdocs/luci-static/resources/wwand/format.js:456
+#: htdocs/luci-static/resources/view/wwand/status.js:784
+#: htdocs/luci-static/resources/wwand/format.js:479
 msgid "SIM card"
 msgstr ""
 
@@ -2567,7 +2884,7 @@ msgstr ""
 msgid "SIM cards"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:668
+#: htdocs/luci-static/resources/view/wwand/status.js:788
 msgid "SIM event"
 msgstr ""
 
@@ -2575,23 +2892,23 @@ msgstr ""
 msgid "SIM hot-plug detection"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:333
+#: htdocs/luci-static/resources/view/wwand/modems.js:341
 msgid "SIM in slot %d re-initialised."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:235
+#: htdocs/luci-static/resources/wwand/esim.js:289
 msgid "SIM overrides"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:335
+#: htdocs/luci-static/resources/view/wwand/modems.js:343
 msgid "SIM re-initialisation failed: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:435
+#: htdocs/luci-static/resources/wwand/modemopts.js:448
 msgid "SIM slot"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1118
+#: htdocs/luci-static/resources/view/wwand/status.js:1240
 msgid "SIM slots"
 msgstr ""
 
@@ -2599,7 +2916,11 @@ msgstr ""
 msgid "SIM toolkit"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:458
+#: htdocs/luci-static/resources/view/wwand/modems.js:469
+msgid "SIM unblocked, new PIN set and stored in the configuration."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:470
 msgid ""
 "SIM unblocked, new PIN set. Update the configured PIN in the modem settings!"
 msgstr ""
@@ -2616,7 +2937,7 @@ msgstr ""
 msgid "SINR LTE"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1140
+#: htdocs/luci-static/resources/view/wwand/settings.js:1203
 msgid "SMS"
 msgstr ""
 
@@ -2624,28 +2945,28 @@ msgstr ""
 msgid "Satellites"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:411
-#: htdocs/luci-static/resources/view/wwand/modems.js:526
+#: htdocs/luci-static/resources/view/wwand/modems.js:419
+#: htdocs/luci-static/resources/view/wwand/modems.js:539
 msgid "Save SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:733
+#: htdocs/luci-static/resources/view/wwand/settings.js:749
 msgid "Save as list & attach"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:696
+#: htdocs/luci-static/resources/view/wwand/settings.js:712
 msgid "Save as list — name:"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:941
+#: htdocs/luci-static/resources/view/wwand/settings.js:957
 msgid "Save cell lock"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:789
+#: htdocs/luci-static/resources/view/wwand/settings.js:805
 msgid "Saved PLMN lists"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:724
+#: htdocs/luci-static/resources/view/wwand/settings.js:740
 msgid "Saved list \"%s\" (%d record(s)) and attached it to this modem."
 msgstr ""
 
@@ -2672,7 +2993,13 @@ msgid ""
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:733
-msgid "Seconds between throughput/signal telemetry samples while connected."
+msgid "Seconds between cell scans (at least 600)."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:820
+msgid ""
+"Seconds between throughput/signal telemetry samples while connected (0 = "
+"off)."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:284
@@ -2682,26 +3009,37 @@ msgid ""
 "still current."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:709
+#: htdocs/luci-static/resources/wwand/modemopts.js:796
 msgid ""
 "Seconds the modem is held de-powered during a recovery power-cycle (or held "
 "in reset, when a reset GPIO is used). Default 30 s."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:661
+#: htdocs/luci-static/resources/wwand/modemopts.js:748
 msgid "Seconds to wait before initializing the modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:525
+#: htdocs/luci-static/resources/wwand/modemopts.js:802
+msgid ""
+"Seconds without received packets before recovery steps in: the modem is "
+"reset, and a board that can repower it does so when the reset is refused or "
+"the modem stays on the bus (0 = off)."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:586
+msgid "Seen offering EN-DC while locked to it."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:529
 #: htdocs/luci-static/resources/wwand/netsel.js:112
 msgid "Select"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1039
+#: htdocs/luci-static/resources/view/wwand/settings.js:1055
 msgid "Select all messages"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1019
+#: htdocs/luci-static/resources/view/wwand/settings.js:1035
 msgid "Select this message"
 msgstr ""
 
@@ -2709,20 +3047,48 @@ msgstr ""
 msgid "Selecting the carrier configuration failed."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:502
+#: htdocs/luci-static/resources/view/wwand/settings.js:1347
+msgid "Send"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1209
+msgid "Send SMS"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:556
 msgid "Send all pending notifications to the operator now?"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:511
+#: htdocs/luci-static/resources/wwand/esim.js:565
 msgid "Send confirmations"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1109
+#: htdocs/luci-static/resources/view/wwand/settings.js:1205
+msgid "Send to"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1125
 msgid "Sender"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:504
+#: htdocs/luci-static/resources/wwand/esim.js:558
 msgid "Sending confirmations…"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1195
+msgid "Sending failed: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1182
+msgid "Sending…"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1187
+msgid "Sent (%d parts)."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1187
+msgid "Sent."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:329
@@ -2732,16 +3098,24 @@ msgid ""
 "is not NMEA."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:678
+#: htdocs/luci-static/resources/view/wwand/modems.js:691
 msgid "Serial"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:506
+#: htdocs/luci-static/resources/wwand/format.js:540
 msgid "Service"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1025
+#: htdocs/luci-static/resources/view/wwand/status.js:1145
 msgid "Serving cell"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:507
+msgid "Serving layer"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1329
+msgid "Session ended."
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/esim.js:178
@@ -2752,11 +3126,11 @@ msgstr ""
 msgid "Set automatic"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:759
+#: htdocs/luci-static/resources/wwand/modemopts.js:876
 msgid "Set the clock from GNSS"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:741
+#: htdocs/luci-static/resources/wwand/modemopts.js:828
 msgid "Set the clock from the network"
 msgstr ""
 
@@ -2764,21 +3138,21 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:395
+#: htdocs/luci-static/resources/wwand/esim.js:449
 msgid "Show raw lpac log"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1301
+#: htdocs/luci-static/resources/view/wwand/settings.js:1505
 msgid ""
 "Shown, not set: this modem picks its technologies with its own RAT setting, "
 "and a band edit keeps it as it is."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:214
+#: htdocs/luci-static/resources/view/wwand/modems.js:215
 msgid "Signal"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1323
+#: htdocs/luci-static/resources/view/wwand/status.js:1448
 msgid ""
 "Signal graphs unavailable: the graph canvas (wwand/signal.svg) could not be "
 "loaded. Reload the page to try again."
@@ -2792,21 +3166,29 @@ msgstr ""
 msgid "Signal strength (RSRP)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:458
-#: htdocs/luci-static/resources/wwand/format.js:625
-#: htdocs/luci-static/resources/wwand/modemopts.js:481
+#: htdocs/luci-static/resources/wwand/format.js:481
+#: htdocs/luci-static/resources/wwand/format.js:659
+#: htdocs/luci-static/resources/wwand/modemopts.js:494
 msgid "Slot %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1261
+#: htdocs/luci-static/resources/wwand/format.js:1295
 msgid "Slot %d/%d"
 msgstr ""
 
+#: htdocs/luci-static/resources/view/wwand/status.js:525
+msgid ""
+"SnonIntraSearch and threshServingLow, as the modem reports them: while the "
+"serving cell is stronger than SnonIntraSearch the modem does not measure "
+"lower-priority layers at all."
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/status.js:223
+#: htdocs/luci-static/resources/view/wwand/status.js:527
 msgid "Source"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:913
+#: htdocs/luci-static/resources/view/wwand/settings.js:929
 msgid ""
 "Space/comma separated \"earfcn:pci\" entries (several = a cell list). See "
 "Status → Modem for the live cells and their lock values."
@@ -2825,27 +3207,40 @@ msgid ""
 "available."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:464
+#: htdocs/luci-static/resources/wwand/esim.js:518
 msgid "Starting download…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:208
-#: htdocs/luci-static/resources/view/wwand/settings.js:541
+#: htdocs/luci-static/resources/view/wwand/modems.js:209
+#: htdocs/luci-static/resources/view/wwand/settings.js:557
 #: htdocs/luci-static/resources/view/wwand/sims.js:92
 #: htdocs/luci-static/resources/view/wwand/status.js:100
-#: htdocs/luci-static/resources/view/wwand/status.js:567
+#: htdocs/luci-static/resources/view/wwand/status.js:560
+#: htdocs/luci-static/resources/view/wwand/status.js:687
 #: htdocs/luci-static/resources/wwand/esim.js:96
-#: htdocs/luci-static/resources/wwand/esim.js:330
+#: htdocs/luci-static/resources/wwand/esim.js:384
 msgid "State"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:609
-#: htdocs/luci-static/resources/view/wwand/settings.js:1283
+#: htdocs/luci-static/resources/view/wwand/modems.js:622
+#: htdocs/luci-static/resources/view/wwand/settings.js:1487
 #: htdocs/luci-static/resources/wwand/netsel.js:133
 msgid "Status"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:742
+#: htdocs/luci-static/resources/wwand/modemopts.js:716
+msgid "Steering: minimum RSRP"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:724
+msgid "Steering: networks"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:732
+msgid "Steering: scan interval"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:829
 msgid ""
 "Step the system clock to the network's time (NITZ) when it is more than two "
 "minutes off. Smaller differences are left to NTP. A router without a real-"
@@ -2853,21 +3248,21 @@ msgid ""
 "reachable. The time zone is not changed."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:481
+#: htdocs/luci-static/resources/view/wwand/modems.js:494
 msgid ""
 "Stop the data sessions and detach the modem from the network (radio stays "
 "on). It stays detached until you attach it again or the modem is reset."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1142
+#: htdocs/luci-static/resources/view/wwand/settings.js:1215
 msgid "Storage"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:649
+#: htdocs/luci-static/resources/wwand/modemopts.js:702
 msgid "Store the cell lock in modem non-volatile memory."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:917
+#: htdocs/luci-static/resources/view/wwand/settings.js:933
 msgid "Store the lock in modem non-volatile memory"
 msgstr ""
 
@@ -2875,16 +3270,16 @@ msgstr ""
 msgid "Strongest signals"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1085
-#: htdocs/luci-static/resources/wwand/format.js:650
+#: htdocs/luci-static/resources/view/wwand/status.js:1207
+#: htdocs/luci-static/resources/wwand/format.js:684
 msgid "Switch now"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1431
+#: htdocs/luci-static/resources/view/wwand/settings.js:1635
 msgid "Switch protocol"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1422
+#: htdocs/luci-static/resources/view/wwand/settings.js:1626
 msgid ""
 "Switch the modem firmware to %s? The modem resets and re-enumerates — its "
 "connections come back on their own. A \"Control protocol\" pinned on the "
@@ -2892,7 +3287,7 @@ msgid ""
 "contradicts disables hardware recovery for this modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1421
+#: htdocs/luci-static/resources/view/wwand/settings.js:1625
 msgid ""
 "Switch the modem firmware to MBIM? The modem resets and re-enumerates. Some "
 "firmwares reject MBIM even though the switch itself succeeds — if the modem "
@@ -2901,7 +3296,7 @@ msgid ""
 "contradicts disables hardware recovery for this modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:755
+#: htdocs/luci-static/resources/wwand/modemopts.js:842
 msgid ""
 "Switch the modem's GNSS on. With <em>wwand-gps</em> installed wwand reads "
 "the position itself: from the modem's NMEA port (reported as <em>gps_port</"
@@ -2910,42 +3305,46 @@ msgid ""
 "NMEA over the QMI location service, natively or over the MBIM passthrough."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1412
+#: htdocs/luci-static/resources/view/wwand/settings.js:1616
 msgid "Switch to %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1082
-#: htdocs/luci-static/resources/wwand/format.js:647
+#: htdocs/luci-static/resources/view/wwand/status.js:1204
+#: htdocs/luci-static/resources/wwand/format.js:681
 msgid "Switch to SIM slot %d? The connection will drop and re-establish."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:993
+#: htdocs/luci-static/resources/view/wwand/settings.js:548
+msgid "Switching on the automatic selection failed."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1113
 msgid "TAC / Cell ID"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:993
+#: htdocs/luci-static/resources/view/wwand/status.js:1113
 msgid ""
 "TAC = Tracking Area Code (paging area); Cell ID = the network-wide unique "
 "identifier of this cell"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:720
+#: htdocs/luci-static/resources/wwand/modemopts.js:807
 msgid "TX stall timeout"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:880
+#: htdocs/luci-static/resources/view/wwand/status.js:1000
 msgid "TX stalls"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:963
+#: htdocs/luci-static/resources/view/wwand/status.js:1083
 msgid "Technology"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:732
+#: htdocs/luci-static/resources/wwand/modemopts.js:819
 msgid "Telemetry interval"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:600
+#: htdocs/luci-static/resources/view/wwand/status.js:720
 msgid "Temperature"
 msgstr ""
 
@@ -2958,7 +3357,7 @@ msgid ""
 "LTE, this canvas appearing at all is the news."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1316
+#: htdocs/luci-static/resources/view/wwand/settings.js:1520
 msgid ""
 "The 3GPP usage setting the modem reports to the network: whether this device "
 "is here for data or for voice. It is a preference, not a command — what the "
@@ -2966,13 +3365,13 @@ msgid ""
 "what a router wants."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1007
+#: htdocs/luci-static/resources/view/wwand/status.js:1127
 msgid ""
 "The 5G NR serving cell: band · centre frequency · bandwidth · Physical Cell "
 "ID"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:997
+#: htdocs/luci-static/resources/view/wwand/status.js:1117
 msgid ""
 "The Cell ID split into the base station (eNB = eNodeB, ID = Cell ID / 256) "
 "and its cell, often one sector of the site (Cell ID % 256). Cells with the "
@@ -2980,14 +3379,19 @@ msgid ""
 "than one site"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:947
+#: htdocs/luci-static/resources/view/wwand/status.js:507
+msgid ""
+"The LTE cell the modem camps on: band, downlink frequency, EARFCN and PCI."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1067
 msgid ""
 "The LTE/5G attach the modem performed, and the 3GPP cause when the network "
 "refused it. Reported separately from registration because the two can fail "
 "independently — a wrong attach APN registers fine and never attaches"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:455
+#: htdocs/luci-static/resources/view/wwand/modems.js:463
 msgid "The PUK must be exactly 8 digits."
 msgstr ""
 
@@ -3004,29 +3408,31 @@ msgid ""
 "empty to use the first node that serves QMI DMS and WDS."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:822
+#: htdocs/luci-static/resources/view/wwand/settings.js:838
 msgid ""
 "The RAT priority did not take either: the modem accepted it and kept its own "
 "order."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:664
+#: htdocs/luci-static/resources/view/wwand/status.js:784
 msgid ""
 "The card reports itself busy. Reads of ICCID, IMSI and the PIN state will "
 "fail until it clears, which is why those rows may be missing."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:211
+#: htdocs/luci-static/resources/view/wwand/modems.js:212
 msgid ""
 "The card the modem is using: its readiness, which physical slot is live, and "
 "whether that slot holds an eUICC (eSIM)."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:133
-msgid "The card's ICCID (printed on the SIM / shown on the modem status page)."
+#: htdocs/luci-static/resources/wwand/simlist.js:137
+msgid ""
+"The card's ICCID (printed on the SIM / shown on the modem status page). "
+"Either this or the IMSI below."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:535
+#: htdocs/luci-static/resources/view/wwand/settings.js:539
 msgid ""
 "The carrier profile (MBN) the modem applies: APN defaults, IMS settings, "
 "band and roaming policy for a given network. The wrong one leaves the modem "
@@ -3034,20 +3440,32 @@ msgid ""
 "IMS, a missing band."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:201
+#: htdocs/luci-static/resources/wwand/esim.js:211
+msgid "The configuration holds a different PIN; it was left as it is."
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:210
+msgid "The configured PIN was updated."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:202
 msgid ""
 "The control protocol wwand speaks to this modem: QMI, MBIM or NCM. Set by "
 "`option protocol`, or detected from the control device."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:215
+#: htdocs/luci-static/resources/wwand/esim.js:250
+msgid "The current and the new PIN are 4-8 digits each."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:216
 msgid ""
 "The current signal, per radio technology. RSRP is reception strength, RSRQ "
 "quality, SNR the noise margin — RSRP alone does not say whether the link is "
 "good."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:433
+#: htdocs/luci-static/resources/view/wwand/modems.js:441
 msgid ""
 "The daemon refuses to auto-enter the PIN (%s) to protect the last attempts. "
 "Enter the PIN to release it manually."
@@ -3071,13 +3489,13 @@ msgid ""
 "\"wrongProfileReenabling\")."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:196
+#: htdocs/luci-static/resources/view/wwand/modems.js:197
 msgid ""
 "The kernel network device the modem's data runs on, with the model behind "
 "it. A muxed connection names the child device (wwan0m1), not the parent."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:668
+#: htdocs/luci-static/resources/view/wwand/status.js:788
 msgid ""
 "The last thing the card said about itself: a session it closed and why, an "
 "internal recovery, or an activation that did not complete."
@@ -3107,20 +3525,20 @@ msgstr ""
 msgid "The modem does not support that operation."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:439
+#: htdocs/luci-static/resources/wwand/esim.js:493
 msgid ""
 "The modem downloads over its own network attach — no router data path or APN "
 "needed."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:654
+#: htdocs/luci-static/resources/view/wwand/status.js:774
 msgid ""
 "The modem has not yet answered in the control protocol wwand is using, so no "
 "hardware recovery step will run — repowering a modem that was never broken "
 "only adds outages. Check the control protocol setting and the bound driver."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:579
+#: htdocs/luci-static/resources/view/wwand/status.js:699
 msgid ""
 "The modem has two independent radio switches. Software is the one wwand "
 "controls and switches on at start-up; hardware is a physical switch or an "
@@ -3132,7 +3550,7 @@ msgstr ""
 msgid "The modem is busy with another operation. Try again in a moment."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:613
+#: htdocs/luci-static/resources/view/wwand/status.js:733
 msgid ""
 "The modem is holding its own radio back — usually reduced transmit power. "
 "This is the explanation for throughput that drops while the signal stays "
@@ -3141,6 +3559,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:105
 msgid "The modem is not ready yet."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:527
+msgid "The modem may pick its own configuration again at the reset: %s"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/esim.js:87
@@ -3153,11 +3575,17 @@ msgid ""
 "enumeration; with wwand-gps installed it also reads it."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:696
+#: htdocs/luci-static/resources/view/wwand/status.js:816
 msgid ""
 "The modem was detached from the network by hand. Its interfaces stay down "
 "until it is attached again (modem list → Attach, or wwandctl attach); a "
 "modem reset attaches it too."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:526
+msgid ""
+"The modem's automatic selection by SIM is now off, so the choice stays after "
+"a reboot."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:107
@@ -3166,27 +3594,43 @@ msgid ""
 "be written."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:959
+#: htdocs/luci-static/resources/view/wwand/settings.js:1300
+msgid ""
+"The network asks for a reply: enter it above and send, or end the session."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1079
 msgid ""
 "The network currently serving the modem, as name (MCC/MNC). MCC = country, "
 "MNC = network within it"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:213
+#: htdocs/luci-static/resources/view/wwand/settings.js:1292
+msgid "The network sent no text."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:214
 msgid ""
 "The network the modem is registered on, or why it is not. A reject cause "
 "here is the network refusing, not the modem failing."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:456
+#: htdocs/luci-static/resources/view/wwand/status.js:511
+msgid ""
+"The network this cell broadcasts. When it is not the network the card is "
+"registered on, the cell is hosted by another operator (network sharing): it "
+"carries that operator's settings, its 5G anchoring included."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:464
 msgid "The new PIN must be 4-8 digits."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:391
+#: htdocs/luci-static/resources/wwand/esim.js:445
 msgid "The operation failed."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1314
+#: htdocs/luci-static/resources/view/wwand/settings.js:1518
 msgid ""
 "The order in which the modem searches the radio technologies, first row "
 "first. Only ticked ones are searched: a technology allowed above but "
@@ -3197,11 +3641,19 @@ msgid ""
 "page."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:723
+#: htdocs/luci-static/resources/view/wwand/status.js:843
 msgid "The phone number stored on the SIM (often empty on data SIMs)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1112
+#: htdocs/luci-static/resources/view/wwand/status.js:522
+msgid ""
+"The priority the network gives this layer for idle-mode cell reselection (0 "
+"lowest, 7 highest). A layer ranked above all others keeps the modem on it. "
+"The modem reports it only while idle; during a connection the last idle "
+"reading of this layer is shown."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:1234
 msgid ""
 "The radio-stack figures come from the modem itself (MBIM SYS_CAPS); the slot "
 "count is how many slots it enumerated. A modem can advertise more slots than "
@@ -3210,27 +3662,31 @@ msgid ""
 "from a reader you simply left empty."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:613
-#: htdocs/luci-static/resources/view/wwand/status.js:622
+#: htdocs/luci-static/resources/wwand/esim.js:254
+msgid "The two new PINs differ."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:733
+#: htdocs/luci-static/resources/view/wwand/status.js:742
 msgid "Thermal"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:429
+#: htdocs/luci-static/resources/view/wwand/modems.js:437
 msgid ""
 "This SIM is PUK-locked (%s). A WRONG PUK consumes one of ~10 attempts — "
 "after the last one the SIM is permanently destroyed. The PUK is printed on "
 "the SIM carrier or available from the provider."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1061
+#: htdocs/luci-static/resources/view/wwand/status.js:1181
 msgid "This backend does not report whether a PIN is set."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:278
+#: htdocs/luci-static/resources/wwand/esim.js:332
 msgid "This card is managed by %s. Profile changes are made there, not here."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:252
+#: htdocs/luci-static/resources/wwand/esim.js:306
 msgid ""
 "This is the normal behaviour of M2M eUICCs (SGP.02) and of vendor-locked "
 "cards: profiles are managed over-the-air by the SIM provider (SM-SR), so "
@@ -3239,11 +3695,23 @@ msgid ""
 "active profile registered and online."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1129
+#: htdocs/luci-static/resources/view/wwand/settings.js:1194
+msgid "This modem cannot send SMS through wwand."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1310
+msgid "This modem cannot send these characters."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1145
 msgid "This modem does not expose SMS access."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1332
+#: htdocs/luci-static/resources/view/wwand/settings.js:1307
+msgid "This modem does not offer USSD."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1536
 msgid ""
 "This modem forgets its bands when it is power-cycled, so they are kept in "
 "the router configuration (band_lte / band_nr of the modem) and applied again "
@@ -3263,11 +3731,11 @@ msgid ""
 "enumerated from the router at all."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:765
+#: htdocs/luci-static/resources/view/wwand/settings.js:781
 msgid "This modem restores \"%s\" before every radio-on."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1296
+#: htdocs/luci-static/resources/view/wwand/settings.js:1500
 msgid "This modem's bands cannot be changed from here right now."
 msgstr ""
 
@@ -3275,19 +3743,23 @@ msgstr ""
 msgid "This modem's control backend does not offer that operation."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:885
+#: htdocs/luci-static/resources/view/wwand/status.js:1005
 msgid ""
 "This module boots radio-locked (laptop-SKU) and the modem will not register "
 "while the lock is armed — set fcc_auth on the modem configuration to unlock "
 "at boot"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1118
+#: htdocs/luci-static/resources/view/wwand/status.js:552
+msgid "Thresholds"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1134
 msgid "Tick messages and delete them in one step; shift-click selects a range."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:522
-#: htdocs/luci-static/resources/view/wwand/modems.js:523
+#: htdocs/luci-static/resources/view/wwand/modems.js:535
+#: htdocs/luci-static/resources/view/wwand/modems.js:536
 msgid "Tools"
 msgstr ""
 
@@ -3302,22 +3774,22 @@ msgid ""
 "is untagged."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1020
+#: htdocs/luci-static/resources/view/wwand/status.js:1140
 msgid ""
 "Tracking Area Identity recorded at attach: PLMN and Tracking Area Code. "
 "Differs from the serving cell TAC when the modem moved without re-attaching"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:675
+#: htdocs/luci-static/resources/view/wwand/modems.js:688
 #: htdocs/luci-static/resources/view/wwand/status.js:46
 msgid "Type"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:792
+#: htdocs/luci-static/resources/view/wwand/settings.js:808
 msgid "Type · entries"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1315
+#: htdocs/luci-static/resources/view/wwand/settings.js:1519
 msgid "UE usage"
 msgstr ""
 
@@ -3325,24 +3797,36 @@ msgstr ""
 msgid "URB / frame size"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:466
+#: htdocs/luci-static/resources/view/wwand/settings.js:1342
+msgid "USSD"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1311
+msgid "USSD failed: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:478
 msgid "Unblock SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:597
+#: htdocs/luci-static/resources/wwand/modemopts.js:569
+msgid "Unknown radio technology: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:622
 msgid "Unknown technology \"%s\" — use %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:469
-#: htdocs/luci-static/resources/view/wwand/modems.js:525
+#: htdocs/luci-static/resources/view/wwand/modems.js:481
+#: htdocs/luci-static/resources/view/wwand/modems.js:538
 msgid "Unlock SIM"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:450
+#: htdocs/luci-static/resources/view/wwand/modems.js:458
 msgid "Unlock failed: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:421
+#: htdocs/luci-static/resources/view/wwand/modems.js:429
 msgid "Unlock the blocked SIM (%s)"
 msgstr ""
 
@@ -3366,19 +3850,19 @@ msgstr ""
 msgid "Uptime"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:748
+#: htdocs/luci-static/resources/view/wwand/settings.js:764
 msgid "Use here"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:742
+#: htdocs/luci-static/resources/view/wwand/settings.js:758
 msgid "User"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:598
+#: htdocs/luci-static/resources/view/wwand/settings.js:614
 msgid "User list (SIM EF 6F60)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:206
+#: htdocs/luci-static/resources/wwand/simlist.js:226
 msgid "Username for the APN authentication."
 msgstr ""
 
@@ -3388,7 +3872,7 @@ msgid ""
 "otherwise apply to whatever APN the modem's attach profile already held."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:431
+#: htdocs/luci-static/resources/wwand/modemopts.js:444
 msgid ""
 "Vendor AT commands sent once after the modem is detected, before "
 "registration."
@@ -3398,6 +3882,10 @@ msgstr ""
 msgid "Verifying server"
 msgstr ""
 
+#: htdocs/luci-static/resources/view/wwand/settings.js:1318
+msgid "Waiting for the network…"
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/status.js:242
 msgid ""
 "What parses the NMEA and publishes a position. Not reading is a different "
@@ -3405,7 +3893,7 @@ msgid ""
 "listening."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:871
+#: htdocs/luci-static/resources/view/wwand/status.js:991
 msgid ""
 "What the hardware step of the recovery ladder would actually do on this box "
 "for this modem — asked of the same code that performs it, not inferred."
@@ -3415,13 +3903,13 @@ msgstr ""
 msgid "Where"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:209
+#: htdocs/luci-static/resources/view/wwand/modems.js:210
 msgid ""
 "Where the modem is in its bring-up: from ABSENT through SIM_UNLOCK and "
 "REGISTERING to READY. A state that does not advance is what the log explains."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:682
+#: htdocs/luci-static/resources/view/wwand/status.js:802
 msgid ""
 "Whether the modem offers QMI UIM Remote, the service a modem needs to run on "
 "a SIM card that is not in its own slot (a card in a reader, a phone, or "
@@ -3437,7 +3925,13 @@ msgid ""
 "exists and nothing is sent on it."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1300
+#: htdocs/luci-static/resources/view/wwand/status.js:514
+msgid ""
+"Whether this cell offers 5G NSA (EN-DC). Without it the modem cannot add a "
+"5G leg, whatever the 5G coverage."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:1504
 msgid ""
 "Which generations the modem may use. Unchecking one stops it being used at "
 "all — a modem restricted to 5G will not fall back to LTE where 5G is absent, "
@@ -3445,7 +3939,7 @@ msgid ""
 "pinning a technology."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:563
+#: htdocs/luci-static/resources/wwand/modemopts.js:588
 msgid ""
 "Which kind of 5G the modem may use: non-standalone (5G on an LTE anchor), "
 "standalone (5G core), or both. Separate from \"Radio technology\", which "
@@ -3459,7 +3953,7 @@ msgstr ""
 msgid "Which modem, and its SIM."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1318
+#: htdocs/luci-static/resources/view/wwand/settings.js:1522
 msgid ""
 "Which networks the modem may register on. \"Home only\" refuses roaming "
 "partners outright — useful against accidental cross-border charges, and the "
@@ -3475,7 +3969,7 @@ msgid ""
 "port would then prove nothing."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1147
+#: htdocs/luci-static/resources/view/wwand/settings.js:1220
 msgid ""
 "Which store to list and delete from — the SIM card or the modem's own "
 "memory. They are read one at a time, so a message you expect and cannot see "
@@ -3483,7 +3977,7 @@ msgid ""
 "messages."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:528
+#: htdocs/luci-static/resources/wwand/modemopts.js:541
 msgid ""
 "Who runs an SGP.32 IoT eUICC that also has its own IPA (IPAe). By default "
 "the card keeps its own IPA, and the router has no access to the card's "
@@ -3492,7 +3986,7 @@ msgid ""
 "profiles: eSIM page, lpac, eIM plugin."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:918
+#: htdocs/luci-static/resources/view/wwand/settings.js:934
 msgid ""
 "Without this the lock is lost on the next modem reset — which is the safer "
 "default: a persisted lock survives a reboot, so a cell that disappears "
@@ -3500,27 +3994,27 @@ msgid ""
 "the lock by hand."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:674
+#: htdocs/luci-static/resources/view/wwand/settings.js:690
 msgid "Write %d record(s) to the modem's %s list now? (not saved to config)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:687
+#: htdocs/luci-static/resources/view/wwand/settings.js:703
 msgid "Write failed: %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:684
+#: htdocs/luci-static/resources/view/wwand/settings.js:700
 msgid "Write failed: %s. The SIM/modem may reject it."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:732
+#: htdocs/luci-static/resources/view/wwand/settings.js:748
 msgid "Write to modem now"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:681
+#: htdocs/luci-static/resources/view/wwand/settings.js:697
 msgid "Written to the modem (%d record(s))."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:714
+#: htdocs/luci-static/resources/wwand/modemopts.js:801
 msgid "Zero-RX timeout"
 msgstr ""
 
@@ -3530,15 +4024,15 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/settings.js:508
 #: htdocs/luci-static/resources/wwand/esim.js:103
-#: htdocs/luci-static/resources/wwand/format.js:471
+#: htdocs/luci-static/resources/wwand/format.js:494
 msgid "active"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:886
+#: htdocs/luci-static/resources/view/wwand/status.js:1006
 msgid "active (mode %d)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1071
+#: htdocs/luci-static/resources/wwand/format.js:1105
 msgid "actual"
 msgstr ""
 
@@ -3554,7 +4048,7 @@ msgstr ""
 msgid "all"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1194
+#: htdocs/luci-static/resources/view/wwand/settings.js:1398
 msgid "any"
 msgstr ""
 
@@ -3581,21 +4075,21 @@ msgstr ""
 msgid "applying…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:748
-#: htdocs/luci-static/resources/wwand/format.js:1350
+#: htdocs/luci-static/resources/view/wwand/status.js:868
+#: htdocs/luci-static/resources/wwand/format.js:1384
 msgid "armed"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:746
+#: htdocs/luci-static/resources/view/wwand/status.js:866
 msgid "armed · %d/%d"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:390
+#: htdocs/luci-static/resources/wwand/format.js:413
 msgid "at least %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:271
-msgid "auto (QMI only)"
+#: htdocs/luci-static/resources/wwand/modemopts.js:283
+msgid "auto"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/logbox.js:360
@@ -3611,11 +4105,19 @@ msgstr ""
 msgid "available"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1274
+#: htdocs/luci-static/resources/wwand/format.js:289
+msgid "basic eUICC"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:578
+msgid "blocked"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:1308
 msgid "blocked (%s)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1055
+#: htdocs/luci-static/resources/view/wwand/status.js:1175
 msgid "blocked — %s"
 msgstr ""
 
@@ -3623,23 +4125,23 @@ msgstr ""
 msgid "blocked — PUK required"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:803
+#: htdocs/luci-static/resources/view/wwand/status.js:923
 msgid "board default"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:380
+#: htdocs/luci-static/resources/wwand/format.js:403
 msgid "both registered, one carries data"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:381
+#: htdocs/luci-static/resources/wwand/format.js:404
 msgid "both usable at once"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1285
+#: htdocs/luci-static/resources/wwand/format.js:1319
 msgid "busy (reads failing)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:665
+#: htdocs/luci-static/resources/view/wwand/status.js:785
 msgid "busy — reads failing"
 msgstr ""
 
@@ -3647,15 +4149,15 @@ msgstr ""
 msgid "card busy — cannot be read right now"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:613
+#: htdocs/luci-static/resources/wwand/format.js:647
 msgid "card error"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:611
+#: htdocs/luci-static/resources/wwand/format.js:645
 msgid "card present"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:933
+#: htdocs/luci-static/resources/view/wwand/status.js:1053
 msgid "cause %d"
 msgstr ""
 
@@ -3667,12 +4169,16 @@ msgstr ""
 msgid "code %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:704
+#: htdocs/luci-static/resources/view/wwand/modems.js:717
 msgid "configuring…"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:451
+#: htdocs/luci-static/resources/wwand/esim.js:505
 msgid "confirmation code (optional)"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:290
+msgid "contactless eUICC"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/netsel.js:65
@@ -3695,11 +4201,17 @@ msgstr ""
 msgid "cycle the radio"
 msgstr ""
 
+#: htdocs/luci-static/resources/wwand/modemopts.js:717
+msgid ""
+"dBm. A cell weaker than this is never chosen, and a locked cell that stays "
+"below it for 30 seconds is released."
+msgstr ""
+
 #: htdocs/luci-static/resources/wwand/logbox.js:333
 msgid "daemon not answering"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1189
+#: htdocs/luci-static/resources/view/wwand/settings.js:1393
 msgid "data centric"
 msgstr ""
 
@@ -3719,7 +4231,7 @@ msgstr ""
 msgid "delete not allowed"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:697
+#: htdocs/luci-static/resources/view/wwand/status.js:817
 msgid "detached by the operator"
 msgstr ""
 
@@ -3735,12 +4247,12 @@ msgstr ""
 msgid "disabled (SIM boots without PIN)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:997
+#: htdocs/luci-static/resources/view/wwand/status.js:1117
 msgid "eNB / Sector"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:94
-#: htdocs/luci-static/resources/wwand/esim.js:248
+#: htdocs/luci-static/resources/wwand/esim.js:302
 #: htdocs/luci-static/resources/wwand/simlist.js:41
 msgid "eSIM"
 msgstr ""
@@ -3749,20 +4261,20 @@ msgstr ""
 msgid "eSIM %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:245
+#: htdocs/luci-static/resources/wwand/esim.js:299
 msgid "eSIM management: package wwand-esim is not installed."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:325
+#: htdocs/luci-static/resources/wwand/esim.js:379
 msgid "eSIM profiles"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:51
-#: htdocs/luci-static/resources/wwand/format.js:497
+#: htdocs/luci-static/resources/wwand/format.js:520
 msgid "eUICC"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:456
+#: htdocs/luci-static/resources/wwand/format.js:479
 msgid "eUICC (eSIM)"
 msgstr ""
 
@@ -3770,23 +4282,23 @@ msgstr ""
 msgid "eUICC challenge"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:250
+#: htdocs/luci-static/resources/wwand/esim.js:304
 msgid ""
 "eUICC detected, but the card refuses local eSIM management (ES10 rejected, "
 "SW %s)."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:552
+#: htdocs/luci-static/resources/wwand/format.js:586
 msgid "eUICC with no profile installed"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:612
-#: htdocs/luci-static/resources/wwand/modemopts.js:486
+#: htdocs/luci-static/resources/wwand/format.js:646
+#: htdocs/luci-static/resources/wwand/modemopts.js:499
 msgid "empty"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/esim.js:196
-#: htdocs/luci-static/resources/wwand/format.js:582
+#: htdocs/luci-static/resources/wwand/format.js:616
 msgid "enabled"
 msgstr ""
 
@@ -3798,7 +4310,7 @@ msgstr ""
 msgid "excellent"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1070
+#: htdocs/luci-static/resources/wwand/format.js:1104
 msgid "expected"
 msgstr ""
 
@@ -3814,7 +4326,7 @@ msgstr ""
 msgid "forbidden"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:803
+#: htdocs/luci-static/resources/view/wwand/status.js:923
 msgid "from this modem's configuration"
 msgstr ""
 
@@ -3826,7 +4338,15 @@ msgstr ""
 msgid "good"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:291
+#: htdocs/luci-static/resources/view/wwand/status.js:513
+msgid "hosted by another network"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:569
+msgid "in %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:314
 msgid ""
 "in the card (IPAe) — the card and its eIM manage the profiles; the router "
 "has no ES10 access (modem setting “SGP.32 IPA” hands it over)"
@@ -3842,26 +4362,42 @@ msgstr ""
 msgid "inactive"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:395
+#: htdocs/luci-static/resources/wwand/format.js:418
 msgid "inferred"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:908
-#: htdocs/luci-static/resources/view/wwand/status.js:910
+#: htdocs/luci-static/resources/view/wwand/status.js:1028
+#: htdocs/luci-static/resources/view/wwand/status.js:1030
 msgid "limited service"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1292
+#: htdocs/luci-static/resources/view/wwand/status.js:1417
 msgid "loading…"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:440
+#: htdocs/luci-static/resources/view/wwand/status.js:496
+msgid "lock released, waiting"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:495
+msgid "locked on an EN-DC anchor"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:495
+msgid "locked, waiting for EN-DC"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:494
+msgid "locking"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:494
 msgid ""
 "lpac downloads on the router over your uplink and relays the eUICC APDUs "
 "through wwand — no dedicated modem APN needed."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:289
+#: htdocs/luci-static/resources/wwand/esim.js:343
 msgid "managed by %s"
 msgstr ""
 
@@ -3869,7 +4405,11 @@ msgstr ""
 msgid "manual"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1179
+#: htdocs/luci-static/resources/wwand/format.js:289
+msgid "medium eUICC"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:1213
 msgid "mmWave, 24 GHz and above"
 msgstr ""
 
@@ -3881,54 +4421,59 @@ msgstr ""
 msgid "modem default (do not change)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:310
+#: htdocs/luci-static/resources/wwand/format.js:333
 msgid ""
 "modem reset, power cycle and reboot held for %d min — the card is settling "
 "its own profile change"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1181
-#: htdocs/luci-static/resources/view/wwand/status.js:1202
-#: htdocs/luci-static/resources/view/wwand/status.js:1224
+#: htdocs/luci-static/resources/view/wwand/status.js:1303
+#: htdocs/luci-static/resources/view/wwand/status.js:1324
+#: htdocs/luci-static/resources/view/wwand/status.js:1346
 msgid "neighbour"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:551
+#: htdocs/luci-static/resources/wwand/format.js:585
 msgid "network lock (SIM not accepted by this modem)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:777
+#: htdocs/luci-static/resources/wwand/esim.js:202
+msgid "new PIN"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:897
 msgid "next: %s in %d attempts"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:778
+#: htdocs/luci-static/resources/view/wwand/status.js:898
 msgid "next: %s, due now"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:411
-#: htdocs/luci-static/resources/view/wwand/status.js:679
+#: htdocs/luci-static/resources/view/wwand/status.js:515
+#: htdocs/luci-static/resources/view/wwand/status.js:799
 msgid "no"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:868
+#: htdocs/luci-static/resources/view/wwand/status.js:988
 msgid "no GPIO — nothing. %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:866
+#: htdocs/luci-static/resources/view/wwand/status.js:986
 msgid ""
 "no GPIO — software only (%s), and no reboot either, so the ladder keeps "
 "retrying. %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:864
+#: htdocs/luci-static/resources/view/wwand/status.js:984
 msgid "no GPIO — software only (%s), then a router reboot. %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:858
+#: htdocs/luci-static/resources/view/wwand/status.js:978
 msgid "no board profile for this device, so no power or reset line is known"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:553
+#: htdocs/luci-static/resources/wwand/format.js:587
 msgid "no card"
 msgstr ""
 
@@ -3940,28 +4485,28 @@ msgstr ""
 msgid "no fix yet"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:807
+#: htdocs/luci-static/resources/view/wwand/status.js:927
 msgid "no power line"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:356
+#: htdocs/luci-static/resources/view/wwand/modems.js:364
 msgid "no power/reset control"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/esim.js:334
+#: htdocs/luci-static/resources/wwand/esim.js:388
 msgid "no profiles"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:315
+#: htdocs/luci-static/resources/view/wwand/modems.js:323
 #: htdocs/luci-static/resources/wwand/modemopts.js:196
 msgid "no reset control"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:292
+#: htdocs/luci-static/resources/view/wwand/modems.js:300
 msgid "no reset control for this modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1032
+#: htdocs/luci-static/resources/wwand/format.js:1066
 msgid "no signal (modem not registered)"
 msgstr ""
 
@@ -3973,19 +4518,20 @@ msgstr ""
 msgid "none reported"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:793
+#: htdocs/luci-static/resources/view/wwand/settings.js:809
+#: htdocs/luci-static/resources/view/wwand/status.js:567
 msgid "none yet"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:657
+#: htdocs/luci-static/resources/view/wwand/status.js:777
 msgid "not armed"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:746
+#: htdocs/luci-static/resources/view/wwand/status.js:866
 msgid "not armed · %d/%d"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:749
+#: htdocs/luci-static/resources/view/wwand/status.js:869
 msgid "not armed — no exchange has succeeded in the selected protocol yet"
 msgstr ""
 
@@ -3999,6 +4545,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:134
 msgid "not connected"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:539
+msgid "not measured"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:40
@@ -4018,7 +4568,7 @@ msgstr ""
 msgid "not present, last seen %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:614
+#: htdocs/luci-static/resources/wwand/format.js:648
 msgid "not read"
 msgstr ""
 
@@ -4026,16 +4576,16 @@ msgstr ""
 msgid "not reading"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:798
+#: htdocs/luci-static/resources/view/wwand/status.js:918
 #: htdocs/luci-static/resources/wwand/graph.js:565
 msgid "not reported"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:799
+#: htdocs/luci-static/resources/view/wwand/status.js:919
 msgid "not reported by this wwand version"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1060
+#: htdocs/luci-static/resources/view/wwand/status.js:1180
 msgid "not required"
 msgstr ""
 
@@ -4043,15 +4593,15 @@ msgstr ""
 msgid "not running"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/simlist.js:169
+#: htdocs/luci-static/resources/wwand/simlist.js:184
 msgid "not seen"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:626
+#: htdocs/luci-static/resources/view/wwand/status.js:746
 msgid "not throttling"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:861
+#: htdocs/luci-static/resources/view/wwand/status.js:981
 msgid "nothing"
 msgstr ""
 
@@ -4059,58 +4609,59 @@ msgstr ""
 msgid "nothing is reading the port"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:774
+#: htdocs/luci-static/resources/view/wwand/status.js:894
 msgid "nothing physical until the modem answers"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:765
+#: htdocs/luci-static/resources/view/wwand/status.js:885
 msgid "nothing physical until the modem answers (automatic reset switched off)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:773
+#: htdocs/luci-static/resources/view/wwand/status.js:893
 msgid "nothing physical until the modem answers (no reset GPIO assigned to it)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:771
+#: htdocs/luci-static/resources/view/wwand/status.js:891
 msgid ""
 "nothing physical until the modem answers (the board's reset line %s is used "
 "only by an explicit reset — set this modem's reset GPIO for the automatic "
 "pulse)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:819
+#: htdocs/luci-static/resources/view/wwand/status.js:939
 msgid ""
 "nothing — \"%s\" is not in wwand's board profile table, so its modem power "
 "and reset lines are unknown. They may well exist."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1193
+#: htdocs/luci-static/resources/view/wwand/settings.js:1397
 #: htdocs/luci-static/resources/view/wwand/status.js:238
-#: htdocs/luci-static/resources/wwand/modemopts.js:272
+#: htdocs/luci-static/resources/view/wwand/status.js:496
+#: htdocs/luci-static/resources/wwand/modemopts.js:284
 msgid "off"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:581
+#: htdocs/luci-static/resources/view/wwand/status.js:701
 msgid "off (hardware switch)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:581
+#: htdocs/luci-static/resources/view/wwand/status.js:701
 msgid "off (software)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:691
+#: htdocs/luci-static/resources/view/wwand/status.js:811
 msgid "off — %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:296
+#: htdocs/luci-static/resources/wwand/format.js:319
 msgid "on the device (IPAd)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:295
+#: htdocs/luci-static/resources/wwand/format.js:318
 msgid "on the device (IPAd); the card could also run its own"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:379
+#: htdocs/luci-static/resources/wwand/format.js:402
 msgid "one SIM active at a time (switching)"
 msgstr ""
 
@@ -4122,15 +4673,15 @@ msgstr ""
 msgid "pending — takes effect after a modem reset"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:806
+#: htdocs/luci-static/resources/view/wwand/status.js:926
 msgid "power cycle"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:809
+#: htdocs/luci-static/resources/view/wwand/status.js:929
 msgid "power cycle the modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:821
+#: htdocs/luci-static/resources/view/wwand/status.js:941
 msgid "power cycle — but this board has no modem power line"
 msgstr ""
 
@@ -4140,6 +4691,12 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:52
 msgid "profile %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:527
+msgid ""
+"qmi: the NAS cell location read (only while idle); at: "
+"AT+QENG=\"neighbourcell\"."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/modems.js:139
@@ -4154,15 +4711,15 @@ msgstr ""
 msgid "reader %s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:649
+#: htdocs/luci-static/resources/view/wwand/settings.js:665
 msgid "reading…"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1291
+#: htdocs/luci-static/resources/wwand/format.js:1325
 msgid "ready"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1291
+#: htdocs/luci-static/resources/wwand/format.js:1325
 msgid "ready, PIN enabled"
 msgstr ""
 
@@ -4170,32 +4727,40 @@ msgstr ""
 msgid "refused"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1040
-#: htdocs/luci-static/resources/wwand/format.js:1113
+#: htdocs/luci-static/resources/wwand/format.js:1074
+#: htdocs/luci-static/resources/wwand/format.js:1147
 msgid "registered"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1031
+#: htdocs/luci-static/resources/wwand/format.js:1065
 msgid "registered — this modem reports no signal detail"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:908
+#: htdocs/luci-static/resources/view/wwand/status.js:1028
 msgid "reject cause %d"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1120
+#: htdocs/luci-static/resources/wwand/format.js:1154
 msgid "rejected: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:496
+msgid "releasing the lock"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/esim.js:204
+msgid "repeat new PIN"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:238
 msgid "requested, not started"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1058
+#: htdocs/luci-static/resources/view/wwand/status.js:1178
 msgid "required (%d attempts left)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:802
+#: htdocs/luci-static/resources/view/wwand/status.js:922
 msgid "reset line %s"
 msgstr ""
 
@@ -4203,23 +4768,23 @@ msgstr ""
 msgid "reset the modem"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:763
+#: htdocs/luci-static/resources/view/wwand/status.js:883
 msgid "reset-line pulse already used this outage"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:758
+#: htdocs/luci-static/resources/view/wwand/status.js:878
 msgid "reset-line pulse available"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:760
+#: htdocs/luci-static/resources/view/wwand/status.js:880
 msgid "reset-line pulse in %d s"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:761
+#: htdocs/luci-static/resources/view/wwand/status.js:881
 msgid "reset-line pulse on the next failed attempt"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:767
+#: htdocs/luci-static/resources/view/wwand/settings.js:783
 msgid "restoring…"
 msgstr ""
 
@@ -4249,15 +4814,19 @@ msgstr ""
 msgid "scan vanished (daemon restarted?)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1040
+#: htdocs/luci-static/resources/view/wwand/status.js:494
+msgid "scanning for cells"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/format.js:1074
 msgid "searching"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1122
+#: htdocs/luci-static/resources/wwand/format.js:1156
 msgid "searching…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:861
+#: htdocs/luci-static/resources/view/wwand/status.js:981
 msgid "software only"
 msgstr ""
 
@@ -4265,11 +4834,11 @@ msgstr ""
 msgid "starting"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:882
+#: htdocs/luci-static/resources/view/wwand/status.js:1002
 msgid "stuck for %d s (%d timeouts on %s)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:1178
+#: htdocs/luci-static/resources/wwand/format.js:1212
 msgid "sub-6 GHz"
 msgstr ""
 
@@ -4281,15 +4850,19 @@ msgstr ""
 msgid "switching to it"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:289
+#: htdocs/luci-static/resources/wwand/esim.js:228
+msgid "the PIN query is off; enable it first"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/modems.js:297
 msgid "the board profile has no modem power line"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:290
+#: htdocs/luci-static/resources/view/wwand/modems.js:298
 msgid "the configured reset GPIO could not be driven"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:291
+#: htdocs/luci-static/resources/view/wwand/modems.js:299
 msgid "the daemon does not know this modem"
 msgstr ""
 
@@ -4305,36 +4878,42 @@ msgstr ""
 msgid "the modem runs another card"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:859
+#: htdocs/luci-static/resources/view/wwand/status.js:979
 msgid "this board exposes no modem power or reset line"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:288
+#: htdocs/luci-static/resources/view/wwand/modems.js:296
 msgid ""
 "this board is not in wwand's profile table, so it has no known power or "
 "reset line"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:287
+#: htdocs/luci-static/resources/view/wwand/modems.js:295
 msgid ""
 "this board powers both modems from one line, so cutting it would drop the "
 "other modem too — give this modem its own \"Modem reset GPIO\" to repower it "
 "alone"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:856
+#: htdocs/luci-static/resources/view/wwand/status.js:976
 msgid ""
 "this box has more than one modem and the board lines would hit the wrong one "
 "— set \"Modem reset GPIO\" on this modem to give the step something to do"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1310
+#: htdocs/luci-static/resources/view/wwand/settings.js:1514
 msgid ""
 "this modem's settings fix \"Radio technology\" at \"%s\", and wwand applies "
 "that again whenever the modem starts. To keep a change, make it there."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:615
+#: htdocs/luci-static/resources/view/wwand/status.js:552
+msgid ""
+"threshX-High / threshX-Low as reported: how strong a cell on this layer must "
+"be before the modem moves to it."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/status.js:735
 msgid "throttling, level %d"
 msgstr ""
 
@@ -4347,24 +4926,24 @@ msgstr ""
 msgid "ugps is not answering"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/modems.js:778
-#: htdocs/luci-static/resources/view/wwand/status.js:679
+#: htdocs/luci-static/resources/view/wwand/modems.js:791
+#: htdocs/luci-static/resources/view/wwand/status.js:799
 #: htdocs/luci-static/resources/wwand/esim.js:198
-#: htdocs/luci-static/resources/wwand/format.js:298
+#: htdocs/luci-static/resources/wwand/format.js:321
 #: htdocs/luci-static/resources/wwand/netsel.js:37
 msgid "unknown"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/format.js:298
+#: htdocs/luci-static/resources/wwand/format.js:321
 msgid "unknown (the card supports an IPAe)"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:807
+#: htdocs/luci-static/resources/view/wwand/status.js:927
 msgid "unknown board"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1061
-#: htdocs/luci-static/resources/wwand/format.js:546
+#: htdocs/luci-static/resources/view/wwand/status.js:1181
+#: htdocs/luci-static/resources/wwand/format.js:580
 msgid "unlocked"
 msgstr ""
 
@@ -4372,15 +4951,19 @@ msgstr ""
 msgid "unmanaged"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:1188
+#: htdocs/luci-static/resources/view/wwand/settings.js:1392
 msgid "voice centric"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/settings.js:677
+#: htdocs/luci-static/resources/view/wwand/status.js:494
+msgid "watching"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/wwand/settings.js:693
 msgid "writing…"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:785
+#: htdocs/luci-static/resources/view/wwand/status.js:905
 msgid ""
 "wwand escalates a failing modem in steps: cycle the operating mode, reset "
 "the modem, then the board's power or reset line, and a reboot beyond that. "
@@ -4389,11 +4972,11 @@ msgid ""
 "modem is never repowered."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:1403
+#: htdocs/luci-static/resources/view/wwand/status.js:1528
 msgid "wwand is not running or no modem present yet."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:334
+#: htdocs/luci-static/resources/wwand/modemopts.js:347
 msgid "wwand leaves %s untouched and polls telemetry over the control channel."
 msgstr ""
 
@@ -4401,7 +4984,7 @@ msgstr ""
 msgid "wwand log"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/wwand/status.js:567
+#: htdocs/luci-static/resources/view/wwand/status.js:687
 msgid ""
 "wwand state for this modem: READY = usable, REGISTERING = searching for a "
 "network, WAITING_MODEM/ABSENT = control device not present, SIM_BLOCKED = "
@@ -4409,7 +4992,9 @@ msgid ""
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:411
-#: htdocs/luci-static/resources/view/wwand/status.js:677
+#: htdocs/luci-static/resources/view/wwand/status.js:515
+#: htdocs/luci-static/resources/view/wwand/status.js:577
+#: htdocs/luci-static/resources/view/wwand/status.js:797
 msgid "yes"
 msgstr ""
 
