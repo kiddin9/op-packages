@@ -508,3 +508,72 @@ index 000000000000..a00fff9c79b3
  msgid "Auto"
  msgstr "自动"
  
+
+diff --git a/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua b/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
+index 1283e25..3e32e97 100644
+--- a/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
++++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/type/2_xray.lua
+@@ -467,29 +467,35 @@ o:depends({ tls = true })
+ o:depends({ protocol = "hysteria2" })
+ o:depends({ protocol = "masque" })
+ 
+-o = s:option(Value, "tls_pinSHA256", translate("TLS Chain Fingerprint (SHA256)"))
++o = s:option(Flag, "tls_allowInsecure", translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
++o.default = "0"
+ o:depends({ tls = true, reality = false })
+ o:depends({ protocol = "hysteria2" })
+ o:depends({ protocol = "masque" })
++
++o = s:option(Value, "tls_pinSHA256", translate("TLS Chain Fingerprint (SHA256)"))
++o:depends({ tls = true, reality = false, tls_allowInsecure = false })
++o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
++o:depends({ protocol = "masque", tls_allowInsecure = false })
+ o.description = translate("Once set, connects only when the server’s chain fingerprint matches.") ..
+ 		string.format("<a href='javascript:void(0)' onclick='javascript:fetchCertSha256(this)'>%s</a>", "→ " .. translate("Fetch Manually"))
+ 
+ o = s:option(Value, "tls_CertByName", translate("TLS Certificate Name (CertName)"), translate("TLS is used to verify the leaf certificate name."))
+-o:depends({ tls = true, reality = false })
+-o:depends({ protocol = "hysteria2" })
+-o:depends({ protocol = "masque" })
++o:depends({ tls = true, reality = false, tls_allowInsecure = false })
++o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
++o:depends({ protocol = "masque", tls_allowInsecure = false })
+ 
+ o = s:option(Flag, "tls_certificate", translate("TLS Certificate (PEM)"))
+ o.default = "0"
+-o:depends({ tls = true, reality = false })
+-o:depends({ protocol = "hysteria2" })
+-o:depends({ protocol = "masque" })
++o:depends({ tls = true, reality = false, tls_allowInsecure = false })
++o:depends({ protocol = "hysteria2", tls_allowInsecure = false })
++o:depends({ protocol = "masque", tls_allowInsecure = false })
+ 
+ o = s:option(TextValue, "tls_certificate_pem", "　", translate("Full certificate (chain), PEM format."))
+ o.default = ""
+ o.rows = 5
+ o.wrap = "off"
+-o:depends({ tls_certificate = true })
++o:depends({ tls_certificate = true, tls_allowInsecure = false })
+ o.cfgvalue = function(self, section)
+ 	return (m:get(section, "tls_certificate_pem") or ""):gsub("\\n", "\n")
+ end
+diff --git a/luci-app-passwall/luasrc/passwall/util_xray.lua b/luci-app-passwall/luasrc/passwall/util_xray.lua
+index f9890d3..b81c205 100644
+--- a/luci-app-passwall/luasrc/passwall/util_xray.lua
++++ b/luci-app-passwall/luasrc/passwall/util_xray.lua
+@@ -181,11 +181,12 @@ function gen_outbound(flag, node, tag, proxy_table)
+ 				security = node.stream_security,
+ 				tlsSettings = (node.stream_security == "tls") and {
+ 					serverName = node.tls_serverName,
++					allowInsecure = (node.tls_allowInsecure == "1") and true or nil,
+ 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
+-					pinnedPeerCertSha256 = (node.tls_pinSHA256 and node.tls_pinSHA256 ~= "") and api.sha256_sb_xray(node.tls_pinSHA256) or "",
+-					verifyPeerCertByName = node.tls_CertByName or "",
++					pinnedPeerCertSha256 = (node.tls_allowInsecure ~= "1" and node.tls_pinSHA256 and node.tls_pinSHA256 ~= "") and api.sha256_sb_xray(node.tls_pinSHA256) or "",
++					verifyPeerCertByName = (node.tls_allowInsecure ~= "1" and node.tls_CertByName) or "",
+ 					echConfigList = (node.ech == "1") and node.ech_config or nil,
+-					certificates = (node.tls_certificate == "1" and node.tls_certificate_pem ~= "") and {
++					certificates = (node.tls_allowInsecure ~= "1" and node.tls_certificate == "1" and node.tls_certificate_pem ~= "") and {
+ 						certificate = api.split(node.tls_certificate_pem:gsub("\\n", "\n"), "\n"),
+ 						usage = "verify"
+ 					} or nil,
