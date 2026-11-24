@@ -4,6 +4,15 @@
 'require ui';
 'require uci';
 
+if (!document.getElementById('secbox-theme-css')) {
+	document.head.appendChild(E('link', {
+		'id': 'secbox-theme-css',
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': L.resource('view/secbox/custom.css')
+	}));
+}
+
 /*
 	button handling
 */
@@ -14,6 +23,10 @@ function handleAction(report, ev) {
 			let ip = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
 			if (ip) {
+				if (!/^[a-zA-Z0-9.:_/-]+$/.test(ip)) {
+					document.getElementById('result').textContent = _('Invalid IP, CIDR, or domain format.');
+					return;
+				}
 				window._lastSearchedIP = ip;
 				document.getElementById('result').textContent = _('Search is running, please wait...');
 				if (window._banipPoller) {
@@ -144,7 +157,7 @@ function handleAction(report, ev) {
 		}
 		selectOption = [E('option', { value: '' }, [_('-- Set Selection --')])];
 		Object.keys(content.nftables)
-			.filter(key => content.nftables[key].set?.name && content.nftables[key].set.table === 'SecBox')
+			.filter(key => content.nftables[key].set?.name && (content.nftables[key].set.table === 'SecBox' || content.nftables[key].set.table === 'banIP'))
 			.sort((a, b) => content.nftables[a].set.name.localeCompare(content.nftables[b].set.name))
 			.forEach(key => {
 				selectOption.push(E('option', { 'value': content.nftables[key].set.name }, content.nftables[key].set.name));
@@ -196,7 +209,7 @@ function handleAction(report, ev) {
 						const isChecked = checkbox.checked ? 'true' : 'false';
 						let set = document.getElementById('set').value;
 						if (set) {
-							document.getElementById('result').textContent = 'Collecting Set content, please wait...';
+							document.getElementById('result').textContent = _('Collecting Set content, please wait...');
 							return L.resolveDefault(fs.exec_direct('/etc/init.d/banip', ['content', set, isChecked]), '').then(function (res) {
 								let result = document.getElementById('result');
 								result.textContent = res ? res.trim() : _('Network error');
@@ -289,10 +302,13 @@ return view.extend({
 			content[0] = "";
 		}
 
-		function fmtCount(value) {
+		function fmtCount(value, emptyText) {
 			const text = String(value ?? '').trim();
+			if (!text || text === '-') {
+				return emptyText !== undefined ? emptyText : '0';
+			}
 			if (!/^\d+$/.test(text)) {
-				return text || '-';
+				return text;
 			}
 			return text.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 		}
@@ -337,22 +353,24 @@ return view.extend({
 			E('tr', { 'class': 'tr cbi-section-table-titles' }, [
 				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 15%; text-align: left !important;' }, [_('Set')]),
 				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 10%; text-align: left !important;' }, [_('Count')]),
-				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 12%; text-align: left !important;' }, [_('Inbound&#160;(packets)')]),
-				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 12%; text-align: left !important;' }, [_('Outbound&#160;(packets)')]),
-				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 13%; text-align: left !important;' }, [_('Port&#160;/&#160;Protocol')]),
+				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 12%; text-align: left !important;' }, [_('Inbound&#160;(packets)').replace(/&#160;/g, '\u00a0')]),
+				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 12%; text-align: left !important;' }, [_('Outbound&#160;(packets)').replace(/&#160;/g, '\u00a0')]),
+				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 13%; text-align: left !important;' }, [_('Port&#160;/&#160;Protocol').replace(/&#160;/g, '\u00a0')]),
 				E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 38%; text-align: left !important;' }, [_('Elements (max. 50)')])
 			])
 		]);
 
-		if (content[0].sets) {
+		if (content && content[0] && content[0].sets) {
 			Object.keys(content[0].sets).sort().forEach(function (key, idx) {
+				const setObj = content[0].sets[key] || {};
+				const setElements = Array.isArray(setObj.set_elements) ? setObj.set_elements.join(", ") : '';
 				rowSets.push([
 					E('em', { 'style': 'text-align: left !important; word-break: break-all;' }, key),
-					E('em', { 'style': 'text-align: left !important;' }, fmtCount(content[0].sets[key].cnt_elements)),
-					dirNode(content[0].sets[key].inbound, content[0].sets[key].cnt_inbound, false),
-					dirNode(content[0].sets[key].outbound, content[0].sets[key].cnt_outbound, false),
-					E('em', { 'style': 'text-align: left !important;' }, content[0].sets[key].port),
-					E('em', { 'style': 'text-align: left !important; word-break: break-all; white-space: normal; display: block; overflow-wrap: anywhere;' }, content[0].sets[key].set_elements.join(", "))
+					E('em', { 'style': 'text-align: left !important;' }, fmtCount(setObj.cnt_elements)),
+					dirNode(setObj.inbound, setObj.cnt_inbound, false),
+					dirNode(setObj.outbound, setObj.cnt_outbound, false),
+					setObj.port && setObj.port !== '-' ? E('em', { 'style': 'text-align: left !important;' }, setObj.port) : E('span', { 'class': 'secbox-muted' }, [_('None')]),
+					setElements ? E('em', { 'style': 'text-align: left !important; word-break: break-all; white-space: normal; display: block; overflow-wrap: anywhere;' }, setElements) : E('span', { 'class': 'secbox-muted' }, [_('None')])
 				]);
 			});
 			rowSets.push([
@@ -364,15 +382,27 @@ return view.extend({
 				E('em', { 'style': 'font-weight: bold; text-align: left !important; word-break: break-all;' }, content[0].sum_setelements)
 			]);
 		}
-		cbi_update_table(tblSets, rowSets);
+		if (rowSets.length > 0) {
+			cbi_update_table(tblSets, rowSets);
+		} else {
+			tblSets.appendChild(E('tr', { 'class': 'tr cbi-section-table-row cbi-rowstyle-1' }, [
+				E('td', { 'colspan': 6, 'class': 'td cbi-section-table-cell secbox-muted', 'style': 'text-align: center !important; padding: 1.5em;' }, [
+					_('No Set details available yet.')
+				])
+			]));
+		}
 
 		const sum = content?.[0] || {};
 		const hits = hitStats(sum.sets);
 
-		function renderStatRow(label, val, idx) {
+		function renderStatRow(label, val, idx, isText) {
+			const hasVal = val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '-';
+			const displayNode = isText
+				? (hasVal ? String(val) : E('span', { 'class': 'secbox-muted', 'style': 'font-weight: normal;' }, [_('Not generated yet')]))
+				: fmtCount(val);
 			return E('tr', { 'class': 'tr cbi-section-table-row cbi-rowstyle-' + ((idx % 2) ? 2 : 1) }, [
-				E('td', { 'class': 'td cbi-section-table-cell', 'style': 'width: 55% !important; max-width: 55% !important; min-width: 55% !important; text-align: left !important; font-weight: 600;' }, [label]),
-				E('td', { 'class': 'td cbi-section-table-cell', 'style': 'width: 45% !important; text-align: left !important; font-weight: bold;' }, [fmtCount(val)])
+				E('td', { 'class': 'td cbi-section-table-cell', 'style': 'width: 50% !important; max-width: 50% !important; min-width: 50% !important; text-align: left !important; font-weight: 600;' }, [label]),
+				E('td', { 'class': 'td cbi-section-table-cell', 'style': 'width: 50% !important; text-align: left !important; font-weight: bold;' }, [displayNode])
 			]);
 		}
 
@@ -396,7 +426,9 @@ return view.extend({
 						]),
 						E('tbody', {}, rows.length ? rows : [
 							E('tr', { 'class': 'tr cbi-section-table-row cbi-rowstyle-1' }, [
-								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell', 'style': 'text-align: left !important; color: #888;' }, ['-'])
+								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell secbox-muted', 'style': 'text-align: center !important; padding: 1.5em;' }, [
+									_('No Set statistics available yet.')
+								])
 							])
 						])
 					])
@@ -405,22 +437,17 @@ return view.extend({
 		}
 
 		const style = E('style', { 'type': 'text/css' }, [
-			'#ban-report-grid .op-grid-2 { display: grid; gap: 1em; grid-template-columns: repeat(2, 1fr); margin-bottom: 1em; align-items: stretch; }' +
+			'#ban-report-grid .op-grid-2 { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); margin-bottom: 14px; align-items: stretch; }' +
 			'@media (max-width: 900px) { #ban-report-grid .op-grid-2 { grid-template-columns: 1fr; } }' +
-			'#ban-report-grid .op-grid-1 { margin-bottom: 1em; width: 100%; }' +
-			'#ban-report-grid .op-card { background: var(--cbi-section-bg, #fff); border: 1px solid var(--cbi-border-color, #e5e7eb); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }' +
-			'#ban-report-grid .op-card-header { background: rgba(0, 0, 0, 0.025); min-height: 2.85em; height: 2.85em; padding: 0 1em; box-sizing: border-box; border-bottom: 1px solid var(--cbi-border-color, #e5e7eb); font-weight: 700; font-size: 1.02em; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }' +
-			'#ban-report-grid .op-card-body { padding: .85em 1em; flex: 1; display: flex; flex-direction: column; justify-content: center; }' +
+			'#ban-report-grid .op-grid-1 { margin-bottom: 14px; width: 100%; }' +
+			'#ban-report-grid .op-card { display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }' +
+			'#ban-report-grid .op-card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; }' +
 			'#ban-report-grid .op-card-body-table { padding: 0 !important; justify-content: flex-start; }' +
-			'#ban-report-grid table.table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; margin: 0; }' +
-			'#ban-report-grid table.table td { padding: .5em .85em; text-align: left !important; font-size: .95em; vertical-align: middle; }' +
-			'@media (prefers-color-scheme: dark) {' +
-			'#ban-report-grid .op-card { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.12); }' +
-			'#ban-report-grid .op-card-header { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); }' +
-			'}'
+			'#ban-report-grid table.table { table-layout: fixed; }' +
+			'#ban-report-grid table.table td { text-align: left !important; }'
 		]);
 
-		const page = E('div', { 'class': 'cbi-map', 'id': 'ban-report-grid' }, [
+		const page = E('div', { 'class': 'cbi-map secbox-view', 'id': 'ban-report-grid' }, [
 			style,
 			E('h2', { 'name': 'content' }, [_('SecBox Set Reporting')]),
 			E('div', { 'class': 'cbi-map-descr' }, [
@@ -437,7 +464,7 @@ return view.extend({
 						E('table', { 'class': 'table cbi-section-table' }, [
 							renderStatRow(_('Sets'), sum.sum_sets, 0),
 							renderStatRow(_('Elements'), sum.sum_cntelements, 1),
-							renderStatRow(_('Timestamp'), sum.timestamp || '-', 2)
+							renderStatRow(_('Timestamp'), sum.timestamp, 2, true)
 						])
 					])
 				]),
@@ -494,10 +521,12 @@ return view.extend({
 			]),
 
 			/* Bottom Full-Width Table */
-			E('div', { 'class': 'cbi-section', 'style': 'overflow-x: auto;' }, [
-				E('h3', _('Set details')),
-				E('div', { 'class': 'cbi-section-node' }, [
-					tblSets
+			E('div', { 'class': 'op-grid-1' }, [
+				E('div', { 'class': 'op-card' }, [
+					E('div', { 'class': 'op-card-header' }, [_('Set details')]),
+					E('div', { 'class': 'op-card-body op-card-body-table', 'style': 'overflow-x: auto;' }, [
+						tblSets
+					])
 				])
 			]),
 
@@ -516,6 +545,7 @@ return view.extend({
 							L.resolveDefault(fs.exec_direct('/etc/init.d/banip', ['report', 'gen']), '');
 							let attempts = 0;
 							let poller = setInterval(function () {
+								window._banipReportPoller = poller;
 								L.resolveDefault(fs.read('/var/run/banIP/banIP.report'), '').then(function (res) {
 									res = (res || '').trim();
 									if (res === '1') {
@@ -584,6 +614,16 @@ return view.extend({
 			}
 		}
 		return page;
+	},
+	unload: function () {
+		if (window._banipPoller) {
+			clearInterval(window._banipPoller);
+			window._banipPoller = null;
+		}
+		if (window._banipReportPoller) {
+			clearInterval(window._banipReportPoller);
+			window._banipReportPoller = null;
+		}
 	},
 	handleSaveApply: null,
 	handleSave: null,

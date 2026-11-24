@@ -7,11 +7,14 @@
 /*
 	include custom CSS
 */
-document.querySelector('head').appendChild(E('link', {
-	'rel': 'stylesheet',
-	'type': 'text/css',
-	'href': L.resource('view/secbox/custom.css')
-}));
+if (!document.getElementById('secbox-theme-css')) {
+	document.head.appendChild(E('link', {
+		'id': 'secbox-theme-css',
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': L.resource('view/secbox/custom.css')
+	}));
+}
 
 /*
 	module-level file size set during render, read by observer
@@ -318,7 +321,10 @@ return view.extend({
 				}, [_('Clear')])
 			]);
 		});
-		return m.render();
+		return m.render().then(function (node) {
+			node.classList.add('secbox-view', 'secbox-feeds-view');
+			return node;
+		});
 	},
 	handleSaveApply: null,
 	handleSave: null,

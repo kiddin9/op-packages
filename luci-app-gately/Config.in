@@ -1,0 +1,132 @@
+menu "Configuration"
+	depends on PACKAGE_luci-app-gately
+
+choice
+	prompt "Web UI language pack"
+	default GATELY_LANG_ZH
+	help
+	  Select which UI languages to bundle into the Gately web console
+	  and backend translations to reduce flash footprint on routers.
+
+config GATELY_LANG_ALL
+	bool "All languages (10 locales)"
+
+config GATELY_LANG_CJKEN
+	bool "Chinese & English only (zh-CN, zh-TW, en, saves ~700 KB)"
+
+config GATELY_LANG_ZH
+	bool "Simplified Chinese only (zh-CN, saves ~900 KB)"
+
+endchoice
+
+config GATELY_CUSTOM_MODULES
+	bool "Customize included feature modules"
+	default n
+	help
+	  Enable to selectively exclude optional Gately modules at compile time
+	  (Port Forwarding, SSL Certificates, and Web Services are core modules
+	  and are always included). Note that custom builds disable Gately's
+	  built-in online binary self-upgrade.
+
+if GATELY_CUSTOM_MODULES
+
+config GATELY_MOD_PROTOROUTE
+	bool "Protocol Routing (SNI / ALPN / Host / SSH / RDP mux)"
+	default y
+
+config GATELY_MOD_DDNS
+	bool "Dynamic DNS (30+ DNS providers)"
+	default y
+
+config GATELY_MOD_STUN
+	bool "STUN NAT Traversal"
+	default y
+
+config GATELY_MOD_GUARD
+	bool "Intrusion Prevention (fail2ban-style jails & scan detection)"
+	default y
+
+config GATELY_MOD_KNOCK
+	bool "Port Knocking (fwknop-compatible SPA)"
+	default y
+
+config GATELY_MOD_WAF
+	bool "WAF Firewall (Coraza + OWASP CRS v4, ~7.3 MB)"
+	default y
+
+config GATELY_MOD_FRP
+	bool "frp Client & Server Manager (frpc / frps)"
+	default y
+
+config GATELY_MOD_CLOUDFLARED
+	bool "Cloudflare Tunnel Manager (cloudflared)"
+	default y
+
+config GATELY_MOD_TAILSCALE
+	bool "Tailscale Manager"
+	default y
+
+config GATELY_MOD_NETBIRD
+	bool "NetBird Manager"
+	default y
+
+config GATELY_MOD_EASYTIER
+	bool "EasyTier Manager"
+	default y
+
+config GATELY_MOD_WEBTERMINAL
+	bool "Web Terminal (SSH / Telnet / SFTP / Shell, ~1.1 MB)"
+	default y
+
+config GATELY_MOD_DOCKER
+	bool "Docker & Compose Management (~512 KB)"
+	default y
+
+config GATELY_MOD_WOL
+	bool "Wake-on-LAN & Remote Shutdown"
+	default y
+
+config GATELY_MOD_CRON
+	bool "Scheduled Tasks (Cron)"
+	default y
+
+config GATELY_MOD_NETTOOLS
+	bool "Network Diagnostics (Ping / Traceroute / Speedtest)"
+	default y
+
+config GATELY_MOD_STORAGE
+	bool "Storage Mounts & Online File Manager (~640 KB)"
+	default y
+
+config GATELY_MOD_BACKUP
+	bool "Encrypted Configuration Backup & Restore"
+	depends on GATELY_MOD_STORAGE
+	default y
+
+config GATELY_MOD_WEBDAV
+	bool "WebDAV Server"
+	default y
+
+config GATELY_MOD_FTP
+	bool "FTP / FTPS Server (~320 KB)"
+	default y
+
+config GATELY_MOD_SMB
+	bool "SMB 2/3 File Server (~832 KB)"
+	default y
+
+config GATELY_MOD_FILEBROWSER
+	bool "FileBrowser Quantum Instance Manager"
+	default y
+
+config GATELY_MOD_NOTIFY
+	bool "Notification Center (Webhook / Telegram / Bark / SMTP / etc.)"
+	default y
+
+config GATELY_MOD_PERF
+	bool "Performance Monitoring & Threshold Alerts"
+	default y
+
+endif
+
+endmenu

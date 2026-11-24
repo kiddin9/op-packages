@@ -69,20 +69,12 @@
 			"path": "secbox/setreport"
 		}
 	},
-	"admin/services/secbox/firewall_log": {
-		"title": "Firewall Log",
+	"admin/services/secbox/logs": {
+		"title": "Logs",
 		"order": 70,
 		"action": {
 			"type": "view",
-			"path": "secbox/firewall_log"
-		}
-	},
-	"admin/services/secbox/processing_log": {
-		"title": "Processing Log",
-		"order": 80,
-		"action": {
-			"type": "view",
-			"path": "secbox/processing_log"
+			"path": "secbox/logs"
 		}
 	}
 }

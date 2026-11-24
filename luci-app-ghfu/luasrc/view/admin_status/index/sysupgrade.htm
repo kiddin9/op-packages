@@ -1,8 +1,11 @@
 <%
 local fs = require "nixio.fs"
-local uci = require "luci.model.uci".cursor()
+local uci = require("luci.model.uci").cursor()
 local autoupgrade_fm = "1"
 
+if not fs.access("/etc/config/ghfu") then
+    return
+end
 if fs.access("/etc/config/luci") then
     autoupgrade_fm = uci:get("luci", "main", "autoupgrade_fm") or autoupgrade_fm
 end
@@ -21,6 +24,9 @@ if autoupgrade_fm == "1" then
         --ghfu-tb-tag-bg:      #dbeafe;
         --ghfu-tb-tag-text:    #1d4ed8;
         --ghfu-tb-tag-border:  #93c5fd;
+        --ghfu-tb-beta-bg:     #fef3c7;
+        --ghfu-tb-beta-text:   #b45309;
+        --ghfu-tb-beta-border: #fcd34d;
         --ghfu-tb-btn-bg:      #2563eb;
         --ghfu-tb-btn-hover:   #1d4ed8;
         --ghfu-tb-btn-text:    #ffffff;
@@ -62,6 +68,9 @@ if autoupgrade_fm == "1" then
         --ghfu-tb-tag-bg:      rgba(59, 130, 246, 0.20);
         --ghfu-tb-tag-text:    #93c5fd;
         --ghfu-tb-tag-border:  rgba(96, 165, 250, 0.40);
+        --ghfu-tb-beta-bg:     rgba(217, 119, 6, 0.22);
+        --ghfu-tb-beta-text:   #fbbf24;
+        --ghfu-tb-beta-border: rgba(251, 191, 36, 0.42);
         --ghfu-tb-btn-bg:      #3b82f6;
         --ghfu-tb-btn-hover:   #2563eb;
         --ghfu-tb-btn-text:    #ffffff;
@@ -129,6 +138,12 @@ if autoupgrade_fm == "1" then
         border: 1px solid var(--ghfu-tb-tag-border);
     }
 
+    .ghfu-top-banner-badge.is-beta {
+        background: var(--ghfu-tb-beta-bg);
+        color: var(--ghfu-tb-beta-text);
+        border-color: var(--ghfu-tb-beta-border);
+    }
+
     .ghfu-top-banner-cur {
         font-size: 12px;
         color: var(--ghfu-tb-muted);
@@ -187,9 +202,14 @@ if autoupgrade_fm == "1" then
 (function() {
     var checkUrl = '<%=url([[admin]], [[system]], [[ghfu]], [[sysversion_check]])%>';
     var upgradeUrl = '<%=url([[admin]], [[system]], [[ghfu]])%>';
+    var DISMISS_KEY = 'ghfu_dismissed_ver';
+    var CACHE_KEY = 'ghfu_sysver_cache';
+    var CACHE_TTL_MS = 300000;
+
     var I18N = {
         newVerAvailable: '<%:New version available%>',
         formalRelease: '<%:Formal Release%>',
+        previewRelease: '<%:Preview Release%>',
         curSysVer: '<%:Current system version%>',
         upgradeNow: '<%:Upgrade Now%>',
         closeBtn: '<%:Close%>'
@@ -204,20 +224,15 @@ if autoupgrade_fm == "1" then
     function detectDarkTheme() {
         var html = document.documentElement;
         var body = document.body;
-        var attrs = [
-            body && body.getAttribute('data-theme'),
-            body && body.getAttribute('data-bs-theme'),
-            body && body.getAttribute('data-color-scheme'),
-            body && body.getAttribute('data-argon-mode'),
-            html && html.getAttribute('data-theme'),
-            html && html.getAttribute('data-bs-theme'),
-            html && html.getAttribute('data-color-scheme'),
-            html && html.getAttribute('data-argon-mode')
-        ];
-        for (var a = 0; a < attrs.length; a++) {
-            var val = (attrs[a] || '').toLowerCase();
-            if (val.indexOf('dark') !== -1 || val.indexOf('black') !== -1 || val.indexOf('night') !== -1) return true;
-            if (val.indexOf('light') !== -1 || val.indexOf('white') !== -1 || val.indexOf('day') !== -1) return false;
+        var dm = (html && html.getAttribute('data-darkmode')) || (body && body.getAttribute('data-darkmode'));
+        if (dm === 'true') return true;
+        if (dm === 'false') return false;
+
+        var attrNames = ['data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'];
+        for (var a = 0; a < attrNames.length; a++) {
+            var val = ((body && body.getAttribute(attrNames[a])) || (html && html.getAttribute(attrNames[a])) || '').toLowerCase();
+            if (/dark|black|night/.test(val)) return true;
+            if (/light|white|day/.test(val)) return false;
         }
 
         var darkClasses = ['dark', 'is-dark', 'night', 'dark-mode', 'theme-dark', 'luci-dark'];
@@ -229,33 +244,18 @@ if autoupgrade_fm == "1" then
             if ((body && body.classList.contains(lightClasses[j])) || (html && html.classList.contains(lightClasses[j]))) return false;
         }
 
-        var targets = [
-            document.querySelector('#maincontent'),
-            document.querySelector('.main-right'),
-            document.querySelector('main'),
-            body,
-            html
-        ];
+        var targets = [document.querySelector('#maincontent'), document.querySelector('.main-right'), document.querySelector('main'), body, html];
         for (var k = 0; k < targets.length; k++) {
             var el = targets[k];
             if (!el) continue;
             try {
-                var bg = window.getComputedStyle(el).backgroundColor || '';
-                var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-                if (m) {
-                    var alpha = m[4] !== undefined ? parseFloat(m[4]) : 1;
-                    if (alpha > 0.15) {
-                        var lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
-                        return lum < 0.45;
-                    }
+                var m = (window.getComputedStyle(el).backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                if (m && (m[4] === undefined || parseFloat(m[4]) > 0.15)) {
+                    return ((0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255) < 0.45;
                 }
             } catch (e) {}
         }
-
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            return true;
-        }
-        return false;
+        return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
 
     function syncBannerTheme(banner) {
@@ -267,11 +267,15 @@ if autoupgrade_fm == "1" then
         }
     }
 
+    function isDismissed(ver) {
+        try { return sessionStorage.getItem(DISMISS_KEY) === String(ver || ''); } catch (e) { return false; }
+    }
+
     function mountTopBanner(json) {
+        if (!json || !json.notice || !json.version || isDismissed(json.version)) return;
+
         var existing = document.getElementById('ghfu_sysupgrade_top_banner');
-        if (existing) {
-            existing.remove();
-        }
+        if (existing) existing.remove();
 
         var container = document.querySelector('#maincontent') ||
                         document.querySelector('.main-right') ||
@@ -284,17 +288,19 @@ if autoupgrade_fm == "1" then
         banner.className = 'ghfu-top-banner';
         syncBannerTheme(banner);
 
-        var curVerHtml = '';
-        if (json.now_version) {
-            curVerHtml = '<span class="ghfu-top-banner-cur">(' + escHtml(I18N.curSysVer) + ': ' + escHtml(json.now_version) + ')</span>';
-        }
+        var isFormal = json.is_formal !== false;
+        var badgeCls = 'ghfu-top-banner-badge' + (isFormal ? '' : ' is-beta');
+        var badgeLabel = isFormal ? I18N.formalRelease : I18N.previewRelease;
+        var curVerHtml = json.now_version
+            ? '<span class="ghfu-top-banner-cur">(' + escHtml(I18N.curSysVer) + ': ' + escHtml(json.now_version) + ')</span>'
+            : '';
 
         banner.innerHTML =
             '<a class="ghfu-top-banner-main" href="' + escHtml(upgradeUrl) + '">' +
                 '<span class="ghfu-top-banner-dot"></span>' +
                 '<span class="ghfu-top-banner-title">' + escHtml(I18N.newVerAvailable) + '</span>' +
                 '<span class="ghfu-top-banner-ver">' + escHtml(json.version) + '</span>' +
-                '<span class="ghfu-top-banner-badge">' + escHtml(I18N.formalRelease) + '</span>' +
+                '<span class="' + badgeCls + '">' + escHtml(badgeLabel) + '</span>' +
                 curVerHtml +
             '</a>' +
             '<div class="ghfu-top-banner-actions">' +
@@ -309,37 +315,47 @@ if autoupgrade_fm == "1" then
             closeBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                try { sessionStorage.setItem(DISMISS_KEY, String(json.version)); } catch (err) {}
                 banner.classList.add('ghfu-top-banner-closing');
                 setTimeout(function() {
-                    if (banner.parentNode) {
-                        banner.parentNode.removeChild(banner);
-                    }
+                    if (banner.parentNode) banner.parentNode.removeChild(banner);
                 }, 180);
             });
         }
 
         if (window.MutationObserver) {
+            var filter = ['class', 'style', 'data-darkmode', 'data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'];
             var obs = new MutationObserver(function() { syncBannerTheme(banner); });
-            if (document.documentElement) {
-                obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'] });
-            }
-            if (document.body) {
-                obs.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-bs-theme', 'data-color-scheme', 'data-argon-mode'] });
-            }
+            if (document.documentElement) obs.observe(document.documentElement, { attributes: true, attributeFilter: filter });
+            if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: filter });
         }
         if (window.matchMedia) {
             var mq = window.matchMedia('(prefers-color-scheme: dark)');
-            if (mq.addEventListener) {
-                mq.addEventListener('change', function() { syncBannerTheme(banner); });
-            }
+            if (mq.addEventListener) mq.addEventListener('change', function() { syncBannerTheme(banner); });
         }
     }
+
+    try {
+        var rawCache = sessionStorage.getItem(CACHE_KEY);
+        if (rawCache) {
+            var parsed = JSON.parse(rawCache);
+            if (parsed && parsed.ts && (Date.now() - parsed.ts < CACHE_TTL_MS) && parsed.data) {
+                if (parsed.data.code === 0 && parsed.data.notice && parsed.data.version) {
+                    mountTopBanner(parsed.data);
+                }
+                return;
+            }
+        }
+    } catch (e) {}
 
     fetch(checkUrl, { method: 'GET', credentials: 'include' })
         .then(function(r) { return r.json(); })
         .then(function(json) {
-            if (json && json.code === 0 && json.notice && json.version) {
-                mountTopBanner(json);
+            if (json && json.code === 0) {
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: json })); } catch (e) {}
+                if (json.notice && json.version) {
+                    mountTopBanner(json);
+                }
             }
         })
         .catch(function() {});

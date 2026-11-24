@@ -52,11 +52,14 @@ msgstr "检查更新"
 msgid "Flash this latest firmware"
 msgstr "刷入此最新固件"
 
+msgid "Flash this newer firmware"
+msgstr "刷入此新版固件"
+
 msgid "Already latest version, sure to reflash this version?"
-msgstr "已是最新版,确定要重刷此版本?"
+msgstr "已是最新版，确定要重刷此版本？"
 
 msgid "Sure to flash this older version?"
-msgstr "确定要刷入此老版本?"
+msgstr "确定要刷入此旧版本？"
 
 msgid "No matching firmware"
 msgstr "没有匹配的固件"
@@ -108,6 +111,9 @@ msgstr "请选择要升级的固件"
 
 msgid "Please select a firmware asset"
 msgstr "请选择固件下载项"
+
+msgid "Insufficient /tmp memory space for firmware download"
+msgstr "/tmp 内存空间不足，无法下载该固件"
 
 msgid "Upgrade request failed:"
 msgstr "升级请求失败："
@@ -269,13 +275,13 @@ msgid "Flashing..."
 msgstr "正在刷入固件..."
 
 msgid "Upgrade mode: keep configuration"
-msgstr "本次升级: 保留配置"
+msgstr "本次升级：保留配置"
 
 msgid "Upgrade mode: do not keep configuration"
-msgstr "本次升级: 不保留配置 (-n)"
+msgstr "本次升级：不保留配置 (-n)"
 
 msgid "Package mode: retain installed packages (-k)"
-msgstr "软件包策略: 保留已安装软件包列表 (-k)"
+msgstr "软件包策略：保留已安装软件包列表 (-k)"
 
 msgid "Unable to fetch firmware list, please check your network connection"
 msgstr "无法获取远程版本信息，请检查网络连接"
@@ -293,7 +299,7 @@ msgid "Firmware download failed, please check network connection"
 msgstr "固件下载失败或超时，请检查网络连接后重试"
 
 msgid "Automatically selected recommended firmware: %s"
-msgstr "已自动匹配并选中最新固件：%s"
+msgstr "已自动匹配并选中推荐固件：%s"
 
 msgid "Upgrade workflow is running, please wait until current operation finishes"
 msgstr "升级流程正在执行，请等待当前操作完成"

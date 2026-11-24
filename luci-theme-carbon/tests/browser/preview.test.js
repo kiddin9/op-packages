@@ -71,10 +71,11 @@ async function open(url, { width = 1280, height = 900, appearance = 'light', sto
 	return { page, context, errors };
 }
 
-/* every async source has rendered: leases, Wi‑Fi stations, sensors, languages */
+/* every async source has rendered: leases, Wi‑Fi stations, sensors, CPU cores, languages */
 const dashboardReady = (page) => page.waitForFunction(() =>
 	document.querySelectorAll('.cb-clients .cb-list li').length >= 8 && document.querySelector('.cb-tag-wifi') &&
-	document.querySelectorAll('.cb-kv li').length >= 2 && document.querySelector('.cb-lang .cb-lb'));
+	document.querySelectorAll('.cb-kv li').length >= 2 && document.querySelector('.cb-load-badge') &&
+	document.querySelector('.cb-lang .cb-lb'));
 
 test('side-router discovery works without DHCP and distinguishes neighbours, gateways and lease records', async () => {
 	const mock = fs.readFileSync(path.join(ROOT, 'preview', 'mock.js'), 'utf8');
@@ -516,6 +517,127 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		await dark.page.screenshot({ path: path.join(SHOTS, 'custom-drawer-dark.png') });
 		assert.deepEqual(dark.errors, []);
 	} finally { await dark.context.close(); }
+});
+
+test('dashboard clarifies load average status and shows multi-SSID wireless bands and client counts', async () => {
+	/* 1. Default overview (en & zh-Hans): load 1-min + badge + tooltip, wireless card counts & bands */
+	for (const lang of ['en', 'zh-Hans']) {
+		const zh = lang === 'zh-Hans';
+		const { page, context, errors } = await open(`/src/preview/index.html?lang=${lang}`, { width: 1440, height: 1000 });
+		try {
+			await dashboardReady(page);
+			const data = await page.evaluate(() => {
+				const loadLi = document.querySelector('.cb-kv li.cb-kv-help');
+				const wirelessRows = [...document.querySelectorAll('.cb-wireless .cb-list > li')].map((li) => ({
+					ssid: li.querySelector('.cb-wifi-ssid')?.textContent || '',
+					band: li.querySelector('.cb-band')?.textContent || '',
+					meta: li.querySelector('.cb-list-sub')?.textContent || '',
+					clients: li.querySelector('.cb-wifi-clients')?.textContent || '',
+					pill: li.querySelector('.cb-pill')?.textContent || ''
+				}));
+				return {
+					loadVal: loadLi?.querySelector('.cb-load-val .cb-mono')?.textContent || '',
+					loadBadge: loadLi?.querySelector('.cb-load-badge')?.textContent || '',
+					loadBadgeOk: loadLi?.querySelector('.cb-load-badge')?.classList.contains('ok') || false,
+					loadTitle: loadLi?.getAttribute('title') || '',
+					loadTileTitle: document.querySelector('.cb-tile-load')?.getAttribute('title') || '',
+					wirelessCount: document.querySelector('.cb-wireless .cb-count')?.textContent || '',
+					wirelessRows
+				};
+			});
+			assert.match(data.loadVal, /^\d+\.\d{2}$/, 'load row displays single 1-min value');
+			assert.equal(data.loadBadge, zh ? '正常' : 'Normal');
+			assert.equal(data.loadBadgeOk, true);
+			assert.match(data.loadTitle, zh ? /1 \/ 5 \/ 15 分钟平均负载：\d+\.\d{2} · \d+\.\d{2} · \d+\.\d{2}（4 核 CPU）/ : /1 \/ 5 \/ 15 min load: \d+\.\d{2} · \d+\.\d{2} · \d+\.\d{2} \(4 cores\)/);
+			assert.equal(data.loadTileTitle, data.loadTitle, 'Load tile tooltip matches Resources load row');
+			assert.equal(data.wirelessCount, '8');
+			assert.deepEqual(data.wirelessRows, [
+				{ ssid: 'Carbon-Home', band: '2.4 GHz', meta: 'CH 6 · 40 MHz · WPA2', clients: zh ? '3 台设备' : '3 devices', pill: zh ? '已开启' : 'On' },
+				{ ssid: 'Carbon-Guest', band: '2.4 GHz', meta: 'CH 6 · 40 MHz · WPA2', clients: '', pill: zh ? '已关闭' : 'Off' },
+				{ ssid: 'Carbon-Home-5G', band: '5 GHz', meta: 'CH 149 · 160 MHz · WPA2/WPA3', clients: zh ? '5 台设备' : '5 devices', pill: zh ? '已开启' : 'On' }
+			]);
+			assert.deepEqual(errors, []);
+		} finally { await context.close(); }
+	}
+
+	/* 2. Standalone Wireless card (no clients card, devices tile, or wifi tile) still fetches per-SSID counts */
+	const solo = await open('/src/preview/index.html?lang=zh-Hans', {
+		width: 1280, height: 900,
+		storage: { 'carbon.dashboard': 'hero=0;sections=details monitor tiles;monitor=none;tiles=none;details=wireless' }
+	});
+	try {
+		await solo.page.waitForFunction(() => document.querySelector('.cb-wireless .cb-count')?.textContent === '8');
+		const counts = await solo.page.$$eval('.cb-wireless .cb-wifi-clients', (els) => els.map((e) => e.textContent));
+		assert.deepEqual(counts, ['3 台设备', '5 台设备']);
+		assert.deepEqual(solo.errors, []);
+	} finally { await solo.context.close(); }
+
+	/* 3. Wi-Fi tile with 4 active SSIDs (including duplicate SSID across bands) truncates cleanly with +N more and fits 390px phone */
+	const mock = fs.readFileSync(path.join(ROOT, 'preview', 'mock.js'), 'utf8');
+	const multi = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await multi.addInitScript(() => {
+		localStorage.setItem('carbon.dashboard', 'hero=1;sections=tiles details monitor;monitor=resources;tiles=wifi load;details=wireless');
+	});
+	const page = await multi.newPage();
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	try {
+		await page.route('**/preview/mock.js', (route) => route.fulfill({
+			contentType: 'text/javascript',
+			body: mock + '\n(' + (() => {
+				window.CarbonPreview.provider.wireless = async () => ({
+					radio0: { up: true, config: { band: '2g', channel: '6', htmode: 'HT40+' }, interfaces: [
+						{ ifname: 'phy0-ap0', config: { mode: 'ap', ssid: 'MyHome-Long-Living-Room-Network', encryption: 'psk2' } },
+						{ ifname: 'phy0-ap1', config: { mode: 'ap', ssid: 'MyHome-IoT', encryption: 'psk2' } }
+					] },
+					radio1: { up: true, config: { band: '5g', channel: '149', htmode: 'HE160' }, interfaces: [
+						{ ifname: 'phy1-ap0', config: { mode: 'ap', ssid: 'MyHome', encryption: 'sae-mixed' } }
+					] },
+					radio2: { up: true, config: { band: '6g', channel: '37', htmode: 'EHT320' }, interfaces: [
+						{ ifname: 'phy2-ap0', config: { mode: 'ap', ssid: 'MyHome-6E', encryption: 'sae' } }
+					] }
+				});
+				window.CarbonPreview.provider.stations = async (ifnames) => [
+					{ ifname: 'phy0-ap0', mac: 'aa:00:00:00:00:01', signal: -55 },
+					{ ifname: 'phy0-ap1', mac: 'aa:00:00:00:00:02', signal: -61 },
+					{ ifname: 'phy0-ap1', mac: 'aa:00:00:00:00:03', signal: -63 },
+					{ ifname: 'phy1-ap0', mac: 'aa:00:00:00:00:04', signal: -49 },
+					{ ifname: 'phy1-ap0', mac: 'aa:00:00:00:00:05', signal: -52 },
+					{ ifname: 'phy1-ap0', mac: 'aa:00:00:00:00:06', signal: -54 }
+				].filter((s) => ifnames.includes(s.ifname));
+			}).toString() + ')();'
+		}));
+		await page.goto(base + '/src/preview/index.html?lang=zh-Hans');
+		await page.waitForFunction(() => document.querySelector('.cb-tile-wifi .cb-tile-val')?.textContent === '6');
+		const tile = await page.evaluate(() => ({
+			head: document.querySelector('.cb-tile-wifi .cb-tile-head')?.textContent.trim() || '',
+			val: document.querySelector('.cb-tile-wifi .cb-tile-val')?.textContent || '',
+			rows: [...document.querySelectorAll('.cb-tile-wifi .cb-wifi-row:not(.cb-wifi-row-more)')].map((r) => [
+				r.querySelector('.cb-wifi-row-ssid')?.textContent || '',
+				r.querySelector('.cb-band.cb-wifi-row-band')?.textContent || '',
+				r.querySelector('.cb-band.cb-wifi-row-band')?.classList.contains('cb-band-2g') || false,
+				r.querySelector('.cb-wifi-row-count')?.textContent || ''
+			]),
+			more: document.querySelector('.cb-tile-wifi .cb-wifi-row-more')?.textContent || '',
+			title: document.querySelector('.cb-tile-wifi')?.getAttribute('title') || '',
+			wirelessBands: [...document.querySelectorAll('.cb-wireless .cb-band')].map((b) => b.textContent),
+			wirelessClients: [...document.querySelectorAll('.cb-wireless .cb-wifi-clients')].map((c) => c.textContent),
+			tileOverflow: (document.querySelector('.cb-tile-wifi')?.scrollWidth || 0) > (document.querySelector('.cb-tile-wifi')?.clientWidth || 0) + 1,
+			overflow: document.documentElement.scrollWidth > innerWidth
+		}));
+		assert.equal(tile.head, 'Wi-Fi');
+		assert.equal(tile.val, '6');
+		assert.deepEqual(tile.rows, [['MyHome-Long-Living-Room-Network', '2.4 GHz', true, '1'], ['MyHome-IoT', '2.4 GHz', true, '2']]);
+		assert.equal(tile.more, '还有 2 个');
+		assert.match(tile.title, /MyHome \(5 GHz · CH 149 · 160 MHz · WPA2\/WPA3\) · 3 台设备/);
+		assert.match(tile.title, /MyHome-6E \(6 GHz · CH 37 · 320 MHz · WPA3\) · 0 台设备/);
+		assert.deepEqual(tile.wirelessBands, ['2.4 GHz', '2.4 GHz', '5 GHz', '6 GHz']);
+		assert.deepEqual(tile.wirelessClients, ['1 台设备', '2 台设备', '3 台设备', '0 台设备']);
+		assert.equal(tile.tileOverflow, false, 'long SSID truncates inside 390px half-width Wi-Fi tile without overflow');
+		assert.equal(tile.overflow, false, '4-SSID Wi-Fi tile and wireless card fit 390px phone without overflow');
+		await page.screenshot({ path: path.join(SHOTS, 'multi-ssid-phone.png'), fullPage: true });
+		assert.deepEqual(errors, []);
+	} finally { await multi.close(); }
 });
 
 /* every bundled catalogue loads, translates the shell and fits the sidebar */

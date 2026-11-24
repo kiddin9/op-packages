@@ -1,39 +1,77 @@
-. /etc/profile.d/opkg.sh
-OPKG_PI="$(opkg export pi)"
-if [ ! -e /etc/opkg-restore-auto ] \
-&& lock -n /var/lock/opkg-restore && [ -s "${OPKG_PI}" ]; then
-c=0
-while ! curl https://dl.openwrt.ai >/dev/null || ! opkg update >/dev/null; do
-echo "Network error." | logger -t opkg
-[[ "$(uci -q get dhcp.@dnsmasq[0].noresolv)" == 1 && $c == 3 ]] && {
-	uci -q del dhcp.@dnsmasq[0].noresolv
-	uci commit dhcp
-	uci -q get network.lan.dns || {
-		uci -q set network.lan.dns='223.5.5.5'
-		uci commit network
-		/etc/init.d/network reload
-		}
-	/etc/init.d/dnsmasq reload
-}
-[ $c -eq 300 ] && {
-	lock -u /var/lock/opkg-restore
-	exit 0
-} || let c++
-sleep 3
-done
+#!/bin/sh
+(
+	[ -e /etc/opkg-restore-auto ] && exit 0
 
-c1=0
-logs="1"
-while [ "$logs" != "" ]; do
-logs="$(opkg restore)"
-echo "${logs}" | logger -t opkg
-[ $c1 -eq 5 ] && {
-	lock -u /var/lock/opkg-restore
-	exit 0
-	} || let c1++
-sleep 2
-done
-touch /etc/opkg-restore-auto
+	APK_LIST="/etc/config/.ghfu_apk_world"
+	HAS_OPKG=0
+	HAS_APK=0
+	command -v opkg >/dev/null 2>&1 && [ -r /etc/profile.d/opkg.sh ] && HAS_OPKG=1
+	command -v apk >/dev/null 2>&1 && HAS_APK=1
 
-fi
-lock -u /var/lock/opkg-restore
+	[ "$HAS_OPKG" -eq 1 ] || [ "$HAS_APK" -eq 1 ] || exit 0
+
+	if [ "$HAS_OPKG" -eq 1 ]; then
+		. /etc/profile.d/opkg.sh
+		if [ -s /etc/backup/installed_packages.txt ] && [ -z "$(uci -q get opkg.auto.ipkg)" ]; then
+			opkg import /etc/backup/installed_packages.txt
+		fi
+		[ -n "$(uci -q get opkg.auto.ipkg)" ] || [ -n "$(uci -q get opkg.auto.rpkg)" ] || exit 0
+	else
+		[ -s "$APK_LIST" ] || exit 0
+	fi
+
+	lock -n /var/lock/opkg-restore 2>/dev/null || exit 0
+	trap 'lock -u /var/lock/opkg-restore 2>/dev/null' EXIT INT TERM
+
+	recover_dns_if_needed() {
+		[ "$(uci -q get dhcp.@dnsmasq[0].noresolv)" = "1" ] || return 0
+		uci -q del dhcp.@dnsmasq[0].noresolv
+		uci commit dhcp
+		if [ -n "$(uci -q get network.lan.gateway)" ] && [ -z "$(uci -q get network.lan.dns)" ]; then
+			uci -q set network.lan.dns='223.5.5.5'
+			uci commit network
+			/etc/init.d/network reload
+		fi
+		/etc/init.d/dnsmasq reload
+	}
+
+	update_pkg_index() {
+		if [ "$HAS_OPKG" -eq 1 ]; then
+			command opkg update >/dev/null 2>&1
+		else
+			apk update >/dev/null 2>&1
+		fi
+	}
+
+	c=0
+	while :; do
+		if curl -skfL --connect-timeout 5 -m 10 https://dl.openwrt.ai/ >/dev/null 2>&1; then
+			update_pkg_index && break
+		else
+			[ "$c" -eq 3 ] && recover_dns_if_needed
+		fi
+		logger -t ghfu-pkg "Waiting for network/feed availability before restoring packages (attempt $((c + 1)))..."
+		[ "$c" -ge 120 ] && exit 0
+		c=$((c + 1))
+		sleep 5
+	done
+
+	if [ "$HAS_OPKG" -eq 1 ]; then
+		c1=0
+		while [ "$c1" -lt 5 ]; do
+			logs="$(opkg restore 2>&1)"
+			[ -z "$logs" ] && break
+			printf '%s\n' "$logs" | logger -t opkg
+			c1=$((c1 + 1))
+			sleep 2
+		done
+	else
+		while read -r pkg; do
+			[ -n "$pkg" ] || continue
+			apk add "$pkg" 2>&1 | logger -t apk
+		done < "$APK_LIST"
+		rm -f "$APK_LIST"
+	fi
+
+	touch /etc/opkg-restore-auto
+)

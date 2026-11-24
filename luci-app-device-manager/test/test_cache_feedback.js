@@ -107,6 +107,20 @@ test('failed background refresh retains cached data and clearly labels it', asyn
     assert.equal(ctx.env.notifications[0].node.removed, true);
 });
 
+test('notifications use the native LuCI timeout when available', () => {
+    const ctx = context(), calls = [];
+    ctx.env.ui.addTimeLimitedNotification = function(title, content, timeout, level) {
+        assert.equal(this, ctx.env.ui);
+        calls.push({ title, text: content.textContent, timeout, level });
+    };
+
+    ctx.load('device-manager.feedback').notify('Could not refresh', 'danger');
+
+    assert.deepEqual(calls, [{ title: null, text: 'Could not refresh', timeout: 12000, level: 'danger' }]);
+    assert.equal(ctx.env.notifications.length, 0);
+    assert.equal(ctx.env.timeouts.size, 0);
+});
+
 test('source errors close manually or after twelve seconds and stay closed during filtering', async () => {
     const ctx = context(), page = ctx.load('view.device-manager.devices');
     ctx.replies['luci-rpc.getHostHints'] = Error('hints unavailable');

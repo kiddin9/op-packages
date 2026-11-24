@@ -145,11 +145,11 @@
 		].reduce((o, d) => (o[d[0]] = { name: d[0], up: d[1], flags: Object.assign({ up: d[1] }, d[2]), stats: { rx_bytes: 0, tx_bytes: 0 } }, o), {})),
 		leases: () => wait({ dhcp_leases: LEASES, dhcp6_leases: [] }),
 		wireless: () => wait({
-			radio0: { up: settings.enabled, config: { band: '2g', channel: settings.channel }, interfaces: [
+			radio0: { up: settings.enabled, config: { band: '2g', channel: settings.channel, htmode: 'HE40' }, interfaces: [
 				{ ifname: 'phy0-ap0', config: { mode: 'ap', ssid: settings.ssid, encryption: settings.encryption, disabled: !settings.enabled } },
 				{ ifname: 'phy0-ap1', config: { mode: 'ap', ssid: 'Carbon-Guest', encryption: 'psk2', disabled: !settings.guest } }
 			] },
-			radio1: { up: true, config: { band: '5g', channel: '149' }, interfaces: [
+			radio1: { up: true, config: { band: '5g', channel: '149', htmode: 'HE160' }, interfaces: [
 				{ ifname: 'phy1-ap0', config: { mode: 'ap', ssid: 'Carbon-Home-5G', encryption: 'sae-mixed' } }
 			] }
 		}),

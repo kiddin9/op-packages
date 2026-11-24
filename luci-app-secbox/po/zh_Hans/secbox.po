@@ -1207,87 +1207,6 @@ msgstr "网络安全设置"
 msgid "Changes on this tab need a SecBox service restart to take effect."
 msgstr "此标签页上的更改需要重启 SecBox 服务后生效。"
 
-msgid "Detect relevant network devices, interfaces, subnets, protocols and utilities automatically."
-msgstr "自动检测相关的网络设备、接口、子网、协议和实用工具。"
-
-msgid "Override the pre-configured download options for the selected download utility. The output flag, e.g. '-o' for curl or '-O' for wget, must be the last parameter."
-msgstr "覆盖所选下载工具的预配置下载参数。输出参数（如 curl 的 '-o' 或 wget 的 '-O'）必须作为最后一个参数。"
-
-msgid "Number of download attempts in case of an error (not supported by uclient-fetch)."
-msgstr "下载出错时的重试次数（uclient-fetch 不支持）。"
-
-msgid "Enable NFT counters for Set elements and chain rules. Required for the GeoIP Map and packet statistics in the Set Reporting."
-msgstr "为集合条目和链规则启用 NFT 计数器。GeoIP 地图和集合报表统计需要此选项。"
-
-msgid "Enable a GeoIP Map with suspicious Set elements. This requires external requests to get the map tiles and geolocation data."
-msgstr "启用可疑集合条目的 GeoIP 地图。这需要向外部发起请求以获取地图瓦片和地理位置数据。"
-
-msgid "Increase the maximal number of open files, e.g. to handle the amount of temporary split files while loading the Sets."
-msgstr "增加最大打开文件数限制，例如在加载集合时处理大量临时分割文件。"
-
-msgid "Split external Set loading after every n members to save RAM, disabled by default."
-msgstr "每隔 n 个成员分割外部集合加载以节省内存，默认禁用。"
-
-msgid "Deduplicate IP addresses across all active Sets and tidy up the local blocklist."
-msgstr "在所有活动集合中对 IP 地址进行去重并整理本地黑名单。"
-
-msgid "Set the NFT chain priority within the SecBox table, lower values means higher priority."
-msgstr "设置 SecBox 表内 NFT 链的优先级，数值越低优先级越高。"
-
-msgid "Always allow a protocol (tcp/udp) with certain ports or port ranges in WAN-Input and WAN-Forward chain."
-msgstr "在 WAN-Input 和 WAN-Forward 链中始终放行带有特定端口或端口范围的协议 (tcp/udp)。"
-
-msgid "ICMP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
-msgstr "每秒 ICMP 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
-
-msgid "SYN-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
-msgstr "每秒 SYN 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
-
-msgid "UDP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
-msgstr "每秒 UDP 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
-
-msgid "Override the default feed configuration and apply the feed to the inbound chain only."
-msgstr "覆盖默认源配置，仅将该源应用于入站链（Inbound）。"
-
-msgid "Override the default feed configuration and apply the feed to the outbound chain only."
-msgstr "覆盖默认源配置，仅将该源应用于出站链（Outbound）。"
-
-msgid "Override the default feed configuration and apply the feed to the inbound and outbound chain."
-msgstr "覆盖默认源配置，将该源同时应用于入站与出站链。"
-
-msgid "Override the default feed configuration and remove existing port/protocol limitations."
-msgstr "覆盖默认源配置并移除现有的端口/协议限制。"
-
-msgid "Location for parsing the log file, e.g. via syslog-ng, to deactivate the standard parsing via logread."
-msgstr "解析日志文件的路径（例如通过 syslog-ng），以停用通过 logread 的标准解析。"
-
-msgid "Parse only the last stated number of log entries for suspicious events. To disable the log monitor at all set it to '0'."
-msgstr "仅解析最后指定数量的日志条目以查找可疑事件。设为 '0' 可完全禁用日志监视器。"
-
-msgid "Number of failed login attempts of the same IP in the log before blocking."
-msgstr "在日志中同一 IP 登录失败多少次后触发拉黑拦截。"
-
-msgid "Rate (per second) for the shared NFT log limit, applied globally across all logged rules. Set to '0' to disable rate limiting entirely, e.g. when using ulogd or other userspace log handlers."
-msgstr "全局 NFT 日志记录速率限制（每秒条数）。设为 '0' 可完全禁用速率限制（例如使用 ulogd 时）。"
-
-msgid "Regular expressions to detect suspicious IPs in the system log. Uses the last IP per line; prefix a term with 'first:' for source-first formats, e.g. nginx."
-msgstr "用于在系统日志中检测可疑 IP 的正则表达式。默认使用每行的最后一个 IP；前缀加 'first:' 可匹配源优先格式（如 nginx）。"
-
-msgid "To enable email notifications, set up the 'msmtp' package and specify a valid E-Mail receiver address."
-msgstr "要启用邮件通知，请配置 'msmtp' 软件包并指定有效的收件人邮箱地址。"
-
-msgid "Receiver address for SecBox notification E-Mails, this information is required to enable E-Mail functionality."
-msgstr "接收 SecBox 告警邮件的收件人地址，必须填写此项才能启用邮件功能。"
-
-msgid "Automatically add resolved domains and uplink IPs to the local SecBox allowlist."
-msgstr "自动将解析出的域名及上行 IP 添加到本地 SecBox 白名单。"
-
-msgid "Automatically add resolved domains and suspicious IPs to the local SecBox blocklist."
-msgstr "自动将解析出的域名及可疑 IP 添加到本地 SecBox 黑名单。"
-
-msgid "Automatically add entire subnets to the blocklist Set based on an additional RDAP request with the suspicious IP."
-msgstr "基于可疑 IP 的 RDAP 查询结果，自动将整个所属子网添加到黑名单集合中。"
-
 msgid "Stop Service"
 msgstr "停止服务"
 
@@ -1360,10 +1279,6 @@ msgstr "未运行"
 msgid "Rule Elements"
 msgstr "规则条目数"
 
-msgid "Configuration of the SecBox package to ban incoming and outgoing IPs via named nftables Sets. For further information please check the %s."
-msgstr "SecBox 软件包配置，通过指定的 nftables 集合拦截入站和出站 IP。更多详细信息请参阅 %s。"
-
-
 msgid "Live Log Console"
 msgstr "实时日志控制台"
 
@@ -1420,9 +1335,6 @@ msgstr "自动添加至黑名单"
 
 msgid "Hits"
 msgstr "命中数"
-
-msgid "Top Sets (Most Hits)"
-msgstr "命中最多集合"
 
 msgid "Worst Sets (Least Hits)"
 msgstr "最少命中集合"
@@ -1522,3 +1434,96 @@ msgstr "自定义源编辑器"
 
 msgid "Running"
 msgstr "运行中"
+
+msgid "NFT Version"
+msgstr "NFT 版本"
+
+msgid "Set Expiry"
+msgstr "集合过期时间"
+
+msgid "Waiting for WAN connection..."
+msgstr "等待 WAN 拨号连接..."
+
+msgid "Not run yet"
+msgstr "尚未运行"
+
+msgid "No active ruleset loaded"
+msgstr "暂未加载活动规则集"
+
+msgid "No active NFT information available."
+msgstr "暂无活动的 NFT 运行信息。"
+
+msgid "No system runtime data available."
+msgstr "暂无系统运行时数据。"
+
+msgid "Disable Service"
+msgstr "禁用服务"
+
+msgid "SecBox service is enabled and will start automatically once WAN is connected."
+msgstr "SecBox 服务已启用，将在 WAN 口连接后自动启动。"
+
+msgid "Not Ready (Check Logs)"
+msgstr "未就绪（请查看处理日志）"
+
+msgid "Service inactive"
+msgstr "服务未激活"
+
+msgid "Waiting for first run"
+msgstr "等待首次运行"
+
+msgid "Not detected"
+msgstr "未检测到"
+
+msgid "None configured"
+msgstr "未配置"
+
+msgid "No IPv4 uplink"
+msgstr "无 IPv4 上行"
+
+msgid "No IPv6 uplink"
+msgstr "无 IPv6 上行"
+
+msgid "Not set"
+msgstr "未设置"
+
+msgid "No active feeds"
+msgstr "暂无活动源"
+
+msgid "No runtime flags"
+msgstr "暂无运行标志"
+
+msgid "Device Model"
+msgstr "设备型号"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "All Logs"
+msgstr "全部日志"
+
+msgid "Filter logs..."
+msgstr "搜索日志关键词..."
+
+msgid "Real-time firewall block events and backend processing logs for the SecBox service."
+msgstr "实时查看 SecBox 服务的防火墙拦截记录与后台处理日志。"
+
+msgid "Not generated yet"
+msgstr "尚未生成"
+
+msgid "No Set statistics available yet."
+msgstr "暂无集合命中统计数据，请点击“刷新”生成报告。"
+
+msgid "No Set details available yet."
+msgstr "暂无集合详情数据。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Format invalid: \"%s\" is not a valid IP, CIDR, MAC, MAC+IP, or domain."
+msgstr "格式无效：“%s” 不是有效的 IP、CIDR、MAC、MAC+IP 或域名。"
+
+msgid "Invalid IP, CIDR, or domain format."
+msgstr "无效的 IP、CIDR 或域名格式。"
+
+msgid "Collecting Set content, please wait..."
+msgstr "正在收集集合内容，请稍候..."

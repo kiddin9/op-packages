@@ -9,9 +9,9 @@ LUCI_TITLE:=LuCI support for quickstart
 LUCI_DEPENDS:=+quickstart +luci-app-ttyd +luci-i18n-ttyd-zh-cn
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=0.17.1-rc20261028-r2
+PKG_VERSION:=0.17.1-rc20261028-r3
 # PKG_RELEASE MUST be empty for luci.mk
-PKG_RELEASE:=44
+PKG_RELEASE:=45
 
 ifeq ($(CONFIG_USE_APK),y)
 PKG_VERSION:=$(subst -rc,_rc,$(PKG_VERSION))

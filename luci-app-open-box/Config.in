@@ -1,0 +1,45 @@
+menu "Configuration"
+	depends on PACKAGE_luci-app-open-box
+
+config OPENBOX_CUSTOM_COMPONENTS
+	bool "Customize pre-bundled components"
+	default n
+	help
+	  By default (N), the full upstream release archive is downloaded and packaged,
+	  including LuCI views, procd init scripts, pure-Go panel, sing-box core,
+	  Mihomo core, and GeoSite/GeoIP databases.
+	  Enable this option to selectively bundle components for storage-constrained devices.
+
+if OPENBOX_CUSTOM_COMPONENTS
+
+config OPENBOX_BUNDLE_SINGBOX
+	bool "Bundle sing-box core"
+	default y
+	help
+	  Pre-bundle the upstream sing-box core (/opt/open-box/bin/sing-box).
+
+config OPENBOX_BUNDLE_MIHOMO
+	bool "Bundle Mihomo core"
+	default n
+	help
+	  Pre-bundle the upstream Mihomo core (/opt/open-box/bin/mihomo).
+	  When disabled, Mihomo can still be downloaded on demand from the Open-Box web panel.
+
+config OPENBOX_BUNDLE_GEODATA
+	bool "Bundle GeoSite / GeoIP databases"
+	default y
+	help
+	  Pre-bundle full GeoSite and GeoIP rule databases (/opt/open-box/panel/server/resources/geodata)
+	  for offline out-of-the-box startup.
+
+endif
+
+config OPENBOX_PANEL_PORT
+	int "Default Web Panel port"
+	range 1024 65535
+	default 3036
+	help
+	  Default HTTP port written to /opt/open-box/data/panel-port on first installation.
+	  Existing user port configuration is preserved across package and firmware upgrades.
+
+endmenu

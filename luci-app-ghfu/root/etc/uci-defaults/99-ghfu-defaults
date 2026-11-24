@@ -1,15 +1,18 @@
 #!/bin/sh
 
+mkdir -p /etc/crontabs
+if ! grep -q "51-opkg-upgrade" /etc/crontabs/root 2>/dev/null; then
+	rand_vals="$(hexdump -n 2 -e '2/1 "%u "' /dev/urandom 2>/dev/null)"
+	set -- $rand_vals
+	min="${1:+$(($1 % 60))}"
+	hour="${2:+$(($2 % 3 + 4))}"
+	[ -n "$min" ] || min=30
+	[ -n "$hour" ] || hour=5
+	echo "$min $hour * * * /bin/sh /etc/hotplug.d/online/51-opkg-upgrade" >> /etc/crontabs/root
+	/etc/init.d/cron running >/dev/null 2>&1 && /etc/init.d/cron reload >/dev/null 2>&1
+fi
 
-grep -q "opkg-upgrade" /etc/crontabs/root 2>/dev/null || {
-    hour="$(grep -m1 -ao '[4-6]' /dev/urandom 2>/dev/null | head -n1)"
-    [ -z "$hour" ] && hour=5
-    min="$(grep -m1 -ao '[0-5][0-9]' /dev/urandom 2>/dev/null | head -n1)"
-    [ -z "$min" ] && min=30
-    echo "$min $hour * * * . /etc/hotplug.d/online/51-opkg-upgrade" >> /etc/crontabs/root
-}
-
-date +%s > /etc/ghfu_flash_epoch
-rm -rf /tmp/luci-modulecache /tmp/luci-indexcache*
+[ -s /etc/ghfu_flash_epoch ] || date +%s > /etc/ghfu_flash_epoch
+rm -rf /tmp/luci-modulecache /tmp/luci-indexcache* /tmp/ghfu-check-cache.json
 
 exit 0

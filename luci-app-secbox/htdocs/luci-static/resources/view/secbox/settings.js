@@ -7,6 +7,15 @@
 'require form';
 'require tools.widgets as widgets';
 
+if (!document.getElementById('secbox-theme-css')) {
+	document.head.appendChild(E('link', {
+		'id': 'secbox-theme-css',
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': L.resource('view/secbox/custom.css')
+	}));
+}
+
 /*
 	button handling
 */
@@ -52,14 +61,14 @@ return view.extend({
 		}
 
 		let m, s, o;
-		const docLink = '<a style="color:#37c;font-weight:bold;" href="https://github.com/openwrt/packages/blob/master/net/banip/files/README.md" target="_blank" rel="noreferrer noopener">' + _('online documentation') + '</a>';
+		const docLink = '<a style="color:var(--primary-color-low, #37c);font-weight:600;" href="https://github.com/openwrt/packages/blob/master/net/banip/files/README.md" target="_blank" rel="noreferrer noopener">' + _('online documentation') + '</a>';
 		const mapDescr = _('Configuration of the SecBox package to ban incoming and outgoing IPs via named nftables Sets. For further information please check the %s.').format(docLink);
 		m = new form.Map('banip', _('SecBox Settings'), mapDescr);
 
 		/*
 			tabbed config section
 		*/
-		s = m.section(form.NamedSection, 'global', 'banip', _('Settings'));
+		s = m.section(form.NamedSection, 'global', 'banip');
 		s.addremove = false;
 		s.tab('general', _('General Settings'));
 		s.tab('advanced', _('Advanced Settings'));
@@ -74,8 +83,7 @@ return view.extend({
 		*/
 		o = s.taboption('general', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab need a SecBox service restart to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note" style="margin-bottom:4px;">' + _('Changes on this tab need a SecBox service restart to take effect.') + '</div>';
 
 		o = s.taboption('general', form.Flag, 'ban_debug', _('Verbose Debug Logging'), _('Enable verbose debug logging in case of processing errors.'));
 		o.rmempty = false;
@@ -165,8 +173,7 @@ return view.extend({
 		*/
 		o = s.taboption('advanced', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note" style="margin-bottom:4px;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</div>';
 
 		o = s.taboption('advanced', form.ListValue, 'ban_nicelimit', _('Nice Level'), _('The selected priority will be used for SecBox background processing.'));
 		o.value('-20', _('Highest Priority'));
@@ -237,8 +244,7 @@ return view.extend({
 		*/
 		o = s.taboption('adv_chain', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note" style="margin-bottom:4px;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</div>';
 
 		o = s.taboption('adv_chain', form.ListValue, 'ban_nftpriority', _('Chain Priority'), _('Set the NFT chain priority within the SecBox table, lower values means higher priority.'));
 		o.value('10');
@@ -318,8 +324,7 @@ return view.extend({
 		*/
 		o = s.taboption('adv_set', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note" style="margin-bottom:4px;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</div>';
 
 		o = s.taboption('adv_set', form.ListValue, 'ban_nftpolicy', _('Set Policy'), _('Set the NFT policy for SecBox-related Sets.'));
 		o.value('memory', _('memory'));
@@ -418,8 +423,7 @@ return view.extend({
 		*/
 		o = s.taboption('adv_log', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note" style="margin-bottom:4px;">' + _('Changes on this tab needs a SecBox service restart to take effect.') + '</div>';
 
 		o = s.taboption('adv_log', form.ListValue, 'ban_nftloglevel', _('NFT Log Level'), _('Set the syslog level for NFT logging.'));
 		o.value('emerg', _('emerg'));
@@ -515,6 +519,7 @@ return view.extend({
 
 		o = s.taboption('adv_log', form.Value, 'ban_remotetoken', _('Remote Token'), _('Token to communicate with the cgi interface.'));
 		o.depends('ban_remotelog', '1');
+		o.password = true;
 		o.datatype = 'and(minlength(3),maxlength(20))';
 		o.validate = function (section_id, value) {
 			if (!value) {
@@ -533,8 +538,7 @@ return view.extend({
 		*/
 		o = s.taboption('adv_email', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('To enable email notifications, set up the \'msmtp\' package and specify a valid E-Mail receiver address.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />';
+		o.default = '<div class="secbox-note secbox-note-warn" style="margin-bottom:4px;">' + _('To enable email notifications, set up the \'msmtp\' package and specify a valid E-Mail receiver address.') + '</div>';
 
 		o = s.taboption('adv_email', form.Flag, 'ban_mailnotification', _('E-Mail Notification'), _('Receive E-Mail notifications with every SecBox run.'));
 		o.rmempty = true;
@@ -561,9 +565,8 @@ return view.extend({
 		*/
 		o = s.taboption('feeds', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em style="color:#37c;font-weight:bold;">' + _('Changes on this tab needs a SecBox service reload to take effect.') + '</em>'
-			+ '<hr style="width: 200px; height: 1px;" />'
-			+ '<em style="color:#37c;font-weight:bold;">' + _('External Blocklist Feeds') + '</em>';
+		o.default = '<div class="secbox-note" style="margin-bottom:10px;">' + _('Changes on this tab needs a SecBox service reload to take effect.') + '</div>'
+			+ '<div class="secbox-subhead">' + _('External Blocklist Feeds') + '</div>';
 
 		if (feeds && Object.keys(feeds).length) {
 			o = s.taboption('feeds', form.MultiValue, 'ban_feed', _('Blocklist Feed'));
@@ -580,7 +583,7 @@ return view.extend({
 
 		o = s.taboption('feeds', form.DummyValue, '_feeds1');
 		o.rawhtml = true;
-		o.default = '<hr style="width: 200px; height: 1px;" /><em style="color:#37c;font-weight:bold;">' + _('Country Selection') + '</em>';
+		o.default = '<div class="secbox-subhead">' + _('Country Selection') + '</div>';
 
 		let err, ccode, rir, country, countries = [];
 		if (result[2] && result[2].trim() !== "") {
@@ -622,7 +625,7 @@ return view.extend({
 
 		o = s.taboption('feeds', form.DummyValue, '_feeds2');
 		o.rawhtml = true;
-		o.default = '<hr style="width: 200px; height: 1px;" /><em style="color:#37c;font-weight:bold;">' + _('ASN Selection') + '</em>';
+		o.default = '<div class="secbox-subhead">' + _('ASN Selection') + '</div>';
 
 		o = s.taboption('feeds', form.DynamicList, 'ban_asn', _('ASNs'), _('Collection of IP addresses based on Autonomous System Numbers.'));
 		o.datatype = 'uinteger';
@@ -634,7 +637,7 @@ return view.extend({
 
 		o = s.taboption('feeds', form.DummyValue, '_feeds3');
 		o.rawhtml = true;
-		o.default = '<hr style="width: 200px; height: 1px;" /><em style="color:#37c;font-weight:bold;">' + _('External Allowlist Feeds') + '</em>';
+		o.default = '<div class="secbox-subhead">' + _('External Allowlist Feeds') + '</div>';
 
 		if (countries && countries.length) {
 			o = s.taboption('feeds', form.DynamicList, 'ban_allowurl', _('Allowlist Feed URLs'));
@@ -665,7 +668,7 @@ return view.extend({
 
 		o = s.taboption('feeds', form.DummyValue, '_feeds4');
 		o.rawhtml = true;
-		o.default = '<hr style="width: 200px; height: 1px;" /><em style="color:#37c;font-weight:bold;">' + _('Local Feed Settings') + '</em>';
+		o.default = '<div class="secbox-subhead">' + _('Local Feed Settings') + '</div>';
 
 		o = s.taboption('feeds', form.Flag, 'ban_autoallowlist', _('Auto Allowlist'), _('Automatically add resolved domains and uplink IPs to the local SecBox allowlist.'));
 		o.default = 1;
@@ -742,7 +745,10 @@ return view.extend({
 				}, [_('Stop')])
 			]);
 		});
-		return m.render();
+		return m.render().then(function (node) {
+			node.classList.add('secbox-view');
+			return node;
+		});
 	},
 	handleSaveApply: null,
 	handleSave: null,

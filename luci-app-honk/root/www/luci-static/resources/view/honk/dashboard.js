@@ -28,7 +28,6 @@ return view.extend({
 		function createDashboardSelect() {
 			var sel = E('select', { 
 				'class': 'cbi-input-select',
-				'style': 'margin-right: 10px;',
 				'change': function(ev) {
 					var newType = ev.target.value;
 					sel.disabled = true;
@@ -74,31 +73,60 @@ return view.extend({
 
 		// Create HTML elements
 		var style = E('style', {}, [
-			'#dash_iframe {',
+			'#dash_iframe_wrap {',
+			'	position: relative;',
 			'	width: 100%;',
 			'	height: calc(100vh - 210px);',
-			'	min-height: 650px;',
+			'	min-height: 600px;',
 			'	border: 1px solid var(--border, var(--hairline, var(--border-color-medium, #ccc)));',
 			'	border-radius: var(--radius-base, 4px);',
+			'	overflow: hidden;',
+			'}',
+			'#dash_iframe_wrap.fullscreen {',
+			'	position: fixed !important;',
+			'	top: 0 !important;',
+			'	left: 0 !important;',
+			'	right: 0 !important;',
+			'	bottom: 0 !important;',
+			'	width: 100vw !important;',
+			'	height: 100vh !important;',
+			'	height: 100dvh !important;',
+			'	z-index: 999999 !important;',
+			'	border: none !important;',
+			'	border-radius: 0 !important;',
+			'	margin: 0 !important;',
+			'}',
+			'#dash_iframe {',
+			'	width: 100%;',
+			'	height: 100%;',
+			'	border: none;',
 			'	display: block;',
+			'	transform-origin: 0 0;',
 			'}',
-			'#dash_iframe.fullscreen {',
-			'	position: fixed !important; top: 0 !important; left: 0 !important;',
-			'	width: 100vw !important; height: 100vh !important; z-index: 999999 !important;',
-			'	border: none !important; border-radius: 0 !important;',
+			'#dash_exit_fullscreen_btn {',
+			'	position: absolute;',
+			'	top: max(12px, env(safe-area-inset-top, 12px));',
+			'	right: max(12px, env(safe-area-inset-right, 12px));',
+			'	z-index: 1000000;',
+			'	display: none;',
+			'	cursor: pointer;',
 			'}',
-			'#dash_iframe_wrap { display: flex; align-items: stretch; }',
-			'#dash_scroll_handle { display: none; }',
-			'.dash-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }',
-			'.dash-toolbar-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }',
-			'.dash-toolbar-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }',
+			'.dash-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px; }',
+			'.dash-toolbar-info { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }',
+			'.dash-toolbar-actions { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }',
+			'.dash-toolbar-actions select { width: auto !important; max-width: 120px !important; margin: 0 !important; }',
 			'.dash-toolbar-actions > * { white-space: nowrap !important; flex-shrink: 0; }',
 			'@media (max-width: 768px) {',
-			'	#dash_iframe { border-right: none; border-radius: var(--radius-base,4px) 0 0 var(--radius-base,4px); }',
-			'	#dash_scroll_handle { display: flex; align-items: center; justify-content: center; width: 14px; flex-shrink: 0; touch-action: none; user-select: none; border: 1px solid var(--border, var(--hairline, var(--border-color-medium, #ccc))); border-radius: 0 var(--radius-base,4px) var(--radius-base,4px) 0; }',
-			'	.dash-toolbar-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }',
-			'	.dash-toolbar-actions select { flex: 1 1 auto; min-width: 90px; margin-right: 0 !important; }',
-			'	.dash-toolbar-actions .btn, .dash-toolbar-actions .cbi-button { padding: 4px 8px !important; font-size: 12px !important; white-space: nowrap !important; flex: 0 0 auto; }',
+			'	#dash_iframe_wrap {',
+			'		height: calc(100vh - 190px);',
+			'		height: calc(100dvh - 190px);',
+			'		min-height: 520px;',
+			'	}',
+			'	.dash-toolbar-info { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 4px; flex-wrap: nowrap !important; }',
+			'	.dash-toolbar-info .label { font-size: 11px !important; padding: 2px 5px !important; white-space: nowrap !important; flex-shrink: 0 !important; }',
+			'	.dash-toolbar-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }',
+			'	.dash-toolbar-actions select { width: auto !important; max-width: 90px !important; margin: 0 !important; padding: 2px 18px 2px 6px !important; font-size: 12px !important; height: 26px !important; line-height: 20px !important; flex: 0 0 auto !important; }',
+			'	.dash-toolbar-actions .btn, .dash-toolbar-actions .cbi-button { padding: 3px 6px !important; font-size: 12px !important; flex: 0 0 auto !important; }',
 			'}',
 			'.dash-log-box {',
 			'	max-height: 150px; overflow-y: auto; font-family: var(--font-mono, monospace);',
@@ -321,15 +349,79 @@ return view.extend({
 		var btnExternalOpen = E('a', { 'href': '#', 'target': '_blank', 'class': 'cbi-button cbi-button-action', 'title': _('Open independently in a new tab') }, _('New Tab'));
 		var iframe = E('iframe', { 'id': 'dash_iframe', 'src': 'about:blank', 'allow': 'fullscreen; clipboard-read; clipboard-write' });
 
-		var scrollHandle = E('div', { 'id': 'dash_scroll_handle', 'title': _('Drag to scroll page') }, ['\u22ee']);
-		var scrollLastY;
-		scrollHandle.addEventListener('touchstart', function(e) { scrollLastY = e.touches[0].clientY; }, { passive: true });
-		scrollHandle.addEventListener('touchmove', function(e) {
-			window.scrollBy(0, scrollLastY - e.touches[0].clientY);
-			scrollLastY = e.touches[0].clientY;
-			e.preventDefault();
-		}, { passive: false });
-		var iframeWrap = E('div', { 'id': 'dash_iframe_wrap' }, [iframe, scrollHandle]);
+		var scaleStorageKey = 'honk_dash_scale';
+		var isMobileInit = (window.innerWidth <= 768);
+		var currentScale = localStorage.getItem(scaleStorageKey) || (isMobileInit ? '0.85' : '1');
+		var scaleCycle = ['0.85', '1', '0.75'];
+
+		function formatScaleLabel(s) {
+			if (s === '1') return '100%';
+			if (s === '0.85') return '85%';
+			if (s === '0.75') return '75%';
+			return Math.round(parseFloat(s) * 100) + '%';
+		}
+
+		function applyScale(scaleVal) {
+			if (scaleVal) {
+				currentScale = scaleVal;
+			}
+			var s = parseFloat(currentScale);
+			if (isNaN(s) || s <= 0 || s > 1.5) {
+				s = 1;
+			}
+
+			if (s === 1) {
+				iframe.style.width = '100%';
+				iframe.style.height = '100%';
+				iframe.style.transform = 'none';
+			} else {
+				var pct = (100 / s).toFixed(4) + '%';
+				iframe.style.width = pct;
+				iframe.style.height = pct;
+				iframe.style.transform = 'scale(' + s + ')';
+			}
+		}
+
+		var btnScale = E('button', {
+			'type': 'button',
+			'class': 'btn cbi-button',
+			'title': _('Click to switch scale (85% / 100% / 75%)'),
+			'click': function() {
+				var idx = scaleCycle.indexOf(currentScale);
+				var nextScale = scaleCycle[(idx + 1) % scaleCycle.length];
+				currentScale = nextScale;
+				localStorage.setItem(scaleStorageKey, nextScale);
+				btnScale.innerText = formatScaleLabel(nextScale);
+				applyScale(nextScale);
+			}
+		}, formatScaleLabel(currentScale));
+
+		applyScale();
+
+		window.addEventListener('resize', function() {
+			if (!localStorage.getItem(scaleStorageKey)) {
+				var mob = (window.innerWidth <= 768);
+				var newScale = mob ? '0.85' : '1';
+				if (newScale !== currentScale) {
+					currentScale = newScale;
+					btnScale.innerText = formatScaleLabel(newScale);
+					applyScale();
+				}
+			}
+		});
+
+		var btnExitFullscreen = E('button', {
+			'id': 'dash_exit_fullscreen_btn',
+			'type': 'button',
+			'class': 'btn cbi-button',
+			'title': _('Exit Fullscreen'),
+			'click': function(ev) {
+				ev.stopPropagation();
+				toggleFullscreen(false);
+			}
+		}, ['\u2715 ' + _('Exit Fullscreen')]);
+
+		var iframeWrap = E('div', { 'id': 'dash_iframe_wrap' }, [iframe, btnExitFullscreen]);
 
 		// Update Modal
 		var updateTargetLabel = E('code', {
@@ -446,22 +538,56 @@ return view.extend({
 			}
 		}, _('Refresh'));
 
+		function toggleFullscreen(enable) {
+			var isFull = (typeof enable === 'boolean') ? enable : !iframeWrap.classList.contains('fullscreen');
+			if (isFull) {
+				iframeWrap.classList.add('fullscreen');
+				document.body.classList.add('dash-body-fullscreen');
+				btnExitFullscreen.style.display = 'inline-flex';
+				btnToggleFullscreen.innerText = _('Exit Fullscreen');
+				if (iframeWrap.requestFullscreen) {
+					iframeWrap.requestFullscreen().catch(function() {});
+				} else if (iframeWrap.webkitRequestFullscreen) {
+					iframeWrap.webkitRequestFullscreen().catch(function() {});
+				}
+			} else {
+				iframeWrap.classList.remove('fullscreen');
+				document.body.classList.remove('dash-body-fullscreen');
+				btnExitFullscreen.style.display = 'none';
+				btnToggleFullscreen.innerText = _('Fullscreen');
+				if (document.fullscreenElement || document.webkitFullscreenElement) {
+					if (document.exitFullscreen) {
+						document.exitFullscreen().catch(function() {});
+					} else if (document.webkitExitFullscreen) {
+						document.webkitExitFullscreen().catch(function() {});
+					}
+				}
+			}
+			applyScale();
+		}
+
+		document.addEventListener('fullscreenchange', function() {
+			if (!document.fullscreenElement && iframeWrap.classList.contains('fullscreen')) {
+				toggleFullscreen(false);
+			}
+		});
+		document.addEventListener('webkitfullscreenchange', function() {
+			if (!document.webkitFullscreenElement && iframeWrap.classList.contains('fullscreen')) {
+				toggleFullscreen(false);
+			}
+		});
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && iframeWrap.classList.contains('fullscreen')) {
+				toggleFullscreen(false);
+			}
+		});
+
 		var btnToggleFullscreen = E('button', {
 			'type': 'button',
 			'class': 'btn cbi-button',
 			'title': _('Toggle fullscreen display'),
 			'click': function() {
-				if (!document.fullscreenElement) {
-					if (iframe.requestFullscreen) {
-						iframe.requestFullscreen();
-					} else if (iframe.webkitRequestFullscreen) {
-						iframe.webkitRequestFullscreen();
-					}
-				} else {
-					if (document.exitFullscreen) {
-						document.exitFullscreen();
-					}
-				}
+				toggleFullscreen();
 			}
 		}, _('Fullscreen'));
 
@@ -473,17 +599,17 @@ return view.extend({
 			honkStopAlert,
 			E('div', { 'class': 'dash-toolbar' }, [
 				E('div', { 'class': 'dash-toolbar-info' }, [
-					E('strong', { 'style': 'font-size: 15px;' }, profile.name),
 					statusServicePill,
 					statusEndpointPill,
 					tokenPill
 				]),
 				E('div', { 'class': 'dash-toolbar-actions' }, [
 					selectDashboard,
-					btnUpdateDashboard,
-					btnRefreshIframe,
 					btnToggleFullscreen,
-					btnExternalOpen
+					btnRefreshIframe,
+					btnScale,
+					btnExternalOpen,
+					btnUpdateDashboard
 				])
 			]),
 			iframeWrap

@@ -255,6 +255,9 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 	.cb-tile { padding: 14px; }
 	.cb-tile-val { font-size: 22px; }
 	.cb-spark { display: none; }
+	.cb-wifi-row { gap: 5px; font-size: 11px; }
+	.cb-wifi-row-head { gap: 4px; }
+	.cb-wifi-row-band { padding: 0 5px; font-size: 10px; line-height: 16px; }
 	.cb-hero-title { font-size: 19px; }
 	.hide-xs { display: none !important; }
 }

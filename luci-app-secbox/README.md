@@ -24,6 +24,7 @@ Runtime and build dependencies:
 - `luci-base`
 - `nftables`
 - `kmod-nft-core`
+- `msmtp` (Email notification support)
 
 ---
 
@@ -75,7 +76,7 @@ make package/luci-app-secbox/compile V=s
 
 The resulting `.ipk` / `.apk` package will be located in:
 ```text
-bin/packages/<architecture>/base/luci-app-secbox_1.26.8-1_all.ipk
+bin/packages/<architecture>/base/luci-app-secbox_26.11-1_all.ipk
 ```
 
 ---
@@ -85,12 +86,12 @@ bin/packages/<architecture>/base/luci-app-secbox_1.26.8-1_all.ipk
 Transfer the compiled package to your router and install via `opkg`:
 
 ```bash
-scp bin/packages/<arch>/base/luci-app-secbox_1.26.8-1_all.ipk root@192.168.1.1:/tmp/
+scp bin/packages/<arch>/base/luci-app-secbox_26.11-1_all.ipk root@192.168.1.1:/tmp/
 ssh root@192.168.1.1
 
 # Install package
 opkg update
-opkg install /tmp/luci-app-secbox_1.26.8-1_all.ipk
+opkg install /tmp/luci-app-secbox_26.11-1_all.ipk
 
 # Clear LuCI index cache
 rm -rf /var/luci-indexcache* /tmp/luci-indexcache* /tmp/luci-modulecache

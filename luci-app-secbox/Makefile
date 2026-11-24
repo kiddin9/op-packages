@@ -4,11 +4,11 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for SecBox
-LUCI_DEPENDS:=+luci-base +banip +nftables +kmod-nft-core
+LUCI_DEPENDS:=+luci-base +banip +nftables +kmod-nft-core +msmtp
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=1.26.8
-PKG_RELEASE:=1
+PKG_VERSION:=26.11
+PKG_RELEASE:=2
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=permails <logo@permails.com>
 

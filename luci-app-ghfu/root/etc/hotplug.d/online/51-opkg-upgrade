@@ -1,5 +1,18 @@
-if [ "$(uci -q get wizard.default.autoupgrade_pkg)" == '1' ] && lock -n /var/lock/opkg-upgrade && opkg update; then
-. /etc/profile.d/opkg.sh
-opkg upgr 2>&1 | logger -t opkg
-fi
-lock -u /var/lock/opkg-upgrade
+#!/bin/sh
+(
+	[ "$(uci -q get wizard.default.autoupgrade_pkg)" = "1" ] || exit 0
+
+	lock -n /var/lock/opkg-upgrade 2>/dev/null || exit 0
+	trap 'lock -u /var/lock/opkg-upgrade 2>/dev/null' EXIT INT TERM
+
+	if command -v opkg >/dev/null 2>&1 && [ -r /etc/profile.d/opkg.sh ]; then
+		if command opkg update >/dev/null 2>&1; then
+			. /etc/profile.d/opkg.sh
+			opkg upgr 2>&1 | logger -t opkg
+		fi
+	elif command -v apk >/dev/null 2>&1; then
+		if apk update >/dev/null 2>&1; then
+			apk upgrade 2>&1 | logger -t apk
+		fi
+	fi
+)

@@ -4,6 +4,15 @@
 'require ui';
 'require dom';
 
+if (!document.getElementById('secbox-theme-css')) {
+	document.head.appendChild(E('link', {
+		'id': 'secbox-theme-css',
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': L.resource('view/secbox/custom.css')
+	}));
+}
+
 const localFile = '/etc/banip/banip.blocklist';
 const maxSize = 100000;
 
@@ -76,7 +85,7 @@ return view.extend({
 			this.isRawMode = true;
 		}
 
-		const mainContainer = E('div', { 'class': 'cbi-map' });
+		const mainContainer = E('div', { 'class': 'cbi-map secbox-view' });
 
 		function syncAndRebuild() {
 			self.rawContent = serializeBlocklist(self.items);
@@ -104,9 +113,9 @@ return view.extend({
 				]);
 			});
 
-			return E('div', { 'class': 'cbi-section' }, [
-				E('h3', _('Blocklist Entries')),
-				E('div', { 'class': 'cbi-section-node' }, [
+			return E('div', { 'class': 'op-card', 'style': 'margin-bottom: 14px;' }, [
+				E('div', { 'class': 'op-card-header' }, [_('Blocklist Entries')]),
+				E('div', { 'class': 'op-card-body', 'style': 'padding: 0;' }, [
 					E('table', { 'class': 'table cbi-section-table' }, [
 						E('tr', { 'class': 'tr cbi-section-table-titles' }, [
 							E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 45%; text-align: left !important;' }, [_('Blocked Address / Domain / Network')]),
@@ -115,7 +124,7 @@ return view.extend({
 						]),
 						E('tbody', {}, rows.length ? rows : [
 							E('tr', { 'class': 'tr cbi-section-table-row' }, [
-								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell', 'style': 'text-align: center !important; color: #888; padding: 2em;' },
+								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell secbox-muted', 'style': 'text-align: center !important; padding: 2em;' },
 									[_('Currently no blocked entries. Add one below.')])
 							])
 						])
@@ -150,8 +159,9 @@ return view.extend({
 					valInput.focus();
 					return;
 				}
-				if (/[\s#]/.test(val)) {
-					ui.addNotification(null, E('p', _('Format invalid: "%s" is not a valid address without spaces.').format(val)), 'error');
+				if (!isValidRule(val)) {
+					ui.addNotification(null, E('p', _('Format invalid: "%s" is not a valid IP, CIDR, MAC, MAC+IP, or domain.').format(val)), 'error');
+					valInput.focus();
 					return;
 				}
 
@@ -169,9 +179,9 @@ return view.extend({
 				if (ev.key === 'Enter') doAdd();
 			});
 
-			return E('div', { 'class': 'cbi-section' }, [
-				E('h3', _('Quick Add Block Rule')),
-				E('div', { 'class': 'cbi-section-node' }, [
+			return E('div', { 'class': 'op-card', 'style': 'margin-bottom: 14px;' }, [
+				E('div', { 'class': 'op-card-header' }, [_('Quick Add Block Rule')]),
+				E('div', { 'class': 'op-card-body', 'style': 'padding: 0;' }, [
 					E('table', { 'class': 'table cbi-section-table' }, [
 						E('tr', { 'class': 'tr cbi-section-table-titles' }, [
 							E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 45%; text-align: left !important;' }, [_('Address or Domain')]),

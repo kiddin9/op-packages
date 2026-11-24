@@ -4,6 +4,15 @@
 'require fs';
 'require ui';
 
+if (!document.getElementById('secbox-theme-css')) {
+	document.head.appendChild(E('link', {
+		'id': 'secbox-theme-css',
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': L.resource('view/secbox/custom.css')
+	}));
+}
+
 const localFile = '/etc/banip/banip.allowlist';
 const maxSize = 100000;
 
@@ -107,7 +116,7 @@ return view.extend({
 			this.isRawMode = true;
 		}
 
-		const mainContainer = E('div', { 'class': 'cbi-map' });
+		const mainContainer = E('div', { 'class': 'cbi-map secbox-view' });
 
 		function syncAndRebuild() {
 			self.rawContent = serializeAll(self.systemItems, self.userItems);
@@ -124,23 +133,23 @@ return view.extend({
 
 			const boxes = self.systemItems.map(function (item) {
 				return E('div', {
-					'style': 'display: flex; align-items: center; justify-content: space-between; padding: .55em .85em; background: rgba(0, 0, 0, 0.025); border: 1px solid var(--cbi-border-color, #e5e7eb); border-radius: 6px;'
+					'class': 'secbox-rule-chip'
 				}, [
-					E('span', { 'style': 'font-family: monospace; font-weight: bold; font-size: .98em;' }, [item.value]),
-					E('span', { 'style': 'font-size: .88em; color: #64748b; margin-left: .8em; white-space: nowrap;' }, [
+					E('span', { 'class': 'secbox-mono', 'style': 'font-weight: 600;' }, [item.value]),
+					E('span', { 'class': 'secbox-muted', 'style': 'font-size: 12px; margin-left: 10px; white-space: nowrap;' }, [
 						item.comment || _('Auto detected by SecBox / protected')
 					])
 				]);
 			});
 
-			return E('div', { 'class': 'cbi-section' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: .4em;' }, [
-					E('h3', { 'style': 'margin: 0;' }, [_('System Auto-Protected Rules')]),
-					E('span', { 'style': 'font-size: .88em; color: #64748b;' }, [_('Auto detected by SecBox / protected')])
+			return E('div', { 'class': 'op-card', 'style': 'margin-bottom: 14px;' }, [
+				E('div', { 'class': 'op-card-head-row' }, [
+					E('div', { 'class': 'op-card-header' }, [_('System Auto-Protected Rules')]),
+					E('span', { 'class': 'secbox-muted', 'style': 'font-size: 12px;' }, [_('Auto detected by SecBox / protected')])
 				]),
-				E('div', { 'class': 'cbi-section-node', 'style': 'padding: .85em; background: var(--cbi-section-bg, #fff); border: 1px solid var(--cbi-border-color, #e5e7eb); border-radius: 6px;' }, [
+				E('div', { 'class': 'op-card-body', 'style': 'padding: 12px;' }, [
 					E('div', {
-						'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(min(20em, 100%), 1fr)); gap: .6em .8em;'
+						'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(min(20em, 100%), 1fr)); gap: 8px 10px;'
 					}, boxes)
 				])
 			]);
@@ -167,9 +176,9 @@ return view.extend({
 				]);
 			});
 
-			return E('div', { 'class': 'cbi-section' }, [
-				E('h3', _('User Custom Rules')),
-				E('div', { 'class': 'cbi-section-node' }, [
+			return E('div', { 'class': 'op-card', 'style': 'margin-bottom: 14px;' }, [
+				E('div', { 'class': 'op-card-header' }, [_('User Custom Rules')]),
+				E('div', { 'class': 'op-card-body', 'style': 'padding: 0;' }, [
 					E('table', { 'class': 'table cbi-section-table' }, [
 						E('tr', { 'class': 'tr cbi-section-table-titles' }, [
 							E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 45%; text-align: left !important;' }, [_('Address / Domain / Network')]),
@@ -178,7 +187,7 @@ return view.extend({
 						]),
 						E('tbody', {}, rows.length ? rows : [
 							E('tr', { 'class': 'tr cbi-section-table-row' }, [
-								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell', 'style': 'text-align: center !important; color: #888; padding: 1.5em;' },
+								E('td', { 'colspan': 3, 'class': 'td cbi-section-table-cell secbox-muted', 'style': 'text-align: center !important; padding: 1.5em;' },
 									[_('No custom allowlist entries yet. Add one below.')])
 							])
 						])
@@ -232,9 +241,9 @@ return view.extend({
 				if (ev.key === 'Enter') doAdd();
 			});
 
-			return E('div', { 'class': 'cbi-section' }, [
-				E('h3', _('Add User Custom Rule')),
-				E('div', { 'class': 'cbi-section-node' }, [
+			return E('div', { 'class': 'op-card', 'style': 'margin-bottom: 14px;' }, [
+				E('div', { 'class': 'op-card-header' }, [_('Add User Custom Rule')]),
+				E('div', { 'class': 'op-card-body', 'style': 'padding: 0;' }, [
 					E('table', { 'class': 'table cbi-section-table' }, [
 						E('tr', { 'class': 'tr cbi-section-table-titles' }, [
 							E('th', { 'class': 'th cbi-section-table-cell', 'style': 'width: 45%; text-align: left !important;' }, [_('Address or Domain')]),

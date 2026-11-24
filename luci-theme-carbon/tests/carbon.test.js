@@ -530,3 +530,134 @@ test('inline hero logo stays in sync with logo.svg and uses unique defs IDs per 
 	for (const id of ids(first)) assert.ok(!ids(second).includes(id), `reused ID ${id} across renders`);
 	assert.equal(normalize(first), normalize(file), 'inline hero logo matches logo.svg geometry');
 });
+
+test('loadStatus classifies 1-minute load relative to CPU core count', () => {
+	const C = load();
+	const plain = (x) => JSON.parse(JSON.stringify(x));
+	assert.deepEqual(plain(C.loadStatus(0.0, 4)), { level: 'ok', label: 'Normal' });
+	assert.deepEqual(plain(C.loadStatus(2.79, 4)), { level: 'ok', label: 'Normal' });
+	assert.deepEqual(plain(C.loadStatus(2.8, 4)), { level: 'warn', label: 'Busy' });
+	assert.deepEqual(plain(C.loadStatus(3.99, 4)), { level: 'warn', label: 'Busy' });
+	assert.deepEqual(plain(C.loadStatus(4.0, 4)), { level: 'bad', label: 'High' });
+	assert.deepEqual(plain(C.loadStatus(0.69, 1)), { level: 'ok', label: 'Normal' });
+	assert.deepEqual(plain(C.loadStatus(0.7, 1)), { level: 'warn', label: 'Busy' });
+	assert.deepEqual(plain(C.loadStatus(1.0, 1)), { level: 'bad', label: 'High' });
+	assert.equal(C.loadStatus(0.5, 0), null, 'unknown cores must not guess a single core');
+	assert.equal(C.loadStatus(0.5, null), null);
+	assert.equal(C.loadStatus(-0.1, 4), null);
+	assert.equal(C.loadStatus(NaN, 4), null);
+});
+
+test('wirelessSummary computes per-SSID band, bandwidth, encryption and deduplicated client counts', () => {
+	const C = load();
+	const plain = (x) => JSON.parse(JSON.stringify(x));
+	const wireless = {
+		radio0: {
+			up: true,
+			config: { band: '2g', channel: '6', htmode: 'HE40' },
+			interfaces: [
+				{ ifname: 'phy0-ap0', config: { mode: 'ap', ssid: 'Home', encryption: 'psk2+ccmp' } },
+				{ ifname: 'phy0-ap1', config: { mode: 'ap', ssid: 'Guest', encryption: 'psk-mixed', disabled: true } },
+				{ ifname: 'phy0-sta0', config: { mode: 'sta', ssid: 'Uplink' } }
+			]
+		},
+		radio1: {
+			up: true,
+			config: { band: '5g', channel: '149', htmode: 'HE160' },
+			interfaces: [
+				{ ifname: 'phy1-ap0', config: { mode: 'ap', ssid: 'Home', encryption: 'sae-mixed' } },
+				{ ifname: 'phy1-ap1', config: { mode: 'ap', ssid: '', encryption: 'owe' } }
+			]
+		},
+		radio2: {
+			up: true,
+			config: { channel: '36', htmode: 'VHT80' },
+			interfaces: [
+				{ ifname: 'phy2-ap0', config: { mode: 'ap', ssid: 'Fallback5G', encryption: 'none' } }
+			]
+		}
+	};
+	const stations = [
+		{ ifname: 'phy0-ap0', mac: 'AA:11:22:33:44:55' },
+		{ ifname: 'phy0-ap0', mac: 'aa:11:22:33:44:55' },
+		{ ifname: 'phy0-ap0', mac: '00:00:00:00:00:00' },
+		{ ifname: 'phy1-ap0', mac: 'bb:11:22:33:44:55' },
+		{ ifname: 'phy1-ap0', mac: 'cc:11:22:33:44:55' }
+	];
+	const res = plain(C.wirelessSummary(wireless, stations));
+	assert.equal(res.totalClients, 3);
+	assert.equal(res.rows.length, 5, 'non-AP sta interface excluded; dual-band same SSID stays separate');
+	assert.deepEqual(res.rows[0], {
+		radio: 'radio0', ifname: 'phy0-ap0', ssid: 'Home', hidden: false,
+		band: '2.4 GHz', bandKey: '2g', channel: '6', width: '40 MHz', encryption: 'WPA2',
+		meta: 'CH 6 · 40 MHz · WPA2', sub: '2.4 GHz · CH 6 · 40 MHz · WPA2', on: true, clients: 1
+	});
+	assert.equal(res.rows[1].ssid, 'Guest');
+	assert.equal(res.rows[1].encryption, 'WPA/WPA2');
+	assert.equal(res.rows[1].on, false);
+	assert.equal(res.rows[1].clients, null, 'disabled AP does not report a client count');
+	assert.equal(res.rows[2].ssid, 'Home');
+	assert.equal(res.rows[2].band, '5 GHz');
+	assert.equal(res.rows[2].bandKey, '5g');
+	assert.equal(res.rows[2].width, '160 MHz');
+	assert.equal(res.rows[2].encryption, 'WPA2/WPA3');
+	assert.equal(res.rows[2].clients, 2);
+	assert.equal(res.rows[3].hidden, true);
+	assert.equal(res.rows[3].encryption, 'OWE');
+	assert.equal(res.rows[3].clients, 0, 'active AP with no stations reports 0');
+	assert.equal(res.rows[4].band, '5 GHz', 'numeric channel fallback infers 5 GHz');
+	assert.equal(res.rows[4].meta, 'CH 36 · 80 MHz');
+	assert.equal(res.rows[4].clients, 0);
+
+	// Unavailable stations (null) keeps client counts unknown instead of showing false 0
+	const unknown = plain(C.wirelessSummary(wireless, null));
+	assert.equal(unknown.totalClients, null);
+	assert.ok(unknown.rows.every((r) => r.clients === null));
+
+	// OpenWrt HT40+/HT40-/VHT80+80/NOHT widths, case-insensitive band, and active-AP-only totalClients
+	const edgeW = {
+		radio0: {
+			up: true,
+			config: { band: '2G', channel: '6', htmode: 'HT40+' },
+			interfaces: [
+				{ ifname: 'phy0-ap0', config: { mode: 'ap', ssid: 'Plus40', encryption: 'psk2' } },
+				{ ifname: 'phy0-ap1', config: { mode: 'ap', ssid: 'DisabledAP', encryption: 'psk2', disabled: true } },
+				{ ifname: 'phy0-sta0', config: { mode: 'sta', ssid: 'ClientLink' } }
+			]
+		},
+		radio1: {
+			up: true,
+			config: { band: '5g', channel: '36', htmode: 'VHT80+80' },
+			interfaces: [
+				{ ifname: 'phy1-ap0', config: { mode: 'ap', ssid: 'Dual80', encryption: 'sae' } }
+			]
+		},
+		radio2: {
+			up: true,
+			config: { band: '2g', channel: '11', htmode: 'HT40-' },
+			interfaces: [
+				{ ifname: 'phy2-ap0', config: { mode: 'ap', ssid: 'Minus40', encryption: 'none' } }
+			]
+		},
+		radio3: {
+			up: true,
+			config: { band: '2g', channel: '1', htmode: 'NOHT' },
+			interfaces: [
+				{ ifname: 'phy3-ap0', config: { mode: 'ap', ssid: 'Legacy', encryption: 'none' } }
+			]
+		}
+	};
+	const edgeRes = plain(C.wirelessSummary(edgeW, [
+		{ ifname: 'phy0-ap0', mac: '11:22:33:44:55:01' },
+		{ ifname: 'phy0-ap1', mac: '11:22:33:44:55:02' },
+		{ ifname: 'phy0-sta0', mac: '11:22:33:44:55:03' },
+		{ ifname: 'stale-if0', mac: '11:22:33:44:55:04' }
+	]));
+	assert.equal(edgeRes.rows[0].band, '2.4 GHz');
+	assert.equal(edgeRes.rows[0].width, '40 MHz');
+	assert.equal(edgeRes.rows[2].width, '80+80 MHz');
+	assert.equal(edgeRes.rows[3].width, '40 MHz');
+	assert.equal(edgeRes.rows[4].width, null);
+	assert.equal(edgeRes.totalClients, 1, 'stations on disabled, non-AP or unmatched interfaces do not inflate totalClients');
+	assert.equal(C.wirelessSummary(edgeW, []).totalClients, 0, 'empty station list reports 0 total clients');
+});

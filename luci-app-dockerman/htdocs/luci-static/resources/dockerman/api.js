@@ -119,15 +119,21 @@ function processLines(buffer, onChunk) {
 // Parse the docker multiplexed stream format, https://docs.docker.com/reference/api/engine/version/v1.43/#stream-format
 function parse_multiplexed_stream(buffer) {
 	const output = [];
+	// Only three stream types are defined: 0=stdin, 1=stdout, 2=stderr.
+	const decoders = [new TextDecoder(), new TextDecoder(), new TextDecoder()];
 
 	while (buffer.length > 0) {
 		if (buffer.length < 8) break; // Not enough data for header
-		let stream_type = buffer.charCodeAt(0);
-		let payload_length = (buffer.charCodeAt(4) << 24) | (buffer.charCodeAt(5) << 16) | (buffer.charCodeAt(6) << 8) | buffer.charCodeAt(7);
+		let stream_type = buffer[0];
+		let payload_length = ((buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7]) >>> 0; // Convert to unsigned
 		if (buffer.length < 8 + payload_length) break; // Not enough data for payload
-		let payload = buffer.slice(8, 8 + payload_length);
-		output.push({ type: stream_type, payload: payload });
-		buffer = buffer.slice(8 + payload_length);
+		if (stream_type <= 2) {
+			let payload = buffer.subarray(8, 8 + payload_length);
+			output.push({ type: stream_type, payload: decoders[stream_type].decode(payload, { stream: true }) });
+		} else {
+			console.warn(`Unknown stream type ${stream_type} in multiplexed stream, ignoring`);
+		}
+		buffer = buffer.subarray(8 + payload_length);
 	}
 
 	return output;
@@ -239,29 +245,36 @@ function call_docker(method, path, options = {}) {
 					headersObj[key] = value;
 				}
 
+				if ("application/vnd.docker.multiplexed-stream" === headersObj['content-type']) {
+					return response.arrayBuffer().then(buffer => {
+						const parsed = parse_multiplexed_stream(new Uint8Array(buffer));
+						return {
+							code: response.status,
+							body: parsed,
+							headers: headersObj,
+						};
+					});
+				}
+
 				return response.text().then(text => {
 					const safeText = (typeof text === 'string') ? text : '';
 					let parsed = safeText || text;
 					const contentType = response.headers.get('content-type') || '';
 
-					if ("application/vnd.docker.multiplexed-stream" == contentType) {
-						parsed = parse_multiplexed_stream(safeText);
-					} else {
-						// Try normal JSON parse first
-						try {
-							parsed = JSON.parse(text);
-						} catch (err) {
-							// If the payload is newline-delimited JSON (Docker events), split and parse each line
-							if (['application/json',
-								'application/x-ndjson',
-								'application/json-seq'].includes(contentType) || safeText.includes('\n')) {
-								const lines = safeText.split(/\r?\n/).filter(Boolean);
-								try {
-									parsed = lines.map(l => JSON.parse(l));
-								} catch (err2) {
-									// Fall back to raw text if parsing fails
-									parsed = text;
-								}
+					// Try normal JSON parse first
+					try {
+						parsed = JSON.parse(text);
+					} catch (err) {
+						// If the payload is newline-delimited JSON (Docker events), split and parse each line
+						if (['application/json',
+							'application/x-ndjson',
+							'application/json-seq'].includes(contentType) || safeText.includes('\n')) {
+							const lines = safeText.split(/\r?\n/).filter(Boolean);
+							try {
+								parsed = lines.map(l => JSON.parse(l));
+							} catch (err2) {
+								// Fall back to raw text if parsing fails
+								parsed = text;
 							}
 						}
 					}
