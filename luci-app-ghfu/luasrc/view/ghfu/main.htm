@@ -899,10 +899,31 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
     }
 
     var SAFE_TAGS = {
-        H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1,
-        P: 1, BR: 1, HR: 1, UL: 1, OL: 1, LI: 1,
-        B: 1, STRONG: 1, I: 1, EM: 1, U: 1, CODE: 1, PRE: 1, SPAN: 1, A: 1
+        DIV: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1,
+        P: 1, BR: 1, HR: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1,
+        B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, DEL: 1, SMALL: 1, MARK: 1, SUP: 1, SUB: 1,
+        CODE: 1, PRE: 1, SPAN: 1, FONT: 1, A: 1,
+        TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1
     };
+
+    function sanitizeInlineStyle(cssText) {
+        var raw = String(cssText || '').replace(/\/\*[\s\S]*?\*\//g, '');
+        if (!raw) return '';
+        var out = [];
+        raw.split(';').forEach(function(decl) {
+            var d = trim(decl);
+            var idx = d.indexOf(':');
+            if (idx <= 0) return;
+            var prop = trim(d.slice(0, idx)).toLowerCase();
+            var val = trim(d.slice(idx + 1));
+            if (!/^[a-z\-]+$/.test(prop) || !val) return;
+            if (/^(?:behavior|-moz-binding)$/.test(prop)) return;
+            if (/(?:expression|url)\s*\(|(?:javascript|vbscript|data)\s*:|@import/i.test(val)) return;
+            if (prop === 'position' && /^(?:fixed|sticky)$/i.test(val)) return;
+            out.push(prop + ': ' + val);
+        });
+        return out.join('; ');
+    }
 
     function sanitizeChangelogHtml(rawHtml) {
         var tpl = document.createElement('template');
@@ -926,9 +947,19 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                     var attrs = Array.prototype.slice.call(node.attributes);
                     for (var j = 0; j < attrs.length; j++) {
                         var aname = attrs[j].name.toLowerCase();
-                        if (tag === 'A' && aname === 'href' && /^https?:\/\//i.test(trim(attrs[j].value))) {
+                        var aval = attrs[j].value;
+                        if (aname === 'style') {
+                            var cleanCss = sanitizeInlineStyle(aval);
+                            if (cleanCss) {
+                                node.setAttribute('style', cleanCss);
+                            } else {
+                                node.removeAttribute(attrs[j].name);
+                            }
                             continue;
                         }
+                        if (aname === 'title') continue;
+                        if (tag === 'FONT' && aname === 'color' && /^[#a-z0-9(),.\s%-]+$/i.test(aval)) continue;
+                        if (tag === 'A' && aname === 'href' && /^https?:\/\//i.test(trim(aval))) continue;
                         node.removeAttribute(attrs[j].name);
                     }
                     if (tag === 'A') {

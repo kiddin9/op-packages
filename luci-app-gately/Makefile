@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-gately
-PKG_VERSION:=0.6.8.6
-PKG_RELEASE:=14
+PKG_VERSION:=0.6.8.8
+PKG_RELEASE:=15
 
 PKG_SOURCE:=gately-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/wangwanjie/gately/tar.gz/v$(PKG_VERSION)?
