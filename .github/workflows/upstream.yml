@@ -109,6 +109,7 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-syncdial
         git_clone https://github.com/kiddin9/openwrt-gately luci-app-gately
         git_clone https://github.com/kiddin9/luci-app-ghfu
+        git_clone https://github.com/kiddin9/luci-app-aliddns
         ) &
         (
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall && mvdir openwrt-passwall
