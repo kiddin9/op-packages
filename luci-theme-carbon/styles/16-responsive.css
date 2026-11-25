@@ -72,6 +72,7 @@ body:has(#maincontent .table) { --cb-content-max: var(--cb-content-wide); }
 		transform: translateY(100%);
 	}
 	.cb-sheet-foot { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+	.cb-sheet-search { padding: 10px 14px; }
 	.cb-sheet-body { padding: 12px 14px 16px; }
 	.cb-sheet-collapse {
 		top: -13px;

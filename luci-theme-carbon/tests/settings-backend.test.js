@@ -229,6 +229,117 @@ test('settings ACL grants write access to set_dashboard only under luci.carbon_u
 	assert.equal(acl.read.ubus['luci.carbon_update'].includes('set_dashboard'), false);
 });
 
+function simpleMenuBackend() {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbon-menu-'));
+	const uciDir = path.join(dir, 'uci');
+	fs.mkdirSync(uciDir);
+	const body = SCRIPT
+		.replace('. /usr/share/libubox/jshn.sh', `. "${JSHN}"`)
+		.replace(/\ncase "\$1" in\n\tlist\)[\s\S]*$/, '\n');
+	const lib = path.join(dir, 'backend.sh');
+	const uciStub = `
+uci_dir="${uciDir}"
+carbon_config="${dir}/carbon.cfg"
+uci() {
+	[ "$1" = -q ] && shift
+	case "$1" in
+		get)
+			[ -f "$uci_dir/$2" ] || return 1
+			cat "$uci_dir/$2"
+			;;
+		set)
+			k=\${2%%=*}; v=\${2#*=}
+			printf '%s\\n' "$v" > "$uci_dir/$k"
+			;;
+		delete)
+			rm -f "$uci_dir/$2" "$uci_dir/$2."*
+			;;
+		commit)
+			printf '%s\\n' "$2" >> "$uci_dir/.commits"
+			;;
+	esac
+}
+`;
+	fs.writeFileSync(lib, uciStub + body.replaceAll('/etc/config/carbon', '${carbon_config}') + '\n');
+	const call = (payload) => JSON.parse(execFileSync(process.env.CARBON_TEST_SH || 'sh', ['-c', `. "${lib}"; input='${JSON.stringify(payload).replace(/'/g, "'\\''")}'; set_simple_menu`], { encoding: 'utf8' }));
+	const readUci = (k) => fs.existsSync(path.join(uciDir, k)) ? fs.readFileSync(path.join(uciDir, k), 'utf8').trim() : null;
+	const isCustom = () => execFileSync(process.env.CARBON_TEST_SH || 'sh', ['-c', `. "${lib}"; simple_menu_custom`], { encoding: 'utf8' }).trim();
+	return { dir, call, readUci, isCustom };
+}
+
+test('set_simple_menu saves validated UCI options, supports an empty group via none, and resets cleanly', () => {
+	const b = simpleMenuBackend();
+	assert.equal(b.isCustom(), '0');
+
+	const res = b.call({
+		action: 'set',
+		common: 'status/overview network/network services/openclash network/dhcp',
+		system: 'system/package-manager system/carbon-update system/reboot'
+	});
+	assert.deepEqual(res, {
+		simple_menu_custom: true,
+		common: 'status/overview network/network services/openclash network/dhcp',
+		system: 'system/package-manager system/carbon-update system/reboot'
+	});
+	assert.equal(b.isCustom(), '1');
+	assert.equal(b.readUci('carbon.simple_menu'), 'simple_menu');
+	assert.equal(b.readUci('carbon.simple_menu.common'), 'status/overview network/network services/openclash network/dhcp');
+	assert.equal(b.readUci('carbon.simple_menu.system'), 'system/package-manager system/carbon-update system/reboot');
+
+	const singleGroup = b.call({
+		action: 'set',
+		common: 'status/overview docker services/v2rayA services/luci.app_1',
+		system: 'none'
+	});
+	assert.deepEqual(singleGroup, {
+		simple_menu_custom: true,
+		common: 'status/overview docker services/v2rayA services/luci.app_1',
+		system: 'none'
+	});
+
+	const reset = b.call({ action: 'reset' });
+	assert.deepEqual(reset, { simple_menu_custom: false });
+	assert.equal(b.isCustom(), '0');
+	assert.equal(b.readUci('carbon.simple_menu'), null);
+	assert.equal(b.readUci('carbon.simple_menu.common'), null);
+});
+
+test('set_simple_menu rejects invalid paths, logout, duplicates, >32 items, oversized payloads and all-empty menus', () => {
+	const b = simpleMenuBackend();
+	const tooMany = Array.from({ length: 33 }, (_, i) => `services/p${i}`).join(' ');
+	const tooLong = Array.from({ length: 20 }, (_, i) => `services/${'a'.repeat(55)}${i}`).join(' ');
+	const invalid = [
+		{ action: 'set', common: 'none', system: 'none' },
+		{ action: 'set', common: '', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview', system: '' },
+		{ action: 'set', common: 'logout', system: 'system/reboot' },
+		{ action: 'set', common: 'logout/sub', system: 'system/reboot' },
+		{ action: 'set', common: '../etc', system: 'system/reboot' },
+		{ action: 'set', common: 'status/..', system: 'system/reboot' },
+		{ action: 'set', common: '.hidden/page', system: 'system/reboot' },
+		{ action: 'set', common: 'status/.hidden', system: 'system/reboot' },
+		{ action: 'set', common: 'a/b/c', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview none', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview;rm', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview\nrm', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview status/overview', system: 'system/reboot' },
+		{ action: 'set', common: 'status/overview', system: 'status/overview' },
+		{ action: 'set', common: tooMany, system: 'none' },
+		{ action: 'set', common: tooLong, system: 'none' },
+		{ action: 'bogus', common: 'status/overview', system: 'none' }
+	];
+	for (const payload of invalid) {
+		assert.deepEqual(b.call(payload), { error: 'invalid_simple_menu' }, JSON.stringify(payload));
+	}
+	assert.equal(b.isCustom(), '0');
+});
+
+test('settings ACL grants write access to set_simple_menu only under luci.carbon_update', () => {
+	const acl = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'root/usr/share/rpcd/acl.d/luci-theme-carbon-update.json'), 'utf8'))['luci-theme-carbon-update'];
+	assert.ok(acl.write.ubus['luci.carbon_update'].includes('set_simple_menu'));
+	assert.equal(acl.read.ubus['luci.carbon_update'].includes('set_simple_menu'), false);
+});
+
 function updaterEnv({ withSetsid = false, manager = 'opkg', installedVersion = '1.1.8-1' } = {}) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'carbon-updater-'));
 	const bin = path.join(dir, 'bin');

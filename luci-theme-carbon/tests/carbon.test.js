@@ -661,3 +661,72 @@ test('wirelessSummary computes per-SSID band, bandwidth, encryption and deduplic
 	assert.equal(edgeRes.totalClients, 1, 'stations on disabled, non-AP or unmatched interfaces do not inflate totalClients');
 	assert.equal(C.wirelessSummary(edgeW, []).totalClients, 0, 'empty station list reports 0 total clients');
 });
+
+test('simpleMenu validates paths, resolves defaults and opkg/package-manager aliases, normalizes and round-trips attributes', () => {
+	const C = load();
+	const M = C.simpleMenu;
+	const plain = (v) => JSON.parse(JSON.stringify(v));
+
+	for (const ok of ['status/overview', 'system/package-manager', 'services/ssr-plus', 'services/v2rayA', 'status/channel_analysis', 'services/luci.app', 'docker'])
+		assert.equal(M.isValidPath(ok), true, ok);
+	for (const bad of ['', null, 'none', 'logout', 'logout/sub', '../etc', 'status/..', '.hidden', 'status/.hidden', 'a/b/c', 'a b', 'a;b', 'a/b..c'])
+		assert.equal(M.isValidPath(bad), false, String(bad));
+
+	// Default resolves installed paths (24.10 opkg without Wi-Fi vs 25.x package-manager with Wi-Fi)
+	const known24 = {
+		'admin/status/overview': { path: 'admin/status/overview', title: 'Overview' },
+		'admin/network/network': { path: 'admin/network/network', title: 'Interfaces' },
+		'admin/system/opkg': { path: 'admin/system/opkg', title: 'Software' },
+		'admin/system/carbon-update': { path: 'admin/system/carbon-update', title: 'Carbon Theme Settings' },
+		'admin/system/admin': { path: 'admin/system/admin', title: 'Administration' },
+		'admin/system/flash': { path: 'admin/system/flash', title: 'Backup / Flash Firmware' },
+		'admin/system/reboot': { path: 'admin/system/reboot', title: 'Reboot' }
+	};
+	const def24 = plain(M.defaultConfig(known24, 'admin'));
+	assert.deepEqual(def24, {
+		common: ['status/overview', 'network/network'],
+		system: ['system/opkg', 'system/carbon-update', 'system/admin', 'system/flash', 'system/reboot']
+	});
+	assert.equal(M.isDefault(def24, known24, 'admin'), true);
+	assert.equal(M.isDefault({ common: ['status/overview'], system: def24.system }, known24, 'admin'), false);
+
+	// Alias resolution: saved system/opkg resolves to system/package-manager after OpenWrt upgrade
+	const known25 = Object.assign({}, known24, { 'admin/system/package-manager': { path: 'admin/system/package-manager', title: 'Software' } });
+	delete known25['admin/system/opkg'];
+	const resolved = M.resolvePath('system/opkg', known25, 'admin');
+	assert.equal(resolved.path, 'admin/system/package-manager');
+	assert.equal(resolved.builtin.icon, 'box');
+	assert.equal(M.resolvePath('services/missing', known25, 'admin'), null);
+
+	// Normalization deduplicates across groups (common wins), strips invalid tokens, enforces 32-item cap, falls back when empty
+	const norm = plain(M.normalize({
+		common: 'status/overview ../bad status/overview services/openclash logout',
+		system: 'services/openclash system/reboot none'
+	}));
+	assert.deepEqual(norm, {
+		common: ['status/overview', 'services/openclash'],
+		system: ['system/reboot']
+	});
+
+	const many = Array.from({ length: 40 }, (_, i) => 'services/p' + i);
+	const capped = M.normalize({ common: many, system: ['system/reboot'] });
+	assert.equal(M.count(capped), 32);
+	assert.equal(capped.system.length, 0);
+
+	// Per-group 1024-byte cap matches backend UCI validation
+	const longPaths = Array.from({ length: 20 }, (_, i) => 'services/' + 'a'.repeat(55) + i);
+	const byteCapped = M.normalize({ common: longPaths, system: [] });
+	assert.ok(M.serialize(byteCapped).common.length <= M.MAX_BYTES);
+	assert.ok(byteCapped.common.length < 20);
+
+	assert.deepEqual(plain(M.normalize({ common: 'none', system: 'none' })), plain(M.defaultConfig()));
+
+	// Serialization & attribute parsing
+	const attr = M.encodeAttr({ common: ['status/overview', 'services/openclash'], system: [] });
+	assert.equal(attr, 'common=status/overview services/openclash;system=none');
+	assert.deepEqual(plain(M.parseAttr(attr)), { common: ['status/overview', 'services/openclash'], system: [] });
+	assert.equal(M.parseAttr(''), null);
+	assert.equal(M.parseAttr('common=none;system=none'), null);
+	assert.equal(M.parseAttr('common=../bad;system=logout'), null);
+	assert.equal(M.parseAttr('bogus=status/overview'), null);
+});

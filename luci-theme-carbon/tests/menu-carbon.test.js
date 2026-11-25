@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('htdocs/luci-static/resources/menu-carbon.js', 'utf8');
 
-function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, files = {}, trafficSource, dashboardAttr, dashboardRpc } = {}) {
+function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, files = {}, trafficSource, dashboardAttr, dashboardRpc, simpleMenuAttr, simpleMenuRpc } = {}) {
 	const calls = [], indicators = [];
 	const poll = {
 		running: true,
@@ -27,10 +27,20 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, fil
 			if (typeof dashboardRpc === 'function') return dashboardRpc(...args);
 			return Promise.resolve({ dashboard_custom: args[0] !== 'reset' });
 		}
+		if (object === 'luci.carbon_update' && method === 'set_simple_menu') {
+			writes.push(['set_simple_menu', ...args]);
+			if (typeof simpleMenuRpc === 'function') return simpleMenuRpc(...args);
+			return Promise.resolve({ simple_menu_custom: args[0] !== 'reset' });
+		}
 		return Promise.resolve({});
 	};
-	const appEl = (trafficSource != null || dashboardAttr != null) ? {
-		dataset: Object.assign({}, trafficSource != null ? { trafficSource } : {}, dashboardAttr != null ? { dashboard: dashboardAttr } : {})
+	const appEl = (trafficSource != null || dashboardAttr != null || simpleMenuAttr != null) ? {
+		dataset: Object.assign(
+			{},
+			trafficSource != null ? { trafficSource } : {},
+			dashboardAttr != null ? { dashboard: dashboardAttr } : {},
+			simpleMenuAttr != null ? { simpleMenu: simpleMenuAttr } : {}
+		)
 	} : null;
 	const listeners = {};
 	const context = {
@@ -53,7 +63,7 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, fil
 		rpc: { declare },
 		L: { resolveDefault: (p, d) => Promise.resolve(p).catch(() => d) },
 		window: { Carbon: { version: 'test' }, setTimeout: (fn) => fn() },
-		E: () => ({}),
+		E: () => ({ children: [], appendChild() {} }),
 		document: {
 			querySelector: selector => selector === '.cb-app' ? appEl : null,
 			getElementById: (id) => id === 'maincontent' ? { insertBefore() {} } : null,
@@ -253,6 +263,73 @@ test('dashboard UCI save surfaces permission-denied errors distinctly', async ()
 	};
 	f.subject.mountDashboard('admin', {});
 	await assert.rejects(() => mountOpts.saveLayout({}), (err) => err && err.code === 'denied');
+});
+
+test('nav render passes SSR simple menu and persists save/reset via luci.carbon_update', async () => {
+	const attr = 'common=status/overview services/openclash;system=system/reboot';
+	const f = load({ simpleMenuAttr: attr });
+	let navModel;
+	f.context._ = (s) => s;
+	f.context.L.env = { requestpath: ['admin', 'network', 'network'], dispatchpath: ['admin', 'network', 'network'] };
+	f.context.L.url = (...parts) => '/' + parts.join('/');
+	f.context.ui.menu.getChildren = (node) => Object.values((node && node.children) || {});
+	f.context.window.Carbon = {
+		t: (s) => s,
+		initShell() {},
+		setTitle() {},
+		simpleMenu: {
+			serialize: () => ({ common: 'status/overview network/dhcp', system: 'system/reboot' }),
+			encodeAttr: () => 'common=status/overview network/dhcp;system=system/reboot'
+		},
+		renderNav(m) { navModel = m; }
+	};
+	const tree = {
+		children: {
+			admin: {
+				name: 'admin', title: 'Admin',
+				children: {
+					network: {
+						name: 'network', title: 'Network',
+						children: { network: { name: 'network', title: 'Interfaces' } }
+					}
+				}
+			}
+		}
+	};
+	f.subject.render(tree);
+	assert.equal(navModel.simpleMenuAttr, attr);
+
+	await navModel.saveSimpleMenu({});
+	assert.deepEqual(JSON.parse(JSON.stringify(f.writes[0])), ['set_simple_menu', 'set', 'status/overview network/dhcp', 'system/reboot']);
+	assert.equal(f.appEl.dataset.simpleMenu, 'common=status/overview network/dhcp;system=system/reboot');
+
+	await navModel.resetSimpleMenu();
+	assert.deepEqual(JSON.parse(JSON.stringify(f.writes[1])), ['set_simple_menu', 'reset', '', '']);
+	assert.equal(f.appEl.dataset.simpleMenu, undefined);
+});
+
+test('simple menu UCI save surfaces permission-denied errors distinctly', async () => {
+	const f = load({
+		simpleMenuAttr: '',
+		simpleMenuRpc: () => Promise.reject(new Error('RPC call to luci.carbon_update/set_simple_menu failed with ubus code 6: Access denied'))
+	});
+	let navModel;
+	f.context._ = (s) => s;
+	f.context.L.env = { requestpath: ['admin', 'network', 'network'], dispatchpath: ['admin', 'network', 'network'] };
+	f.context.L.url = (...parts) => '/' + parts.join('/');
+	f.context.ui.menu.getChildren = (node) => Object.values((node && node.children) || {});
+	f.context.window.Carbon = {
+		t: (s) => s,
+		initShell() {},
+		setTitle() {},
+		simpleMenu: {
+			serialize: () => ({ common: 'status/overview', system: 'none' }),
+			encodeAttr: () => 'common=status/overview;system=none'
+		},
+		renderNav(m) { navModel = m; }
+	};
+	f.subject.render({ children: { admin: { name: 'admin', title: 'Admin', children: {} } } });
+	await assert.rejects(() => navModel.saveSimpleMenu({}), (err) => err && err.code === 'denied');
 });
 
 function sysfs({ zones = [], hwmons = [], extraFiles = {} } = {}) {

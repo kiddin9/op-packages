@@ -7,6 +7,8 @@ const scope = {
 			return { value: ARGV[3] };
 		if (obj == 'uci' && method == 'get' && args.config == 'carbon' && args.section == 'dashboard')
 			return ARGV[4] ? { values: { hero: '1', sections: 'tiles monitor details', monitor: ARGV[4], tiles: 'wifi temp', details: 'clients' } } : null;
+		if (obj == 'uci' && method == 'get' && args.config == 'carbon' && args.section == 'simple_menu')
+			return ARGV[5] ? { values: { common: ARGV[5], system: 'system/package-manager system/reboot' } } : null;
 		return { hostname: 'OpenWrt<b>', model: 'Test Router', rootfs_type: 'squashfs' };
 	} },
 	http: { prepare_content: (type) => null },
