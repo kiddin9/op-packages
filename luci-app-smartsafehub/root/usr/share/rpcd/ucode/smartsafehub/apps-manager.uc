@@ -89,7 +89,7 @@ export function read_apps_status(request) {
 	const installed = {};
 	for (let line in split(raw, /\r?\n/)) {
 		const fields = split(line, /\t/);
-		if ((length(fields) != 4 && length(fields) != 5 && length(fields) != 6 && length(fields) != 7 && length(fields) != 8) ||
+		if ((length(fields) != 4 && length(fields) != 5 && length(fields) != 6 && length(fields) != 7 && length(fields) != 8 && length(fields) != 9) ||
 			match(fields[0], /^[a-z0-9][a-z0-9-]{0,79}$/) == null)
 			continue;
 		installed[fields[0]] = {
@@ -100,6 +100,7 @@ export function read_apps_status(request) {
 			retired: length(fields) == 8 && fields[7] == '1',
 			webUiReady: length(fields) >= 5 && fields[4] == '1',
 			updateAvailable: length(fields) >= 6 && fields[5] == '1',
+			updateBlocked: length(fields) == 9 && fields[5] == '0' && fields[7] == '0' && fields[8] == 'review_required',
 			// This is a representative installed APK version, not the Hub's
 			// approved app/catalog version. Never guess when missing.
 			installedVersion: length(fields) >= 7 && fields[1] == '1' &&

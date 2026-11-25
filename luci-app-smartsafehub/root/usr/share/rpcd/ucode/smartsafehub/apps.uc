@@ -11,6 +11,26 @@ function text(value, max_length) {
 	return type(value) == 'string' && length(value) <= max_length ? value : '';
 }
 
+// Display-only public HTTPS URLs. No credential-bearing / private hosts,
+// non-standard ports, whitespace, SVG or scheme-relative content.
+function public_https_url(value, image) {
+    const url = text(value, 500);
+    if (!length(url))
+        return '';
+
+    // Icon URLs have a single trusted origin and exact path format. Validate
+    // these directly: the generic URL expression must never discard /app-icons/.
+    if (image)
+        return match(url, /^https:\/\/www\.smartsafehub\.com\/media\/app-icons\/[a-f0-9]{32}\.png$/) != null ? url : '';
+
+    // ucode uses POSIX extended regular expressions, not JavaScript RegExp.
+    // Use the POSIX space class instead of \s and avoid non-portable \b.
+    if (match(url, /^https:\/\/[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}(:443)?(\/[^[:space:]<>"'@#]*)?(\?[^[:space:]<>"'@#]*)?$/) == null ||
+        match(url, /^https:\/\/[a-zA-Z0-9.-]*\.(localhost|internal|local)(:443)?(\/|\?|$)/i) != null)
+        return '';
+    return url;
+}
+
 // Only open LuCI pages served by this router. Reject query strings, fragments,
 // percent escapes, scheme-relative URLs and path traversal from catalog data.
 function luci_web_ui_path(value) {
@@ -125,6 +145,9 @@ export function read_apps_catalog(request) {
 			category: text(item?.category, 64),
 			// An older or unexpected catalog must never imply first-party ownership.
 			publisherType: item?.publisher_type == 'first_party' ? 'first_party' : 'third_party',
+			developerName: text(item?.developer?.name, 200),
+			developerWebsiteUrl: public_https_url(item?.developer?.website_url, false),
+			iconImageUrl: public_https_url(item?.icon_image_url, true),
 			version: text(item?.version, 64),
 			webUi: length(path) ? { type: id == 'jarbis' && path == '#smarthome' ? 'smartsafehub' : ((id == 'retro-arcade' && path == '/retro-arcade/' || id == 'arcdrop' && path == '/arcdrop/') ? 'static' : 'luci'), path: path } : null,
 		});

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { AppsIcon, ReloadIcon } from '../components/Icons';
 import { AppsStorageCard } from '../components/AppsStorageCard';
+import { AppsArtwork } from '../components/AppsArtwork';
 import { AppsCategoryIcon, appsCategoryOf } from '../components/AppsCategoryIcon';
+import { safeDeveloperUrl } from '../utils/appsDeveloper';
 import type { AppsCategory } from '../components/AppsCategoryIcon';
 import { SectionHeading } from '../components/SectionHeading';
 import type { AppsCatalog, AppsInstallStatus, AppsMetrics, VerifiedApp } from '../types/apps';
@@ -12,6 +14,7 @@ import { formatStorageBytes } from '../utils/appsStorage';
 import { isFirstPartyPublisher } from '../utils/appsPublisher';
 import { appsJobNoticeKey, readDismissedAppsJob, saveDismissedAppsJob } from '../utils/appsJobNotice';
 import { appsHighlightFromHash } from '../utils/appsHighlight';
+import { compareJarbisVersions, JARBIS_FULL_FEATURE_VERSION } from '../utils/jarbisCompatibility';
 
 interface AppsPageProps {
   data: AppsCatalog | null;
@@ -54,6 +57,8 @@ const OPERATION_MESSAGES: Readonly<Record<string, string>> = {
   E54: '앱 업데이트에 실패했습니다. 일부 패키지가 변경되었을 수 있으니 관리자에게 확인해 주세요.',
   E55: '업데이트 후 설치 기록을 저장하지 못했습니다. 관리자에게 확인해 주세요.',
   E41: 'SmartSafeHub Apps에서 설치한 앱만 여기서 제거할 수 있습니다.',
+  E42: '설치 관리 기록을 안전하게 확인할 수 없어 앱을 제거할 수 없습니다. 관리자에게 확인해 주세요.',
+  E43: '다른 앱이 관리하는 패키지가 포함되어 있어 제거할 수 없습니다.',
   E44: '기존 시스템에 영향을 줄 수 있어 앱 제거가 차단됐습니다.',
   E45: '앱 제거에 실패했습니다.',
 };
@@ -122,6 +127,9 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
     : [];
   const guidedJarbis = apps.find(app => app.id === 'jarbis');
   const guidedState = installStatus?.installed?.jarbis;
+  const guidedInstalledOutdated = guidedState?.installedVersion && compareJarbisVersions(guidedState.installedVersion, JARBIS_FULL_FEATURE_VERSION) === -1;
+  const approvedComparison = guidedJarbis ? compareJarbisVersions(guidedJarbis.version, JARBIS_FULL_FEATURE_VERSION) : null;
+  const guidedApprovedCompatible = approvedComparison !== null && approvedComparison >= 0;
   const restore = installStatus?.restore;
   const job = installStatus?.job;
   const running = job?.phase === 'starting' || job?.phase === 'running';
@@ -270,10 +278,17 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
         {!data || loading || !installStatus || installStatus.ready === false ?
           <p role="status" class="m-0 text-sm text-slate-600">승인된 Jarbis와 공유기 설치 상태를 확인하고 있습니다.</p>
           : !guidedJarbis ? <p class="m-0 text-sm text-slate-600">현재 펌웨어에 승인된 Jarbis가 없습니다. 목록을 새로고침하거나 지원 여부를 확인해 주세요.</p>
+          : running || restoring ? <p role="status" class="m-0 text-sm text-slate-600">앱 작업을 진행 중입니다. 완료되면 설치 버전과 기능 지원 여부를 확인해 주세요.</p>
           : guidedState?.installed && !running && !restoring ? <>
-            <p role="status" class="m-0 text-sm text-slate-600">Jarbis가 설치되어 있습니다. 스마트홈으로 돌아가 첫 전구를 연결해 보세요.</p>
-            <a class="ssh-apps-guide-return mt-2 inline-flex min-h-9 items-center rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800" href="#smarthome">스마트홈 시작하기</a>
-          </> : running || restoring ? <p role="status" class="m-0 text-sm text-slate-600">앱 작업을 진행 중입니다. 완료되면 이 화면에서 설치 상태를 확인할 수 있습니다.</p>
+            <p role="status" class="m-0 text-sm text-slate-600">{guidedInstalledOutdated
+              ? guidedApprovedCompatible
+                ? guidedState.updateAvailable
+                  ? `현재 설치된 Jarbis(${guidedState.installedVersion})는 일부 스마트홈 기능에 필요한 ${JARBIS_FULL_FEATURE_VERSION}보다 이전 버전입니다. 아래 Jarbis 카드에서 승인된 업데이트를 선택해 주세요.`
+                  : `Jarbis 최소 버전은 ${JARBIS_FULL_FEATURE_VERSION}입니다. 승인된 버전(${guidedJarbis.version})이 있지만 업데이트 상태가 확인되지 않았습니다. 앱 목록을 새로고침해 주세요.`
+                : `현재 승인된 Jarbis(${guidedJarbis.version})는 일부 스마트홈 기능의 최소 버전(${JARBIS_FULL_FEATURE_VERSION})보다 낮습니다. 해당 배포 채널의 업데이트를 기다려 주세요.`
+              : 'Jarbis가 설치되어 있습니다. 기존 기기 기능을 사용하거나 스마트홈에서 추가 지원 여부를 확인할 수 있습니다.'}</p>
+            <a class="ssh-apps-guide-return mt-2 inline-flex min-h-9 items-center rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800" href="#smarthome">스마트홈으로 돌아가기</a>
+          </>
           : <p class="m-0 text-sm text-slate-600">아래 Jarbis 카드에서 <strong>{guidedState?.managed || guidedState?.partial ? '재설치 또는 설치 마무리' : '설치'}</strong>를 눌러 주세요. 설치는 직접 확인한 후에만 진행됩니다.</p>}
         </div>
         <p class="ssh-apps-guide-caption m-0 text-xs text-slate-500 sm:max-w-60">다른 검증 앱도 함께 둘러보실 수 있습니다.</p>
@@ -406,19 +421,30 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
                       ref={isHighlighted ? highlightedCardRef : null}
                     >
                       <div class="flex min-w-0 items-start gap-3">
-                        <span class="grid size-14 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600"><AppsCategoryIcon category={appsCategoryOf(app.category)} class="size-7" /></span>
+                        <AppsArtwork app={app} key={`${app.id}:${app.iconImageUrl ?? ''}`} />
                         <div class="min-w-0 flex-1">
                           <div class="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
                             <h3 class="m-0 min-w-0 flex-1 break-words text-sm font-black text-slate-950">{app.name}</h3>
                             {isHighlighted ? <span class="ssh-apps-highlight-label shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold">설치 안내</span> : null}
                             {installed && managed ? <span class="ssh-apps-installed-badge shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold">✓ 설치됨</span> : null}
                           </div>
+                          {app.developerName || safeDeveloperUrl(app.developerWebsiteUrl) ? (
+                            <div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                              {app.developerName ? <span class="min-w-0 break-words">개발자 <strong class="font-semibold text-slate-700">{app.developerName}</strong></span> : null}
+                              {safeDeveloperUrl(app.developerWebsiteUrl) ? <a class="font-semibold text-teal-700 underline-offset-2 hover:underline focus-visible:underline"
+                                href={safeDeveloperUrl(app.developerWebsiteUrl)!} rel="noopener noreferrer" referrerPolicy="no-referrer"
+                                target="_blank" aria-label={`${app.name} 개발자 홈페이지 (새 탭)`}>홈페이지 ↗</a> : null}
+                            </div>
+                          ) : null}
                           <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span class="text-xs text-slate-500" title={installed ? '공유기에 설치된 대표 APK 패키지 버전입니다.' : '현재 제공 중인 승인 버전입니다.'}>
                               {installed ? installedVersion ? `설치 v${installedVersion}` : '설치 버전 확인 불가' : `v${app.version}`}
                             </span>
                             {updateAvailable ? <span class="ssh-apps-update-badge rounded-full border px-2 py-0.5 text-[11px] font-bold">업데이트 가능</span> : null}
                           </div>
+                          {managed && !updateAvailable && state?.updateBlocked ? (
+                            <p class="mb-0 mt-1 text-xs text-amber-700">설치된 패키지의 상태가 승인된 업데이트 조건과 맞지 않습니다.</p>
+                          ) : null}
                           {showOfferedVersion || sizeLabel !== null ? (
                             <p class="mb-0 mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500">
                               {showOfferedVersion ? (

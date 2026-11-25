@@ -54,7 +54,15 @@ export SMARTSAFEHUB_APPS_ROM_METADATA="$TMP/rom-firmware.json"
 export SMARTSAFEHUB_APPS_METADATA="$TMP/overlay-firmware.json"
 printf '{"device_code":"iptime-ax3000sm","build_id":"build-A","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_METADATA"
 
-count_fetches() { grep -c '^fetch$' "$TMP/count"; }
+count_fetches() { [ -f "$TMP/count" ] && grep -c '^fetch$' "$TMP/count" || printf '0'; }
+wait_fetches() {
+ expected="$1" label="$2"
+ for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+  [ "$(count_fetches)" -eq "$expected" ] && return 0
+  sleep 0.1
+ done
+ fail "$label"
+}
 backdate_catalog() {
  sed "s/^updated$(printf '\t')[0-9][0-9]*/updated$(printf '\t')$1/" \
   "$TMP/run/catalog.state" > "$TMP/old-state"
@@ -84,40 +92,40 @@ wait_phase catalog success
 "$HELPER" request catalog
 wait_phase catalog running
 wait_phase catalog success
-[ "$(count_fetches)" -eq 2 ] || fail 'manual refresh did not start'
+wait_fetches 2 'manual refresh did not start'
 # A failed fetch must retry after 60 seconds, not after the 10-minute success TTL.
 # Even an empty cache must not allow automatic retry storms after a failure.
 touch "$RPC_TEST_FAIL"
 rm -f "$RPC_TEST_CACHE"
 "$HELPER" request catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq 3 ] || fail 'failed fetch was not executed'
+wait_fetches 3 'failed fetch was not executed'
 "$HELPER" ensure catalog
 [ "$(count_fetches)" -eq 3 ] || fail 'failed catalog retried too soon'
 backdate_catalog "$(($(date +%s) - 61))"
 "$HELPER" ensure catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq 4 ] || fail 'failed catalog did not retry after 60 seconds'
+wait_fetches 4 'failed catalog did not retry after 60 seconds'
 # A successful retry must return to the 600-second cache TTL.
 rm -f "$RPC_TEST_FAIL"
 backdate_catalog "$(($(date +%s) - 61))"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq 5 ] || fail 'failed catalog did not recover'
+wait_fetches 5 'failed catalog did not recover'
 "$HELPER" ensure catalog
 [ "$(count_fetches)" -eq 5 ] || fail 'recovered catalog did not retain 10-minute TTL'
 # Changing the firmware bypasses the TTL, including after an earlier failure.
 printf '{"device_code":"iptime-ax3000sm","build_id":"build-B","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_METADATA"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq 6 ] || fail 'firmware change did not refresh catalog'
+wait_fetches 6 'firmware change did not refresh catalog'
 "$HELPER" ensure catalog
 [ "$(count_fetches)" -eq 6 ] || fail 'same firmware fetched twice'
 # ROM metadata takes precedence over the writable overlay version.
 printf '{"device_code":"iptime-ax3000sm","build_id":"rom-A","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_ROM_METADATA"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq 7 ] || fail 'ROM firmware identity not adopted'
+wait_fetches 7 'ROM firmware identity not adopted'
 printf '{"device_code":"iptime-ax3000sm","build_id":"overlay-C","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_METADATA"
 "$HELPER" ensure catalog
 [ "$(count_fetches)" -eq 7 ] || fail 'overlay metadata overrode ROM'
@@ -125,17 +133,17 @@ printf '{"device_code":"iptime-ax3000sm","build_id":"overlay-C","channel":"stabl
 rm -f "$RPC_TEST_CACHE"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq 8 ] || fail 'missing catalog cache did not refresh'
+wait_fetches 8 'missing catalog cache did not refresh'
 # A firmware change during failure backoff must be retried immediately.
 touch "$RPC_TEST_FAIL"
 "$HELPER" request catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq 9 ] || fail 'failed refresh did not run'
+wait_fetches 9 'failed refresh did not run'
 printf '{"device_code":"iptime-ax3000sm","build_id":"rom-B","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_ROM_METADATA"
 rm -f "$RPC_TEST_FAIL"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq 10 ] || fail 'firmware change did not bypass failure backoff'
+wait_fetches 10 'firmware change did not bypass failure backoff'
 "$HELPER" ensure status
 wait_phase status success
 "$HELPER" ensure sizes
@@ -159,7 +167,7 @@ rm -f "$RPC_TEST_CACHE"
 base="$(count_fetches)"
 "$HELPER" request catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq "$((base + 1))" ] || fail 'initial attempt missing'
+wait_fetches "$((base + 1))" 'initial attempt missing'
 grep -q "$(printf 'failures\t1')" "$TMP/run/catalog.state" || fail 'initial failure counter incorrect'
 for retry in 2 3 4; do
  "$HELPER" ensure catalog
@@ -167,7 +175,7 @@ for retry in 2 3 4; do
  backdate_catalog "$(($(date +%s) - 61))"
  "$HELPER" ensure catalog
  wait_phase catalog failed
- [ "$(count_fetches)" -eq "$((base + retry))" ] || fail '60-second retry missing'
+ wait_fetches "$((base + retry))" '60-second retry missing'
  grep -q "$(printf 'failures\t%s' "$retry")" "$TMP/run/catalog.state" || fail 'failure count not persisted'
 done
 "$HELPER" ensure catalog
@@ -179,25 +187,25 @@ backdate_catalog "$(($(date +%s) - 1199))"
 backdate_catalog "$(($(date +%s) - 1201))"
 "$HELPER" ensure catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq "$((base + 5))" ] || fail 'cooldown expiry did not restart refresh'
+wait_fetches "$((base + 5))" 'cooldown expiry did not restart refresh'
 grep -q "$(printf 'failures\t1')" "$TMP/run/catalog.state" || fail 'new retry cycle was not reset'
 # A manual retry bypasses a fresh failure delay and resets the counter.
 "$HELPER" request catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq "$((base + 6))" ] || fail 'manual refresh was throttled'
+wait_fetches "$((base + 6))" 'manual refresh was throttled'
 grep -q "$(printf 'failures\t1')" "$TMP/run/catalog.state" || fail 'manual refresh did not reset retry cycle'
 # Firmware changes also clear backoff even without a catalog snapshot.
 printf '{"device_code":"iptime-ax3000sm","build_id":"rom-C","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_ROM_METADATA"
 "$HELPER" ensure catalog
 wait_phase catalog failed
-[ "$(count_fetches)" -eq "$((base + 7))" ] || fail 'firmware change was throttled'
+wait_fetches "$((base + 7))" 'firmware change was throttled'
 grep -q "$(printf 'failures\t1')" "$TMP/run/catalog.state" || fail 'firmware change did not reset counter'
 # Success returns to the normal 10-minute refresh interval.
 rm -f "$RPC_TEST_FAIL"
 backdate_catalog "$(($(date +%s) - 61))"
 "$HELPER" ensure catalog
 wait_phase catalog success
-[ "$(count_fetches)" -eq "$((base + 8))" ] || fail 'recovery attempt missing'
+wait_fetches "$((base + 8))" 'recovery attempt missing'
 grep -q "$(printf 'failures\t0')" "$TMP/run/catalog.state" || fail 'recovery did not clear failure counter'
 "$HELPER" ensure catalog
 [ "$(count_fetches)" -eq "$((base + 8))" ] || fail 'successful refresh ignored 10-minute TTL'
@@ -212,7 +220,7 @@ for retry in 1 2 3; do
  "$HELPER" ensure catalog
  wait_phase catalog failed
 done
-[ "$(count_fetches)" -eq "$((base + 4))" ] || fail 'could not exhaust retry allowance'
+wait_fetches "$((base + 4))" 'could not exhaust retry allowance'
 grep -q "$(printf 'failures\t4')" "$TMP/run/catalog.state" || fail 'cooldown state was not saved'
 printf '{"device_code":"iptime-ax3000sm","build_id":"rom-D","channel":"stable"}\n' > "$SMARTSAFEHUB_APPS_ROM_METADATA"
 "$HELPER" ensure catalog

@@ -116,7 +116,7 @@ test('demo showcases verified Apps versions, upgrade badge, and installed sizes 
   assert.ok(catalog.indexOf("id: 'retro-arcade'") < catalog.indexOf("id: 'network-usage-monitor'"),
     'demo card ordering should match the actual Apps page');
   assert.match(catalog, /id: 'retro-arcade',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '1\.2\.0-r4'/);
-  assert.match(catalog, /id: 'jarbis',[\s\S]*?category: 'iot',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '0\.2\.3-r1'/);
+  assert.match(catalog, /id: 'jarbis',[\s\S]*?category: 'iot',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '0\.2\.4-r1'/);
   assert.ok(catalog.indexOf("id: 'jarbis'") < catalog.indexOf("id: 'retro-arcade'"));
   assert.match(catalog, /id: 'network-usage-monitor',[\s\S]*?version: '2025\.06\.02~29236be6-r1'/);
   assert.match(catalog, /id: 'travelmate',[\s\S]*?publisherType: 'third_party',[\s\S]*?version: '2\.4\.9-r5'/);
@@ -124,7 +124,7 @@ test('demo showcases verified Apps versions, upgrade badge, and installed sizes 
   assert.ok(catalog.indexOf("id: 'network-usage-monitor'") < catalog.indexOf("id: 'wake-on-lan'"));
   assert.match(status, /'wake-on-lan': \{\s*installed: true,\s*partial: false,\s*managed: true/);
 
-  assert.match(status, /jarbis: \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: false,\s*installedVersion: '0\.2\.3-r1'/);
+  assert.match(status, /jarbis: \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: false,\s*installedVersion: '0\.2\.4-r1'/);
   assert.match(status, /'retro-arcade': \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: true,\s*installedVersion: '1\.0\.0-r1'/);
   assert.match(status, /'network-usage-monitor': \{\s*installed: true,\s*partial: false,\s*managed: true,\s*updateAvailable: false,\s*installedVersion: '2025\.06\.02~29236be6-r1'/);
   assert.match(metrics, /jarbis: 215040/);
@@ -151,7 +151,9 @@ test('Apps 카테고리 아이콘은 공유기와 데모에서 동일하고 도�
   const demo = readFileSync(resolve(root, 'demo/main.tsx'), 'utf8');
   assert.match(demo, /<AppsPage data=\{demoApps\}/);
   assert.match(page, /<AppsCategoryIcon category=\{tab\.id\}/);
-  assert.match(page, /<AppsCategoryIcon category=\{appsCategoryOf\(app\.category\)\}/);
+  const artwork = readFileSync(resolve(root, 'components/AppsArtwork.tsx'), 'utf8');
+  assert.match(page, /<AppsArtwork app=\{app\}/);
+  assert.match(artwork, /<AppsCategoryIcon category=\{appsCategoryOf\(app\.category\)\}/);
   assert.match(page, /\{ id: 'utilities', label: '도구' \}/);
   assert.match(page, /\{ id: 'other', label: '기타' \}/);
   assert.match(category, /case 'utilities': return <WrenchIcon/);

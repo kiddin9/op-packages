@@ -13,7 +13,7 @@ import type { SoftwareUpdateStatus } from '../types/updates';
 import type { DeviceRegistrationStatus } from '../api/smartsafehub';
 import type { AppsCatalog, AppsInstallStatus, AppsMetrics } from '../types/apps';
 import type { NetwatchStatus } from '../types/netwatch';
-import type { JarbisCandidate, JarbisDevice, JarbisLightState, JarbisStatus } from '../types/jarbis';
+import type { JarbisCandidate, JarbisDevice, JarbisLightState, JarbisStatus, JarbisSensorState } from '../types/jarbis';
 
 const now = Math.floor(Date.now() / 1000);
 const hour = 3600;
@@ -44,11 +44,12 @@ export const demoApps: AppsCatalog = {
     {
       id: 'jarbis',
       name: 'Jarbis',
-      summary: '로컬 Wi-Fi 스마트 전구를 연결하고 제어합니다.',
-      description: 'SmartSafeHub 공식 오픈소스 스마트홈 엔진입니다. 현재 Tasmota 전구를 지원합니다.',
+      summary: '로컬 Wi-Fi 스마트 전구와 온습도 센서를 관리합니다.',
+      description: 'SmartSafeHub 공식 스마트홈 엔진으로 지원 전구와 온습도 센서를 연결합니다.',
       category: 'iot',
       publisherType: 'first_party',
-      version: '0.2.3-r1',
+      developerName: 'SmartSafeHub Contributors',
+      version: '0.2.4-r1',
       webUi: { type: 'smartsafehub', path: '#smarthome' },
     },
     {
@@ -58,6 +59,7 @@ export const demoApps: AppsCatalog = {
       description: 'SmartSafeHub 공식 LAN 전용 파일 전송 앱입니다. 기기 간 직접 전송하며 신뢰할 수 있는 HTTPS 연결이 필요합니다.',
       category: 'utilities',
       publisherType: 'first_party',
+      developerName: 'SmartSafeHub Contributors',
       version: '0.1.0-r21',
       webUi: { type: 'static', path: '/arcdrop/' },
     },
@@ -68,6 +70,7 @@ export const demoApps: AppsCatalog = {
       description: '사용자가 직접 준비한 게임 파일로 즐기는 레트로 아케이드입니다.',
       category: 'entertainment',
       publisherType: 'first_party',
+      developerName: 'SmartSafeHub contributors',
       version: '1.2.0-r4',
       webUi: { type: 'static', path: '/retro-arcade/' },
     },
@@ -78,6 +81,7 @@ export const demoApps: AppsCatalog = {
       description: '네트워크 트래픽을 모니터링합니다.',
       category: 'network',
       publisherType: 'third_party',
+      developerName: 'Jo-Philipp Wich',
       version: '2025.06.02~29236be6-r1',
       webUi: null,
     },
@@ -88,6 +92,7 @@ export const demoApps: AppsCatalog = {
       description: '다른 Wi-Fi에 연결하고 저장된 Wi-Fi에 자동으로 재연결합니다. 설치 후 연결 설정이 필요합니다.',
       category: 'network',
       publisherType: 'third_party',
+      developerName: 'Dirk Brenken / OpenWrt LuCI community',
       version: '2.4.9-r5',
       webUi: null, // Demo never exposes actual LuCI administration routes.
     },
@@ -98,6 +103,7 @@ export const demoApps: AppsCatalog = {
       description: 'Wake-on-LAN 지원 컴퓨터를 네트워크에서 깨우는 앱입니다.',
       category: 'utilities',
       publisherType: 'third_party',
+      developerName: 'OpenWrt LuCI community / etherwake contributors',
       version: '26.288.56989~75a306d',
       webUi: null, // Public demo must never link to an actual LuCI control page.
     },
@@ -112,7 +118,7 @@ export const demoAppsStatus: AppsInstallStatus = {
       partial: false,
       managed: true,
       updateAvailable: false,
-      installedVersion: '0.2.3-r1',
+      installedVersion: '0.2.4-r1',
       webUiReady: true,
     },
     arcdrop: {
@@ -166,8 +172,8 @@ export const demoAppsMetrics: AppsMetrics = {
 
 // Fictional Tasmota devices: reserved addresses, no credentials or real broker.
 export const demoJarbisStatus: JarbisStatus = {
-  apiVersion: 1, version: '0.2.3-r1', enabled: true, mqttConfigured: true,
-  brokerMode: 'managed', brokerHost: '192.0.2.1', brokerPort: '1883', brokerReady: true,
+  apiVersion: 1, version: '0.2.4-r1', enabled: true, mqttConfigured: true,
+  brokerMode: 'managed', brokerHost: '192.0.2.1', brokerPort: '1883', brokerReady: true, features: { shellyHtg3: true, shellyQuickPair: true, rooms: true },
 };
 export const demoJarbisDevices: { devices: JarbisDevice[] } = {
   devices: [
@@ -175,14 +181,23 @@ export const demoJarbisDevices: { devices: JarbisDevice[] } = {
       topic: 'demo_living', enabled: true, capabilities: ['power', 'brightness', 'color', 'color_temperature'] },
     { id: 'tasmota_demo_bedroom', name: '침실 전구', kind: 'light', protocol: 'tasmota',
       topic: 'demo_bedroom', enabled: true, capabilities: ['power', 'brightness', 'color_temperature'] },
+    { id: 'shelly_demo_study', name: '서재 온습도', kind: 'sensor', protocol: 'shelly_htg3',
+      topic: 'shellyhtg3-demo00000001', enabled: true, capabilities: ['temperature', 'humidity', 'battery'] },
   ],
 };
 export const demoJarbisCandidates: { devices: JarbisCandidate[] } = {
   devices: [
     { protocol: 'tasmota', source: 'http', ip: '192.0.2.203', mac: '02:00:00:00:00:13',
       topic: 'demo_kitchen', name: '주방 전구', registered: false },
+    { protocol: 'shelly_htg3', kind: 'sensor', source: 'mqtt', ip: '192.0.2.205', mac: '02:00:00:00:00:15',
+      topic: 'shellyhtg3-demo00000002', name: '거실 온습도', registered: false },
   ],
 };
+export const demoJarbisSensorStates: Record<string, JarbisSensorState> = {
+  shelly_demo_study: { id: 'shelly_demo_study', observed: true, source: 'mqtt',
+    temperatureC: 23.4, humidityPercent: 51, batteryPercent: 85, lastSeen: now - 360 },
+};
+
 export const demoJarbisLightStates: Record<string, JarbisLightState> = {
   tasmota_demo_living: { id: 'tasmota_demo_living', observed: true, source: 'mqtt',
     power: 'ON', brightness: 72, color: '#f5d6a1', colorTemperature: 370 },

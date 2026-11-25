@@ -18,6 +18,8 @@
 	--cb-green-t: rgba(22, 163, 74, .12);
 	--cb-orange-t: rgba(232, 135, 11, .13);
 	--cb-red-t: rgba(229, 72, 77, .11);
+	--cb-danger: #e5484d;
+	--cb-danger-strong: #cf363c;
 
 	/* Carbon indigo — the one accent used for actions, focus and selection */
 	--cb-accent: #4f5bea;
@@ -33,6 +35,7 @@
 	--cb-card-2: rgba(15, 23, 42, .025);
 	--cb-card-edge: rgba(15, 23, 42, .06);
 	--cb-field: #ffffff;
+	--cb-btn-bg: #ffffff;
 	--cb-fill: rgba(15, 23, 42, .06);
 	--cb-fill-2: rgba(15, 23, 42, .035);
 	--cb-hover: rgba(79, 91, 234, .05);
@@ -81,6 +84,8 @@
 	--cb-green-t: rgba(52, 211, 153, .14);
 	--cb-orange-t: rgba(251, 176, 59, .15);
 	--cb-red-t: rgba(248, 113, 113, .15);
+	--cb-danger: #dc2626;
+	--cb-danger-strong: #ef4444;
 
 	--cb-accent: #8b95ff;
 	--cb-accent-strong: #aab3ff;
@@ -94,6 +99,7 @@
 	--cb-card-2: rgba(255, 255, 255, .03);
 	--cb-card-edge: rgba(255, 255, 255, .06);
 	--cb-field: rgba(255, 255, 255, .045);
+	--cb-btn-bg: rgba(255, 255, 255, .06);
 	--cb-fill: rgba(255, 255, 255, .08);
 	--cb-fill-2: rgba(255, 255, 255, .05);
 	--cb-hover: rgba(255, 255, 255, .04);

@@ -86,7 +86,21 @@ printf '%s\n' 'PASS: Travelmate generic signed dependency and solver contract'
 # Exercise the actual status() implementation with a fake installed-package
 # database. Shared dependencies surviving removal must NOT appear as a partial
 # Travelmate install; interrupted owned installs must still be recoverable.
+# status() also uses the production version validator and APK comparator.
+awk '/^valid_version\(\)/,/^}/' "$MANAGER" >> "$TMPDIR_TM/functions"
+awk '/^version_is_newer\(\)/,/^}/' "$MANAGER" >> "$TMPDIR_TM/functions"
 awk '/^status\(\)/,/^}/' "$MANAGER" >> "$TMPDIR_TM/functions"
+cat > "$TMPDIR_TM/apk" <<'SH_APK'
+#!/bin/sh
+[ "$#" -eq 4 ] && [ "$1" = version ] && [ "$2" = -t ] || exit 2
+case "$3:$4" in
+ '2.4.9-r5:2.4.9-r6') printf '%s\n' '<';;
+ '2.4.9-r7:2.4.9-r6') printf '%s\n' '>';;
+ '2.4.9-r6:2.4.9-r6') printf '%s\n' '=';;
+ *) exit 2;;
+esac
+SH_APK
+chmod +x "$TMPDIR_TM/apk"
 cat > "$TMPDIR_TM/status-test.sh" <<'SH_STATUS'
 #!/bin/sh
 set -eu
@@ -96,6 +110,9 @@ OWNED="$2/owned"
 CATALOG="$2/catalog.json"
 TM_INSTALLED="$2/installed"
 TM_PKG_NAMES="$2/packages"
+APK="$2/apk"
+TM_INSTALLED_VERSION=2.4.9-r5
+TM_APPROVED_VERSION=2.4.9-r6
 mkdir -p "$RUNTIME" "$OWNED"
 : > "$CATALOG"
 : > "$TM_INSTALLED"
@@ -106,16 +123,16 @@ fail_status() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 catalog_ids() { printf '%s\n' travelmate; }
 valid_id() { return 0; }
 valid_package() { return 0; }
-valid_version() { return 0; }
 owned_manifest() { printf '%s/%s' "$OWNED" "$1"; }
 installed() { grep -Fxq "$1" "$TM_INSTALLED"; }
-installed_version() { printf '%s\n' '2.4.9-r5'; }
+installed_version() { printf '%s\n' "$TM_INSTALLED_VERSION"; }
 web_ui_package() { printf '%s\n' luci-app-travelmate; }
 extract_pins() { return 1; }
 select_upgrades() { return 1; }
 field() {
  case "$2" in
   '@.apps[0].package_arch') printf '%s\n' aarch64_cortex-a53;;
+  '@.apps[0].packages['*'].version') printf '%s\n' "$TM_APPROVED_VERSION";;
   '@.apps[0].packages['*'].name')
    index="${2#*.packages[}"
    index="${index%%]*}"
@@ -152,6 +169,23 @@ printf '%s\n' travelmate luci-app-travelmate >> "$TM_INSTALLED"
 assert_status '1:1:0' 'fully present app not classified as removed'
 printf '%s\n' 'travelmate 2.4.9-r6 test-hash' > "$OWNED/travelmate"
 assert_status '1:1:1' 'fully Apps-managed app not classified as removed'
+# A rejected upgrade only needs a review explanation for a newer approved APK.
+assert_review_reason() {
+ actual_reason="$(awk -F '\t' '{print $9}' "$RUNTIME/apps-status.tsv")"
+ [ "$actual_reason" = "$1" ] || fail_status "$2: expected reason '$1', got '$actual_reason'"
+}
+assert_review_reason review_required 'newer approved APK with rejected update plan'
+TM_INSTALLED_VERSION=2.4.9-r6
+assert_status '1:1:1' 'equal approved version remains installed'
+assert_review_reason '' 'equal approved version'
+TM_INSTALLED_VERSION=2.4.9-r7
+assert_status '1:1:1' 'newer local version remains installed'
+assert_review_reason '' 'older approved version'
+TM_INSTALLED_VERSION=2.4.9-r5
+TM_APPROVED_VERSION=''
+assert_status '1:1:1' 'missing approved version remains installed'
+assert_review_reason '' 'missing approved version'
 printf '%s\n' 'PASS: Travelmate removal retains shared packages without confusing install status'
+printf '%s\n' 'PASS: Travelmate update review reason uses the approved APK version'
 SH_STATUS
 sh "$TMPDIR_TM/status-test.sh" "$TMPDIR_TM/functions" "$TMPDIR_TM"

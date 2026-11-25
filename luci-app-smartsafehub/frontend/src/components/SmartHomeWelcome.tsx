@@ -10,8 +10,8 @@ const descriptions: Record<Exclude<SmartHomeEntry, 'ready'>, { eyebrow: string; 
     status: '상태 확인 중',
   },
   install: {
-    eyebrow: '스마트홈 시작하기 · 1단계', title: '우리 집 조명을, 더 스마트하게',
-    body: 'Jarbis를 설치하고 같은 Wi-Fi의 지원 전구를 연결하세요. 별도의 외부 클라우드 없이 공유기에서 직접 조명을 제어할 수 있습니다.',
+    eyebrow: '스마트홈 시작하기 · 1단계', title: '우리 집 기기를, 더 스마트하게',
+    body: 'Jarbis를 설치하고 같은 Wi-Fi의 지원 전구와 온습도 센서를 연결하세요. 공유기에서 조명을 제어하고 실내 환경을 확인할 수 있습니다.',
     status: '설치 준비',
   },
   installing: {
@@ -43,8 +43,8 @@ const descriptions: Record<Exclude<SmartHomeEntry, 'ready'>, { eyebrow: string; 
 
 const steps = [
   { number: '01', label: 'Jarbis 설치', detail: 'Apps에서 설치 승인' },
-  { number: '02', label: '전구 연결', detail: 'Wi-Fi의 Tasmota 전구 검색' },
-  { number: '03', label: '조명 제어', detail: '전원과 밝기·색상 조절' },
+  { number: '02', label: '기기 연결', detail: 'Wi-Fi의 지원 기기 검색' },
+  { number: '03', label: '기기 확인', detail: '조명 제어와 온습도 확인' },
 ];
 
 export function SmartHomeWelcome({ stage, onRetry }: { stage: Exclude<SmartHomeEntry, 'ready'>; onRetry: () => void }) {
@@ -72,7 +72,7 @@ export function SmartHomeWelcome({ stage, onRetry }: { stage: Exclude<SmartHomeE
       </div>
       <div class="ssh-home-visual">
         <SmartHomeScene />
-        <p class="ssh-home-visual-note">스마트 전구 제어를 표현한 예시 그림이며 실제 연결 상태가 아닙니다.</p>
+        <p class="ssh-home-visual-note">스마트홈 기능을 표현한 예시 그림이며 실제 연결 상태가 아닙니다.</p>
       </div>
     </section>
 
@@ -80,7 +80,7 @@ export function SmartHomeWelcome({ stage, onRetry }: { stage: Exclude<SmartHomeE
       <div class="ssh-home-features" aria-label="Jarbis로 할 수 있는 일">
         <article class="ssh-home-feature">
           <span class="ssh-home-feature-icon" aria-hidden="true"><SearchIcon class="size-5" /></span>
-          <div><h3>전구를 손쉽게 찾고</h3><p>같은 Wi-Fi의 지원 Tasmota 전구를 검색합니다.</p></div>
+          <div><h3>지원 기기를 손쉽게 찾고</h3><p>같은 Wi-Fi의 지원 전구와 온습도 센서를 검색합니다.</p></div>
         </article>
         <article class="ssh-home-feature">
           <span class="ssh-home-feature-icon" aria-hidden="true"><DevicesIcon class="size-5" /></span>

@@ -7,6 +7,7 @@
           "system_root_password_status",
           "status",
           "connected_devices",
+          "smarthome_featured_sensor",
           "wifi_summary",
           "updates_status",
           "firmware_status",
@@ -38,7 +39,8 @@
         "jarbis": [
           "status",
           "devices_list",
-        "light_state",
+          "light_state",
+          "sensor_state",
           "discovery_list"
         ]
       },
@@ -51,6 +53,7 @@
         "smartsafehub": [
           "system_root_password_set",
           "system_root_password_change",
+          "smarthome_featured_sensor_set",
           "wifi_update",
           "wifi_qr",
           "system_timezone_initialize",
@@ -109,6 +112,7 @@
           "settings_update",
           "device_add",
           "device_update",
+          "device_room_set",
           "device_remove",
           "device_pair",
           "light_set",

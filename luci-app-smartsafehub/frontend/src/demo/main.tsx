@@ -20,12 +20,13 @@ import { SafeShieldPage } from '../pages/SafeShieldPage';
 import { NetworkWatchPage } from '../pages/NetworkWatchPage';
 import { SmartHomePage } from '../pages/SmartHomePage';
 import { demoJarbisOperations } from './jarbis';
+import { featuredSensorView, selectFeaturedSensor } from '../utils/featuredSensor';
 import {
   demoActivity, demoDevices, demoFirmware, demoHealth, demoLan,
   demoSafeShield, demoStatistics, demoStatus, demoUpdates,
   demoWan, demoWifi, demoRules, demoWifiQr, demoGuestWifiQr,
   demoAccount, demoApps, demoAppsStatus, demoAppsMetrics, demoNetwatch,
-  demoJarbisStatus, demoJarbisDevices, demoJarbisCandidates, demoJarbisLightStates,
+  demoJarbisStatus, demoJarbisDevices, demoJarbisCandidates, demoJarbisLightStates, demoJarbisSensorStates,
 } from './data';
 import '../styles/app.css';
 
@@ -36,6 +37,9 @@ function DemoApp() {
   const currentRoute = useHashRoute();
   const tabs = usePageTabs();
   const route = ALLOWED_ROUTES.has(currentRoute) ? currentRoute : 'home';
+  const demoFeaturedDevice = selectFeaturedSensor(demoJarbisDevices.devices, null);
+  const demoFeaturedReading = featuredSensorView(demoFeaturedDevice,
+    demoFeaturedDevice ? demoJarbisSensorStates[demoFeaturedDevice.id] : null, Math.floor(Date.now() / 1000));
   const [notice, setNotice] = useState('');
   useEffect(() => {
     if (!ALLOWED_ROUTES.has(currentRoute)) {
@@ -67,10 +71,12 @@ function DemoApp() {
       break;
     case 'smarthome':
       content = <SmartHomePage demo onDemoAction={readonlyNotice} operations={demoJarbisOperations}
+        featuredSensorId={demoFeaturedDevice?.id ?? null}
+        onFeaturedSensorChange={async () => { readonlyNotice(); }}
         statusResource={{ data: demoJarbisStatus, error: null, loading: false, replaceData: () => {} }}
         devicesResource={{ data: demoJarbisDevices, error: null, loading: false, replaceData: () => {} }}
         candidatesResource={{ data: demoJarbisCandidates, error: null, loading: false, replaceData: () => {} }}
-        demoLightStates={demoJarbisLightStates} />;
+        demoLightStates={demoJarbisLightStates} demoSensorStates={demoJarbisSensorStates} />;
       break;
     case 'account':
       content = <SmartSafeHubAccountPage data={demoAccount} error={null} loading={false}
@@ -155,7 +161,7 @@ function DemoApp() {
   }
 
   return (
-    <AppShell accountRegistered={demoAccount.accountRegistered} demo loading={false} onRefresh={reset} refreshing={false} route={route} updateCount={0}>
+    <AppShell featuredSensor={demoFeaturedReading} accountRegistered={demoAccount.accountRegistered} demo loading={false} onRefresh={reset} refreshing={false} route={route} updateCount={0}>
       <div role="status" class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
         <span>체험 모드 · 표시되는 기기와 보호 통계는 모두 예시입니다.</span>
         <a class="font-extrabold underline" href="/devices/">지원 기기 살펴보기 →</a>

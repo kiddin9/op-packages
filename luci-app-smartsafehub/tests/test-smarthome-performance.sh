@@ -15,7 +15,29 @@ resource = Path('frontend/src/hooks/useAsyncResource.ts').read_text()
 # mounted parent, and let each independent RPC display when it completes.
 for name in ('jarbisStatus', 'jarbisDevices', 'jarbisCandidates'):
     assert re.search(rf'const {name} = useAsyncResource<', app), name
-assert app.count("active: route === 'smarthome'") == 3
+# The global header needs one initial devices_list snapshot even outside
+# Smart Home. Status and discovery stay route-scoped; there is no device-list
+# polling, and an empty/no-sensor list must not start sensor RPCs or timers.
+def resource_block(name, next_name):
+    start = app.index(f'const {name} = useAsyncResource<')
+    return app[start:app.index(f'const {next_name}', start)]
+
+status_block = resource_block('jarbisStatus', 'jarbisDevices')
+devices_block = resource_block('jarbisDevices', 'featuredSensor')
+candidates_block = resource_block('jarbisCandidates', 'apps')
+assert "active: route === 'smarthome'" in status_block
+assert "active: route === 'smarthome'" in candidates_block
+assert 'active: true' in devices_block, 'header needs a single device-list snapshot'
+assert 'loader: getJarbisDevices' in devices_block
+assert 'pollInterval:' not in devices_block, 'global device-list polling is forbidden'
+assert "previousSmartHomeRoute.current !== 'smarthome'" in app
+assert 'void jarbisDevices.refresh();' in app
+featured_hook = Path('frontend/src/hooks/useFeaturedSensor.ts').read_text()
+assert 'const fallback = selectFeaturedSensor(devices, null)' in featured_hook
+assert 'active: fallback !== null' in featured_hook, 'no sensor means no settings RPC'
+assert 'if (!selectedId || smartHomeVisible) return' in featured_hook, 'no sensor means no cache polling'
+assert "getJarbisSensorState(selectedId, 'low')" in featured_hook
+assert 'SENSOR_CACHE_POLL_MS = 300_000' in featured_hook
 assert 'statusResource={jarbisStatus}' in app
 assert 'devicesResource={jarbisDevices}' in app
 assert 'candidatesResource={jarbisCandidates}' in app

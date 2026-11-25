@@ -45,7 +45,7 @@ grep -Fq "'safeshield', 'netwatch', 'rules'" "$ROOT/frontend/src/components/Prod
 grep -Fq 'Network Watch' "$ROOT/docs/ROUTER_DEMO.md"
 grep -Fq '실제 네트워크를 관찰하거나 차단하지 않으며' "$ROOT/docs/ROUTER_DEMO.md"
 grep -Fq "version: '1.2.0-r4'" "$FIXTURES"
-grep -Fq "version: '0.2.3-r1'" "$FIXTURES"
+grep -Fq "version: '0.2.4-r1'" "$FIXTURES"
 grep -Fq "case 'smarthome':" "$DEMO"
 grep -Fq "operations={demoJarbisOperations}" "$DEMO"
 grep -Fq "getJarbisCredentials: blocked" "$ROOT/frontend/src/demo/jarbis.ts"

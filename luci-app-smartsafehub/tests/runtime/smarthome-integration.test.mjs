@@ -23,15 +23,15 @@ test('스마트홈 메뉴는 실제 공유기와 안전한 데모에 노출하�
   assert.doesNotMatch(nav, /routes: \['smarthome', 'apps'\]/);
   assert.match(app, /case 'smarthome':[\s\S]*<SmartHomePage/);
   assert.match(page, /SmartHomeWelcome/);
-  assert.match(source('frontend/src/components/SmartHomeWelcome.tsx'), /우리 집 조명을, 더 스마트하게/);
+  assert.match(source('frontend/src/components/SmartHomeWelcome.tsx'), /우리 집 기기를, 더 스마트하게/);
 });
 
 test('Jarbis RPC는 기존 세션 ACL로 전원·등록·검색·설정을 분리한다', () => {
   const group = acl['luci-app-smartsafehub'];
   const read = group.read.ubus.jarbis;
   const write = group.write.ubus.jarbis;
-  assert.deepEqual(read, ['status', 'devices_list', 'light_state', 'discovery_list']);
-  for (const method of ['settings_update','device_add','device_update','device_remove','device_pair','light_set','discovery_scan','broker_credentials']) {
+  assert.deepEqual(read, ['status', 'devices_list', 'light_state', 'sensor_state', 'discovery_list']);
+  for (const method of ['settings_update','device_add','device_update','device_room_set','device_remove','device_pair','light_set','discovery_scan','broker_credentials']) {
     assert.ok(write.includes(method), `Jarbis write ACL missing: ${method}`);
     assert.ok(!read.includes(method), `Jarbis write leaked into read: ${method}`);
     assert.match(api, new RegExp(`'${method}'`));
@@ -82,14 +82,14 @@ test('스마트 전구는 사용자 승인 후 자동 연결하고 관리자 암
 
 
 test('스마트홈은 공통 화면 제목과 서비스 토글, 등록 기기 중심의 반응형 카드로 표시한다', () => {
-  assert.match(page, /<SectionHeading eyebrow="Smart Home" title="스마트 전구"/);
+  assert.match(page, /<SectionHeading eyebrow="Smart Home" title="스마트홈"/);
   assert.match(page, /aria-label="스마트홈 서비스 현황"/);
   assert.match(page, /role="switch" aria-checked=\{Boolean\(status\?\.enabled\)\}/);
   assert.match(page, /aria-label="등록된 전구"/);
-  assert.match(page, /class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"/);
+  assert.match(page, /ssh-home-device-grid grid gap-5 xl:grid-cols-2/);
   assert.match(page, /type="range" min="0" max="100" step="5"/);
-  assert.match(page, /aria-label="새 전구 찾기"/);
-  assert.ok(page.indexOf('aria-label="등록된 전구"') < page.indexOf('aria-label="새 전구 찾기"'));
+  assert.match(page, /aria-label="새 스마트홈 기기 찾기"/);
+  assert.ok(page.indexOf('aria-label="등록된 전구"') < page.indexOf('aria-label="새 스마트홈 기기 찾기"'));
   assert.match(page, /availableCandidates = candidates.filter\(candidate => !candidate.registered\)/);
   assert.match(page, /aria-busy=\{busy === 'scan'\}/);
 });
@@ -119,7 +119,8 @@ test('MQTT 메시지 전송을 실제 전구 점등이나 연결 확정으로 �
 
 test('스마트홈 UI는 다른 화면과 동일한 다크 모드 토큰을 사용한다', () => {
   const css = source('frontend/src/styles/app.css');
-  assert.match(page, /rounded-2xl border border-slate-200 bg-white/);
+  assert.match(page, /ssh-home-panel p-4 sm:p-5/);
+  assert.match(css, /\.ssh-app\[data-theme='dark'\] \.ssh-smart-home/);
   assert.doesNotMatch(page, /bg-teal-50\/40|bg-slate-50\/60/);
   for (const token of ['bg-white','bg-slate-50','bg-teal-50','text-slate-900','border-slate-200']) {
     assert.ok(css.includes(`[class~='${token}']`), `${token}: 다크 모드 재정의가 필요합니다`);
@@ -159,7 +160,7 @@ test('스마트홈은 전구 상태 확인과 RGB·색온도를 제공하되 응
   assert.match(page, /onPointerUp=/);
   assert.match(page, /document\.visibilityState === 'hidden'/);
   assert.match(page, /window\.setInterval\(poll, 30000\)/);
-  assert.match(page, /class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"/);
+  assert.match(page, /ssh-home-device-grid grid gap-5 xl:grid-cols-2/);
 });
 
 
@@ -234,17 +235,18 @@ test('전구 조작은 중첩 배경 카드 없이 하나의 영역에 전원·�
 });
 
 
-test('알림은 전체 너비이고 등록 전구 카드만 PC에서 두 열로 표시한다', () => {
+test('알림은 전체 너비이고 전구·센서는 PC에서 나란히 표시한다', () => {
   const noticeStart = page.indexOf('{message ?');
-  const noticeEnd = page.indexOf('aria-label="등록된 전구"', noticeStart);
+  const noticeEnd = page.indexOf('ssh-home-device-grid grid gap-5', noticeStart);
   const notice = page.slice(noticeStart, noticeEnd);
   assert.match(notice, /role="status" aria-live="polite" class="flex w-full items-start/);
   assert.doesNotMatch(notice, /sm:max-w-2xl|max-w-\[760px\]|lg:grid-cols-2/, '성공 알림은 데스크톱에서도 전체 너비를 유지해야 합니다');
 
   const inventoryStart = page.indexOf('aria-label="등록된 전구"');
-  const inventoryEnd = page.indexOf('devices.map(device =>', inventoryStart);
+  const inventoryEnd = page.indexOf('group.devices.map(device => {', inventoryStart);
   const inventory = page.slice(inventoryStart, inventoryEnd);
-  assert.match(inventory, /class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"/, '전구 한 대는 데스크톱에서 절반 너비, 모바일에서는 전체 너비로 표시해야 합니다');
+  assert.match(page, /ssh-home-device-grid grid gap-5 xl:grid-cols-2/, '센서·전구 영역은 데스크톱에서 나란히, 모바일에서 세로로 표시해야 합니다');
+  assert.match(inventory, /class="grid grid-cols-1 gap-3"/, '전구 카드 내부는 폭을 반으로 쪼개지 않고 전체 너비를 사용해야 합니다');
   assert.doesNotMatch(inventory, /max-w-\[760px\]/, '개별 전구 너비는 그리드로 정하고 고정 폭을 사용하지 않아야 합니다');
 
   const controlsStart = page.indexOf('aria-label="전구 조명 제어"');
@@ -263,7 +265,7 @@ test('관리 메뉴는 바깥 클릭과 Escape로 닫고 전구 카드 조작은
   assert.match(page, /document\.removeEventListener\('pointerdown', onOutside\)/);
   assert.match(page, /document\.addEventListener\('keydown', onEscape\)/);
   assert.match(page, /event\.key === 'Escape'/);
-  assert.match(page, /!menu\.contains\(target\)/);
+  assert.match(page, /if \(path\?\.includes\(menu\)\) continue/);
   assert.match(page, /manageMenus\.current\[device\.id\]/);
 });
 
@@ -297,7 +299,10 @@ test('스마트홈은 세 자원을 독립적으로 준비하고 재방문에서
   ]) {
     assert.ok(app.includes(declaration), declaration);
   }
-  assert.equal((app.match(/active: route === 'smarthome'/g) ?? []).length, 3);
+  // Header reads the device list once on entry, even off the Smart Home route.
+  // Status and discovery stay route-scoped and are never polled by the header.
+  assert.equal((app.match(/active: route === 'smarthome'/g) ?? []).length, 2);
+  assert.match(app, /const jarbisDevices = useAsyncResource<\{ devices: JarbisDevice\[\] \}>\(\{\s*active: true/);
   assert.match(app, /<SmartHomePage statusResource=\{jarbisStatus\}/);
   assert.match(app, /devicesResource=\{jarbisDevices\} candidatesResource=\{jarbisCandidates\}/);
   assert.match(resource, /const fresh = state\.data !== null/);

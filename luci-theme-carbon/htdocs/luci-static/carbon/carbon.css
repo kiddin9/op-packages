@@ -28,6 +28,8 @@
 	--cb-green-t: rgba(22, 163, 74, .12);
 	--cb-orange-t: rgba(232, 135, 11, .13);
 	--cb-red-t: rgba(229, 72, 77, .11);
+	--cb-danger: #e5484d;
+	--cb-danger-strong: #cf363c;
 
 	/* Carbon indigo — the one accent used for actions, focus and selection */
 	--cb-accent: #4f5bea;
@@ -43,6 +45,7 @@
 	--cb-card-2: rgba(15, 23, 42, .025);
 	--cb-card-edge: rgba(15, 23, 42, .06);
 	--cb-field: #ffffff;
+	--cb-btn-bg: #ffffff;
 	--cb-fill: rgba(15, 23, 42, .06);
 	--cb-fill-2: rgba(15, 23, 42, .035);
 	--cb-hover: rgba(79, 91, 234, .05);
@@ -91,6 +94,8 @@
 	--cb-green-t: rgba(52, 211, 153, .14);
 	--cb-orange-t: rgba(251, 176, 59, .15);
 	--cb-red-t: rgba(248, 113, 113, .15);
+	--cb-danger: #dc2626;
+	--cb-danger-strong: #ef4444;
 
 	--cb-accent: #8b95ff;
 	--cb-accent-strong: #aab3ff;
@@ -104,6 +109,7 @@
 	--cb-card-2: rgba(255, 255, 255, .03);
 	--cb-card-edge: rgba(255, 255, 255, .06);
 	--cb-field: rgba(255, 255, 255, .045);
+	--cb-btn-bg: rgba(255, 255, 255, .06);
 	--cb-fill: rgba(255, 255, 255, .08);
 	--cb-fill-2: rgba(255, 255, 255, .05);
 	--cb-hover: rgba(255, 255, 255, .04);
@@ -1207,7 +1213,7 @@ select option { background: var(--cb-card-solid); color: var(--cb-text); }
 	background-color: transparent;
 }
 
-input:focus,
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"])):focus,
 textarea:focus,
 select:focus,
 .cbi-select.focus,
@@ -1340,14 +1346,15 @@ input[type="radio"].cbi-input-invalid { border-color: var(--cb-red); }
    7. Buttons — solid colours only (no gradients)
    ========================================================================== */
 
-/* secondary: glass chip */
+/* secondary: glass chip
+   Keep attribute-matched <input> buttons at (0, 0, 1) with :where() so
+   single-class LuCI variants (.cbi-button-remove, .cbi-button-add, …) win
+   on classic CBI <input> elements just like on modern <button> elements. */
 .btn,
 .cbi-button,
 button:where(:not([class*="cb-"])),
-input[type="submit"],
-input[type="button"],
-input[type="reset"] {
-	--btn-bg: var(--cb-card-solid);
+input:where([type="submit"], [type="button"], [type="reset"]) {
+	--btn-bg: var(--cb-btn-bg);
 	--btn-fg: var(--cb-text);
 	--btn-ring: var(--cb-border-strong);
 	display: inline-flex;
@@ -1361,7 +1368,7 @@ input[type="reset"] {
 	border-radius: var(--cb-radius-sm);
 	background: var(--btn-bg);
 	color: var(--btn-fg);
-	box-shadow: inset 0 0 0 1px var(--btn-ring), 0 1px 2px rgba(15, 23, 42, .05);
+	box-shadow: var(--btn-shadow, inset 0 0 0 1px var(--btn-ring), 0 1px 2px rgba(15, 23, 42, .05));
 	font: inherit;
 	font-size: 13.5px;
 	font-weight: 600;
@@ -1375,28 +1382,82 @@ input[type="reset"] {
 	-webkit-user-select: none;
 	user-select: none;
 }
-:root[data-darkmode="true"] .btn,
-:root[data-darkmode="true"] .cbi-button,
-:root[data-darkmode="true"] input[type="submit"],
-:root[data-darkmode="true"] input[type="button"],
-:root[data-darkmode="true"] input[type="reset"],
-:root[data-darkmode="true"] button:where(:not([class*="cb-"])) { --btn-bg: rgba(255, 255, 255, .06); }
 
 .btn:hover,
 .cbi-button:hover,
-input[type="submit"]:hover,
-input[type="button"]:hover,
-input[type="reset"]:hover,
-button:where(:not([class*="cb-"])):hover { --btn-ring: var(--cb-accent); color: var(--cb-accent-strong); }
+button:where(:not([class*="cb-"])):hover,
+input:where([type="submit"], [type="button"], [type="reset"]):hover {
+	--btn-ring: var(--cb-accent);
+	--btn-fg: var(--cb-accent-strong);
+}
 .btn:active,
 .cbi-button:active,
-button:where(:not([class*="cb-"])):active { transform: translateY(1px); }
+button:where(:not([class*="cb-"])):active,
+input:where([type="submit"], [type="button"], [type="reset"]):active { transform: translateY(1px); }
 .btn:focus-visible,
 .cbi-button:focus-visible,
-input[type="submit"]:focus-visible,
-input[type="button"]:focus-visible,
-input[type="reset"]:focus-visible,
-button:where(:not([class*="cb-"])):focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--cb-accent), 0 0 0 4px var(--cb-focus); }
+button:where(:not([class*="cb-"])):focus-visible,
+input:where([type="submit"], [type="button"], [type="reset"]):focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--cb-accent), 0 0 0 4px var(--cb-focus); }
+
+/* neutral fill */
+.cbi-button-neutral,
+.cbi-button-up,
+.cbi-button-down,
+.cbi-button-reload {
+	--btn-bg: var(--cb-fill);
+	--btn-ring: transparent;
+}
+
+/* tinted variants */
+.cbi-button-positive,
+.cbi-button-add,
+.cbi-button-fieldadd,
+.btn.success {
+	--btn-bg: var(--cb-green-t);
+	--btn-fg: var(--cb-green);
+	--btn-ring: transparent;
+}
+.cbi-button-positive:hover,
+.cbi-button-add:hover,
+.cbi-button-fieldadd:hover,
+.btn.success:hover {
+	--btn-ring: var(--cb-green);
+	--btn-fg: var(--cb-green);
+}
+
+.cbi-button-negative,
+.cbi-button-remove,
+.cbi-button-reset,
+.cbi-button-neutral.down,
+.cbi-section-remove .cbi-button,
+.cbi-section-remove .btn,
+.btn.danger,
+.btn.error {
+	--btn-bg: var(--cb-red-t);
+	--btn-fg: var(--cb-red);
+	--btn-ring: transparent;
+}
+.cbi-button-negative:hover,
+.cbi-button-remove:hover,
+.cbi-button-reset:hover,
+.cbi-button-neutral.down:hover,
+.cbi-section-remove .cbi-button:hover,
+.cbi-section-remove .btn:hover,
+.btn.danger:hover,
+.btn.error:hover {
+	--btn-ring: var(--cb-red);
+	--btn-fg: var(--cb-red);
+}
+
+.cbi-button-action,
+.cbi-button-edit,
+.cbi-button-find,
+.cbi-button-link,
+.cbi-button-download {
+	--btn-bg: var(--cb-accent-t);
+	--btn-fg: var(--cb-accent-strong);
+	--btn-ring: transparent;
+}
 
 /* primary: solid Carbon indigo */
 .btn.primary,
@@ -1407,89 +1468,63 @@ button:where(:not([class*="cb-"])):focus-visible { outline: 0; box-shadow: inset
 .cbi-button-action.important,
 .cbi-button.important,
 .cbi-page-actions .cbi-button-apply,
-.cbi-section-actions .cbi-button-edit,
-input[type="submit"].cbi-button-apply {
-	--btn-bg: var(--cb-accent) !important;
-	--btn-fg: var(--cb-on-accent) !important;
-	--btn-ring: transparent !important;
-	color: var(--cb-on-accent) !important;
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 6px 14px -6px rgba(79, 91, 234, .55);
+.cbi-section-actions .cbi-button-edit {
+	--btn-bg: var(--cb-accent);
+	--btn-fg: var(--cb-on-accent);
+	--btn-ring: transparent;
+	--btn-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 6px 14px -6px rgba(79, 91, 234, .55);
 }
 .btn.primary:hover,
 .btn.important:hover,
 .cbi-button-apply:hover,
 .cbi-button-save:hover,
+.cbi-button-positive.important:hover,
+.cbi-button-action.important:hover,
 .cbi-button.important:hover,
-.cbi-section-actions .cbi-button-edit:hover { --btn-bg: var(--cb-accent-strong) !important; }
-
-/* tinted variants */
-.cbi-button-positive,
-.cbi-button-add,
-.btn.success {
-	--btn-bg: var(--cb-green-t);
-	--btn-fg: var(--cb-green);
+.cbi-page-actions .cbi-button-apply:hover,
+.cbi-section-actions .cbi-button-edit:hover {
+	--btn-bg: var(--cb-accent-strong);
+	--btn-fg: var(--cb-on-accent);
 	--btn-ring: transparent;
 }
-.cbi-button-negative,
-.cbi-button-remove,
-.btn.danger,
-.btn.error {
-	--btn-bg: var(--cb-red-t);
-	--btn-fg: var(--cb-red);
+
+/* destructive primary: solid red (after primary so .btn.important / .cbi-button.important never wins) */
+.cbi-button-negative.important,
+.cbi-button-remove.important,
+.cbi-button-reset.important,
+.btn.danger.important,
+.btn.error.important,
+[data-page="admin-system-reboot"] #view > .cbi-button-action.important {
+	--btn-bg: var(--cb-danger);
+	--btn-fg: #fff;
+	--btn-ring: transparent;
+	--btn-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 6px 14px -6px rgba(229, 72, 77, .55);
+}
+.cbi-button-negative.important:hover,
+.cbi-button-remove.important:hover,
+.cbi-button-reset.important:hover,
+.btn.danger.important:hover,
+.btn.error.important:hover,
+[data-page="admin-system-reboot"] #view > .cbi-button-action.important:hover {
+	--btn-bg: var(--cb-danger-strong);
+	--btn-fg: #fff;
 	--btn-ring: transparent;
 }
-.cbi-button-action,
-.cbi-button-edit,
-.cbi-button-find,
-.cbi-button-link,
-.cbi-button-download {
-	--btn-bg: var(--cb-accent-t);
-	--btn-fg: var(--cb-accent-strong);
-	--btn-ring: transparent;
-}
-:root[data-darkmode="true"] .cbi-button-positive,
-:root[data-darkmode="true"] .cbi-button-add { --btn-bg: var(--cb-green-t); }
-:root[data-darkmode="true"] .cbi-button-negative,
-:root[data-darkmode="true"] .cbi-button-remove { --btn-bg: var(--cb-red-t); }
-:root[data-darkmode="true"] .cbi-button-action,
-:root[data-darkmode="true"] .cbi-button-edit,
-:root[data-darkmode="true"] .cbi-button-find,
-:root[data-darkmode="true"] .cbi-button-link,
-:root[data-darkmode="true"] .cbi-button-download { --btn-bg: var(--cb-accent-t); }
-.cbi-button-positive:hover,
-.cbi-button-add:hover { --btn-ring: var(--cb-green); color: var(--cb-green); }
-.cbi-button-negative:hover,
-.cbi-button-remove:hover { --btn-ring: var(--cb-red); color: var(--cb-red); }
 
-.cbi-button-negative.important {
-	--btn-bg: var(--cb-red) !important;
-	--btn-fg: #fff !important;
-	color: #fff !important;
-	box-shadow: 0 6px 14px -6px rgba(229, 72, 77, .55);
-}
-
-.cbi-button-reset,
-.cbi-button-neutral,
-.cbi-button-up,
-.cbi-button-down,
-.cbi-button-fieldadd,
-.cbi-button-reload { --btn-bg: var(--cb-fill); --btn-ring: transparent; }
-:root[data-darkmode="true"] .cbi-button-reset,
-:root[data-darkmode="true"] .cbi-button-neutral,
-:root[data-darkmode="true"] .cbi-button-up,
-:root[data-darkmode="true"] .cbi-button-down,
-:root[data-darkmode="true"] .cbi-button-fieldadd,
-:root[data-darkmode="true"] .cbi-button-reload { --btn-bg: var(--cb-fill); }
-
+/* Save beside Save & Apply (or Apply unchecked) drops back to a secondary chip */
 .cbi-page-actions .cbi-button-apply + .cbi-button-save,
 .cbi-page-actions .cbi-button-negative + .cbi-button-save {
-	--btn-bg: var(--cb-card-solid) !important;
-	--btn-fg: var(--cb-text) !important;
-	--btn-ring: var(--cb-border-strong) !important;
-	color: var(--cb-text) !important;
-	box-shadow: inset 0 0 0 1px var(--btn-ring);
+	--btn-bg: var(--cb-btn-bg);
+	--btn-fg: var(--cb-text);
+	--btn-ring: var(--cb-border-strong);
+	--btn-shadow: initial;
 }
-:root[data-darkmode="true"] .cbi-page-actions .cbi-button-apply + .cbi-button-save { --btn-bg: rgba(255, 255, 255, .06) !important; }
+.cbi-page-actions .cbi-button-apply + .cbi-button-save:hover,
+.cbi-page-actions .cbi-button-negative + .cbi-button-save:hover {
+	--btn-bg: var(--cb-btn-bg);
+	--btn-fg: var(--cb-accent-strong);
+	--btn-ring: var(--cb-accent);
+}
 
 .cbi-button-up,
 .cbi-button-down { min-width: 34px; padding: 0 8px; }

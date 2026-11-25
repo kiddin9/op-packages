@@ -22,6 +22,14 @@ test('스마트홈 시작 화면은 일러스트와 상태별 안내를 제공�
   assert.match(app, /if \(entry !== 'ready'\) return <SmartHomeWelcome/);
 });
 
+test('스마트홈 본 화면은 관리 센터와 기기 중심 2열 레이아웃을 사용한다', () => {
+  assert.match(app, /스마트홈 관리 센터/);
+  assert.match(app, /SMART HOME CONTROL/);
+  assert.match(app, /PAIR & DISCOVERY/);
+  assert.match(app, /ssh-home-device-grid grid gap-5 xl:grid-cols-2/);
+  assert.match(app, /온습도 센서/);
+});
+
 test('스마트홈 설치 안내는 승인된 Apps 링크만 사용하고 설치 명령을 실행하지 않는다', () => {
   assert.match(welcome, /href="#apps\?highlight=jarbis"/);
   assert.match(welcome, /stage === 'install' \? 'Jarbis 설치하기'/);

@@ -51,6 +51,17 @@ export function DevicesIcon(props: IconProps) {
   );
 }
 
+export function ThermometerIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 14.5V6a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0Z" />
+      <path d="M12 11v5" />
+      <path d="M17.5 7.5c1 1 1 2.6 0 3.6" />
+      <path d="M19.8 5.2c2.3 2.2 2.3 5.8 0 8" />
+    </IconBase>
+  );
+}
+
 export function HomeIcon(props: IconProps) {
   return (
     <IconBase {...props}>

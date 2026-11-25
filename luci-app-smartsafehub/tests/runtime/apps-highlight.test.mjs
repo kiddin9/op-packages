@@ -39,7 +39,7 @@ test('Apps 강조는 전체 카탈로그를 유지하며 설치 확인 로직을
   assert.doesNotMatch(page, /ref=\{isHighlighted \? highlightedCardRef : undefined\}/);
   assert.match(page, /scrolledHighlightRef.current === highlightedAppId/);
   assert.match(page, /card.scrollIntoView\(\{ behavior: reducedMotion \? 'auto' : 'smooth'/);
-  assert.match(page, /href="#smarthome">스마트홈 시작하기/);
+  assert.match(page, /href="#smarthome">스마트홈으로 돌아가기/);
   assert.match(page, /requestOperation\(app, managed \? 'repair' : 'install'\)/);
   assert.doesNotMatch(page, /window.location.hash === '#apps\/jarbis'/);
 });

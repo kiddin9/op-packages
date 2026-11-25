@@ -167,10 +167,13 @@ review_remove_plan() {
    sub(/^\([0-9]+\/[0-9]+\) /, "", line)
    if (line ~ /^(Purging|Removing|Upgrading|Downgrading|Installing|Replacing) /) {
     split(line, fields, " ")
-    if ((fields[1] != "Purging" && fields[1] != "Removing") || !(fields[2] in ok)) bad=1
+    if ((fields[1] != "Purging" && fields[1] != "Removing") || !(fields[2] in ok) || ++seen[fields[2]] != 1) bad=1
    }
   }
-  END { exit bad ? 1 : 0 }
+  END {
+   for (name in ok) if (seen[name] != 1) bad=1
+   exit bad ? 1 : 0
+  }
  ' "$plan"
 }
 
@@ -336,31 +339,52 @@ installed_size_bytes() {
  case "$bytes" in ''|*[!0-9]*) return 1;; esac
  printf '%s\n' "$bytes"
 }
-# Refuse a downgrade, a same-version rebuild with a different digest, any
-# package-set change, or an APK that no longer matches our ownership record.
-# The approved replacement must be strictly newer according to apk itself.
+# Compare real APK versions with the APK comparator (never lexical order).
+version_is_newer() {
+ valid_version "$1" && valid_version "$2" &&
+  [ "$("$APK" version -t "$1" "$2" 2>/dev/null)" = '<' ]
+}
+
+# Select strictly newer approved replacements for owned package names.
+# Refuse downgrades, unapproved removals and same-version digest changes.
 select_upgrades() {
+ (
  old_manifest="$1"; approved_pins="$2"; changed_pins="$3"
- [ -s "$old_manifest" ] || return 1
+ [ -f "$old_manifest" ] && [ ! -L "$old_manifest" ] && [ -s "$old_manifest" ] || return 1
  : > "$changed_pins"
  old_count=0
  while IFS="$(printf '\t')" read -r name old_version old_hash; do
   valid_package "$name" && valid_version "$old_version" && valid_sha "$old_hash" || return 1
   protected_package "$name" && return 1
+  shared_runtime_package "$name" && return 1
+  # Do not change packages claimed by another Apps installation.
+  for other in "$OWNED"/*; do
+   [ -f "$other" ] && [ "$other" != "$old_manifest" ] || continue
+   if awk -F '\t' -v n="$name" '$1 == n {found=1} END {exit !found}' "$other"; then return 1; fi
+  done
   new_version="$(awk -F '\t' -v name="$name" '$1 == name {print $2; exit}' "$approved_pins")"
   new_hash="$(awk -F '\t' -v name="$name" '$1 == name {print $3; exit}' "$approved_pins")"
-  [ -n "$new_version" ] && valid_sha "$new_hash" || return 1
+  valid_version "$new_version" && valid_sha "$new_hash" || return 1
   if ! installed "$name"; then
    # An Apps-recorded addition can be missing after an interrupted update.
    # It may be retried only with the exact same approved version and hash.
    [ "$old_version" = "$new_version" ] && [ "$old_hash" = "$new_hash" ] || return 1
    printf '%s\t%s\t%s\n' "$name" "$new_version" "$new_hash" >> "$changed_pins"
   else
-   [ "$(installed_version "$name")" = "$old_version" ] || return 1
-   if [ "$old_version" = "$new_version" ]; then
+   actual_version="$(installed_version "$name")"
+   valid_version "$actual_version" || return 1
+   # A prior Apps receipt establishes ownership of the name, not the
+   # authenticity of a later local APK. Permit forward drift only when a
+   # strictly newer approved package will actually replace that local APK.
+   # Do not bless an equal-version local build or a manual downgrade.
+   if [ "$actual_version" != "$old_version" ]; then
+    version_is_newer "$old_version" "$actual_version" || return 1
+    version_is_newer "$actual_version" "$new_version" || return 1
+    printf '%s\t%s\t%s\n' "$name" "$new_version" "$new_hash" >> "$changed_pins"
+   elif [ "$old_version" = "$new_version" ]; then
     [ "$old_hash" = "$new_hash" ] || return 1
    else
-    [ "$("$APK" version -t "$old_version" "$new_version" 2>/dev/null)" = '<' ] || return 1
+    version_is_newer "$actual_version" "$new_version" || return 1
     printf '%s\t%s\t%s\n' "$name" "$new_version" "$new_hash" >> "$changed_pins"
    fi
   fi
@@ -377,10 +401,15 @@ select_upgrades() {
    [ "$(installed_version "$name")" = "$version" ] || return 1
   else
    firmware_prerequisite "$name" && return 1
+   for other in "$OWNED"/*; do
+    [ -f "$other" ] && [ "$other" != "$old_manifest" ] || continue
+    if awk -F '\t' -v n="$name" '$1 == n {found=1} END {exit !found}' "$other"; then return 1; fi
+   done
    printf '%s\t%s\t%s\n' "$name" "$version" "$hash" >> "$changed_pins"
   fi
  done < "$approved_pins"
  [ -s "$changed_pins" ]
+ )
 }
 # Prefer OpenWrt's configured apk architecture. Some package-manager builds
 # do not support --print-arch consistently. Never guess based on the CPU type,
@@ -502,7 +531,7 @@ status() {
   fi
   # Update availability requires a complete Apps-owned install and a newer
   # Hub-approved exact package set; it never uses an untrusted URL or version.
-  update_ready=0
+  update_ready=0; update_blocked=0
   if [ "$managed" -eq 1 ] && [ "$total" -gt 0 ]; then
    status_pins="$(mktemp "$RUNTIME/apps-status-pins.XXXXXXXX")" || return 1
    status_changes="$(mktemp "$RUNTIME/apps-status-changes.XXXXXXXX")" || { rm -f "$status_pins"; return 1; }
@@ -519,6 +548,19 @@ status() {
   if [ -n "$primary_package" ] && installed "$primary_package"; then
    installed_release="$(installed_version "$primary_package" || :)"
    valid_version "$installed_release" || installed_release=''
+   # Only a newer representative APK, not the app's display version,
+   # can establish that an unavailable update needs an explanation.
+   if [ "$managed" -eq 1 ] && [ "$update_ready" -eq 0 ]; then
+    approved_release=''; p=0
+    while [ "$p" -lt "$total" ]; do
+     if [ "$(field "$CATALOG" "@.apps[$idx].packages[$p].name")" = "$primary_package" ]; then
+      approved_release="$(field "$CATALOG" "@.apps[$idx].packages[$p].version")"
+      break
+     fi
+     p=$((p + 1))
+    done
+    if version_is_newer "$installed_release" "$approved_release"; then update_blocked=1; fi
+   fi
   fi
   if [ "$total" -gt 0 ] && [ "$total" -eq "$present" ]; then full=1; else full=0; fi
   if [ "$present" -gt 0 ]; then partial=1; else partial=0; fi
@@ -537,7 +579,9 @@ status() {
     p=$((p + 1))
    done
   fi
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$full" "$partial" "$managed" "$ui_ready" "$update_ready" "$installed_release"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s' "$id" "$full" "$partial" "$managed" "$ui_ready" "$update_ready" "$installed_release"
+  [ "$update_blocked" -eq 0 ] || printf '\t0\treview_required'
+  printf '\n'
  done
  # Removed approvals must be proven by a valid Apps-owned manifest, not
  # inferred from racing UI/catalog RPC responses. Manual apk add does not
@@ -792,6 +836,10 @@ update_app() {
  prepare_signed_index || return $?
  set --; update_names=''; add_names=''
  while IFS="$(printf '\t')" read -r name version hash; do
+  # apk add replaces the world constraint for this exact package name,
+  # including a local APK identity hash (><Q...). Use the same exact pin
+  # for simulation and commit; never rewrite /etc/apk/world directly or
+  # run a global apk upgrade --available. Failed simulation is read-only.
   set -- "$@" "$name=$version"
   if installed "$name"; then
    update_names="${update_names:+$update_names }$name"
@@ -841,21 +889,22 @@ remove_app() {
   for other in "$OWNED"/*; do
    [ -f "$other" ] || continue
    [ "$other" = "$manifest" ] && continue
-   grep -Fq "${name}$(printf '\t')" "$other" && return 43
+   if awk -F '\t' -v n="$name" '$1 == n {found=1} END {exit !found}' "$other"; then return 43; fi
   done
   # A failed transaction may have recorded ownership before apk completed.
   # Only pass actually installed packages to apk del; still clear the
   # manifest once all remaining owned packages are safely removed.
   if installed "$name"; then
-   [ "$(installed_version "$name")" = "$version" ] || return 42
+   # Ownership authorizes removal of the package name, not approval of a
+   # later local build. Version drift must not trap an app at the same
+   # release as the catalog. Never rewrite the old version/hash receipt.
+   valid_version "$(installed_version "$name")" || return 42
    set -- "$@" "$name"
   fi
   count=$((count + 1)); [ "$count" -le 32 ] || return 42
  done < "$manifest"
- [ "$count" -gt 0 ] || return 42
- any_installed=0
- for name in "$@"; do installed "$name" && any_installed=1; done
- if [ "$any_installed" -eq 1 ]; then
+ [ "$count" -gt 0 ] && [ "$count" -eq "$(awk 'END {print NR+0}' "$manifest")" ] || return 42
+ if [ "$#" -gt 0 ]; then
   "$APK" del --simulate "$@" > "$stage/plan.log" 2>&1 || return 44
   # Removing an optional app must never implicitly remove system/network,
   # SafeShield or firmware kernel-module packages.
@@ -864,6 +913,11 @@ remove_app() {
   fi
   review_remove_plan "$stage/plan.log" "$*" || return 44
   "$APK" del "$@" > "$stage/remove.log" 2>&1 || return 45
+  # apk del can succeed while retaining a package required by another app.
+  # Keep ownership for recovery unless every selected package is absent.
+  for name in "$@"; do
+   if installed "$name"; then return 45; fi
+  done
  fi
  rm -f "$manifest"
  return 0
@@ -889,6 +943,10 @@ worker() {
   update) update_app || rc=$?;;
   remove) remove_app || rc=$?;;
  esac
+ # Refresh local APK status after success or a partial failure, before
+ # publishing the terminal operation state. A scan error must not change
+ # the result of the package transaction.
+ if [ "$action" = update ] || [ "$action" = remove ]; then ( status ) || :; fi
  if [ "$rc" -eq 0 ]; then
   # The LuCI menu tree may be cached before an optional UI is installed.
   # Invalidate the cache only after a successful package transaction.

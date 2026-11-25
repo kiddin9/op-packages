@@ -5,6 +5,7 @@ import { ROUTE_BY_NAME } from '../app/routes';
 import type { AppRoute } from '../app/routes';
 import { applyDocumentTheme, persistColorTheme, readColorTheme } from '../utils/theme';
 import type { ColorTheme } from '../utils/theme';
+import type { FeaturedSensorView } from '../utils/featuredSensor';
 import { ProductHeader } from './ProductHeader';
 import { ProductNavigation } from './ProductNavigation';
 
@@ -12,6 +13,7 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'smartsafehub.sidebar.collapsed';
 
 interface AppShellProps {
   accountRegistered: boolean | null;
+  featuredSensor?: FeaturedSensorView | null;
   children: ComponentChildren;
   loading: boolean;
   onRefresh: () => void;
@@ -35,6 +37,7 @@ function readSidebarCollapsed(): boolean {
 
 export function AppShell({
   accountRegistered,
+  featuredSensor = null,
   children,
   loading,
   onRefresh,
@@ -88,6 +91,7 @@ export function AppShell({
       />
       <div class="min-w-0 md:min-h-screen">
         <ProductHeader
+          featuredSensor={featuredSensor}
           description={copy.description}
           loading={loading}
           onRefresh={onRefresh}

@@ -52,7 +52,7 @@ test('스마트홈 설치 안내는 승인된 Apps 화면만 연결하고 자동
   assert.match(app, /appsStatus=\{appsStatus.data\} appsCatalog=\{apps.data\}/);
   assert.match(app, /route === 'apps' \|\| \(route === 'smarthome' && !jarbisStatus.data/);
   assert.match(appsPage, /appsHighlightFromHash\(window.location.hash\)/);
-  assert.match(appsPage, /href="#smarthome">스마트홈 시작하기/);
+  assert.match(appsPage, /href="#smarthome">스마트홈으로 돌아가기/);
   assert.match(appsPage, /requestOperation\(app, managed \? 'repair' : 'install'\)/);
   assert.doesNotMatch(welcome, /installVerifiedApp|repairVerifiedApp|callApi/);
 });
@@ -60,8 +60,8 @@ test('스마트홈 설치 안내는 승인된 Apps 화면만 연결하고 자동
 test('Jarbis 설치 후 전구가 없는 경우만 첫 기기 안내를 표시한다', () => {
   const page = source('frontend/src/pages/SmartHomePage.tsx');
   assert.match(page, /status && deviceData && devices.length === 0/);
-  assert.match(page, /첫 번째 스마트 전구를 연결해 보세요/);
+  assert.match(page, /첫 번째 스마트홈 기기를 연결해 보세요/);
   assert.match(page, /discoverySection.current\?\.scrollIntoView/);
-  assert.match(page, /aria-label="새 전구 찾기"/);
-  assert.match(page, /전구 찾으러 가기/);
+  assert.match(page, /aria-label="새 스마트홈 기기 찾기"/);
+  assert.match(page, /기기 찾으러 가기/);
 });

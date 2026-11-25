@@ -159,3 +159,10 @@ Jarbis, Travelmate, Wake-on-LAN 등 앱별로 APK 개수와 이름을 공유기 
 `iwinfo`는 GPL-2.0-only로 GPLv3와 동일한 결합 라이선스는 아니지만,
 별도 실행되는 OpenWrt 시스템 유틸리티로 함께 배포합니다. 배포 전
 정확한 원본 소스와 저작권 고지, 해당 펌웨어와의 바이너리 호환성을 검토해야 합니다.
+
+
+## 앱 개발자 정보 및 아이콘
+
+Hub에서 승인된 앱의 `developer.name`, `developer.website_url`, `icon_image_url` 정보를 카탈로그에 담아 전송합니다. 아이콘은 Hub Django Admin에서 PNG/JPEG를 직접 업로드하고, Hub가 정규화한 `https://www.smartsafehub.com/media/app-icons/<무작위 ID>.png` 링크만 브라우저에서 불러옵니다. 아이콘이 없거나 로딩에 실패하면 기존 카테고리 아이콘을 표시합니다. 이전 Hub 카탈로그에는 새 필드가 없어도 동작합니다.
+
+개발자 홈페이지는 공개 HTTPS 주소만 표시합니다. 아이콘과 홈페이지는 앱의 설치·인증·실행 경로와 완전히 독립적이며 외부 아이콘 URL은 허용하지 않습니다.

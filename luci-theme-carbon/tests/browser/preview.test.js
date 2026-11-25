@@ -1064,6 +1064,196 @@ test('table action cells keep direct buttons compact and centred while preservin
 	}
 });
 
+test('button variants stay consistent across <button> and <input> elements, destructive actions and hover states', async () => {
+	const parseRgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+	const isReddish = (s) => { const [r, g, b] = parseRgb(s); return r > g + 40 && r > b + 40; };
+	const isGreenish = (s) => { const [r, g, b] = parseRgb(s); return g > r + 25 && g > b + 10; };
+	const isBluish = (s) => { const [r, g, b] = parseRgb(s); return b > r + 25; };
+
+	for (const mount of ['src', 'min']) {
+		for (const appearance of ['light', 'dark']) {
+			const label = `${mount}/${appearance}`;
+			const { page, context, errors } = await open('/src/preview/form.html', { width: 1280, height: 900, appearance });
+			try {
+				await page.setContent(`<!doctype html><html data-darkmode="${appearance === 'dark'}"><head><meta charset="utf-8">
+					<link rel="icon" href="data:,">
+					<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+					<style>.demo-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}</style>
+					</head><body data-page="admin-services-passwall"><main id="maincontent" style="padding:24px"><div id="view">
+					<section class="cbi-section"><div class="cbi-section-node">
+						<div class="demo-row" id="ref-buttons">
+							<button id="btn-base" class="btn cbi-button">取消</button>
+							<button id="btn-neutral" class="cbi-button cbi-button-neutral">重启</button>
+							<button id="btn-toggle" class="cbi-button cbi-button-neutral enable-disable">禁用</button>
+							<button id="btn-iface-down" class="cbi-button cbi-button-neutral down">关闭</button>
+							<button id="btn-add" class="cbi-button cbi-button-add">添加</button>
+							<button id="btn-action" class="cbi-button cbi-button-action">调整</button>
+							<button id="btn-remove" class="cbi-button cbi-button-remove">断开连接</button>
+							<button id="btn-negative" class="cbi-button cbi-button-negative remove">删除</button>
+							<button id="btn-reset" class="cbi-button cbi-button-reset">重置</button>
+							<button id="btn-danger" class="btn danger">危险</button>
+							<button id="btn-error" class="btn error">错误</button>
+							<a id="link-danger" class="btn danger" href="#">危险链接</a>
+							<button id="btn-success" class="btn success">成功</button>
+							<button id="btn-primary" class="cbi-button cbi-button-apply">保存并应用</button>
+							<button id="btn-neg-imp" class="btn cbi-button cbi-button-negative important">断开确认</button>
+							<button id="btn-rem-imp" class="btn cbi-button cbi-button-remove important">强制删除</button>
+							<button id="btn-rst-imp" class="btn cbi-button cbi-button-reset important">恢复出厂</button>
+							<button id="btn-dng-imp" class="btn danger important">危险确认</button>
+						</div>
+						<div class="demo-row pw-toolbar" id="passwall-toolbar">
+							<input id="inp-add" class="btn cbi-button cbi-button-add" type="button" value="添加" />
+							<input id="inp-add-sub" class="btn cbi-button cbi-button-add" type="submit" value="添加节点" />
+							<input id="inp-fieldadd" class="btn cbi-button cbi-button-fieldadd" type="submit" value="添加字段" />
+							<input id="inp-clear" class="btn cbi-button cbi-button-remove" type="button" value="清空所有节点" />
+							<input id="inp-del-sel" class="btn cbi-button cbi-button-remove" type="button" value="删除选择的节点" />
+							<input id="inp-del-sub" class="btn cbi-button cbi-button-remove" type="submit" value="删除" />
+							<input id="inp-group" class="btn cbi-button cbi-button-edit" type="button" value="调整分组" />
+							<input id="inp-apply" class="btn cbi-button cbi-button-apply" type="submit" value="保存并应用" />
+							<input id="inp-reset-btn" class="btn cbi-button cbi-button-reset" type="button" value="重置" />
+							<input id="inp-reset-rst" class="btn cbi-button cbi-button-reset" type="reset" value="复位" />
+							<input id="inp-neutral" class="btn cbi-button cbi-button-neutral" type="button" value="跳过" />
+							<button id="pw-filter-reset" type="button" class="btn cbi-button" data-pw-reset="1">重置筛选</button>
+						</div>
+						<div class="cbi-section-remove right">
+							<input id="sec-remove" type="submit" value="删除" class="btn cbi-button" />
+						</div>
+					</div></section>
+					<table class="table cbi-section-table">
+						<tr class="tr cbi-section-table-row">
+							<td class="td">Singapore-01</td>
+							<td class="td cbi-section-actions"><div>
+								<input id="row-top" class="btn cbi-button cbi-button-edit" type="button" value="置顶" />
+								<input id="row-use" class="btn cbi-button cbi-button-apply" type="button" value="使用" />
+								<input id="row-copy" class="btn cbi-button cbi-button-add" type="button" value="复制" />
+								<input id="row-edit" class="btn cbi-button cbi-button-edit" type="button" value="编辑" />
+								<input id="row-del" class="btn cbi-button cbi-button-remove" type="button" value="删除" />
+							</div></td>
+						</tr>
+					</table>
+					<div class="cbi-page-actions" id="actions-apply">
+						<input id="pa-apply" class="btn cbi-button cbi-button-apply" type="button" value="保存并应用" />
+						<input id="pa-save-after-apply" class="btn cbi-button cbi-button-save" type="submit" value="保存" />
+						<input id="pa-reset" class="btn cbi-button cbi-button-reset" type="button" value="重置" />
+					</div>
+					<div class="cbi-page-actions" id="actions-unchecked" style="position:static;margin-top:12px">
+						<button id="pa-unchecked" class="btn cbi-button cbi-button-negative important">强制应用</button>
+						<button id="pa-save-after-neg" class="cbi-button cbi-button-save">保存</button>
+					</div>
+					</div></main></body></html>`, { waitUntil: 'load' });
+
+				const readStyles = (ids) => page.evaluate((list) => Object.fromEntries(list.map((id) => {
+					const cs = getComputedStyle(document.getElementById(id));
+					return [id, { bg: cs.backgroundColor, fg: cs.color, shadow: cs.boxShadow }];
+				})), ids);
+
+				const ids = [
+					'btn-base', 'btn-neutral', 'btn-toggle', 'btn-iface-down', 'btn-add', 'btn-action',
+					'btn-remove', 'btn-negative', 'btn-reset', 'btn-danger', 'btn-error', 'link-danger',
+					'btn-success', 'btn-primary', 'btn-neg-imp', 'btn-rem-imp', 'btn-rst-imp', 'btn-dng-imp',
+					'inp-add', 'inp-add-sub', 'inp-fieldadd', 'inp-clear', 'inp-del-sel', 'inp-del-sub',
+					'inp-group', 'inp-apply', 'inp-reset-btn', 'inp-reset-rst', 'inp-neutral', 'pw-filter-reset',
+					'sec-remove', 'row-top', 'row-use', 'row-copy', 'row-edit', 'row-del',
+					'pa-apply', 'pa-save-after-apply', 'pa-reset', 'pa-unchecked', 'pa-save-after-neg'
+				];
+				const st = await readStyles(ids);
+
+				/* Tinted red: every destructive/reset button matches regardless of <button> vs <input> */
+				assert.ok(isReddish(st['btn-remove'].fg), `${label}: reference remove button is red (${st['btn-remove'].fg})`);
+				assert.notEqual(st['btn-remove'].bg, st['btn-base'].bg, `${label}: tinted red differs from secondary bg`);
+				for (const id of [
+					'btn-negative', 'btn-reset', 'btn-iface-down', 'btn-danger', 'btn-error', 'link-danger',
+					'inp-clear', 'inp-del-sel', 'inp-del-sub', 'inp-reset-btn', 'inp-reset-rst',
+					'sec-remove', 'row-del', 'pa-reset'
+				]) {
+					assert.deepEqual(st[id], st['btn-remove'], `${label} #${id}: matches tinted red variant`);
+				}
+
+				/* Tinted green: <input> and .btn.success match <button class="cbi-button-add"> */
+				assert.ok(isGreenish(st['btn-add'].fg), `${label}: reference add button is green (${st['btn-add'].fg})`);
+				for (const id of ['btn-success', 'inp-add', 'inp-add-sub', 'inp-fieldadd', 'row-copy']) {
+					assert.deepEqual(st[id], st['btn-add'], `${label} #${id}: matches tinted green variant`);
+				}
+
+				/* Tinted accent: outside .cbi-section-actions, <input class="cbi-button-edit"> matches action tint */
+				assert.ok(isBluish(st['btn-action'].fg), `${label}: reference action button is accent (${st['btn-action'].fg})`);
+				assert.deepEqual(st['inp-group'], st['btn-action'], `${label}: PassWall Reassign Group matches tinted accent`);
+
+				/* Solid primary indigo: applies inside .cbi-section-actions .cbi-button-edit and .cbi-button-apply */
+				assert.ok(isBluish(st['btn-primary'].bg), `${label}: primary button bg is indigo (${st['btn-primary'].bg})`);
+				for (const id of ['inp-apply', 'row-top', 'row-use', 'row-edit', 'pa-apply']) {
+					assert.deepEqual(st[id], st['btn-primary'], `${label} #${id}: matches solid primary indigo`);
+				}
+
+				/* Solid danger red: important destructive variants stay solid red, never solid indigo */
+				assert.ok(isReddish(st['btn-neg-imp'].bg), `${label}: negative.important bg is solid red (${st['btn-neg-imp'].bg})`);
+				assert.notEqual(st['btn-neg-imp'].bg, st['btn-remove'].bg, `${label}: solid danger differs from tinted red`);
+				for (const id of ['btn-rem-imp', 'btn-rst-imp', 'btn-dng-imp', 'pa-unchecked']) {
+					assert.deepEqual(st[id], st['btn-neg-imp'], `${label} #${id}: matches solid red danger`);
+				}
+
+				/* Neutral & secondary buttons stay untouched (no false positives) */
+				assert.deepEqual(st['btn-toggle'], st['btn-neutral'], `${label}: enable-disable stays neutral`);
+				assert.deepEqual(st['inp-neutral'], st['btn-neutral'], `${label}: <input class="cbi-button-neutral"> matches neutral`);
+				assert.notEqual(st['btn-neutral'].bg, st['btn-remove'].bg, `${label}: neutral is not red`);
+				assert.deepEqual(st['pw-filter-reset'], st['btn-base'], `${label}: PassWall filter reset stays secondary chip`);
+				assert.deepEqual(st['pa-save-after-apply'], st['btn-base'], `${label}: Save after Apply stays secondary chip`);
+				assert.deepEqual(st['pa-save-after-neg'], st['btn-base'], `${label}: Save after Apply-unchecked stays secondary chip`);
+				if (mount === 'src')
+					await page.screenshot({ path: path.join(SHOTS, `button-variants-${appearance}.png`), fullPage: true });
+
+				/* Hover states: <input> variants keep their semantic hover color; solid danger never turns indigo */
+				const hoverStyle = async (id) => {
+					await page.hover('#' + id);
+					await page.evaluate((elId) => Promise.all(document.getElementById(elId).getAnimations().map((a) => a.finished)), id);
+					return (await readStyles([id]))[id];
+				};
+
+				const clearHover = await hoverStyle('inp-clear');
+				assert.ok(isReddish(clearHover.fg), `${label}: hovered <input class="cbi-button-remove"> keeps red fg (${clearHover.fg})`);
+				assert.ok(clearHover.shadow.includes(clearHover.fg), `${label}: hovered <input class="cbi-button-remove"> gets red ring (${clearHover.shadow})`);
+
+				const addHover = await hoverStyle('inp-add');
+				assert.ok(isGreenish(addHover.fg), `${label}: hovered <input class="cbi-button-add"> keeps green fg (${addHover.fg})`);
+				assert.ok(addHover.shadow.includes(addHover.fg), `${label}: hovered <input class="cbi-button-add"> gets green ring (${addHover.shadow})`);
+
+				const dangerHover = await hoverStyle('btn-danger');
+				assert.ok(isReddish(dangerHover.fg), `${label}: hovered .btn.danger keeps red fg (${dangerHover.fg})`);
+				assert.ok(dangerHover.shadow.includes(dangerHover.fg), `${label}: hovered .btn.danger gets red ring (${dangerHover.shadow})`);
+
+				const negImpHover = await hoverStyle('btn-neg-imp');
+				assert.ok(isReddish(negImpHover.bg), `${label}: hovered .cbi-button-negative.important stays solid red, never indigo (${negImpHover.bg})`);
+				assert.notEqual(negImpHover.bg, st['btn-neg-imp'].bg, `${label}: hovered solid danger visibly shifts shade`);
+				assert.equal(negImpHover.fg, 'rgb(255, 255, 255)', `${label}: hovered solid danger keeps white text`);
+
+				const secSaveHover = await hoverStyle('pa-save-after-apply');
+				assert.ok(isBluish(secSaveHover.fg), `${label}: hovered secondary Save shows accent hover feedback (${secSaveHover.fg})`);
+
+				/* Clicking <input type="button"> does not trigger text-input focus ring (parity with <button>) */
+				await page.click('#inp-apply');
+				await page.evaluate(() => Promise.all(document.getElementById('inp-apply').getAnimations().map((a) => a.finished)));
+				const clickedApply = (await readStyles(['inp-apply']))['inp-apply'];
+				assert.equal(clickedApply.shadow, st['btn-primary'].shadow, `${label}: mouse-clicking <input type="submit"> keeps button shadow`);
+
+				/* System -> Reboot page: Perform reboot button is solid red at rest and on hover */
+				await page.setContent(`<!doctype html><html data-darkmode="${appearance === 'dark'}"><head><meta charset="utf-8">
+					<link rel="icon" href="data:,">
+					<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
+					</head><body data-page="admin-system-reboot"><main id="maincontent" style="padding:24px"><div id="view">
+					<h2>重启</h2><p>重启设备的操作系统</p><hr>
+					<button id="reboot-btn" class="cbi-button cbi-button-action important">执行重启</button>
+					</div></main></body></html>`, { waitUntil: 'load' });
+				const rebootRest = (await readStyles(['reboot-btn']))['reboot-btn'];
+				assert.deepEqual(rebootRest, st['btn-neg-imp'], `${label}: System->Reboot button is solid danger red`);
+				const rebootHover = await hoverStyle('reboot-btn');
+				assert.ok(isReddish(rebootHover.bg), `${label}: hovered System->Reboot button stays red (${rebootHover.bg})`);
+
+				assert.deepEqual(errors, []);
+			} finally { await context.close(); }
+		}
+	}
+});
+
 test('lease table avatars stay in the hostname column when hostnames are IP addresses', async () => {
 	for (const mount of ['src', 'min']) {
 		const { page, context, errors } = await open('/src/preview/form.html', { width: 1280, height: 900 });

@@ -7,6 +7,10 @@ export interface VerifiedApp {
   category: string;
   /** Approved Hub publishing relationship; absent on older catalogs. */
   publisherType?: 'first_party' | 'third_party';
+  /** Optional, approved display-only developer metadata. */
+  developerName?: string;
+  developerWebsiteUrl?: string;
+  iconImageUrl?: string;
   version: string;
   /** Approved same-origin LuCI page or first-party static app; never a remote URL. */
   webUi?: { type: 'luci' | 'static' | 'smartsafehub'; path: string } | null;
@@ -63,6 +67,8 @@ export interface AppsInstallStatus {
     /** Verified by a local Apps-owned manifest, not inferred by comparing asynchronous RPC replies. */
     retired?: boolean;
     updateAvailable?: boolean;
+    /** A newer approved APK exists, but the local package checks did not pass. */
+    updateBlocked?: boolean;
     /** Actual installed version of the first approved APK; not the catalog version. */
     installedVersion?: string | null;
     webUiReady?: boolean;

@@ -1,6 +1,9 @@
 import { MoonIcon, ReloadIcon, SunIcon } from './Icons';
+import { FeaturedSensorIndicator } from './FeaturedSensorIndicator';
+import type { FeaturedSensorView } from '../utils/featuredSensor';
 
 interface ProductHeaderProps {
+  featuredSensor?: FeaturedSensorView | null;
   description: string;
   loading: boolean;
   onRefresh: () => void;
@@ -11,6 +14,7 @@ interface ProductHeaderProps {
 }
 
 export function ProductHeader({
+  featuredSensor = null,
   description,
   loading,
   onRefresh,
@@ -37,6 +41,7 @@ export function ProductHeader({
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
+          <FeaturedSensorIndicator value={featuredSensor} />
           <button
             aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
             class="ssh-product-header-action hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-teal-300 hover:text-teal-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 md:inline-flex"

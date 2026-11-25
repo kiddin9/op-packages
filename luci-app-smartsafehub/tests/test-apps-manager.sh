@@ -101,6 +101,8 @@ case "$url" in
    cp "$APPS_TEST_REPO/smartsafehub-app-retro-arcade-1.0.0-r1.apk" "$dest";;
  https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/smartsafehub-app-retro-arcade-1.1.0-r1.apk)
    cp "$APPS_TEST_REPO/smartsafehub-app-retro-arcade-1.1.0-r1.apk" "$dest";;
+ https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/smartsafehub-app-retro-arcade-1.3.0-r6.apk)
+   cp "$APPS_TEST_REPO/smartsafehub-app-retro-arcade-1.3.0-r6.apk" "$dest";;
  https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/etherwake-1.09-r5.apk)
    cp "$APPS_TEST_REPO/etherwake-1.09-r5.apk" "$dest";;
  https://repo.smartsafehub.com/stable/packages/aarch64_cortex-a53/smartsafehub/20261027T123000/luci-app-wol-26.288.56989~75a306d.apk)
@@ -121,6 +123,8 @@ case "$1" in
    case "$3:$4" in
     1.0.0-r1:1.1.0-r1) echo '<';;
     1.1.0-r1:1.0.0-r1) echo '>';;
+    1.2.0-r4:1.3.0-r4|1.2.0-r4:1.3.0-r6|1.3.0-r4:1.3.0-r6) echo '<';;
+    1.3.0-r6:1.3.0-r4|1.3.0-r4:1.2.0-r4) echo '>';;
     *) [ "$3" = "$4" ] && echo '=' || exit 2;;
    esac
    exit 0;;
@@ -245,10 +249,23 @@ case "$1" in
    if [ "$2" = --simulate ]; then
      [ "${APPS_TEST_DEL_CORE:-0}" = 1 ] && echo 'Purging kmod-nf-conntrack-netlink (mock)'
      [ "${APPS_TEST_DEL_SHARED:-0}" = 1 ] && echo 'Purging luci-lib-chartjs (mock)'
+     shift 2
+     for item in "$@"; do
+       [ "${APPS_TEST_DEL_KEEP:-}" = "$item" ] || printf 'Purging %s (mock)\n' "$item"
+     done
      exit 0
    fi
    shift
-   for item in "$@"; do grep -vxF "$item" "$APPS_TEST_INSTALLED" > "$APPS_TEST_INSTALLED.new" || :; mv "$APPS_TEST_INSTALLED.new" "$APPS_TEST_INSTALLED"; done
+   [ "${APPS_TEST_DEL_FAIL:-0}" != 1 ] || exit 1
+   for item in "$@"; do
+     [ "${APPS_TEST_DEL_COMMIT_KEEP:-}" != "$item" ] || continue
+     grep -vxF "$item" "$APPS_TEST_INSTALLED" > "$APPS_TEST_INSTALLED.new" || :
+     mv "$APPS_TEST_INSTALLED.new" "$APPS_TEST_INSTALLED"
+     if [ -n "${APPS_TEST_WORLD:-}" ]; then
+       awk -v n="$item" 'index($0, n "><Q") != 1 && index($0, n "=") != 1 && $0 != n' "$APPS_TEST_WORLD" > "$APPS_TEST_WORLD.new"
+       mv -f "$APPS_TEST_WORLD.new" "$APPS_TEST_WORLD"
+     fi
+   done
    exit 0;;
  *) exit 2;;
 esac
@@ -284,6 +301,13 @@ for pin in "$@"; do
   *) exit 2;;
  esac
  grep -qxF "$name" "$APPS_TEST_INSTALLED" 2>/dev/null || printf '%s\n' "$name" >> "$APPS_TEST_INSTALLED"
+ # Model apk add's exact-name replacement of world constraints on commit.
+ # Simulations and rejected operations never write the fixture.
+ if [ -n "${APPS_TEST_WORLD:-}" ]; then
+   awk -v n="$name" 'index($0, n "><Q") != 1 && index($0, n "=") != 1 && $0 != n' "$APPS_TEST_WORLD" > "$APPS_TEST_WORLD.new"
+   printf '%s\n' "$pin" >> "$APPS_TEST_WORLD.new"
+   mv -f "$APPS_TEST_WORLD.new" "$APPS_TEST_WORLD"
+ fi
  # Mock APK must record exact versions even on the first installation.
  awk -v n="$name" '$1 != n' "$APPS_TEST_VERSION_DB" > "$APPS_TEST_VERSION_DB.tmp"
  printf '%s %s\n' "$name" "${pin#*=}" >> "$APPS_TEST_VERSION_DB.tmp"
@@ -714,7 +738,7 @@ PY_DOWNGRADE
 grep -Fqx "$(printf 'retro-arcade\t1\t1\t1\t0\t0\t1.1.0-r1')" "$TMP/runtime/apps-status.tsv" || fail 'downgrade must not be advertised'
 "$MANAGER" start update retro-arcade || fail 'downgrade did not queue'
 grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'downgrade was not refused'
-# Installed APK changed outside Apps ownership: never perform another upgrade.
+# A manual downgrade below the recorded approved version remains blocked.
 python3 - "$TMP/catalog.json" "$NEWRETROSHA" <<'PY_NEW'
 import json,sys
 p=sys.argv[1]; data=json.load(open(p)); app=data['apps'][0]
@@ -1055,3 +1079,152 @@ PY_REVERSE_STATUS
     done
 done
 printf 'PASS: Jarbis 12개 의존성 조회 후에도 나머지 승인 앱 4개의 설치 상태와 소유권이 유지됨\n'
+
+# Device regression: Apps recorded 1.2.0-r4; manual APK 1.3.0-r4 left a
+# world identity pin; the server now offers 1.3.0-r6.
+rm -f "$TMP/owned/"*
+printf 'smartsafehub-app-retro-arcade\n' > "$APPS_TEST_INSTALLED"
+printf 'smartsafehub-app-retro-arcade 1.3.0-r4\n' > "$APPS_TEST_VERSION_DB"
+printf 'signed approved Retro r6\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.3.0-r6.apk"
+DRIFT_SHA="$(sha256sum "$TMP/repo/smartsafehub-app-retro-arcade-1.3.0-r6.apk" | cut -d ' ' -f 1)"
+cat > "$TMP/catalog.json" <<EOF_DRIFT
+{"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-build-1","channel":"stable","apps":[{"id":"retro-arcade","version":"1.3.0-r6","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","packages":[{"name":"smartsafehub-app-retro-arcade","version":"1.3.0-r6","sha256":"$DRIFT_SHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
+EOF_DRIFT
+"$TMP/bin/fetch-catalog"
+export APPS_TEST_WORLD="$TMP/world"
+printf 'smartsafehub-app-retro-arcade><Qlocal-test=\nother-app><Qunrelated=\n' > "$APPS_TEST_WORLD"
+cp "$APPS_TEST_WORLD" "$TMP/world-before"
+"$MANAGER" status
+grep -Fqx "$(printf 'retro-arcade\t1\t1\t0\t0\t0\t1.3.0-r4')" "$TMP/runtime/apps-status.tsv" || fail 'manual app was adopted'
+"$MANAGER" start update retro-arcade || fail 'unmanaged update not queued'
+grep -Fqx "$(printf 'code\tE51')" "$TMP/runtime/apps-operation.state" || fail 'unmanaged update accepted'
+printf 'smartsafehub-app-retro-arcade\t1.2.0-r4\t%s\n' "$RETROSHA" > "$TMP/owned/retro-arcade"
+cp "$TMP/owned/retro-arcade" "$TMP/manifest-before"
+"$MANAGER" status
+grep -Fqx "$(printf 'retro-arcade\t1\t1\t1\t0\t1\t1.3.0-r4')" "$TMP/runtime/apps-status.tsv" || fail 'forward manual drift hid update'
+cmp -s "$TMP/manifest-before" "$TMP/owned/retro-arcade" || fail 'status blessed local APK'
+cp "$TMP/manifest-before" "$TMP/owned/other-app"
+"$MANAGER" status
+grep -Fqx "$(printf 'retro-arcade\t1\t1\t1\t0\t0\t1.3.0-r4\t0\treview_required')" "$TMP/runtime/apps-status.tsv" || fail 'missing blocked reason'
+"$MANAGER" start update retro-arcade || fail 'conflicting ownership not queued'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'conflicting owner upgrade accepted'
+rm "$TMP/owned/other-app"
+printf 'smartsafehub-app-retro-arcade 1.3.0-r6\n' > "$APPS_TEST_VERSION_DB"
+"$MANAGER" start update retro-arcade || fail 'equal version not queued'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'equal local build accepted'
+cp "$TMP/catalog.json" "$TMP/drift-catalog"
+python3 - "$TMP/catalog.json" <<'PY_DRIFT_DOWN'
+import json, sys
+p = sys.argv[1]
+with open(p) as f:
+    data = json.load(f)
+data['apps'][0]['packages'][0]['version'] = '1.3.0-r4'
+with open(p, 'w') as f:
+    json.dump(data, f)
+PY_DRIFT_DOWN
+"$MANAGER" start update retro-arcade || fail 'drift downgrade not queued'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'drift downgrade accepted'
+cp "$TMP/drift-catalog" "$TMP/catalog.json"
+printf 'smartsafehub-app-retro-arcade 1.3.0-r4\n' > "$APPS_TEST_VERSION_DB"
+printf 'tampered\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.3.0-r6.apk"
+"$MANAGER" start update retro-arcade || fail 'tampered drift update not queued'
+grep -Fqx "$(printf 'code\tE33')" "$TMP/runtime/apps-operation.state" || fail 'tampered drift update accepted'
+printf 'signed approved Retro r6\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.3.0-r6.apk"
+export APPS_TEST_UPGRADE=1
+"$MANAGER" start update retro-arcade || fail 'unsafe drift update not queued'
+grep -Fqx "$(printf 'code\tE53')" "$TMP/runtime/apps-operation.state" || fail 'unsafe drift plan accepted'
+unset APPS_TEST_UPGRADE
+export APPS_TEST_INSTALL_FAIL=1
+"$MANAGER" start update retro-arcade || fail 'failed drift update not queued'
+grep -Fqx "$(printf 'code\tE54')" "$TMP/runtime/apps-operation.state" || fail 'failed drift update not reported'
+unset APPS_TEST_INSTALL_FAIL
+cmp -s "$TMP/world-before" "$APPS_TEST_WORLD" || fail 'failed update changed world constraints'
+cmp -s "$TMP/manifest-before" "$TMP/owned/retro-arcade" || fail 'failed update changed receipt'
+"$MANAGER" start update retro-arcade || fail 'drift retry not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'forward drift retry failed'
+grep -Fqx 'smartsafehub-app-retro-arcade=1.3.0-r6' "$APPS_TEST_WORLD" || fail 'exact APK world pin not committed'
+grep -Fqx 'other-app><Qunrelated=' "$APPS_TEST_WORLD" || fail 'unrelated pin changed'
+grep -Fqx "$(printf 'smartsafehub-app-retro-arcade\t1.3.0-r6\t%s' "$DRIFT_SHA")" "$TMP/owned/retro-arcade" || fail 'approved receipt not committed'
+grep -Fqx "$(printf 'retro-arcade\t1\t1\t1\t0\t0\t1.3.0-r6')" "$TMP/runtime/apps-status.tsv" || fail 'post-update status not refreshed'
+python3 - "$TMP/catalog.json" <<'PY_DRIFT_HASH'
+import json, sys
+p = sys.argv[1]
+with open(p) as f:
+    data = json.load(f)
+data['apps'][0]['packages'][0]['sha256'] = 'b' * 64
+with open(p, 'w') as f:
+    json.dump(data, f)
+PY_DRIFT_HASH
+"$MANAGER" start update retro-arcade || fail 'same version different hash not queued'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'same version different hash accepted'
+"$MANAGER" start remove retro-arcade || fail 'removal after reconciliation not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'removal after signed update failed'
+[ ! -e "$TMP/owned/retro-arcade" ] || fail 'reconciled ownership not cleared'
+unset APPS_TEST_WORLD
+printf 'PASS: forward manual APK drift, identity pin, safe retry, ownership and same-version guards\n'
+
+# Jarbis device regression: a local build has the same version as the
+# current approval, but the Apps ownership receipt predates that build.
+rm -f "$TMP/owned/"*
+cat > "$TMP/catalog.json" <<EOF_JARBIS_REMOVE
+{"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-build-1","channel":"stable","apps":[{"id":"jarbis","version":"0.2.4-r1","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","web_ui":{"type":"smartsafehub","path":"#smarthome","package":"jarbis"},"packages":[{"name":"jarbis","version":"0.2.4-r1","sha256":"$DRIFT_SHA"},{"name":"mosquitto-ssl","version":"1.0-r1","sha256":"$RETROSHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
+EOF_JARBIS_REMOVE
+"$TMP/bin/fetch-catalog"
+printf 'jarbis\nmosquitto-ssl\nother-app\n' > "$APPS_TEST_INSTALLED"
+printf 'jarbis 0.2.4-r1\nmosquitto-ssl 1.0-r1\nother-app 1.0-r1\n' > "$APPS_TEST_VERSION_DB"
+export APPS_TEST_WORLD="$TMP/world"
+printf 'jarbis><Qlocal-test=\nmosquitto-ssl\nother-app><Qunrelated=\n' > "$APPS_TEST_WORLD"
+cp "$APPS_TEST_WORLD" "$TMP/world-before-remove"
+"$MANAGER" start remove jarbis || fail 'unmanaged removal not queued'
+grep -Fqx "$(printf 'code\tE41')" "$TMP/runtime/apps-operation.state" || fail 'manual-only Jarbis removal accepted'
+printf 'jarbis\t0.2.3-r1\t%s\n' "$RETROSHA" > "$TMP/owned/jarbis"
+cp "$TMP/owned/jarbis" "$TMP/jarbis-receipt"
+"$MANAGER" status
+grep -Fqx "$(printf 'jarbis\t1\t1\t1\t1\t0\t0.2.4-r1')" "$TMP/runtime/apps-status.tsv" || fail 'same-version Jarbis incorrectly offered update'
+"$MANAGER" start update jarbis || fail 'same-version update not queued'
+grep -Fqx "$(printf 'code\tE52')" "$TMP/runtime/apps-operation.state" || fail 'same-version local Jarbis approved'
+cp "$TMP/jarbis-receipt" "$TMP/owned/other-app"
+"$MANAGER" start remove jarbis || fail 'conflicting remove not queued'
+grep -Fqx "$(printf 'code\tE43')" "$TMP/runtime/apps-operation.state" || fail 'other owner removal accepted'
+rm "$TMP/owned/other-app"
+# Truncated and duplicate receipts must not authorize removal.
+printf 'jarbis\t0.2.3-r1\t%s' "$RETROSHA" > "$TMP/owned/jarbis"
+"$MANAGER" start remove jarbis || fail 'truncated receipt remove not queued'
+grep -Fqx "$(printf 'code\tE42')" "$TMP/runtime/apps-operation.state" || fail 'truncated removal receipt accepted'
+cat "$TMP/jarbis-receipt" "$TMP/jarbis-receipt" > "$TMP/owned/jarbis"
+"$MANAGER" start remove jarbis || fail 'duplicate receipt remove not queued'
+grep -Fqx "$(printf 'code\tE42')" "$TMP/runtime/apps-operation.state" || fail 'duplicate removal receipt accepted'
+cp "$TMP/jarbis-receipt" "$TMP/owned/jarbis"
+printf 'mosquitto-ssl\t1.0-r1\t%s\n' "$RETROSHA" >> "$TMP/owned/jarbis"
+"$MANAGER" start remove jarbis || fail 'shared runtime remove not queued'
+grep -Fqx "$(printf 'code\tE42')" "$TMP/runtime/apps-operation.state" || fail 'shared runtime ownership accepted'
+cp "$TMP/jarbis-receipt" "$TMP/owned/jarbis"
+export APPS_TEST_DEL_CORE=1
+"$MANAGER" start remove jarbis || fail 'unsafe remove not queued'
+grep -Fqx "$(printf 'code\tE44')" "$TMP/runtime/apps-operation.state" || fail 'core removal accepted with drift'
+unset APPS_TEST_DEL_CORE
+export APPS_TEST_DEL_KEEP=jarbis
+"$MANAGER" start remove jarbis || fail 'retained package remove not queued'
+grep -Fqx "$(printf 'code\tE44')" "$TMP/runtime/apps-operation.state" || fail 'incomplete removal plan accepted'
+unset APPS_TEST_DEL_KEEP
+export APPS_TEST_DEL_FAIL=1
+"$MANAGER" start remove jarbis || fail 'failed remove not queued'
+grep -Fqx "$(printf 'code\tE45')" "$TMP/runtime/apps-operation.state" || fail 'failed removal not reported'
+unset APPS_TEST_DEL_FAIL
+export APPS_TEST_DEL_COMMIT_KEEP=jarbis
+"$MANAGER" start remove jarbis || fail 'incomplete commit not queued'
+grep -Fqx "$(printf 'code\tE45')" "$TMP/runtime/apps-operation.state" || fail 'retained package reported as removed'
+unset APPS_TEST_DEL_COMMIT_KEEP
+cmp -s "$TMP/jarbis-receipt" "$TMP/owned/jarbis" || fail 'failed removal changed receipt'
+cmp -s "$TMP/world-before-remove" "$APPS_TEST_WORLD" || fail 'failed removal changed world'
+"$MANAGER" start remove jarbis || fail 'Jarbis removal retry not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'same-version manual Jarbis removal failed'
+[ ! -e "$TMP/owned/jarbis" ] || fail 'Jarbis receipt not cleared'
+if grep -Fxq jarbis "$APPS_TEST_INSTALLED"; then fail 'Jarbis still installed'; fi
+grep -Fxq mosquitto-ssl "$APPS_TEST_INSTALLED" || fail 'MQTT broker removed'
+grep -Fxq other-app "$APPS_TEST_INSTALLED" || fail 'unrelated package removed'
+if grep -q '^jarbis' "$APPS_TEST_WORLD"; then fail 'Jarbis identity pin remained'; fi
+grep -Fxq 'other-app><Qunrelated=' "$APPS_TEST_WORLD" || fail 'unrelated pin removed'
+grep -Fqx "$(printf 'jarbis\t0\t0\t0\t0\t0\t')" "$TMP/runtime/apps-status.tsv" || fail 'post-removal status stale'
+unset APPS_TEST_WORLD
+printf 'PASS: same-version manual Jarbis removal, ownership, solver and safe retry\n'

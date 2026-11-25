@@ -409,3 +409,13 @@ export function updateWifiNetwork(
 export function updateGuestWifi(input: GuestWifiUpdateInput): Promise<GuestWifiUpdateResult> {
   return callApi(GUEST_API_OBJECT, 'wifi_guest_update', { ...input }, { timeoutMs: 95_000 });
 }
+
+/** Saved on the router, so the header choice is consistent across browsers. */
+export interface FeaturedSensorSettings { sensorId: string }
+export function fetchFeaturedSensorSettings(signal?: AbortSignal): Promise<FeaturedSensorSettings> {
+  return callApi<FeaturedSensorSettings>(API_OBJECT, 'smarthome_featured_sensor', {},
+    { priority: 'low', timeoutMs: 6500, ...(signal ? { signal } : {}) });
+}
+export function saveFeaturedSensorSettings(sensorId: string): Promise<FeaturedSensorSettings> {
+  return callApi<FeaturedSensorSettings>(API_OBJECT, 'smarthome_featured_sensor_set', { sensor_id: sensorId });
+}

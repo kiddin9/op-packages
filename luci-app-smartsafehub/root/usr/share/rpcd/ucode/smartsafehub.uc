@@ -2,6 +2,7 @@
 'use strict';
 
 import { failure } from './smartsafehub/core.uc';
+import { read_featured_sensor, update_featured_sensor } from './smartsafehub/smarthome.uc';
 import { read_netwatch_status, update_netwatch_enabled } from './smartsafehub/netwatch.uc';
 import { read_apps_catalog } from './smartsafehub/apps.uc';
 import { read_apps_status, read_apps_metrics, install_app, repair_app, update_app, remove_app } from './smartsafehub/apps-manager.uc';
@@ -117,6 +118,17 @@ const methods = {
 	status: {
 		call: require_root_password(function(request) {
 			return read_status(request);
+		}),
+	},
+	smarthome_featured_sensor: {
+		call: require_root_password(function(request) {
+			return read_featured_sensor(request);
+		}),
+	},
+	smarthome_featured_sensor_set: {
+		args: { sensor_id: '' },
+		call: require_root_password(function(request) {
+			return update_featured_sensor(request);
 		}),
 	},
 	connected_devices: {
