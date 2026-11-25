@@ -1,3 +1,15 @@
+--- a/luci-app-quickstart/po/zh-cn/quickstart.po
++++ b/luci-app-quickstart/po/zh-cn/quickstart.po
+@@ -2,7 +2,7 @@ msgid "NetworkGuide"
+ msgstr "网络向导"
+ 
+ msgid "QuickStart"
+-msgstr "首页"
++msgstr "起始页"
+ 
+ msgid "RAID"
+ msgstr "磁盘阵列"
+
 --- a/luci-app-quickstart/luasrc/controller/istore_backend.lua
 +++ b/luci-app-quickstart/luasrc/controller/istore_backend.lua
 @@ -108,14 +108,16 @@ end
