@@ -776,6 +776,11 @@ return view.extend({
 				E('div', { 'class': 'agh-head-row' }, [
 					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Service Status')), enableSwitch ]),
 					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Current Version')), versionField ])
+				]),
+				E('div', { 'class': 'agh-head-row' }, [
+					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, 'WebUI'), E('a', { 'href': webuiUrl, 'target': '_blank', 'rel': 'noopener noreferrer' }, webuiUrl) ]),
+					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Default Username')), E('code', {}, 'root') ]),
+					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Default Password')), E('code', {}, 'root') ])
 				])
 			];
 			if (!coreExists) {

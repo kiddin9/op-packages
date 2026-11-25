@@ -170,3 +170,9 @@ msgstr "未设置（Go 默认值为 100）"
 #: applications/luci-app-adguardhome/htdocs/luci-static/resources/view/adguardhome/config.js:232
 msgid "unset and matching the number of CPUs"
 msgstr "未设置（默认值与 CPU 数量一致）"
+
+msgid "Default Username"
+msgstr "默认用户名"
+
+msgid "Default Password"
+msgstr "默认密码"

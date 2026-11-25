@@ -13,7 +13,7 @@ http:
   session_ttl: 30d
 users:
   - name: root
-    password: 
+    password: $2y$10$nilgzc6D6PmQYdO4h1CZTu/IsBFGdd696d0yANIF42g45XMNHQWn6
 auth_attempts: 5
 block_auth_min: 15
 http_proxy: ""
