@@ -11,13 +11,13 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-vantage
 PKG_VERSION:=1.2.1
-PKG_RELEASE:=52
+PKG_RELEASE:=53
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage theme
 LUCI_DESCRIPTION:=A console-style LuCI theme: icon rail with flyouts, \
 	breadcrumb, page tabs, Ctrl+K command palette, light and dark modes.
-LUCI_DEPENDS:=+luci-base +luci-app-vantage
+LUCI_DEPENDS:=+luci-base +luci-app-vantage +luci-app-vantage-traffic
 LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
 LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
 
