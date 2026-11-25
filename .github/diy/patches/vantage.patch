@@ -1,3 +1,19 @@
+--- a/luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js
++++ b/luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js
+@@ -2512,10 +2512,10 @@ return baseclass.extend({
+ 	},
+ 
+ 	decorateForms() {
+-		document.querySelectorAll('.cbi-value > .cbi-value-title + .cbi-value-field > .cbi-value-description:not(.vt-help-text)')
++		/* document.querySelectorAll('.cbi-value > .cbi-value-title + .cbi-value-field > .cbi-value-description:not(.vt-help-text)')
+ 			.forEach(desc => this.addFieldHelp(desc));
+ 		document.querySelectorAll(':is(.cbi-map-descr, .cbi-section-descr):not(:has(> .vt-help))')
+-			.forEach(desc => this.addIntroHelp(desc));
++			.forEach(desc => this.addIntroHelp(desc)); */
+ 		this.markRepeats();
+ 		this.decorateRowActions();
+ 	},
+
 --- a/luci-theme-vantage/root/etc/config/vantage_theme
 +++ b/luci-theme-vantage/root/etc/config/vantage_theme
 @@ -13,3 +13,4 @@
