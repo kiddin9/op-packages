@@ -13,22 +13,10 @@ validate_clouddrive2_section() {
 	uci_validate_section clouddrive2 clouddrive2 "${1:-main}" \
 		'enabled:bool:0' \
 		'port:port:19798' \
-		'https_enabled:bool:0' \
-		'https_port:port:19799' \
 		'open_firewall:bool:0' \
 		'config_dir:string:/etc/clouddrive2' \
 		'mount_point:string:/mnt/clouddrive' \
-		'cache_dir:string:/tmp/clouddrive2' \
-		'shared_mount:bool:1' \
-		'allow_other:bool:1' \
-		'startup_delay:uinteger:0' \
-		'max_open_files:uinteger:65535' \
-		'proxy:string' \
-		'enable_run_after_start:bool:0' \
-		'run_after_start:string' \
-		'log_stdout:bool:1' \
-		'log_stderr:bool:1' \
-		'extra_env:list(string)'
+		'cache_dir:string:/tmp/clouddrive2'
 }
 
 kill_lingering_processes() {
@@ -82,48 +70,46 @@ cleanup_mounts() {
 
 prepare_fuse() {
 	local mp="$1"
-	local shared="$2"
-	local allow="$3"
 	local mp_root
 
 	[ -c /dev/fuse ] || modprobe fuse 2>/dev/null || true
 
-	if [ "$allow" -eq 1 ]; then
-		if [ -f /etc/fuse.conf ]; then
-			if grep -q '^[[:space:]]*#[[:space:]]*user_allow_other' /etc/fuse.conf; then
-				sed -i 's/^[[:space:]]*#[[:space:]]*user_allow_other/user_allow_other/' /etc/fuse.conf
-			elif ! grep -q '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
-				echo "user_allow_other" >> /etc/fuse.conf
-			fi
-		else
-			echo "user_allow_other" > /etc/fuse.conf
+	if [ -f /etc/fuse.conf ]; then
+		if grep -q '^[[:space:]]*#[[:space:]]*user_allow_other' /etc/fuse.conf; then
+			sed -i 's/^[[:space:]]*#[[:space:]]*user_allow_other/user_allow_other/' /etc/fuse.conf
+		elif ! grep -q '^[[:space:]]*user_allow_other' /etc/fuse.conf; then
+			echo "user_allow_other" >> /etc/fuse.conf
 		fi
+	else
+		echo "user_allow_other" > /etc/fuse.conf
 	fi
 
 	mkdir -p "$mp"
-
-	if [ "$shared" -eq 1 ]; then
-		mp_root="$(df -P "$mp" 2>/dev/null | awk 'NR==2 {print $6}')"
-		[ -n "$mp_root" ] && mount --make-shared "$mp_root" 2>/dev/null || true
-	fi
+	mp_root="$(df -P "$mp" 2>/dev/null | awk 'NR==2 {print $6}')"
+	[ -n "$mp_root" ] && mount --make-shared "$mp_root" 2>/dev/null || true
 }
 
 sync_runtime_files() {
-	local cfg_dir="$1"
-	local tmp_dir="$2"
-	local ras_en="$3"
-	local ras_cmd="$4"
-	local http_port="$5"
-	local https_en="$6"
-	local https_port="$7"
+	local cfg_dir="${1%/}"
+	local tmp_dir="${2%/}"
+	local http_port="$3"
 	local settings_file="${cfg_dir}/systemsettings.json"
 	local toml_file="${cfg_dir}/config.toml"
+	local default_temp="${cfg_dir}/temp"
 
 	mkdir -p "$cfg_dir" "${cfg_dir}/log" "$tmp_dir"
 
-	# Never pre-create a partial systemsettings.json: CloudDrive2 requires all
-	# SystemSettings fields (e.g., dir_cache_ttl_secs) when parsing an existing file,
-	# and automatically uses built-in defaults when systemsettings.json is absent.
+	if [ "$tmp_dir" = "$default_temp" ]; then
+		[ -L "$default_temp" ] && rm -f "$default_temp"
+		mkdir -p "$default_temp"
+	else
+		[ -d "$default_temp" ] && [ ! -L "$default_temp" ] && rmdir "$default_temp" 2>/dev/null || true
+		if [ -L "$default_temp" ] || [ ! -e "$default_temp" ]; then
+			ln -sfn "$tmp_dir" "$default_temp"
+		fi
+	fi
+
+	# Only patch systemsettings.json if CloudDrive2 has already generated a full valid file
 	if [ -f "$settings_file" ]; then
 		if ! grep -q '"dir_cache_ttl_secs"' "$settings_file" 2>/dev/null; then
 			logger -t clouddrive2 -p daemon.warn "Removing incomplete $settings_file so CloudDrive2 can initialize defaults"
@@ -131,8 +117,6 @@ sync_runtime_files() {
 		elif command -v ucode >/dev/null 2>&1; then
 			SETTINGS_FILE="$settings_file" \
 			CD2_TEMP_DIR="$tmp_dir" \
-			CD2_RAS_ENABLED="$ras_en" \
-			CD2_RAS_CMD="$ras_cmd" \
 			ucode -e '
 				import { readfile, writefile, rename, unlink } from "fs";
 				let path = getenv("SETTINGS_FILE");
@@ -142,64 +126,27 @@ sync_runtime_files() {
 				try { data = json(raw); } catch (e) { exit(0); }
 				if (type(data) != "object" || data.dir_cache_ttl_secs == null) exit(0);
 				let td = getenv("CD2_TEMP_DIR");
-				if (td) data.temp_dir = td;
-				if (getenv("CD2_RAS_ENABLED") == "1" && length(getenv("CD2_RAS_CMD") || "") > 0)
-					data.run_after_start = getenv("CD2_RAS_CMD");
-				else
-					delete data.run_after_start;
-				let tmp = path + ".tmp";
-				if (writefile(tmp, sprintf("%.2J\n", data)))
-					rename(tmp, path);
-				else
-					unlink(tmp);
+				if (td && data.temp_dir != td) {
+					data.temp_dir = td;
+					let tmp = path + ".tmp";
+					if (writefile(tmp, sprintf("%.2J\n", data)))
+						rename(tmp, path);
+					else
+						unlink(tmp);
+				}
 			' 2>/dev/null || true
 		fi
 	fi
 
-	if [ -f "$toml_file" ]; then
-		if [ -n "$http_port" ]; then
-			sed -i -E \
-				-e "s/^([[:space:]]*(http_port|port)[[:space:]]*=[[:space:]]*)[0-9]+/\1${http_port}/" \
-				"$toml_file" 2>/dev/null || true
-		fi
-		if [ "$https_en" -eq 1 ] && [ -n "$https_port" ]; then
-			sed -i -E \
-				-e "s/^([[:space:]]*https_port[[:space:]]*=[[:space:]]*)[0-9]+/\1${https_port}/" \
-				"$toml_file" 2>/dev/null || true
-		fi
+	if [ -f "$toml_file" ] && [ -n "$http_port" ]; then
+		sed -i -E \
+			-e "s/^([[:space:]]*(http_port|port)[[:space:]]*=[[:space:]]*)[0-9]+/\1${http_port}/" \
+			"$toml_file" 2>/dev/null || true
 	fi
-}
-
-append_extra_env() {
-	local kv="$1"
-	case "$kv" in
-		[A-Za-z_]*=*)
-			procd_append_param env "$kv"
-			;;
-	esac
-}
-
-boot() {
-	local enabled startup_delay
-	config_load 'clouddrive2'
-	config_get_bool enabled main enabled 0
-	config_get startup_delay main startup_delay 0
-
-	[ "$enabled" -eq 1 ] || return 0
-
-	if [ "${startup_delay:-0}" -gt 0 ] 2>/dev/null; then
-		( sleep "$startup_delay" && /etc/init.d/clouddrive2 start ) </dev/null >/dev/null 2>&1 &
-		return 0
-	fi
-
-	start "$@"
 }
 
 start_service() {
-	local enabled port https_enabled https_port open_firewall
-	local config_dir mount_point cache_dir shared_mount allow_other
-	local startup_delay max_open_files proxy
-	local enable_run_after_start run_after_start log_stdout log_stderr
+	local enabled port open_firewall config_dir mount_point cache_dir
 
 	config_load 'clouddrive2'
 	validate_clouddrive2_section main || {
@@ -216,8 +163,8 @@ start_service() {
 		return 1
 	fi
 
-	prepare_fuse "$mount_point" "$shared_mount" "$allow_other"
-	sync_runtime_files "$config_dir" "$cache_dir" "$enable_run_after_start" "$run_after_start" "$port" "$https_enabled" "$https_port"
+	prepare_fuse "$mount_point"
+	sync_runtime_files "$config_dir" "$cache_dir" "$port"
 
 	local zonename
 	zonename="$(uci -q get system.@system[0].zonename)"
@@ -229,28 +176,13 @@ start_service() {
 		HOME="/root" \
 		CLOUDDRIVE_HOME="$config_dir" \
 		TMPDIR="$cache_dir" \
-		TZ="$zonename"
+		TZ="$zonename" \
+		ENABLE_RUN_AFTER_START="true"
 
-	if [ -n "$proxy" ]; then
-		procd_append_param env \
-			HTTP_PROXY="$proxy" \
-			HTTPS_PROXY="$proxy" \
-			ALL_PROXY="$proxy" \
-			http_proxy="$proxy" \
-			https_proxy="$proxy" \
-			all_proxy="$proxy"
-	fi
-
-	if [ "$enable_run_after_start" -eq 1 ] && [ -n "$run_after_start" ]; then
-		procd_append_param env ENABLE_RUN_AFTER_START="true"
-	fi
-
-	config_list_foreach main extra_env append_extra_env
-
-	procd_set_param limits nofile="${max_open_files} ${max_open_files}" core="0 0"
+	procd_set_param limits nofile="65535 65535" core="0 0"
 	procd_set_param respawn 3600 5 5
-	procd_set_param stdout "$log_stdout"
-	procd_set_param stderr "$log_stderr"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
 	procd_set_param pidfile "/var/run/clouddrive2.pid"
 
 	if [ "$open_firewall" -eq 1 ]; then
@@ -264,16 +196,6 @@ start_service() {
 			json_add_string proto tcp
 			json_add_string target ACCEPT
 			json_close_object
-			if [ "$https_enabled" -eq 1 ] && [ -n "$https_port" ]; then
-				json_add_object ""
-				json_add_string type rule
-				json_add_string name "Allow-CloudDrive2-HTTPS"
-				json_add_string src "*"
-				json_add_string dest_port "$https_port"
-				json_add_string proto tcp
-				json_add_string target ACCEPT
-				json_close_object
-			fi
 		json_close_array
 		procd_close_data
 	fi

@@ -79,6 +79,7 @@ header .brand {
 }
 header .brand:hover, header ul .active > a { background: var(--rmm-surface-3); }
 header a { color: var(--rmm-muted); text-shadow: none; }
+.rmm-desktop-host { display: none; }
 .rmm-brand-separator { color: var(--rmm-accent); padding: 0 4px; }
 .rmm-global-nav { flex: 1 1 auto; min-width: 0; }
 .rmm-global-nav .nav { float: none; display: flex; flex-wrap: wrap; margin: 0; }
@@ -386,6 +387,7 @@ pre, #syslog, .command-output, .uci-change-list {
 	header { position: fixed; inset: 0 auto 0 0; z-index: 800; width: var(--rmm-sidebar-width); min-height: 0; margin: 0; padding: 0; flex-direction: column; align-items: stretch; overflow: hidden; border-right: 1px solid var(--rmm-border); border-bottom: 0; }
 	header .brand { flex: none; display: flex; justify-content: center; padding: 16px 4px; font-size: 14px; border-bottom: 1px solid var(--rmm-border); }
 	header .brand .rmm-brand-host, header .brand .rmm-brand-separator { display: none; }
+	.rmm-desktop-host { display: block; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--rmm-border); color: var(--rmm-text); font: 600 14px/1.4 var(--font-mono); overflow-wrap: anywhere; }
 	.rmm-global-nav { flex: 1 1 auto; min-height: 0; padding: 8px; overflow-y: auto; overflow-x: hidden; }
 	.rmm-global-nav .nav { display: block; width: 100%; }
 	.rmm-global-nav .nav > li { float: none; width: 100%; }

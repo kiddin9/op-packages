@@ -1,6 +1,7 @@
 'use strict';
 import * as rtnl from 'rtnl';
 import { access } from 'fs';
+import { cursor } from 'uci';
 import { read_names, save_name } from '../../ucode/rmm-dashboard/names.uc';
 
 const names_file='/etc/rmm-dashboard/client-names.json';
@@ -17,6 +18,18 @@ function dump(command, family) {
 
 return {
     'rmm.dashboard': {
+        agent_status: {
+            call: function() {
+                let config = cursor();
+                if (config.get('rmm-agent', 'main') != 'agent')
+                    return { error: 'Agent configuration unavailable' };
+                return {
+                    enabled: config.get('rmm-agent', 'main', 'enabled'),
+                    heartbeat: config.get('rmm-agent', 'main', 'interval_seconds'),
+                    connectivity: config.get('rmm-agent', 'main', 'connectivity_check_interval_seconds')
+                };
+            }
+        },
         vendors: {
             args: {macs:[]},
             call: function(request) {

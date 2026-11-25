@@ -11,7 +11,7 @@ LUCI_PKGARCH:=all
 
 PKG_VERSION:=0.17.1-rc20261028-r3
 # PKG_RELEASE MUST be empty for luci.mk
-PKG_RELEASE:=46
+PKG_RELEASE:=47
 
 ifeq ($(CONFIG_USE_APK),y)
 PKG_VERSION:=$(subst -rc,_rc,$(PKG_VERSION))

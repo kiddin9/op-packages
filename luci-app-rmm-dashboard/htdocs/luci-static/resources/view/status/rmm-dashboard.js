@@ -20,7 +20,7 @@ var callCanName = rpc.declare({object:'session',method:'access',params:['scope',
 var callDNS = rpc.declare({object:'network.rrdns',method:'lookup',params:['addrs','timeout','limit'],expect:{'':{}}});
 var callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
 
-var callConfig = rpc.declare({ object: 'uci', method: 'get', params: [ 'config', 'section' ], expect: { values: {} } });
+var callAgentStatus = rpc.declare({ object: 'rmm.dashboard', method: 'agent_status', expect: { '': {} } });
 
 var russian = {
 	"Vendor": "Производитель",
@@ -555,10 +555,7 @@ return view.extend({
 			requested(callInfo, function(v) { return finite(v.uptime) && !!v.memory; }),
 			requested(callInterfaces, function(v) { return Array.isArray(v.interface); }),
 			requested(function() { return callServices('rmm-agent'); }),
-			requested(function() { return callConfig('rmm-agent', 'main').then(function(v) {
-				if (!v || !Object.keys(v).length) throw new Error('No agent configuration');
-				return { enabled: v.enabled, heartbeat: v.interval_seconds, connectivity: v.connectivity_check_interval_seconds };
-			}); }),
+			requested(callAgentStatus, function(v) { return !v.error && 'enabled' in v; }),
 			requested(callDevices),
 			requested(wifiLoad),
 			requested(callLeases, function(reply) { return Array.isArray(reply.dhcp_leases) || Array.isArray(reply.dhcp6_leases); }),
@@ -569,7 +566,7 @@ return view.extend({
 
 	render: function(data) {
 		if (!document.getElementById('rmm-dashboard-styles'))
-			document.head.appendChild(element('link', { id: 'rmm-dashboard-styles', rel: 'stylesheet', href: L.resource('view/status/rmm-dashboard.css') + '?v=0.10.1' }));
+			document.head.appendChild(element('link', { id: 'rmm-dashboard-styles', rel: 'stylesheet', href: L.resource('view/status/rmm-dashboard.css') + '?v=0.10.2' }));
 		this.sources = [];
 		this.history = { memory: [], devices: Object.create(null) };
 		this.slots = {};
@@ -867,7 +864,7 @@ return view.extend({
 		this.filterStations();
 		this.renderRelationships();
 		var agentStatus = !sources[3].value ? failure(sources[3].error) : !agent ? tr('Not installed') : running ? tr('Running') : !sources[4].value ? failure(sources[4].error) : config.enabled === '1' ? tr('Stopped') : tr('Disabled');
-		this.slots.agent.replaceChildren(sourceLine('service.list', 3), sourceLine('uci rmm-agent', 4), element('dl', {}, [
+		this.slots.agent.replaceChildren(sourceLine('service.list', 3), sourceLine('rmm.dashboard.agent_status', 4), element('dl', {}, [
 			item(tr('Status'), agentStatus, running ? 'ok' : agent ? 'warning' : ''),
 			item(tr('Heartbeat interval'), sources[4].value ? (config.heartbeat || '30') + ' ' + tr('s') : failure(sources[4].error)),
 			item(tr('Connectivity check interval'), sources[4].value ? (config.connectivity || '300') + ' ' + tr('s') : failure(sources[4].error))
@@ -904,7 +901,7 @@ return view.extend({
 		if (used!==null && memory.total>0 && used/memory.total>=.9) issues.push(tr('Memory usage ≥ 90%'));
 		if (!running && agentStatus!==tr('Disabled') && agentStatus!==tr('Not installed')) issues.push(tr('RMM agent')+': '+agentStatus);
 		if (stateCode!=='Current') {
-			var sourceNames=['system.board','system.info','network.interface.dump','service.list','uci rmm-agent','network.device.status','iwinfo.devices','luci-rpc.getDHCPLeases','rmm.dashboard.clients'];
+			var sourceNames=['system.board','system.info','network.interface.dump','service.list','rmm.dashboard.agent_status','network.device.status','iwinfo.devices','luci-rpc.getDHCPLeases','rmm.dashboard.clients'];
 			sources.forEach(function(source,index) { if (!sourceFresh(source,now)) issues.push(sourceNames[index]+': '+(source.value ? tr('Stale')+' · ' : '')+(source.error ? failure(source.error) : tr('Data is not reported'))); });
 			if (nestedErrors || cachedWirelessError) issues.push(tr('Wireless')+': '+tr('Partial data'));
 		}

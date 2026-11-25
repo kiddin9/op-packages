@@ -7,9 +7,10 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=AgentFlow
-PKG_VERSION:=1.0.1-r6
-PKG_RELEASE:=12
-LUCI_DEPENDS:=+agentflow +luci-app-mise +luci-compat +luci-lib-taskd +luci-lib-linkeaseauth +linkease-app-entry
+PKG_VERSION:=1.0.2-r1
+PKG_RELEASE:=13
+LUCI_DEPENDS:=+agentflow +luci-compat +luci-lib-linkeaseauth +linkease-app-entry
+LUCI_EXTRA_DEPENDS:=luci-lib-linkeaseauth (>=1.2.1-r5)
 LUCI_MINIFY_CSS:=0
 LUCI_MINIFY_JS:=0
 

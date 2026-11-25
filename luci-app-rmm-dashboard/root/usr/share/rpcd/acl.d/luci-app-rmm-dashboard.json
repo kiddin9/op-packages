@@ -25,16 +25,14 @@
           "getDHCPLeases"
         ],
         "rmm.dashboard": [
+          "agent_status",
           "clients",
           "vendors"
         ],
         "network.rrdns": [
           "lookup"
         ]
-      },
-      "uci": [
-        "rmm-agent"
-      ]
+      }
     },
     "write": {
       "ubus": {
