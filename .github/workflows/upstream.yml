@@ -198,7 +198,6 @@ jobs:
         git_clone https://github.com/ox1d3x3/uniwrt-luci && mv -f uniwrt-luci/luci-theme-uniwrt ./;rm -rf uniwrt-luci
         ) &
         (
-        git_clone https://github.com/honwen/luci-app-aliddns
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
         git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-app-!(wolplus) ./; rm -rf openwrt-packages
         git_clone https://github.com/CHN-beta/rkp-ipid
