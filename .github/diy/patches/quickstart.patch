@@ -1,3 +1,29 @@
+--- a/luci-app-quickstart/luasrc/controller/istore_backend.lua
++++ b/luci-app-quickstart/luasrc/controller/istore_backend.lua
+@@ -108,14 +108,16 @@ end
+ 
+ function istore_backend() 
+   local sock = nixio.socket("unix", "stream")
++  if sock and not sock:connect(ISTOREOS_SOCKET) then
++    sock:close()
++	sock = nil
++  end
+   if not sock then
+-    http.status(500, "connect failed")
+-    return
++	sock = nixio.connect("127.0.0.1", 3038)
+   end
+-  if not sock:connect(ISTOREOS_SOCKET) then
+-    sock:close()
+-    http.status(500, "connect failed")
+-    return
++  if not sock then
++	http.status(500, "connect failed")
++	return
+   end
+   local input = {}
+   input[#input+1] = http.getenv("REQUEST_METHOD") .. " " .. http.getenv("REQUEST_URI") .. " HTTP/1.1"
+
 --- a/luci-app-quickstart/Makefile
 +++ b/luci-app-quickstart/Makefile
 @@ -6,7 +6,7 @@
@@ -22,19 +48,12 @@
          entry({"admin", "network_guide", "pages"}, call("quickstart_index", {index={"admin", "network_guide", "pages"}})).leaf = true
          if uci:get("quickstart", "main", "wifi_menu") == "1" then
 diff --git a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json b/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
-deleted file mode 100644
-index d1667bb..0000000
 --- a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
-+++ /dev/null
-@@ -1,10 +0,0 @@
--{
++++ b/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
+@@ -1,5 +1,5 @@
+ {
 -	"admin/quickstart/*": {
--		"title": "QuickStart",
--		"order": 1,
--		"action": {
--			"type": "template",
--			"path": "quickstart/home"
--		}
--	}
--}
-\ No newline at end of file
++	"admin/status/quickstart/*": {
+ 		"title": "QuickStart",
+ 		"order": 1,
+ 		"action": {
