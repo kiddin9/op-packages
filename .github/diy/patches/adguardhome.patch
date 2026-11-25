@@ -9,3 +9,45 @@
  LUCI_PKGARCH:=all
  USERID:=adguardhome=853:adguardhome=853
 
+--- a/luci-app-adguardhome/htdocs/luci-static/resources/view/adguardhome/config.js
++++ b/luci-app-adguardhome/htdocs/luci-static/resources/view/adguardhome/config.js
+@@ -776,6 +776,11 @@ return view.extend({
+ 				E('div', { 'class': 'agh-head-row' }, [
+ 					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Service Status')), enableSwitch ]),
+ 					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Current Version')), versionField ])
++				]),
++				E('div', { 'class': 'agh-head-row' }, [
++					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, 'WebUI'), E('a', { 'href': webuiUrl, 'target': '_blank', 'rel': 'noopener noreferrer' }, webuiUrl) ]),
++					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Default Username')), E('code', {}, 'root') ]),
++					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Default Password')), E('code', {}, 'root') ])
+ 				])
+ 			];
+ 			if (!coreExists) {
+
+--- a/luci-app-adguardhome/po/zh_Hans/adguardhome.po
++++ b/luci-app-adguardhome/po/zh_Hans/adguardhome.po
+@@ -170,3 +170,9 @@ msgstr "未设置（Go 默认值为 100）"
+ #: applications/luci-app-adguardhome/htdocs/luci-static/resources/view/adguardhome/config.js:232
+ msgid "unset and matching the number of CPUs"
+ msgstr "未设置（默认值与 CPU 数量一致）"
++
++msgid "Default Username"
++msgstr "默认用户名"
++
++msgid "Default Password"
++msgstr "默认密码"
+
+--- a/luci-app-adguardhome/root/etc/adguardhome/adguardhome.yaml
++++ b/luci-app-adguardhome/root/etc/adguardhome/adguardhome.yaml
+@@ -13,7 +13,7 @@ http:
+   session_ttl: 30d
+ users:
+   - name: root
+-    password: 
++    password: $2y$10$nilgzc6D6PmQYdO4h1CZTu/IsBFGdd696d0yANIF42g45XMNHQWn6
+ auth_attempts: 5
+ block_auth_min: 15
+ http_proxy: ""
+-- 
+2.39.5
+
