@@ -1,0 +1,491 @@
+// luci-app-vantage-aps: pairs this device with others, both ways.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// ubus object luci.vantage.pair, loaded by rpcd-mod-ucode. Read and write
+// group luci-app-vantage-aps, for administrators only: allow_router lets
+// another device log in here over SSH (to the report command only).
+//
+// As a router (this device's dashboard shows the access points):
+//   status        { router: { code, aps: [ { id, name, addr, port, net } ] },
+//                   ap: { ssh, routers: [ { name, key } ], reply } }
+//                 code: this router's pairing code (null before the
+//                 first router_code); net: the name of this router's
+//                 network the access point was paired on ("lan"), only
+//                 when one is kept with it; ssh: 'ok', or why this device
+//                 cannot be read or paired ('no-dropbear', 'no-key-options',
+//                 'unsupported', 'no-host-key', 'not-running',
+//                 'keys-unreadable': authorized_keys is there and cannot be
+//                 read whole, so who may log in is not known; 'no-address');
+//                 reply: this device's answer to a router (null without one
+//                 allowed, or ssh not ok)
+//   router_code   {}: { code }, this router's key made on first use
+//   add_ap        { code, addr }: pair with the access point whose reply
+//                 code this is, at addr when given (else the reply's); { id }.
+//                 The network that address is on (ubus network.interface
+//                 dump, vantage.aps net_of) is kept with it by name, when
+//                 it is on one: there the collector looks for it later
+//   remove_ap     { id }
+// As an access point:
+//   allow_router  { code }: let the router whose code this is read the
+//                 report; { reply }
+//   revoke_router { key }
+// Failures: { error: 'invalid' | 'self' | 'duplicate' | 'full' | 'unknown' |
+// 'no-dbclient' | 'no-key' | 'failed' | <an ssh state> }.
+//
+// The only Vantage code that runs a program or writes files beyond its config; all of
+// it is here (security-tests/test_acl_policy.js holds this list):
+//   runs    dropbearkey -t ed25519 -f /etc/vantage/id_ed25519 (router_code,
+//           once; it also writes id_ed25519.pub beside it);
+//           /etc/init.d/vantage-collector enable, start, stop, disable
+//           (add_ap, remove_ap)
+//   writes  /etc/vantage/aps.json (add_ap, remove_ap); in
+//           /etc/dropbear/authorized_keys its own lines (vantage.aps
+//           auth_line: the report command's options, then ssh-ed25519
+//           <key> vantage-router@<name>+<key id>), every other line kept
+//           byte for byte (allow_router, revoke_router). Neither file is
+//           written when it is there and cannot be read whole: what it
+//           holds would be lost.
+// Public keys are read from dropbear's key files themselves, not through
+// a program.
+
+'use strict';
+
+import { access, chmod, lstat, mkdir, readfile, rename, stat, writefile } from 'fs';
+import { connect } from 'ubus';
+import { cursor } from 'uci';
+import * as vaps from 'vantage.aps';
+
+const DIR = '/etc/vantage';
+const KEY = '/etc/vantage/id_ed25519';
+const APS = '/etc/vantage/aps.json';
+const APS_TMP = '/etc/vantage/aps.json.tmp';
+const AUTH = '/etc/dropbear/authorized_keys';
+const AUTH_TMP = '/etc/dropbear/authorized_keys.vantage';
+const HOST_KEY = '/etc/dropbear/dropbear_ed25519_host_key';
+const DROPBEAR = '/usr/sbin/dropbear';
+const DBCLIENT = '/usr/bin/dbclient';
+const DROPBEARKEY = '/usr/bin/dropbearkey';
+const COLLECTOR = '/etc/init.d/vantage-collector';
+const HOSTNAME = '/proc/sys/kernel/hostname';
+const RANDOM = '/dev/urandom';
+const NET = '/sys/class/net';
+const MAX_AUTH = 262144;          // bytes of authorized_keys read
+const MAX_DROPBEAR = 4194304;     // bytes of the dropbear binary searched
+const MAX_APS_FILE = 65536;
+const RE_NETDEV = /^[A-Za-z0-9_.-]{1,15}$/;
+const RE_MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
+const RE_BLANK = /[ \t]+/;
+const OFF = [ '0', 'off', 'false', 'no', 'disabled' ];   // uci's ways to say no
+const KEY_FILE_HEAD = '\x00\x00\x00\x0bssh-ed25519\x00\x00\x00\x40';
+const BLOB_HEAD = '\x00\x00\x00\x0bssh-ed25519\x00\x00\x00\x20';
+
+// a dropbear Ed25519 key file (string "ssh-ed25519", then the 32-byte
+// private and 32-byte public halves): its public key blob in base64
+function public_key(file) {
+	let b = readfile(file, 84);
+
+	if (type(b) != 'string' || length(b) != 83 || substr(b, 0, 19) != KEY_FILE_HEAD)
+		return null;
+
+	return vaps.key(b64enc(BLOB_HEAD + substr(b, 51, 32)));
+}
+
+// A file replaced whole: written beside it, checked to be all there (a
+// full flash leaves it short or empty, and writefile does not say so),
+// made private, then moved in place. The file it replaces stays as it
+// was unless every step held.
+function put(tmp, file, text) {
+	return writefile(tmp, text) != null && stat(tmp)?.size === length(text) && chmod(tmp, 0600) && rename(tmp, file) === true;
+}
+
+function hostname(fallback) {
+	return vaps.name_of(trim(readfile(HOSTNAME, 256) ?? ''), fallback);
+}
+
+/* ----------------------------------------------------------- router */
+
+// a file's text, at most max bytes of it: '' when there is no such file,
+// null when it is there and cannot be read or is longer. The two must not
+// be taken for one another: a file that reads as empty is written anew.
+function whole(file, max) {
+	let text = readfile(file, max + 1);
+
+	if (text == null)
+		return lstat(file) ? null : '';
+
+	return (length(text) <= max) ? text : null;
+}
+
+// the paired list; null when it cannot be read whole, or holds anything
+// that is not an entry of the add-on's (a hand edit gone wrong): never
+// written back then
+function load_aps() {
+	let text = whole(APS, MAX_APS_FILE);
+
+	return (text == null) ? null : vaps.aps(text, true);
+}
+
+function save_aps(list) {
+	mkdir(DIR, 0700);
+
+	return put(APS_TMP, APS, sprintf('%J', list));
+}
+
+function new_id() {
+	let r = readfile(RANDOM, 8);
+
+	if (type(r) != 'string' || length(r) != 8)
+		return null;
+
+	let h = '';
+
+	for (let i = 0; i < 8; i++)
+		h += sprintf('%02x', ord(r, i));
+
+	return h;
+}
+
+function router_code() {
+	if (!access(DBCLIENT, 'x'))
+		return { error: 'no-dbclient' };
+
+	if (!stat(KEY)) {
+		mkdir(DIR, 0700);
+		system([ DROPBEARKEY, '-t', 'ed25519', '-f', KEY ], 30000);
+	}
+
+	let k = public_key(KEY);
+
+	return k ? { code: vaps.router_code(k, hostname('router')) } : { error: 'failed' };
+}
+
+function add_ap(args) {
+	let a = vaps.parse_ap(args.code);
+
+	if (!a || (args.addr != null && args.addr !== '' && !vaps.addr(args.addr)))
+		return { error: 'invalid' };
+
+	// this device's own reply: it would read itself
+	if (a.key === public_key(HOST_KEY))
+		return { error: 'self' };
+
+	if (!public_key(KEY))
+		return { error: 'no-key' };
+
+	let list = load_aps();
+
+	if (!list)
+		return { error: 'failed' };
+
+	for (let e in list)
+		if (e.key == a.key)
+			return { error: 'duplicate' };
+
+	if (length(list) >= vaps.MAX_APS)
+		return { error: 'full' };
+
+	let id = vaps.id(new_id());
+
+	for (let e in list)
+		if (e.id === id)
+			id = null;
+
+	if (!id)
+		return { error: 'failed' };
+
+	let entry = { id, name: a.name, key: a.key, addr: vaps.addr(args.addr) ?? a.addr, port: a.port, mac: a.mac };
+	// The network that address is on now, by name, when it is on one of
+	// this router's: the collector looks for the access point there once
+	// it has left the address, whatever subnet the network has by then.
+	// On none (behind another router), or netifd not answering: no name,
+	// and it is looked for by its address, as before there were names.
+	let net = vaps.net_of(entry.addr, connect(null, 3)?.call('network.interface', 'dump')?.interface);
+
+	if (net)
+		entry.net = net;
+
+	push(list, entry);
+
+	if (!save_aps(list))
+		return { error: 'failed' };
+
+	system([ COLLECTOR, 'enable' ], 10000);
+	system([ COLLECTOR, 'start' ], 10000);
+
+	return { id };
+}
+
+function remove_ap(args) {
+	let list = load_aps();
+
+	if (!list)
+		return { error: 'failed' };
+
+	let left = filter(list, (e) => e.id !== args.id);
+
+	if (length(left) == length(list))
+		return { error: 'unknown' };
+
+	if (!save_aps(left))
+		return { error: 'failed' };
+
+	if (!length(left)) {
+		system([ COLLECTOR, 'stop' ], 10000);
+		system([ COLLECTOR, 'disable' ], 10000);
+	}
+
+	return { ok: true };
+}
+
+/* ----------------------------------------------------- access point */
+
+// the dropbear binary's key option parser, looked for once per binary:
+// built without it, dropbear ignores a key's options and lets the key
+// log in as root with a shell, so pairing stays off
+let options_seen = null;
+
+function key_options() {
+	let s = stat(DROPBEAR), sig = s ? s.size + '/' + s.mtime : null;
+
+	if (!sig)
+		return false;
+
+	if (options_seen?.sig !== sig) {
+		let b = readfile(DROPBEAR, MAX_DROPBEAR);
+
+		options_seen = { sig, ok: type(b) == 'string' && index(b, 'no-port-forwarding') >= 0 && index(b, 'command="') >= 0 };
+	}
+
+	return options_seen.ok;
+}
+
+// Dropbear as configured, its first section that is not switched off:
+// { port, plain }. plain: root may log in with a key that keeps its own
+// command and the host key is dropbear's own; without that (RootLogin
+// off, a ForceCommand for everyone, host keys from a keyfile list) no
+// router could fetch a report, so none is let in.
+function dropbear_conf() {
+	let uci = cursor(), found = null;
+
+	if (uci.load('dropbear'))
+		uci.foreach('dropbear', 'dropbear', (s) => {
+			if (found || index(OFF, s.enable) >= 0)
+				return;
+
+			found = {
+				port: vaps.port((type(s.Port) == 'string') ? split(trim(s.Port), RE_BLANK)[0] : null) ?? 22,
+				plain: index(OFF, s.RootLogin) < 0 && s.ForceCommand == null && s.keyfile == null
+			};
+		});
+
+	return found ?? { port: 22, plain: true };
+}
+
+// this device on its LAN: { addr, mac }, the address a router is told to
+// use and the MAC it finds this device by when that address changes;
+// null without either
+function lan(ubus) {
+	let st = (ubus ?? connect(null, 3))?.call('network.interface.lan', 'status');
+	let a = (type(st?.['ipv4-address']) == 'array' && type(st['ipv4-address'][0]) == 'object') ? vaps.addr(st['ipv4-address'][0].address) : null;
+	let dev = (type(st?.l3_device) == 'string' && match(st.l3_device, RE_NETDEV)) ? st.l3_device : null;
+	let m = dev ? match(lc(trim(readfile(NET + '/' + dev + '/address', 64) ?? '')), RE_MAC) : null;
+
+	return (a && m) ? { addr: a, mac: m[0] } : null;
+}
+
+// authorized_keys -> { lines, ours: [ { key, name, at } ] }, ours being
+// the lines vantage.aps parse_auth_line knows; null when the file is
+// there and cannot be read whole (MAX_AUTH bytes)
+function read_auth() {
+	let text = whole(AUTH, MAX_AUTH);
+
+	if (text == null)
+		return null;
+
+	let lines = (text == '') ? [] : split(text, '\n'), ours = [];
+
+	if (length(lines) && lines[length(lines) - 1] == '')
+		pop(lines);
+
+	for (let i = 0; i < length(lines); i++) {
+		let o = vaps.parse_auth_line(lines[i]);
+
+		if (o)
+			push(ours, { key: o.key, name: o.name, at: i });
+	}
+
+	return { lines, ours };
+}
+
+function ssh_state() {
+	if (!access(DROPBEAR, 'x'))
+		return 'no-dropbear';
+
+	if (!key_options())
+		return 'no-key-options';
+
+	if (!dropbear_conf().plain)
+		return 'unsupported';
+
+	if (!public_key(HOST_KEY))
+		return 'no-host-key';
+
+	let ubus = connect(null, 3);
+	let svc = ubus?.call('service', 'list', { name: 'dropbear' })?.dropbear?.instances, running = false;
+
+	for (let n, i in ((type(svc) == 'object') ? svc : {}))
+		if (type(i) == 'object' && i.running === true)
+			running = true;
+
+	if (!running)
+		return 'not-running';
+
+	if (!read_auth())
+		return 'keys-unreadable';
+
+	return lan(ubus) ? 'ok' : 'no-address';
+}
+
+// never longer than read_auth() reads: past that this page could neither
+// list nor revoke what it wrote
+function write_auth(lines) {
+	let text = length(lines) ? join('\n', lines) + '\n' : '';
+
+	return length(text) <= MAX_AUTH && put(AUTH_TMP, AUTH, text);
+}
+
+function reply(ubus) {
+	let k = public_key(HOST_KEY), l = lan(ubus);
+
+	return (k && l) ? vaps.ap_code(k, l.addr, dropbear_conf().port, l.mac, hostname('access-point')) : null;
+}
+
+function allow_router(args) {
+	let r = vaps.parse_router(args.code);
+
+	if (!r)
+		return { error: 'invalid' };
+
+	let ssh = ssh_state();
+
+	if (ssh != 'ok')
+		return { error: ssh };
+
+	let auth = read_auth();
+
+	if (!auth)
+		return { error: 'failed' };
+
+	for (let o in auth.ours)
+		if (o.key == r.key)
+			return { reply: reply() };
+
+	// the key on a line of the administrator's own: not ours to restrict
+	for (let l in auth.lines)
+		if (index(l, r.key) >= 0)
+			return { error: 'duplicate' };
+
+	if (length(auth.ours) >= vaps.MAX_ROUTERS)
+		return { error: 'full' };
+
+	// the answer first: with the line written there is no failing left
+	let answer = reply();
+
+	if (!answer)
+		return { error: 'failed' };
+
+	push(auth.lines, vaps.auth_line(r.key, r.name));
+
+	if (!write_auth(auth.lines))
+		return { error: 'failed' };
+
+	return { reply: answer };
+}
+
+function revoke_router(args) {
+	let k = vaps.key(args.key), auth = k ? read_auth() : null;
+
+	if (!auth)
+		return { error: k ? 'failed' : 'unknown' };
+
+	let drop = {};
+
+	for (let o in auth.ours)
+		if (o.key == k)
+			drop[o.at] = true;
+
+	if (!length(keys(drop)))
+		return { error: 'unknown' };
+
+	let left = [];
+
+	for (let i = 0; i < length(auth.lines); i++)
+		if (!drop[i])
+			push(left, auth.lines[i]);
+
+	return write_auth(left) ? { ok: true } : { error: 'failed' };
+}
+
+/* ------------------------------------------------------------ status */
+
+function status() {
+	let k = access(DBCLIENT, 'x') ? public_key(KEY) : null, ssh = ssh_state(), auth = read_auth(), list = load_aps();
+	let routers = map(auth?.ours ?? [], (o) => ({ name: o.name, key: o.key }));
+
+	// unread: the file behind a list is there and could not be read, so
+	// the empty list says nothing (whatever else is wrong with SSH)
+	return {
+		router: {
+			code: k ? vaps.router_code(k, hostname('router')) : null,
+			aps: map(list ?? [], (e) => ({ id: e.id, name: e.name, addr: e.addr, port: e.port, ...(e.net ? { net: e.net } : {}) })),
+			unread: !list
+		},
+		ap: { ssh, routers, unread: !auth, reply: (ssh == 'ok' && length(routers)) ? reply() : null }
+	};
+}
+
+/* ----------------------------------------------------------- methods */
+
+const methods = {
+	status: {
+		call: function() {
+			return status();
+		}
+	},
+
+	router_code: {
+		call: function() {
+			return router_code();
+		}
+	},
+
+	add_ap: {
+		args: { code: 'code', addr: 'addr' },
+		call: function(req) {
+			return add_ap(req.args);
+		}
+	},
+
+	remove_ap: {
+		args: { id: 'id' },
+		call: function(req) {
+			return remove_ap(req.args);
+		}
+	},
+
+	allow_router: {
+		args: { code: 'code' },
+		call: function(req) {
+			return allow_router(req.args);
+		}
+	},
+
+	revoke_router: {
+		args: { key: 'key' },
+		call: function(req) {
+			return revoke_router(req.args);
+		}
+	}
+};
+
+return { 'luci.vantage.pair': methods };

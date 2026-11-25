@@ -1,0 +1,615 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-vantage-aps\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:135
+msgid "%d days ago"
+msgstr "vor %d Tagen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:134
+msgid "%d h ago"
+msgstr "vor %d h"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:133
+msgid "%d min ago"
+msgstr "vor %d min"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:184
+msgid "%d routers can already read this access point. Revoke one first."
+msgstr ""
+"%d Router können diesen Zugangspunkt bereits auslesen. Widerrufen Sie zuerst "
+"den Zugriff eines Routers."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:132
+msgid "%d s ago"
+msgstr "vor %d s"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:689
+msgid ""
+"%s will no longer be able to read this access point, from its next fetch on."
+msgstr ""
+"%s kann diesen Zugangspunkt ab seinem nächsten Abruf nicht mehr auslesen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:490
+msgid ""
+"%s will no longer show on this dashboard. Its access point keeps this "
+"router's key until you revoke it there."
+msgstr ""
+"%s wird auf diesem Dashboard nicht mehr angezeigt. Der zugehörige "
+"Zugangspunkt behält den Schlüssel dieses Routers, bis Sie ihn dort "
+"widerrufen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:126
+msgid "%s, SSH port %d"
+msgstr "%s, SSH-Port %d"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:643
+msgid ""
+"A router you let in can fetch this device's report (its Wi-Fi networks, "
+"clients and wired hosts) over SSH, and nothing else."
+msgstr ""
+"Ein zugelassener Router kann über SSH den Bericht dieses Geräts abrufen "
+"(seine WLAN-Netzwerke, Clients und kabelgebundenen Geräte) und sonst nichts."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+msgid "Access point %s, SSH port %d."
+msgstr "Zugangspunkt %s, SSH-Port %d."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+msgid "Access point %s."
+msgstr "Zugangspunkt %s."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:350
+#: luci-app-vantage-aps/root/usr/share/luci/menu.d/luci-app-vantage-aps.json:3
+msgid "Access points"
+msgstr "Zugangspunkte"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:418
+msgid "Access points on this dashboard"
+msgstr "Zugangspunkte auf diesem Dashboard"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:539
+msgid "Add access point"
+msgstr "Zugangspunkt hinzufügen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:416
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:540
+msgid "Add an access point"
+msgstr "Zugangspunkt hinzufügen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:537
+msgid "Address of the access point"
+msgstr "Adresse des Zugangspunkts"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:424
+msgid ""
+"An access point's SSH must be on and reachable from this device; this page "
+"cannot pair one that is not."
+msgstr ""
+"Auf einem Zugangspunkt muss SSH eingeschaltet und von diesem Gerät aus "
+"erreichbar sein; einen Zugangspunkt, bei dem das nicht so ist, kann diese "
+"Seite nicht koppeln."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:522
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:555
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:709
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:547
+msgid "Check the address"
+msgstr "Adresse prüfen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:170
+msgid ""
+"Check the reply and the address: the address must be an IPv4 or IPv6 "
+"address, without a port."
+msgstr ""
+"Prüfen Sie die Antwort und die Adresse: Die Adresse muss eine IPv4- oder "
+"IPv6-Adresse ohne Port sein."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+msgid "Copied"
+msgstr "Kopiert"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:391
+msgid "Copy"
+msgstr "Kopieren"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:705
+msgid "Copy this access point's reply"
+msgstr "Antwort dieses Zugangspunkts kopieren"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:542
+msgid "Copy this router's code"
+msgstr "Code dieses Routers kopieren"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:326
+msgid ""
+"Could not read the pairing state. Reload the page; if that does not help, "
+"reinstall luci-app-vantage-aps."
+msgstr ""
+"Der Kopplungsstatus konnte nicht gelesen werden. Laden Sie die Seite neu; "
+"falls das nicht hilft, installieren Sie luci-app-vantage-aps erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:711
+msgid "Done"
+msgstr "Fertig"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:158
+msgid ""
+"Dropbear has no Ed25519 host key yet, so pairing is off. Restarting Dropbear "
+"creates one."
+msgstr ""
+"Dropbear hat noch keinen Ed25519-Host-Schlüssel, daher ist die Kopplung "
+"deaktiviert. Ein Neustart von Dropbear erzeugt einen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:157
+msgid ""
+"Dropbear's settings on this device (root login off, a forced command or its "
+"own host key files) keep a router from reading it, so pairing is off."
+msgstr ""
+"Die Dropbear-Einstellungen auf diesem Gerät (Root-Anmeldung aus, ein "
+"erzwungener Befehl oder eigene Host-Schlüsseldateien) hindern einen Router "
+"daran, es auszulesen, daher ist die Kopplung deaktiviert."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:155
+msgid ""
+"Dropbear, the SSH server routers read this device through, is not installed, "
+"so pairing is off."
+msgstr ""
+"Dropbear, der SSH-Server, über den Router dieses Gerät auslesen, ist nicht "
+"installiert, daher ist die Kopplung deaktiviert."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:159
+msgid ""
+"Dropbear, the SSH server, is not running, so pairing is off. Start it under "
+"System → Startup."
+msgstr ""
+"Dropbear, der SSH-Server, läuft nicht, daher ist die Kopplung deaktiviert. "
+"Starten Sie ihn unter „System → Systemstart“."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:639
+msgid ""
+"For a router you already let in: paste it there, under Add an access point."
+msgstr ""
+"Für einen bereits zugelassenen Router: Fügen Sie sie dort unter "
+"„Zugangspunkt hinzufügen“ ein."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:571
+msgid "Getting this router's code…"
+msgstr "Code dieses Routers wird abgerufen…"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:141
+msgid ""
+"It answered with another SSH host key than the one paired. If it was reset "
+"or reinstalled, remove it and pair it again."
+msgstr ""
+"Er hat mit einem anderen SSH-Host-Schlüssel geantwortet als dem gekoppelten. "
+"Falls er zurückgesetzt oder neu installiert wurde, entfernen Sie ihn und "
+"koppeln Sie ihn erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:148
+msgid "It could not be read."
+msgstr "Er konnte nicht ausgelesen werden."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:144
+msgid "It did not answer in time."
+msgstr "Er hat nicht rechtzeitig geantwortet."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:142
+msgid ""
+"It refused this router's key: it was probably revoked there. Pair it again "
+"to read it."
+msgstr ""
+"Er hat den Schlüssel dieses Routers abgelehnt: Vermutlich wurde der "
+"Schlüssel dort widerrufen. Koppeln Sie den Zugangspunkt erneut, um ihn "
+"auszulesen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:145
+msgid "It sent a report this router cannot read. Update Vantage on it."
+msgstr ""
+"Er hat einen Bericht gesendet, den dieser Router nicht lesen kann. "
+"Aktualisieren Sie Vantage auf dem Zugangspunkt."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:681
+msgid "Its SSH key"
+msgstr "Sein SSH-Schlüssel"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:634
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:712
+msgid "Let a router read this access point"
+msgstr "Einem Router das Auslesen erlauben"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:702
+msgid "Let the router read"
+msgstr "Auslesen erlauben"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:445
+msgid "No access points yet. Add one to see its clients on this dashboard."
+msgstr ""
+"Noch keine Zugangspunkte. Fügen Sie einen hinzu, um dessen Clients auf "
+"diesem Dashboard zu sehen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:253
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:262
+msgid "No live state"
+msgstr "Kein Live-Status"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+msgid "No router can read this access point."
+msgstr "Kein Router kann diesen Zugangspunkt auslesen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+msgid "Not known while this device's SSH keys cannot be read."
+msgstr ""
+"Unbekannt, solange die SSH-Schlüssel dieses Geräts nicht gelesen werden "
+"können."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:444
+msgid ""
+"Not known while this router's list of access points (/etc/vantage/aps.json) "
+"cannot be read."
+msgstr ""
+"Unbekannt, solange die Zugangspunktliste dieses Routers (/etc/vantage/"
+"aps.json) nicht gelesen werden kann."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:260
+msgid "Not reporting"
+msgstr "Berichtet nicht"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+msgid "Offline"
+msgstr "Offline"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+msgid "Offline, last report %s"
+msgstr "Offline, letzter Bericht %s"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:544
+msgid ""
+"On the access point, open Network → Access points and paste it under “Let a "
+"router read this access point”."
+msgstr ""
+"Öffnen Sie auf dem Zugangspunkt „Netzwerk → Zugangspunkte“ und fügen Sie ihn "
+"unter „Einem Router das Auslesen erlauben“ ein."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:351
+msgid ""
+"Pair access points with a router so its dashboard shows their Wi-Fi and "
+"wired clients. Both need Vantage; nothing is shared until a code is pasted "
+"on each."
+msgstr ""
+"Koppeln Sie Zugangspunkte mit einem Router, damit dessen Dashboard ihre WLAN-"
+"Clients und kabelgebundenen Clients anzeigt. Beide benötigen Vantage; nichts "
+"wird geteilt, bevor auf beiden je ein Code eingefügt wurde."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:415
+msgid "Paired access points"
+msgstr "Gekoppelte Zugangspunkte"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:706
+msgid "Paste it on the router, in the form that showed its code."
+msgstr ""
+"Fügen Sie sie auf dem Router in das Formular ein, das dessen Code angezeigt "
+"hat."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:546
+msgid "Paste the access point's reply"
+msgstr "Antwort des Zugangspunkts einfügen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:713
+msgid "Paste the router's code"
+msgstr "Code des Routers einfügen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:475
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:491
+msgid "Remove"
+msgstr "Entfernen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:474
+msgid "Remove %s"
+msgstr "%s entfernen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:489
+msgid "Remove access point"
+msgstr "Zugangspunkt entfernen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+msgid "Reporting"
+msgstr "Berichtet"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+msgid "Reporting, %s"
+msgstr "Berichtet, %s"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:677
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:690
+msgid "Revoke"
+msgstr "Widerrufen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:676
+msgid "Revoke %s"
+msgstr "Zugriff von %s widerrufen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:688
+msgid "Revoke router"
+msgstr "Zugriff des Routers widerrufen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:745
+msgid "Router %s."
+msgstr "Router %s."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:633
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:642
+msgid "Routers that can read this access point"
+msgstr "Router, die diesen Zugangspunkt auslesen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:163
+msgid "SSH on this device is not ready for pairing."
+msgstr "SSH ist auf diesem Gerät nicht für die Kopplung bereit."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+msgid "Select and copy it"
+msgstr "Text markieren und kopieren"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:638
+msgid "Show this access point's reply again"
+msgstr "Antwort dieses Zugangspunkts erneut anzeigen"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:183
+msgid ""
+"That is not a router's code. Copy the whole line from the router, starting "
+"with vantage-router."
+msgstr ""
+"Das ist nicht der Code eines Routers. Kopieren Sie die ganze Zeile vom "
+"Router, beginnend mit vantage-router."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:171
+msgid ""
+"That is not an access point's reply. Copy the whole line from the access "
+"point, starting with vantage-ap."
+msgstr ""
+"Das ist nicht die Antwort eines Zugangspunkts. Kopieren Sie die ganze Zeile "
+"vom Zugangspunkt, beginnend mit vantage-ap."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:172
+msgid ""
+"That is this device's own reply. Paste the reply of the access point you "
+"want to add."
+msgstr ""
+"Das ist die eigene Antwort dieses Geräts. Fügen Sie die Antwort des "
+"Zugangspunkts ein, den Sie hinzufügen möchten."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:177
+msgid "The access point could not be added."
+msgstr "Der Zugangspunkt konnte nicht hinzugefügt werden."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:534
+msgid "The access point's reply"
+msgstr "Antwort des Zugangspunkts"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:199
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:206
+msgid "The device did not do it. Reload the page and try again."
+msgstr ""
+"Das Gerät hat das nicht ausgeführt. Laden Sie die Seite neu und versuchen "
+"Sie es erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:472
+msgid ""
+"The network it was paired on: this router looks for it there when its "
+"address changes"
+msgstr ""
+"Das Netzwerk, in dem er gekoppelt wurde: Dort sucht dieser Router nach ihm, "
+"wenn sich seine Adresse ändert"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:211
+msgid "The request failed: %s"
+msgstr "Die Anfrage ist fehlgeschlagen: %s"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:187
+msgid "The router could not be let in."
+msgstr "Der Router konnte nicht zugelassen werden."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:700
+msgid ""
+"The router shows it under Network → Access points → Add an access point."
+msgstr ""
+"Der Router zeigt ihn unter „Netzwerk → Zugangspunkte → Zugangspunkt "
+"hinzufügen“ an."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:698
+msgid "The router's code"
+msgstr "Code des Routers"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:173
+msgid "This access point is already on this dashboard."
+msgstr "Dieser Zugangspunkt ist bereits auf diesem Dashboard."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:636
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:703
+msgid "This access point's reply"
+msgstr "Antwort dieses Zugangspunkts"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:174
+msgid "This dashboard already reads %d access points. Remove one first."
+msgstr ""
+"Dieses Dashboard liest bereits %d Zugangspunkte aus. Entfernen Sie zuerst "
+"einen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:198
+msgid "This device could not make its SSH key. Try again."
+msgstr ""
+"Dieses Gerät konnte seinen SSH-Schlüssel nicht erzeugen. Versuchen Sie es "
+"erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:176
+msgid "This device could not save the access point. Try again."
+msgstr ""
+"Dieses Gerät konnte den Zugangspunkt nicht speichern. Versuchen Sie es "
+"erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:205
+msgid "This device could not save the change. Try again."
+msgstr ""
+"Dieses Gerät konnte die Änderung nicht speichern. Versuchen Sie es erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:186
+msgid "This device could not update its SSH keys. Try again."
+msgstr ""
+"Dieses Gerät konnte seine SSH-Schlüssel nicht aktualisieren. Versuchen Sie "
+"es erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:161
+msgid ""
+"This device has no IPv4 address on its lan interface for a router to reach "
+"it at, so pairing is off."
+msgstr ""
+"Dieses Gerät hat an seiner Schnittstelle lan keine IPv4-Adresse, unter der "
+"ein Router es erreichen kann, daher ist die Kopplung deaktiviert."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:192
+msgid ""
+"This device has no SSH client (dbclient), so it cannot read access points."
+msgstr ""
+"Dieses Gerät hat keinen SSH-Client (dbclient) und kann daher keine "
+"Zugangspunkte auslesen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:419
+msgid ""
+"This device reads each access point over SSH and shows it on its dashboard."
+msgstr ""
+"Dieses Gerät liest jeden Zugangspunkt über SSH aus und zeigt ihn auf seinem "
+"Dashboard an."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:156
+msgid ""
+"This device's Dropbear ignores key restrictions; letting a router in would "
+"give it full access, so pairing is off."
+msgstr ""
+"Dropbear auf diesem Gerät ignoriert Schlüsselbeschränkungen; einen Router "
+"zuzulassen würde diesem vollen Zugriff geben, daher ist die Kopplung "
+"deaktiviert."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:160
+msgid ""
+"This device's SSH keys (/etc/dropbear/authorized_keys) cannot be read, or "
+"are larger than 256 KiB. Which routers can read this device is not known, so "
+"pairing is off."
+msgstr ""
+"Die SSH-Schlüssel dieses Geräts (/etc/dropbear/authorized_keys) können nicht "
+"gelesen werden oder sind größer als 256 KiB. Welche Router dieses Gerät "
+"auslesen können, ist nicht bekannt, daher ist die Kopplung deaktiviert."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:605
+msgid "This does not look like an access point's reply yet."
+msgstr "Das sieht noch nicht wie die Antwort eines Zugangspunkts aus."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:604
+msgid "This is a router's code: paste it on the access point instead."
+msgstr ""
+"Das ist der Code eines Routers: Fügen Sie ihn stattdessen auf dem "
+"Zugangspunkt ein."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:744
+msgid "This is an access point's reply: paste it on the router instead."
+msgstr ""
+"Das ist die Antwort eines Zugangspunkts: Fügen Sie sie stattdessen auf dem "
+"Router ein."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:143
+msgid ""
+"This router cannot connect to it. Check that it is on and that its SSH port "
+"is reachable from here."
+msgstr ""
+"Dieser Router kann keine Verbindung zu ihm herstellen. Prüfen Sie, ob er "
+"eingeschaltet ist und ob sein SSH-Port von hier aus erreichbar ist."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:175
+msgid ""
+"This router has no key yet. Close this form and open it again to make one."
+msgstr ""
+"Dieser Router hat noch keinen Schlüssel. Schließen Sie dieses Formular und "
+"öffnen Sie es erneut, um einen zu erzeugen."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:531
+msgid "This router's code"
+msgstr "Code dieses Routers"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:185
+msgid ""
+"This router's key is already in this device's SSH keys, added by hand. "
+"Remove it under System → Administration → SSH-Keys first."
+msgstr ""
+"Der Schlüssel dieses Routers befindet sich bereits unter den SSH-Schlüsseln "
+"dieses Geräts; er wurde von Hand hinzugefügt. Entfernen Sie ihn zuerst unter "
+"„System → Administration → SSH-Schlüssel“."
+
+#: luci-app-vantage-aps/root/usr/share/rpcd/acl.d/luci-app-vantage-aps.json:11
+msgid ""
+"Vantage access points: pair this device with others over SSH "
+"(luci.vantage.pair). As a router: creates this device's own SSH key for "
+"reading access points, keeps the paired ones in /etc/vantage and starts the "
+"collector service. As an access point: adds or removes a router's key in /"
+"etc/dropbear/authorized_keys, limited to the read-only report command. "
+"Whoever holds this group can let a router read this device: give it to "
+"administrators only"
+msgstr ""
+"Vantage-Zugangspunkte: dieses Gerät über SSH mit anderen koppeln "
+"(luci.vantage.pair). Als Router: erzeugt den eigenen SSH-Schlüssel dieses "
+"Geräts zum Auslesen von Zugangspunkten, speichert die gekoppelten in /etc/"
+"vantage und startet den Collector-Dienst. Als Zugangspunkt: fügt den "
+"Schlüssel eines Routers in /etc/dropbear/authorized_keys hinzu oder entfernt "
+"ihn, beschränkt auf den nur lesenden Berichtsbefehl. Wer diese Gruppe hat, "
+"kann einem Router erlauben, dieses Gerät auszulesen: nur an Administratoren "
+"vergeben"
+
+#: luci-app-vantage-aps/root/usr/share/rpcd/acl.d/luci-app-vantage-aps.json:3
+msgid ""
+"Vantage dashboard: the access points this router is paired with "
+"(vantage.collector report: their SSIDs, stations and wired hosts). Whoever "
+"holds this group sees the clients of those access points, and each call "
+"makes the router's collector log in to them over SSH for their read-only "
+"report. Not part of the dashboard's own group: grant it with luci-app-"
+"vantage to a login that may see the access points too"
+msgstr ""
+"Vantage-Dashboard: die Zugangspunkte, mit denen dieser Router gekoppelt ist "
+"(vantage.collector report: deren SSIDs, WLAN-Stationen und kabelgebundene "
+"Geräte). Wer diese Gruppe hat, sieht die Clients dieser Zugangspunkte, und "
+"bei jedem Aufruf meldet sich der Collector des Routers über SSH bei ihnen "
+"an, um ihren Bericht nur lesend abzurufen. Nicht Teil der eigenen Gruppe des "
+"Dashboards: zusammen mit luci-app-vantage einem Login gewähren, das auch die "
+"Zugangspunkte sehen darf"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:146
+msgid ""
+"Vantage's access point add-on is not installed on it. Install luci-app-"
+"vantage-aps there again."
+msgstr ""
+"Das Zugangspunkt-Add-on von Vantage ist dort nicht installiert. Installieren "
+"Sie luci-app-vantage-aps dort erneut."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:257
+msgid "Waiting for its first report"
+msgstr "Warten auf den ersten Bericht"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:549
+msgid ""
+"Where this router reaches it. Change it only if the access point's own "
+"address is not reachable from here."
+msgstr ""
+"Die Adresse, unter der dieser Router ihn erreicht. Ändern Sie sie nur, wenn "
+"die eigene Adresse des Zugangspunkts von hier aus nicht erreichbar ist."
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:473
+msgid "network %s"
+msgstr "Netzwerk %s"

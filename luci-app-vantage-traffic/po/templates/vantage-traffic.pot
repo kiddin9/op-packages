@@ -1,0 +1,6 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: luci-app-vantage-traffic/root/usr/share/rpcd/acl.d/luci-app-vantage-traffic.json:3
+msgid "Vantage dashboard: per-device traffic through this router, from its connection tracking (luci.vantage.traffic hosts: bytes from and to each MAC address, no remote addresses). Experimental. Not part of the dashboard's own group: grant it with luci-app-vantage to a login that may see per-device traffic too"
+msgstr ""

@@ -1,0 +1,115 @@
+/*
+ * Vantage access points (luci-app-vantage-aps): Network -> Access points
+ *
+ * Loaded after the dashboard's app.css (luci-app-vantage), whose tokens
+ * (--vt-*, each falling back from the theme's --v-*) and base classes
+ * (.vt-tile, .vt-btn, .vt-hint, ...) it uses. Scoped under .vt-app, classes
+ * .vt-pair-*.
+ */
+
+.vt-app .vt-pair-grid { display: grid; gap: var(--vt-sp-4); align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.vt-app .vt-pair-lead { margin: -6px 0 12px; }
+
+/* paired access points and allowed routers */
+.vt-app .vt-pair-rows { display: flex; flex-direction: column; }
+.vt-app .vt-pair-row {
+	display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px 12px;
+	padding: 10px 0;
+}
+.vt-app .vt-pair-row + .vt-pair-row { box-shadow: inset 0 1px 0 var(--vt-line); }
+.vt-app .vt-pair-rows > .vt-pair-row:first-child { padding-top: 2px; }
+.vt-app .vt-pair-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.vt-app .vt-pair-name { font-size: var(--vt-fs-md); font-weight: var(--vt-fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-app .vt-pair-sub { color: var(--vt-text-3); font-size: var(--vt-fs-sm); overflow-wrap: anywhere; }
+.vt-app .vt-pair-net, .vt-app .vt-pair-model { font-family: var(--vt-font); }
+/* a row's button keeps to its own column (the theme's button rules are reset by app.css) */
+.vt-app .vt-pair-act { grid-column: 3; grid-row: 1; }
+.vt-app .vt-pair-why { grid-column: 1 / -1; margin: 4px 0 0; color: var(--vt-text-2); font-size: var(--vt-fs-sm); }
+
+/* an access point's live state: a dot and a few words, the error's
+   reason on its own line under the row */
+.vt-app .vt-pair-state {
+	--vt-sc: var(--vt-text-3);
+	display: inline-flex; align-items: center; gap: 6px; justify-self: end;
+	color: var(--vt-text-2); font-size: var(--vt-fs-sm); white-space: nowrap;
+}
+.vt-app .vt-pair-state::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--vt-sc); }
+.vt-app .vt-pair-state.is-ok { --vt-sc: var(--vt-ok); }
+.vt-app .vt-pair-state.is-off { --vt-sc: var(--vt-warn); }
+.vt-app .vt-pair-state.is-err { --vt-sc: var(--vt-err); }
+/* waiting: an empty ring, nothing to report yet; no live state: no dot */
+.vt-app .vt-pair-state.is-wait::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--vt-text-3); }
+.vt-app .vt-pair-state.is-none { color: var(--vt-text-3); }
+.vt-app .vt-pair-state.is-none::before { display: none; }
+
+/* SSH not ready on this device; the page failing to load */
+.vt-app .vt-pair-notes:not(:empty) { margin-bottom: 10px; }
+.vt-app .vt-pair-note {
+	display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px;
+	border-radius: var(--vt-r-sm); background: var(--vt-info-soft); color: var(--vt-text);
+	font-size: var(--vt-fs-sm);
+}
+.vt-app .vt-pair-note.is-warn { background: var(--vt-warn-soft); }
+.vt-app .vt-pair-note > .vt-ico { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--vt-info); }
+.vt-app .vt-pair-note.is-warn > .vt-ico { color: var(--vt-warn); }
+
+.vt-app .vt-pair-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.vt-app .vt-pair-actions:empty, .vt-app .vt-pair-actions:has(> [hidden]:only-child) { display: none; }
+.vt-app .vt-pair-foot { margin: 12px 0 0; }
+
+/* the two pairing flows: numbered steps in a sunken panel */
+.vt-app .vt-pair-flow {
+	margin-top: 12px; padding: 14px;
+	border: 1px solid var(--vt-line); border-radius: var(--vt-r); background: var(--vt-surface-2);
+}
+.vt-app .vt-pair-flow .vt-pair-actions { margin-top: 14px; }
+.vt-app .vt-pair-steps { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.vt-app .vt-pair-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; margin: 0; padding: 0; }
+.vt-app .vt-pair-num {
+	display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-top: -1px;
+	border-radius: 50%; background: var(--vt-surface-3); color: var(--vt-text-2);
+	font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold);
+}
+.vt-app .vt-pair-step-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vt-app .vt-pair-label { color: var(--vt-text); font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-pair-step-body > .vt-hint, .vt-app .vt-pair-step-body > .vt-form-err { margin: 0; }
+.vt-app .vt-pair-flow > .vt-form-err { margin: 12px 0 0 32px; }
+
+/* fields: the app's look under any theme (Bootstrap sizes bare inputs
+   and textareas itself) */
+.vt-app .vt-pair-field {
+	display: block; width: 100%; max-width: none; height: var(--vt-ctl); min-height: 0; padding: 0 10px; margin: 0;
+	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl); background: var(--vt-surface);
+	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-base); line-height: 1.4; box-shadow: none;
+}
+/* a code is one long line: the field grows to show all of it where the
+   browser can size it to its content */
+.vt-app textarea.vt-pair-field { height: auto; min-height: calc(var(--vt-ctl) * 2); padding: 7px 10px; resize: vertical; field-sizing: content; }
+.vt-app .vt-pair-field:focus { outline: none; border-color: var(--vt-focus); box-shadow: var(--vt-focus-ring); }
+.vt-app .vt-pair-field::placeholder { color: var(--vt-text-3); opacity: 1; }
+/* codes: the whole line visible, broken anywhere */
+.vt-app .vt-pair-code { font-family: var(--vt-mono); font-size: var(--vt-fs-sm); word-break: break-all; }
+.vt-app .vt-pair-code[readonly] { background: var(--vt-surface-3); color: var(--vt-text); cursor: text; }
+.vt-app .vt-pair-copy { display: flex; flex-direction: column; gap: 6px; }
+.vt-app .vt-pair-copy-row { display: flex; align-items: center; gap: 10px; min-height: var(--vt-ctl); }
+
+/* the reply again, for a router let in earlier */
+.vt-app .vt-pair-again { margin-top: 12px; }
+.vt-app .vt-pair-again > summary { cursor: pointer; padding: 4px 0; color: var(--vt-text-2); font-size: var(--vt-fs-sm); }
+.vt-app .vt-pair-again > .vt-hint { margin: 2px 0 8px; }
+
+@container vt (max-width: 699px) {
+	/* phones: the state under the name, the button beside both */
+	.vt-app .vt-pair-row { grid-template-columns: minmax(0, 1fr) auto; }
+	.vt-app .vt-pair-state { grid-column: 1; grid-row: 2; justify-self: start; white-space: normal; }
+	.vt-app .vt-pair-act { grid-column: 2; grid-row: 1 / span 2; }
+	.vt-app .vt-pair-flow { padding: 12px; }
+	.vt-app .vt-pair-flow > .vt-form-err { margin-left: 0; }
+	/* without content sizing: room for a whole code at phone width */
+	.vt-app textarea.vt-pair-code { min-height: calc(var(--vt-ctl) * 4); }
+}
+
+/* touch: 16px text in fields (iOS zooms into anything smaller) */
+@media (pointer: coarse) {
+	.vt-app .vt-pair-field, .vt-app .vt-pair-code { font-size: 16px; }
+}

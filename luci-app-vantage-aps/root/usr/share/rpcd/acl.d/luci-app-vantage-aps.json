@@ -1,0 +1,24 @@
+{
+	"luci-app-vantage-aps-view": {
+		"description": "Vantage dashboard: the access points this router is paired with (vantage.collector report: their SSIDs, stations and wired hosts). Whoever holds this group sees the clients of those access points, and each call makes the router's collector log in to them over SSH for their read-only report. Not part of the dashboard's own group: grant it with luci-app-vantage to a login that may see the access points too",
+		"read": {
+			"ubus": {
+				"vantage.collector": [ "report" ]
+			}
+		}
+	},
+	"luci-app-vantage-aps": {
+		"description": "Vantage access points: pair this device with others over SSH (luci.vantage.pair). As a router: creates this device's own SSH key for reading access points, keeps the paired ones in /etc/vantage and starts the collector service. As an access point: adds or removes a router's key in /etc/dropbear/authorized_keys, limited to the read-only report command. Whoever holds this group can let a router read this device: give it to administrators only",
+		"read": {
+			"ubus": {
+				"luci.vantage.pair": [ "status" ],
+				"vantage.collector": [ "report" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.vantage.pair": [ "add_ap", "allow_router", "remove_ap", "revoke_router", "router_code" ]
+			}
+		}
+	}
+}

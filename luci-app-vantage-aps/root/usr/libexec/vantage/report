@@ -1,0 +1,353 @@
+#!/usr/bin/ucode -S
+// luci-app-vantage-aps: what this access point tells a paired router.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Dropbear runs this for a router's key whatever the router asks for:
+// luci.vantage.pair writes the key to /etc/dropbear/authorized_keys with
+// command="/usr/libexec/vantage/report" and no pty or forwarding. It
+// reads this device's state, prints one JSON object and exits. It takes
+// no input (arguments, standard input and SSH_ORIGINAL_COMMAND are ignored) and
+// changes nothing, one run at a time; SSH_CLIENT, which dropbear sets from the connection
+// itself, only tells which port leads to the router, and SSH_PUBKEYINFO,
+// which dropbear sets from the key line that let the caller in, whether
+// that line is still there.
+//
+//   { v: 1, name, model, uptime, mac, macs: [ mac ],
+//     ssids:    [ { ifname, bssid, ssid, freq, channel } ],
+//     stations: [ { mac, ifname, signal, rx_rate, tx_rate, rx_bytes, tx_bytes, connected } ],
+//     ports:    { <port>: { speed, rx_bytes, tx_bytes, hosts[, hw_rx_bytes, hw_tx_bytes] } },
+//     wired:    [ { mac, port } ] }
+//
+// Stations come from rpcd's iwinfo, as the dashboard reads its own
+// (rates in kbit/s, rx from the station); those on an interface hostapd
+// made for one of a network's VLANs (a password or RADIUS gives a station
+// its VLAN) are that network's (#164). macs are this device's own
+// addresses, mac among them: the bridge of each other network has one of
+// its own, which the router would list as one more wired host (#167).
+// Wired hosts come from luci.vantage wired, minus the hosts on the ports
+// towards the gateway or the router (the uplinks), on Wi-Fi ports and
+// this device's own addresses; none when no uplink is found, so the whole
+// LAN is never passed off as this device's. A port's rx_bytes and tx_bytes are the
+// kernel's; on a DSA switch, where the kernel counts only what passes the
+// CPU, hw_rx_bytes and hw_tx_bytes are the switch chip's own as the
+// dashboard's luci.vantage.ports reads them (#156), where it has them.
+// The router checks all of it again.
+
+'use strict';
+
+import { connect } from 'ubus';
+import { access, lsdir, open, readfile } from 'fs';
+import * as vaps from 'vantage.aps';
+
+const SELF = '/usr/libexec/vantage/report';
+const AUTH = '/etc/dropbear/authorized_keys';
+const MAX_AUTH = 262144;          // bytes of authorized_keys read, as luci.vantage.pair reads it
+const NET = '/sys/class/net';
+const ARP = '/proc/net/arp';
+const HOSTNAME = '/proc/sys/kernel/hostname';
+const MAX_SSIDS = 16;
+const MAX_STATIONS = 256;
+const MAX_VLANS = 32;             // a network's VLAN interfaces asked for their stations
+const MAX_OWN = 64;               // of this device's own addresses
+const MAX_WIRED = 128;
+const MAX_PORTS = 32;
+const MAX_ARP = 65536;            // bytes of the neighbour table read
+const MAX_BYTES = 0x7fffffffffffffff;
+const RE_MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
+const RE_NETDEV = /^[A-Za-z0-9_.-]{1,15}$/;
+const RE_IPV4 = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+const RE_COUNT = /^[0-9]{1,18}$/;
+const RE_SPACE = /\s+/;
+
+function norm_mac(v) {
+	v = (type(v) == 'string') ? lc(v) : null;
+
+	return (v && match(v, RE_MAC) && v != '00:00:00:00:00:00') ? v : null;
+}
+
+function netdev(v) {
+	return (type(v) == 'string' && match(v, RE_NETDEV)) ? v : null;
+}
+
+function int_in(v, lo, hi) {
+	return (type(v) == 'int' && v >= lo && v <= hi) ? v : null;
+}
+
+// a station's link as iwinfo saw its last frame: width, MCS,
+// streams and which standard (ht/vht/he/eht), short guard interval
+function phy(r) {
+	if (type(r) != 'object')
+		return null;
+
+	return {
+		mhz: int_in(r.mhz, 1, 640), mcs: int_in(r.mcs, 0, 31), nss: int_in(r.nss, 1, 16),
+		ht: r.ht === true, vht: r.vht === true, he: r.he === true, eht: r.eht === true,
+		sgi: r.short_gi === true
+	};
+}
+
+// at most max bytes, cut before a character the cut would split
+function text(v, max) {
+	if (type(v) != 'string')
+		return '';
+
+	if (length(v) <= max)
+		return v;
+
+	let n = max;
+
+	while (n > 0 && (ord(v, n) & 0xc0) == 0x80)
+		n--;
+
+	return substr(v, 0, n);
+}
+
+function sysfs(dev, file) {
+	let v = trim(readfile(NET + '/' + dev + '/' + file, 64) ?? '');
+
+	return match(v, RE_COUNT) ? +v : null;
+}
+
+function wireless(dev) {
+	return access(NET + '/' + dev + '/phy80211') || access(NET + '/' + dev + '/wireless');
+}
+
+// IPv4 neighbour -> MAC, complete entries only
+function neighbours() {
+	let out = {};
+
+	for (let line in split(readfile(ARP, MAX_ARP) ?? '', '\n')) {
+		let f = split(trim(line), RE_SPACE);
+		let m = (length(f) >= 6 && match(f[0], RE_IPV4) && (+f[2] & 2)) ? norm_mac(f[3]) : null;
+
+		if (m)
+			out[f[0]] = m;
+	}
+
+	return out;
+}
+
+// Revoked, and still connected: dropbear checks a key when a connection
+// logs in, not again for each session opened on it, so a router that
+// keeps one open would go on reading after its line is gone. Dropbear
+// names the line that let the caller in by its comment (SSH_PUBKEYINFO),
+// and says when a key line's command replaced what the caller asked for
+// (SSH_ORIGINAL_COMMAND, set then and only then). A caller let in that
+// way gets a report only while authorized_keys holds a line of the
+// add-on's with that comment: not once it is gone, and not for a line
+// Dropbear names no comment for (one with a tab or other characters it
+// does not pass on, or a Dropbear too old to say). A caller without a
+// forced command (the administrator's shell) is not the add-on's to
+// judge.
+let who = getenv('SSH_PUBKEYINFO');
+
+if (getenv('SSH_ORIGINAL_COMMAND') != null || (type(who) == 'string' && index(who, vaps.COMMENT) == 0)) {
+	let held = false;
+
+	for (let line in split(readfile(AUTH, MAX_AUTH) ?? '', '\n'))
+		if (type(who) == 'string' && vaps.parse_auth_line(line)?.comment === who)
+			held = true;
+
+	if (!held)
+		exit(1);
+}
+
+// One report at a time: a router's key may open many sessions at once,
+// and each would walk the bridges' tables. The lock is on this file
+// itself, read-only, so nothing is written; a second run waits a moment,
+// then gives up (the router reads that as no report and asks again).
+let self_file = open(SELF, 'r'), locked = !self_file;
+
+for (let i = 0; !locked && i < 4; i++) {
+	locked = (self_file.lock('xn') === true);
+
+	if (!locked)
+		sleep(250);
+}
+
+if (!locked)
+	exit(1);
+
+let ubus = connect(null, 3);
+
+// nothing printed: the router reads that as no report
+if (!ubus)
+	exit(1);
+
+let board = ubus.call('system', 'board'), info = ubus.call('system', 'info');
+
+// the access points and their stations; every Wi-Fi interface, of any
+// mode, is a Wi-Fi port for the wired hosts below
+let ssids = [], stations = [], radios = {}, vlans = [], asked = [], listed = {};
+let devs = ubus.call('iwinfo', 'devices')?.devices;
+
+for (let dev in ((type(devs) == 'array') ? devs : [])) {
+	dev = netdev(dev);
+
+	if (!dev)
+		continue;
+
+	radios[dev] = true;
+
+	if (length(ssids) >= MAX_SSIDS)
+		continue;
+
+	let i = ubus.call('iwinfo', 'info', { device: dev });
+
+	if (type(i) != 'object')
+		continue;
+
+	// an interface of a network's VLAN: its network is looked up below,
+	// once they are all known
+	if (i.mode == 'Master (VLAN)') {
+		if (length(vlans) < MAX_VLANS)
+			push(vlans, { dev, bssid: norm_mac(i.bssid) });
+
+		continue;
+	}
+
+	if (i.mode != 'Master')
+		continue;
+
+	push(ssids, { ifname: dev, bssid: norm_mac(i.bssid), ssid: text(i.ssid, 32),
+		freq: int_in(i.frequency, 1, 100000), channel: int_in(i.channel, 1, 255) });
+	push(asked, { dev, ifname: dev });
+}
+
+// hostapd gives a VLAN's interface its network's BSSID, and iwinfo lists
+// the stations on it under it alone: they are that network's
+for (let v in vlans) {
+	let of = filter(ssids, (s) => s.bssid != null && s.bssid == v.bssid);
+
+	if (length(of) == 1)
+		push(asked, { dev: v.dev, ifname: of[0].ifname });
+}
+
+// the stations iwinfo lists on each, a MAC once
+for (let q in asked) {
+	let dev = q.dev;
+	let a = ubus.call('iwinfo', 'assoclist', { device: dev })?.results;
+
+	for (let s in ((type(a) == 'array') ? a : [])) {
+		if (length(stations) >= MAX_STATIONS)
+			break;
+
+		let m = (type(s) == 'object') ? norm_mac(s.mac) : null;
+
+		if (!m || listed[m] || s.authorized === false)
+			continue;
+
+		listed[m] = true;
+		push(stations, {
+			mac: m, ifname: q.ifname,
+			signal: int_in(s.signal, -120, -1),
+			rx_rate: int_in(s.rx?.rate, 1, 100000000), tx_rate: int_in(s.tx?.rate, 1, 100000000),
+			rx_bytes: int_in(s.rx?.bytes, 0, MAX_BYTES), tx_bytes: int_in(s.tx?.bytes, 0, MAX_BYTES),
+			connected: int_in(s.connected_time, 0, 0x7fffffff),
+			rx_phy: phy(s.rx), tx_phy: phy(s.tx)
+		});
+	}
+}
+
+// this device's own addresses: never a wired host of its own
+let own = {};
+
+for (let d in (lsdir(NET) ?? [])) {
+	let m = netdev(d) ? norm_mac(trim(readfile(NET + '/' + d + '/address', 64) ?? '')) : null;
+
+	if (m)
+		own[m] = true;
+}
+
+// its LAN bridge (the router matches it against its own wired hosts)
+// and its default gateway
+let lan = null, gw = null, dump = ubus.call('network.interface', 'dump')?.interface;
+
+for (let i in ((type(dump) == 'array') ? dump : [])) {
+	if (type(i) != 'object')
+		continue;
+
+	if (i.interface == 'lan')
+		lan = netdev(i.l3_device);
+
+	for (let r in ((type(i.route) == 'array') ? i.route : []))
+		if (!gw && type(r) == 'object' && r.target == '0.0.0.0' && r.mask == 0 &&
+		    type(r.nexthop) == 'string' && match(r.nexthop, RE_IPV4) && r.nexthop != '0.0.0.0')
+			gw = r.nexthop;
+}
+
+let self = lan ? norm_mac(trim(readfile(NET + '/' + lan + '/address', 64) ?? '')) : null;
+
+// the uplinks: the ports the gateway and the router are heard on
+let client = split(getenv('SSH_CLIENT') ?? '', ' ')[0];
+let neigh = neighbours(), towards = {};
+
+for (let ip in [ gw, client ])
+	if (type(ip) == 'string' && neigh[ip])
+		towards[neigh[ip]] = true;
+
+let hosts = ubus.call('luci.vantage', 'wired')?.hosts, uplinks = {}, any = false;
+
+hosts = (type(hosts) == 'array') ? hosts : [];
+
+for (let h in hosts) {
+	let m = (type(h) == 'object') ? norm_mac(h.mac) : null, p = m ? netdev(h.port) : null;
+
+	if (p && towards[m]) {
+		uplinks[p] = true;
+		any = true;
+	}
+}
+
+let wired = [], ports = {}, nports = 0, seen = {};
+
+for (let h in (any ? hosts : [])) {
+	if (length(wired) >= MAX_WIRED)
+		break;
+
+	let m = (type(h) == 'object') ? norm_mac(h.mac) : null, p = m ? netdev(h.port) : null;
+
+	if (!p || seen[m] || own[m] || uplinks[p] || radios[p] || wireless(p))
+		continue;
+
+	if (!ports[p]) {
+		if (nports >= MAX_PORTS)
+			continue;
+
+		let speed = sysfs(p, 'speed');
+
+		ports[p] = { speed: (speed > 0 && speed <= 1000000) ? speed : null,
+			rx_bytes: sysfs(p, 'statistics/rx_bytes'), tx_bytes: sysfs(p, 'statistics/tx_bytes'), hosts: 0 };
+		nports++;
+	}
+
+	ports[p].hosts++;
+	seen[m] = true;
+	push(wired, { mac: m, port: p });
+}
+
+// The switch chip's counters for these ports: luci.vantage.ports runs
+// ethtool for them in a process of rpcd's; this report only asks, as it
+// asks luci.vantage wired. Beside the kernel's, under names of their own,
+// so that a router of an earlier version reads the kernel's as before and
+// a later one never takes a rate across the two.
+let hw = nports ? ubus.call('luci.vantage.ports', 'counters')?.ports : null;
+
+for (let p in keys(ports)) {
+	let c = (type(hw) == 'object' && type(hw[p]) == 'object') ? hw[p] : {};
+	let hr = int_in(c.rx_bytes, 0, MAX_BYTES), ht = int_in(c.tx_bytes, 0, MAX_BYTES);
+
+	if (hr != null && ht != null) {
+		ports[p].hw_rx_bytes = hr;
+		ports[p].hw_tx_bytes = ht;
+	}
+}
+
+print(sprintf('%J', {
+	v: 1,
+	name: text(trim(readfile(HOSTNAME, 256) ?? ''), 63),
+	model: text(board?.model, 64),
+	uptime: int_in(info?.uptime, 0, 0x7fffffff),
+	mac: self, macs: slice(sort(keys(own)), 0, MAX_OWN),
+	ssids, stations, ports, wired
+}), '\n');

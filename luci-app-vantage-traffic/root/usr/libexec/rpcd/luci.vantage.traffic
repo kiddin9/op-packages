@@ -1,0 +1,555 @@
+#!/usr/bin/ucode -S
+// luci-app-vantage-traffic: per-device traffic for the Vantage dashboard
+// (#110). Experimental.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// rpcd runs this file for the ubus object luci.vantage.traffic, as a
+// process of its own (an executable rpcd plugin): "list" when rpcd
+// starts, "call hosts" for each call, while rpcd goes on answering
+// everyone else; it kills a call after its own timeout (30 s as OpenWrt
+// sets it). Read group luci-app-vantage-traffic. One method, which takes
+// nothing (standard input is not read):
+//
+//   hosts   { v, at, took, every, slow, low, acct, entries, partial,
+//           offloaded, hw, zeroed, dropped, hosts: [ { mac, rx, tx } ] }
+//
+//     hosts      at most MAX_HOSTS, by MAC: the bytes this router received
+//                from each host (rx) and sent to it (tx), as its
+//                connection tracking counted them since this plugin began
+//                counting that host. They only grow, so every viewer takes
+//                its own rate from two answers, whoever else asks. A host
+//                nothing was counted for in IDLE_MS is dropped and counts
+//                from 0 when it comes back. Never a remote address, port
+//                or destination: a MAC and two numbers.
+//     at         when the read began, ms on the monotonic clock: the same
+//                in every answer until the next read
+//     took       ms that read took: the saved state, the neighbours, the
+//                table, the counting and saving the state again
+//     every      ms from at to the next read: WINDOW_MS, LOW_MS where the
+//                theme's Low-power router is on for every browser (low),
+//                or SLOW_FACTOR times took when that is longer (slow), so
+//                that reading takes about a tenth of one core at most;
+//                MAX_EVERY_MS at most. A call before then gets this
+//                answer again: all viewers share one read
+//     acct       true: accounting on; false: off (nf_conntrack_acct 0, or
+//                no entry carries byte counts), so nothing is counted and
+//                hosts is empty: this plugin never switches it on; null:
+//                no connection table to read
+//     entries    entries read
+//     partial    false, or why the read stopped before the table's end:
+//                'entries' (MAX_ENTRIES) or 'time' (STOP_MS): what came
+//                after went uncounted this time
+//     offloaded  entries the kernel offloads in software ([OFFLOAD]):
+//                fw4's flowtable keeps their counters running
+//     hw         entries offloaded to hardware ([HW_OFFLOAD]): their
+//                counters run only where the driver reports flow
+//                statistics, so their traffic may be missing
+//     zeroed     entries the last read saw whose counters went down
+//                since: another program resets them (nlbwmon does on
+//                every refresh); what passed before the reset is lost
+//                here. One the last read did not see that comes back
+//                smaller counts from 0 too, but not here: most likely a
+//                new connection with the old one's addresses and ports
+//     dropped    hosts not counted, past MAX_HOSTS
+//
+// {} instead when there is no answer to give: the state directory is not
+// what this plugin made, no read has finished yet and one is running, or
+// the read's state could not be written.
+//
+// Counted: what passes this router's connection tracking, routed or
+// addressed to it, both ways, for the hosts its neighbour tables give a
+// MAC (IPv4 and IPv6). Not counted: traffic a bridge or a switch passes
+// between hosts of one network, hosts behind another router, an IPv6
+// address the neighbour table does not hold, what an entry carried
+// between the last read and its end. A connection between two hosts of
+// this router's networks counts for both.
+//
+// Reads: /proc/net/nf_conntrack (TABLE) line by line, the accounting switch
+// (ACCT), the IPv4 and IPv6 neighbour tables (one read-only rtnl dump
+// each) and the theme's Low-power router option (uci
+// vantage_theme.appearance.power). Writes only its own state, in DIR
+// (/var/run: RAM, gone at reboot; the package's postrm removes it):
+//   lock         held while a read runs, so that one runs at a time (0600)
+//   state.json   { v, at, flows: { key: [ orig bytes, reply bytes, read
+//                at ] }, totals: { mac: [ rx, tx, counted at ] } }, at:
+//                when the read that wrote it began; about 100 bytes an
+//                entry, never more than MAX_STATE (one that is larger or
+//                not of this form is not used: the counting starts over)
+//   answer.json  the last answer, as printed, written only after the
+//                state it comes from
+// DIR is made 0700 and the files 0600, root's: no other account can read
+// which hosts are counted, let alone how much. Runs nothing.
+
+'use strict';
+
+import * as rtnl from 'rtnl';
+import { cursor } from 'uci';
+import { chmod, lstat, mkdir, open, readfile, rename, unlink, writefile } from 'fs';
+
+const TABLE = '/proc/net/nf_conntrack';
+const ACCT = '/proc/sys/net/netfilter/nf_conntrack_acct';
+const DIR = '/var/run/vantage-traffic';
+const THEME = 'vantage_theme';    // read only: is Low-power router on
+const MAX_ENTRIES = 16384;        // entries read a time (nf_conntrack_max: 2048 up, by RAM)
+const MAX_HOSTS = 512;            // hosts counted, as luci.vantage wired lists
+const MAX_NEIGH = 4096;           // neighbour entries taken, both families
+const MAX_KEY = 160;              // characters of an entry's key: 115 at most by the layout table (IPv6 gre), about 140 by parse_slow
+// The most state.json holds, as %J writes it: 2 x MAX_ENTRIES entries (those
+// a read saw, as many it did not), each a key of MAX_KEY characters at most,
+// three numbers of 20 at most (a 64-bit integer; a double, which ucode
+// prints to 14 digits) and 14 of quotes, brackets and separators; MAX_HOSTS
+// hosts, a MAC (17) and the same; the frame. What load_state takes is no
+// more than this, so what a read writes is read back
+const MAX_STATE = 2 * MAX_ENTRIES * (MAX_KEY + 74) + MAX_HOSTS * (17 + 74) + 128;
+const MAX_ANSWER = 131072;        // bytes of answer.json read: MAX_HOSTS hosts take about 40000
+const WINDOW_MS = 5000;           // one read serves every caller this long
+const LOW_MS = 30000;             // ... with Low-power router on
+const SLACK_MS = 500;             // asked this near the end, it reads anew: polls every 5 s jitter
+const SLOW_FACTOR = 10;           // the next read waits this many times as long as one took
+const MAX_EVERY_MS = 120000;
+const STOP_MS = 2000;             // the table is read no longer than this
+const CHECK_EVERY = 64;           // entries between looks at the clock
+const IDLE_MS = 600000;           // a host nothing was counted for this long goes
+const KEEP_MS = 150000;           // an entry a read did not see is known this long: longer than the 2-minute back-off
+const KEEP_BYTES = 65536;         // ... past the next read only from this many bytes, both ways (or after a partial read)
+const NUD_VALID = 0x9e;           // REACHABLE, STALE, DELAY, PROBE, PERMANENT
+
+// Patterns, compiled once (ucode compiles a literal each time it is reached)
+const RE_MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
+
+// The kernel's layout of a line by protocol: [ the timeout's field, the
+// first src= field's when there is no timeout, a tuple's fields + 1 ].
+// split(l, ' ') makes a field of each space: "%-8s %u %-8s %u " gives the
+// family, four empty ones, its number, the protocol's name (always field
+// 6), 8 - its length empty ones and its number, so the timeout is field
+// 16 - length. An offloaded entry has no timeout. Then tcp, sctp and dccp
+// print a state, gre two fields; a tuple is src, dst and two ports (icmp
+// and icmpv6: type, code and id; none without a tracker); then packets=
+// and bytes= with accounting on.
+const PROTO = {
+	tcp: [ 13, 14, 5 ], udp: [ 13, 13, 5 ], udplite: [ 9, 9, 5 ], sctp: [ 12, 13, 5 ], dccp: [ 12, 13, 5 ],
+	icmp: [ 12, 12, 6 ], icmpv6: [ 10, 10, 6 ], gre: [ 13, 15, 5 ], unknown: [ 9, 9, 3 ]
+};
+
+let flows = {};                   // entry key -> [ orig bytes, reply bytes, last read ]
+let totals = {}, ntotals = 0;     // mac -> [ rx, tx, counted at ]
+let before = null;                // when the read before this one began
+
+// ms on the monotonic clock
+function now_ms() {
+	let t = clock(true);
+	return t[0] * 1000 + int(t[1] / 1000000);
+}
+
+// The digits of a counter, 0 for anything else.
+function count(s) {
+	let n = (s == null) ? 0 : int(s);
+	return (n == n && n >= 0) ? n : 0;
+}
+
+// The value of key in s, up to the next space; null without one.
+function kv(s, key) {
+	let i = index(s, key);
+	if (i < 0)
+		return null;
+	s = substr(s, i + length(key));
+	i = index(s, ' ');
+	return (i < 0) ? s : substr(s, 0, i);
+}
+
+// "ipv4     2 tcp      6 7438 ESTABLISHED src=A dst=B sport=.. dport=..
+// packets=.. bytes=N src=B dst=C ... bytes=M [ASSURED] mark=0 use=2", by
+// the layout table, into e: [ key, the original direction's src field,
+// its bytes, the reply's src field, its bytes, the field after them
+// ('[ASSURED]', '[OFFLOAD]', '[HW_OFFLOAD]', 'mark=0' ...) ]. false where
+// the protocol is not in the table. The caller then checks that both src
+// fields are "src=" ones (once each distinct field, see feed), which
+// holds the layout to the line: a field missing or added (no counters, a
+// zone of one direction) puts another field there, and the line goes to
+// parse_slow. A line costs feed six builtin calls (the read, then here
+// split, slice, join and two substr) and one function call, this one;
+// before 1.2.0 it cost about 30 builtin calls (26 in parse_slow) and 8
+// function calls.
+function parse(l, e) {
+	let t = split(l, ' '), p = PROTO[t[6]];
+	if (!p)
+		return false;
+	let s = p[1] + ((+t[p[0]] >= 0) ? 1 : 0), a = p[2], r = s + a + 1;
+	if (t[r] == '[UNREPLIED]')
+		r++;
+	// the protocol's number, then the original tuple: what does not change
+	e[0] = t[p[0] - 1] + join('', slice(t, s, s + a - 1));
+	e[1] = t[s];
+	e[2] = +substr(t[s + a], 6);
+	e[3] = t[r];
+	e[4] = +substr(t[r + a], 6);
+	e[5] = t[r + a + 1];
+	return true;
+}
+
+// The same line by searching it: any layout, at about eight times the
+// calls. The second src= starts the reply.
+function parse_slow(l) {
+	if (type(l) != 'string')
+		return null;
+	let h = split(l, ' src=', 3), head = h[0], o = h[1], r = h[2] ?? '';
+	let fam = substr(head, 0, 4);
+	if ((fam != 'ipv4' && fam != 'ipv6') || length(head) < 22 || o == null)
+		return null;
+	// the head ends at the protocol's number on an offloaded entry without a state
+	let b = (fam == 'ipv4') ? 20 : 21, e = index(substr(head, b, 4) + ' ', ' ');
+	let sp = index(o, ' '), end = index(o, ' packets='), rs = index(r, ' ');
+	let ob = kv(o, ' bytes='), x = index(r, 'OFFLOAD]'), hw = x > 2 && substr(r, x - 3, 3) == 'HW_';
+	if (e <= 0 || sp <= 0)
+		return null;
+	if (end < 0)
+		end = index(o, ' [');
+	return {
+		key: substr(head, 0, b + e) + ' ' + ((end < 0) ? o : substr(o, 0, end)),
+		osrc: substr(o, 0, sp),
+		obytes: count(ob),
+		rsrc: (rs > 0) ? substr(r, 0, rs) : null,
+		rbytes: count(kv(r, ' bytes=')),
+		acct: ob != null,
+		off: x > 0 && !hw,
+		hw
+	};
+}
+
+// The kernel prints an IPv6 address in full ("2001:0db8:0000:..."), the
+// neighbour table in short: both by one spelling.
+function norm(a) {
+	if (index(a, ':') < 0)
+		return a;
+	let x = iptoarr(a);
+	return x ? arrtoip(x) : null;
+}
+
+// address -> MAC, from the IPv4 and IPv6 neighbour tables: entries that
+// name a unicast MAC and are not failed or incomplete
+function neighbours() {
+	let out = {}, n = 0;
+	for (let family in [ rtnl.const.AF_INET, rtnl.const.AF_INET6 ]) {
+		let dump = rtnl.request(rtnl.const.RTM_GETNEIGH, rtnl.const.NLM_F_DUMP, { family });
+		for (let e in ((type(dump) == 'array') ? dump : [])) {
+			if (++n > MAX_NEIGH)
+				return out;
+			let mac = (type(e?.lladdr) == 'string') ? lc(e.lladdr) : null;
+			if (type(e?.dst) == 'string' && mac && match(mac, RE_MAC) && !(hex(substr(mac, 0, 2)) & 1) &&
+			    mac != '00:00:00:00:00:00' && type(e.state) == 'int' && (e.state & NUD_VALID)) {
+				let a = norm(e.dst);
+				if (a)
+					out[a] = mac;
+			}
+		}
+	}
+	return out;
+}
+
+// Low-power router on for every browser (the theme's Appearance)
+function low_power() {
+	return cursor().get(THEME, 'appearance', 'power') == 'low';
+}
+
+// what the accounting switch says: true, false, or null when unread
+function acct_on() {
+	let v = readfile(ACCT, 8);
+	v = (type(v) == 'string') ? trim(v) : null;
+	return (v == '1') ? true : (v == '0') ? false : null;
+}
+
+// a host's totals begun: by traffic, so that a host dropped as idle does
+// not come straight back at 0 for an idle connection
+function add(mac, rx, tx, now, st) {
+	if (!rx && !tx)
+		return;
+	if (ntotals >= MAX_HOSTS) {
+		if (!st.over[mac]) {
+			st.over[mac] = true;
+			st.dropped++;
+		}
+		return;
+	}
+	totals[mac] = [ rx, tx, now ];
+	ntotals++;
+}
+
+// One read of the table: adds what every entry carried since the last
+// read to its hosts' totals. The entry known again by its key; a new one
+// counts whole; one whose counters went down counts from 0. Entries are
+// updated in place. Counts in locals: a field of st costs a lookup.
+function feed(f, neigh, now, stop, st) {
+	// "src=A" -> its host's MAC, '' (no host), false (no src field): once each
+	let memo = {}, e = [], n = 0, counted = 0, noacct = 0, off = 0, hw = 0, zeroed = 0, partial = false;
+	let who = (a) => {
+		let v = false;
+		if (substr(a, 0, 4) == 'src=') {
+			let x = norm(substr(a, 4));
+			v = (x != null && neigh[x]) ? neigh[x] : '';
+		}
+		return (memo[a] = v);
+	};
+
+	for (let l = f.read('line'); l; l = f.read('line')) {
+		if (n >= MAX_ENTRIES) {
+			partial = 'entries';
+			break;
+		}
+		if (n && !(n & (CHECK_EVERY - 1)) && now_ms() >= stop) {
+			partial = 'time';
+			break;
+		}
+		n++;
+		let lo = parse(l, e) ? (memo[e[1]] ?? who(e[1])) : false;
+		let lr = (lo !== false) ? (memo[e[3]] ?? who(e[3])) : false;
+		if (lr === false || !(e[2] >= 0 && e[4] >= 0)) {
+			// not the table's layout: search the line
+			let o = parse_slow(l);
+			if (!o)
+				continue;
+			if (!o.acct) {
+				noacct++;
+				continue;
+			}
+			e[0] = o.key;
+			e[2] = o.obytes;
+			e[4] = o.rbytes;
+			e[5] = o.hw ? '[HW_OFFLOAD]' : o.off ? '[OFFLOAD]' : '';
+			lo = memo['src=' + o.osrc] ?? who('src=' + o.osrc);
+			lr = (o.rsrc != null) ? (memo['src=' + o.rsrc] ?? who('src=' + o.rsrc)) : '';
+		}
+		counted++;
+		if (e[5] != '[ASSURED]') {
+			if (e[5] == '[OFFLOAD]')
+				off++;
+			else if (e[5] == '[HW_OFFLOAD]')
+				hw++;
+		}
+		let k = e[0], ob = e[2], rb = e[4], prev = flows[k], dob = ob, drb = rb;
+		if (prev) {
+			if (ob >= prev[0] && rb >= prev[1]) {
+				dob -= prev[0];
+				drb -= prev[1];
+			}
+			else if (prev[2] == before)
+				zeroed++;
+			prev[0] = ob;
+			prev[1] = rb;
+			prev[2] = now;
+		}
+		else if (length(k) <= MAX_KEY)
+			flows[k] = [ ob, rb, now ];
+		else
+			continue;    // not this table's: one it could not know again
+		// the host that opened it sent the original direction; one it was
+		// opened to (a port forward, another of this router's networks)
+		// sent the reply. As this router counts them: rx from, tx to
+		if (lo) {
+			let t = totals[lo];
+			if (!t)
+				add(lo, dob, drb, now, st);
+			else if (dob || drb) {
+				t[0] += dob;
+				t[1] += drb;
+				t[2] = now;
+			}
+		}
+		if (lr && lr != lo) {
+			let t = totals[lr];
+			if (!t)
+				add(lr, drb, dob, now, st);
+			else if (dob || drb) {
+				t[0] += drb;
+				t[1] += dob;
+				t[2] = now;
+			}
+		}
+	}
+
+	st.entries = n;
+	st.counted = counted;
+	st.noacct = noacct;
+	st.offloaded = off;
+	st.hw = hw;
+	st.zeroed = zeroed;
+	st.partial = partial;
+
+	// An entry the read did not see may have ended, or the read missed
+	// it: a read stops short, and the kernel lists the table by position,
+	// starting again at every read() of about a page, so each entry
+	// removed behind that place hides the next one. Kept, so that it does
+	// not count whole when a read sees it again: one the read before saw,
+	// whatever its size, however long ago (no read while nobody looks):
+	// that covers a single miss; then, seen less than KEEP_MS ago, one
+	// that carried KEEP_BYTES or more, or any after a partial read (those
+	// it did not reach are many, and mostly still there); MAX_ENTRIES at
+	// most, those the read before saw first (never more than that read
+	// saw: all of them). A smaller one missed by two whole reads running
+	// counts twice when one sees it again: by less than KEEP_BYTES, once.
+	// Lookups and short exchanges that ended stay one read, not KEEP_MS,
+	// on a router where connections come and go
+	let gone = [], recent = [], older = [], kept = 0;
+	for (let k, v in flows)
+		if (v[2] != now)
+			push((v[2] == before) ? recent : (!partial && v[0] + v[1] < KEEP_BYTES) ? gone : (now - v[2] < KEEP_MS) ? older : gone, k);
+	for (let k in [ ...recent, ...older ])
+		if (++kept > MAX_ENTRIES)
+			push(gone, k);
+	for (let k in gone)
+		delete flows[k];
+}
+
+/* -------------------------------------------------------------- state */
+
+// DIR as this plugin makes it: a directory, not a link, root's, no
+// access for group or others
+function dir_ok() {
+	let st = lstat(DIR);
+	if (!st) {
+		mkdir(DIR, 0700);
+		st = lstat(DIR);
+	}
+	return st?.type == 'directory' && st.uid === 0 && !(st.mode & 0077);
+}
+
+// text written whole beside the file, then put in its place: a call that
+// rpcd kills midway leaves the file before it, and a write that fails
+// (a full /tmp) leaves nothing beside it
+function put(name, text) {
+	let tmp = DIR + '/' + name + '.new', file = DIR + '/' + name;
+	if (writefile(tmp, text) == length(text) && chmod(tmp, 0600) && rename(tmp, file) === true)
+		return true;
+	unlink(tmp);
+	return false;
+}
+
+// an entry as this plugin writes it: two counts and a time, numbers not
+// below 0 (+x is x itself only for a number). Anything else and the file
+// is none of its own: a read would stop at it (indexing what is no array)
+// or count from it
+function entry_ok(v) {
+	if (type(v) != 'array' || length(v) != 3)
+		return false;
+	let a = v[0], b = v[1], c = v[2];
+	return a === +a && b === +b && c === +c && a >= 0 && b >= 0 && c >= 0;
+}
+
+// the state the last read left, all of it as this plugin writes it, or
+// none: the counting starts over
+function load_state() {
+	let text = readfile(DIR + '/state.json', MAX_STATE + 1), st = null;
+	if (type(text) == 'string' && length(text) <= MAX_STATE)
+		try { st = json(text); } catch (err) { st = null; }
+	let ok = type(st) == 'object' && st.v == 2 && type(st.flows) == 'object' && type(st.totals) == 'object' &&
+		(st.at == null || st.at === +st.at) && length(st.totals) <= MAX_HOSTS;
+	for (let k, v in (ok ? st.flows : {}))
+		if (length(k) > MAX_KEY || !entry_ok(v)) {
+			ok = false;
+			break;
+		}
+	for (let k, v in (ok ? st.totals : {}))
+		if (!match(k, RE_MAC) || !entry_ok(v)) {
+			ok = false;
+			break;
+		}
+	flows = ok ? st.flows : {};
+	totals = ok ? st.totals : {};
+	ntotals = length(totals);
+	before = ok ? st.at : null;
+}
+
+// the counters' state for the next read; false when it could not be written
+function save_state(now) {
+	return put('state.json', sprintf('%J', { v: 2, at: now, flows, totals }));
+}
+
+// the last answer and its text, or null
+function last_answer() {
+	let text = readfile(DIR + '/answer.json', MAX_ANSWER), a = null;
+	if (type(text) == 'string')
+		try { a = json(text); } catch (err) { a = null; }
+	return (type(a) == 'object' && type(a.at) == 'int' && type(a.every) == 'int') ? { a, text } : null;
+}
+
+// a read made less than its every ago, less SLACK_MS
+function fresh(l, now) {
+	return l && now >= l.a.at && now - l.a.at < l.a.every - SLACK_MS;
+}
+
+function read(t0) {
+	let st = { entries: 0, counted: 0, noacct: 0, partial: false, offloaded: 0, hw: 0, zeroed: 0, dropped: 0, over: {} };
+	let acct = acct_on(), f = (acct !== false) ? open(TABLE, 'r') : null;
+
+	load_state();
+	if (f) {
+		feed(f, neighbours(), t0, t0 + STOP_MS, st);
+		f.close();
+		if (acct == null)
+			acct = st.counted ? true : st.noacct ? false : null;
+	}
+	else if (acct !== false)
+		acct = null;
+
+	// nothing counts without accounting: no totals to grow, none to show
+	if (acct !== true) {
+		flows = {};
+		totals = {};
+		ntotals = 0;
+	}
+
+	for (let k in keys(totals))
+		if (t0 - totals[k][2] > IDLE_MS) {
+			delete totals[k];
+			ntotals--;
+		}
+
+	let out = [];
+	for (let k in sort(keys(totals)))
+		push(out, { mac: k, rx: totals[k][0], tx: totals[k][1] });
+
+	return { acct, st, hosts: out, saved: save_state(t0) };
+}
+
+// the answer's text: the last one while it is fresh or another read runs
+// (one at a time, the lock released when this process ends), else a new
+// read's; null for none
+function hosts() {
+	let t0 = now_ms();
+
+	if (!dir_ok())
+		return null;
+
+	let last = last_answer();
+	if (fresh(last, t0))
+		return last.text;
+
+	let lock = open(DIR + '/lock', 'a', 0600);
+	if (!lock || lock.lock('xn') !== true)
+		return last?.text;
+
+	// another call may have read while this one waited for the lock
+	last = last_answer();
+	if (fresh(last, now_ms()))
+		return last.text;
+
+	// no answer without the state it comes from (the next read would
+	// count from an older one), nor the last one again (a dashboard would
+	// show its rates as current)
+	let low = low_power(), r = read(t0), took = now_ms() - t0;
+	if (!r.saved)
+		return null;
+	let every = min(max(low ? LOW_MS : WINDOW_MS, took * SLOW_FACTOR), MAX_EVERY_MS);
+
+	let text = sprintf('%J', {
+		v: 1, at: t0, took, every, slow: took * SLOW_FACTOR > (low ? LOW_MS : WINDOW_MS), low, acct: r.acct,
+		entries: r.st.entries, partial: r.st.partial, offloaded: r.st.offloaded, hw: r.st.hw,
+		zeroed: r.st.zeroed, dropped: r.st.dropped, hosts: r.hosts
+	});
+	put('answer.json', text);
+	return text;
+}
+
+if (ARGV[0] == 'list')
+	print('{ "hosts": {} }\n');
+else if (ARGV[0] == 'call' && ARGV[1] == 'hosts')
+	print(hosts() ?? '{}', '\n');

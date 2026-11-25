@@ -1,0 +1,13 @@
+{
+	"admin/network/vantage_aps": {
+		"title": "Access points",
+		"order": 25,
+		"action": {
+			"type": "view",
+			"path": "vantage/aps"
+		},
+		"depends": {
+			"acl": [ "luci-app-vantage-aps" ]
+		}
+	}
+}
