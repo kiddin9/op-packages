@@ -1,0 +1,25 @@
+{
+	"luci-app-aliddns": {
+		"description": "Grant UCI and RPCD access for luci-app-aliddns",
+		"read": {
+			"ubus": {
+				"luci.aliddns": [ "get_status", "get_log" ],
+				"service": [ "list" ],
+				"network.interface": [ "dump" ]
+			},
+			"uci": [ "aliddns", "network" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.aliddns": [
+					"trigger_update",
+					"clear_log",
+					"service_action",
+					"verify_credentials",
+					"test_notify"
+				]
+			},
+			"uci": [ "aliddns" ]
+		}
+	}
+}

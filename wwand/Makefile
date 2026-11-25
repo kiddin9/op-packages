@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.10.0_pre33
-PKG_RELEASE:=104
+PKG_VERSION:=1.10.0_pre35
+PKG_RELEASE:=105
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=f394d69b3d98a79fcbea4fc25ce6951054654f9b
+PKG_SOURCE_VERSION:=748ee4a3ca8a40ac9a4b9ab02a0eff71e098da69
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -500,16 +500,17 @@ define Package/wwand-mhi
   SUBMENU:=WWAN
   TITLE:=PCIe/MHI transport + drivers for wwand
   DEPENDS:=+wwand +kmod-mhi-pci-generic +kmod-mhi-wwan-ctrl \
-	+kmod-mhi-wwan-mbim +kmod-mhi-net +kmod-qrtr-mhi
+	+kmod-mhi-wwan-mbim +kmod-mhi-net
 endef
 
 define Package/wwand-mhi/description
   Support for cellular modems attached over PCIe/MHI (Foxconn T99W175 and
   similar), whose control ports appear on the kernel wwan subsystem. Pulls the
-  MHI bus/PCI/control/data drivers and the MHI IPC-router channel (for
-  modems whose QMI lives only on the QRTR bus, option device 'qrtr'), and
-  installs the wwan-subsystem hotplug so wwand binds these modems on boot.
+  MHI bus/PCI/control/data drivers and installs the wwan-subsystem hotplug.
   Install together with a control backend (wwand-qmi or wwand-mbim).
+
+  For a modem that uses QMI over QRTR, install wwand-qrtr and set
+  option device 'qrtr' in the modem configuration.
 
   Adding wwand-mbim is worth weighing on a QMI-driven MHI modem: many of them
   expose no DUN channel and therefore no AT port at all, and wwand can then
@@ -528,6 +529,26 @@ define Package/wwand-mhi/install
 	# not with the base package.
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/wwan
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/wwand.hotplug.wwan $(1)/etc/hotplug.d/wwan/20-wwand
+endef
+
+# ---------------------------------------------------------------------------
+# wwand-qrtr: opt-in QMI over the QRTR transport on PCIe/MHI.
+# ---------------------------------------------------------------------------
+define Package/wwand-qrtr
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=QMI over QRTR for wwand
+  DEPENDS:=+wwand-qmi +wwand-mhi +kmod-qrtr-mhi
+endef
+
+define Package/wwand-qrtr/description
+  Installs the QMI backend and QRTR driver for PCIe/MHI modems that use
+  QMI over QRTR. Set option device 'qrtr' in the modem configuration.
+endef
+
+define Package/wwand-qrtr/install
+	true
 endef
 
 # ---------------------------------------------------------------------------
@@ -738,6 +759,7 @@ $(eval $(call BuildPackage,wwand-qmi))
 $(eval $(call BuildPackage,wwand-mbim))
 $(eval $(call BuildPackage,wwand-ncm))
 $(eval $(call BuildPackage,wwand-mhi))
+$(eval $(call BuildPackage,wwand-qrtr))
 $(eval $(call BuildPackage,wwand-esim))
 $(eval $(call BuildPackage,wwand-gps))
 $(eval $(call BuildPackage,wwand-apntest))

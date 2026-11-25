@@ -1,0 +1,512 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "(Unconfigured Domain)"
+msgstr ""
+
+msgid "%d min"
+msgstr ""
+
+msgid "0 entries"
+msgstr ""
+
+msgid "5 Minutes"
+msgstr ""
+
+msgid "10 Minutes (Recommended)"
+msgstr ""
+
+msgid "15 Minutes"
+msgstr ""
+
+msgid "30 Minutes"
+msgstr ""
+
+msgid "60 Minutes"
+msgstr ""
+
+msgid "60s (1 Minute - Paid Plan)"
+msgstr ""
+
+msgid "120s (2 Minutes - Paid Plan)"
+msgstr ""
+
+msgid "300s (5 Minutes - Paid Plan)"
+msgstr ""
+
+msgid "600s (10 Minutes - Free Default)"
+msgstr ""
+
+msgid "1800s (30 Minutes)"
+msgstr ""
+
+msgid "3600s (1 Hour)"
+msgstr ""
+
+msgid "86400s (24 Hours)"
+msgstr ""
+
+msgid "64-bit interface token appended to the dynamic /64 prefix, for example ::8888 or ::be24:11ff:fe12:3456."
+msgstr ""
+
+msgid "AccessKey ID"
+msgstr ""
+
+msgid "AccessKey Secret"
+msgstr ""
+
+msgid "Account Connectivity"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Active Records"
+msgstr ""
+
+msgid "Advanced Options"
+msgstr ""
+
+msgid "AliDDNS"
+msgstr ""
+
+msgid "Alibaba Cloud Free Edition supports 600–86400 seconds; Paid Editions support down to 1 second."
+msgstr ""
+
+msgid "Alibaba Cloud RAM AccessKey ID with AliyunDNSFullAccess permission."
+msgstr ""
+
+msgid "All Log Levels"
+msgstr ""
+
+msgid "Also send an alert when synchronization fails (rate-limited to once every 30 minutes per domain)."
+msgstr ""
+
+msgid "Auto Detect (GET for URL templates, POST JSON for IM bots)"
+msgstr ""
+
+msgid "Auto refresh"
+msgstr ""
+
+msgid "Automatically filters Global Unicast IPv6 (2000::/3) and supports PPPoE dynamic wan_6 and prefix-delegated interfaces."
+msgstr ""
+
+msgid "Automatically synchronize dynamic public IPv4 and IPv6 addresses to Alibaba Cloud DNS via native OpenWrt 25.12 ucode daemon."
+msgstr ""
+
+msgid "Basic Settings"
+msgstr ""
+
+msgid "CERNET (Education)"
+msgstr ""
+
+msgid "Check Interval"
+msgstr ""
+
+msgid "Check Interval (Minutes)"
+msgstr ""
+
+msgid "China Broadnet"
+msgstr ""
+
+msgid "China Mobile"
+msgstr ""
+
+msgid "China Telecom"
+msgstr ""
+
+msgid "China Unicom"
+msgstr ""
+
+msgid "Clean Duplicate Records"
+msgstr ""
+
+msgid "Clear Log"
+msgstr ""
+
+msgid "Click to copy"
+msgstr ""
+
+msgid "Cloud: %s"
+msgstr ""
+
+msgid "Configuration"
+msgstr ""
+
+msgid "Copied to clipboard: %s"
+msgstr ""
+
+msgid "Credential verification failed: %s"
+msgstr ""
+
+msgid "Credentials verified (%d ms)."
+msgstr ""
+
+msgid "Custom AccessKey ID"
+msgstr ""
+
+msgid "Custom AccessKey Secret"
+msgstr ""
+
+msgid "Custom HTTP Header"
+msgstr ""
+
+msgid "Custom JSON Payload"
+msgstr ""
+
+msgid "Default Line"
+msgstr ""
+
+msgid "Default Resolution Line"
+msgstr ""
+
+msgid "Default Routing"
+msgstr ""
+
+msgid "Default TTL (Seconds)"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Discover LAN Host Global IPv6 by MAC Address"
+msgstr ""
+
+msgid "Domain"
+msgstr ""
+
+msgid "Domain & IP Sources"
+msgstr ""
+
+msgid "Domain Records"
+msgstr ""
+
+msgid "Dynamic Prefix + Fixed Host Suffix (LAN Host)"
+msgstr ""
+
+msgid "Enable Service"
+msgstr ""
+
+msgid "Enable Webhook Notifications"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Enter @ for apex domain, * for wildcard, or a subdomain prefix such as www or nas."
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Export Log"
+msgstr ""
+
+msgid "Expose either this router or a downstream LAN host (NAS/server) using dynamic ISP prefix delegation."
+msgstr ""
+
+msgid "Filter by domain or IP..."
+msgstr ""
+
+msgid "Fixed IPv6 Host Suffix"
+msgstr ""
+
+msgid "Full DDNS synchronization has been triggered."
+msgstr ""
+
+msgid "Global Settings"
+msgstr ""
+
+msgid "Grant UCI and RPCD access for luci-app-aliddns"
+msgstr ""
+
+msgid "HTTP Method"
+msgstr ""
+
+msgid "Healthy"
+msgstr ""
+
+msgid "Host Record (RR)"
+msgstr ""
+
+msgid "Hosted domains (%d): %s"
+msgstr ""
+
+msgid "IPv4 (A)"
+msgstr ""
+
+msgid "IPv4 Source"
+msgstr ""
+
+msgid "IPv6 (AAAA)"
+msgstr ""
+
+msgid "IPv6 Address Mode"
+msgstr ""
+
+msgid "IPv6 Interface / Prefix Source"
+msgstr ""
+
+msgid "If the LAN device is idle and absent from neighbor cache, compute its EUI-64 IPv6 from the /64 prefix and MAC."
+msgstr ""
+
+msgid "Inherit Global Credentials"
+msgstr ""
+
+msgid "Inherit Global Setting"
+msgstr ""
+
+msgid "Interface: %s"
+msgstr ""
+
+msgid "Invalid host record. Use @, *, or valid subdomain labels (e.g. nas or sub.dev)."
+msgstr ""
+
+msgid "Invalid suffix format. Example: ::8888 or ::be24:11ff:fe12:3456"
+msgstr ""
+
+msgid "Kept strictly in memory during HMAC-SHA1 signing and never exposed on process command lines."
+msgstr ""
+
+msgid "Last Check"
+msgstr ""
+
+msgid "Last Updated"
+msgstr ""
+
+msgid "Leave as inherit unless you maintain split-horizon records for different carriers."
+msgstr ""
+
+msgid "Leave empty to inherit the global default TTL."
+msgstr ""
+
+msgid "Line / TTL"
+msgstr ""
+
+msgid "Live synchronization log from /var/log/aliddns.log (automatically retains the latest 300 entries)."
+msgstr ""
+
+msgid "Log Viewer"
+msgstr ""
+
+msgid "Main Domain"
+msgstr ""
+
+msgid "Manage multiple domains, wildcard records (*), apex records (@), and direct IPv6 exposure for LAN NAS/servers."
+msgstr ""
+
+msgid "Mode: %s + Suffix"
+msgstr ""
+
+msgid "Mode: LAN MAC Discovery"
+msgstr ""
+
+msgid "Mode: Public API"
+msgstr ""
+
+msgid "Never"
+msgstr ""
+
+msgid "Newest first"
+msgstr ""
+
+msgid "Next Check"
+msgstr ""
+
+msgid "No domain records configured yet. Add a domain record below to start synchronizing."
+msgstr ""
+
+msgid "No log entries yet."
+msgstr ""
+
+msgid "No matching log entries."
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Not Enabled"
+msgstr ""
+
+msgid "Notify on Sync Failure"
+msgstr ""
+
+msgid "Optional"
+msgstr ""
+
+msgid "Optional Overrides"
+msgstr ""
+
+msgid "Optional label such as Main Router, Synology NAS, or Home Server."
+msgstr ""
+
+msgid "Optional single header, e.g. Authorization: Bearer YOUR_TOKEN"
+msgstr ""
+
+msgid "Optional: bind curl to a specific WAN interface when using Public IP API mode to bypass transparent proxies or select a multi-WAN uplink."
+msgstr ""
+
+msgid "Optional: leave empty for built-in DingTalk / Feishu / WeCom JSON formatting, or customize with {title}, {message}, {domain}, {ip}."
+msgstr ""
+
+msgid "Optional: override global AccessKey ID if this domain belongs to another Alibaba Cloud account."
+msgstr ""
+
+msgid "Optional: override global AccessKey Secret for this domain."
+msgstr ""
+
+msgid "Outbound Interface for Public API"
+msgstr ""
+
+msgid "Overseas"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Periodic verification interval in minutes (1–1440). Network reconnects trigger immediate updates automatically."
+msgstr ""
+
+msgid "Please enter a valid IPv6 host suffix such as ::1234."
+msgstr ""
+
+msgid "Public IP API (Auto Detect)"
+msgstr ""
+
+msgid "Public IPv6 API (Auto Detect)"
+msgstr ""
+
+msgid "Push a message whenever a domain IP address changes. Built-in support for Bark, ServerChan, DingTalk, Feishu, WeCom, and custom webhooks."
+msgstr ""
+
+msgid "Reads the neighbor table (ip -6 neigh) to locate the active Global Unicast IPv6 of the specified LAN device."
+msgstr ""
+
+msgid "Remark"
+msgstr ""
+
+msgid "Remove extra duplicate records of the same type and line while updating the primary record in place without downtime."
+msgstr ""
+
+msgid "Request failed"
+msgstr ""
+
+msgid "Resolution Line Override"
+msgstr ""
+
+msgid "Restart Service"
+msgstr ""
+
+msgid "Router Interface Global IPv6"
+msgstr ""
+
+msgid "Run the event-driven AliDDNS background daemon and monitor IP changes."
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Running (PID: %d)"
+msgstr ""
+
+msgid "SLAAC EUI-64 Fallback"
+msgstr ""
+
+msgid "Send Test Message"
+msgstr ""
+
+msgid "Service Status & Domain Monitor"
+msgstr ""
+
+msgid "Showing %d / %d entries"
+msgstr ""
+
+msgid "Source: %s"
+msgstr ""
+
+msgid "Start Service"
+msgstr ""
+
+msgid "Stop Service"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "Subscribe to netifd interface events with 5-second debounce coalescing and automatic failure backoff retry."
+msgstr ""
+
+msgid "Supports variables {title}, {message}, {domain}, {type}, {ip}, {old_ip}, {time}. DingTalk, Feishu, and WeCom robot URLs are formatted automatically."
+msgstr ""
+
+msgid "Sync"
+msgstr ""
+
+msgid "Sync All"
+msgstr ""
+
+msgid "Sync on Network Reconnect"
+msgstr ""
+
+msgid "Synced"
+msgstr ""
+
+msgid "Synchronizing..."
+msgstr ""
+
+msgid "TTL Override (Seconds)"
+msgstr ""
+
+msgid "Target LAN Device MAC"
+msgstr ""
+
+msgid "Test Credentials & Fetch Domains"
+msgstr ""
+
+msgid "Test Notification"
+msgstr ""
+
+msgid "Test notification delivered (HTTP %d)."
+msgstr ""
+
+msgid "The registered root domain hosted on Alibaba Cloud DNS, for example: example.com."
+msgstr ""
+
+msgid "Tip: Global AccessKey credentials are not saved yet. Enter your AccessKey ID and Secret below, click \"Test Credentials\", then Save & Apply."
+msgstr ""
+
+msgid "Triggered synchronization for %s."
+msgstr ""
+
+msgid "Unknown error"
+msgstr ""
+
+msgid "Updated"
+msgstr ""
+
+msgid "Updates & Alerts Only"
+msgstr ""
+
+msgid "Validate TLS certificates when communicating with alidns.aliyuncs.com and HTTPS IP check endpoints."
+msgstr ""
+
+msgid "Verify HTTPS Certificate"
+msgstr ""
+
+msgid "Verify unsaved or saved AccessKey credentials live against Alibaba Cloud and fetch your hosted domain list."
+msgstr ""
+
+msgid "Warning: Router system time appears unsynchronized. Alibaba Cloud OpenAPI rejects requests when clock skew exceeds 15 minutes — please check NTP settings first."
+msgstr ""
+
+msgid "Warnings & Errors Only"
+msgstr ""
+
+msgid "Webhook Notifications"
+msgstr ""
+
+msgid "Webhook URL"
+msgstr ""
+
+msgid "Webhook test failed: %s"
+msgstr ""

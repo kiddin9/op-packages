@@ -1,0 +1,516 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "(Unconfigured Domain)"
+msgstr "（未配置域名）"
+
+msgid "%d min"
+msgstr "%d 分钟"
+
+msgid "0 entries"
+msgstr "0 条记录"
+
+msgid "5 Minutes"
+msgstr "5 分钟"
+
+msgid "10 Minutes (Recommended)"
+msgstr "10 分钟（推荐）"
+
+msgid "15 Minutes"
+msgstr "15 分钟"
+
+msgid "30 Minutes"
+msgstr "30 分钟"
+
+msgid "60 Minutes"
+msgstr "60 分钟"
+
+msgid "60s (1 Minute - Paid Plan)"
+msgstr "60 秒（1 分钟 - 付费版）"
+
+msgid "120s (2 Minutes - Paid Plan)"
+msgstr "120 秒（2 分钟 - 付费版）"
+
+msgid "300s (5 Minutes - Paid Plan)"
+msgstr "300 秒（5 分钟 - 付费版）"
+
+msgid "600s (10 Minutes - Free Default)"
+msgstr "600 秒（10 分钟 - 免费版默认）"
+
+msgid "1800s (30 Minutes)"
+msgstr "1800 秒（30 分钟）"
+
+msgid "3600s (1 Hour)"
+msgstr "3600 秒（1 小时）"
+
+msgid "86400s (24 Hours)"
+msgstr "86400 秒（24 小时）"
+
+msgid "64-bit interface token appended to the dynamic /64 prefix, for example ::8888 or ::be24:11ff:fe12:3456."
+msgstr "拼接到运营商动态 /64 前缀后的固定主机后缀，例如 ::8888 或 ::be24:11ff:fe12:3456。"
+
+msgid "AccessKey ID"
+msgstr "AccessKey ID"
+
+msgid "AccessKey Secret"
+msgstr "AccessKey Secret"
+
+msgid "Account Connectivity"
+msgstr "账号连通性测试"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Active Records"
+msgstr "启用记录"
+
+msgid "Advanced Options"
+msgstr "高级选项"
+
+msgid "AliDDNS"
+msgstr "阿里云 DDNS"
+
+msgid "Alibaba Cloud Free Edition supports 600–86400 seconds; Paid Editions support down to 1 second."
+msgstr "阿里云云解析免费版支持 600–86400 秒，个人版/企业版最低支持 1 秒。"
+
+msgid "Alibaba Cloud RAM AccessKey ID with AliyunDNSFullAccess permission."
+msgstr "具备云解析 AliyunDNSFullAccess 权限的阿里云 RAM 子账号 AccessKey ID。"
+
+msgid "All Log Levels"
+msgstr "全部日志级别"
+
+msgid "Also send an alert when synchronization fails (rate-limited to once every 30 minutes per domain)."
+msgstr "同步异常时也发送告警通知（每个域名内置 30 分钟冷却防刷屏）。"
+
+msgid "Auto Detect (GET for URL templates, POST JSON for IM bots)"
+msgstr "智能识别（URL 模板走 GET，钉钉/飞书/企微走 POST JSON）"
+
+msgid "Auto refresh"
+msgstr "自动刷新"
+
+msgid "Automatically filters Global Unicast IPv6 (2000::/3) and supports PPPoE dynamic wan_6 and prefix-delegated interfaces."
+msgstr "自动筛选公网单播 IPv6（2000::/3），原生支持 PPPoE 动态虚拟接口 wan_6 与前缀委派接口。"
+
+msgid "Automatically synchronize dynamic public IPv4 and IPv6 addresses to Alibaba Cloud DNS via native OpenWrt 25.12 ucode daemon."
+msgstr "基于 OpenWrt 25.12 原生 ucode 事件驱动守护进程，自动将动态公网 IPv4 / IPv6 地址同步至阿里云云解析 DNS。"
+
+msgid "Basic Settings"
+msgstr "基本设置"
+
+msgid "CERNET (Education)"
+msgstr "中国教育网"
+
+msgid "Check Interval"
+msgstr "检查间隔"
+
+msgid "Check Interval (Minutes)"
+msgstr "检查间隔（分钟）"
+
+msgid "China Broadnet"
+msgstr "中国广电"
+
+msgid "China Mobile"
+msgstr "中国移动"
+
+msgid "China Telecom"
+msgstr "中国电信"
+
+msgid "China Unicom"
+msgstr "中国联通"
+
+msgid "Clean Duplicate Records"
+msgstr "清理同名重复记录"
+
+msgid "Clear Log"
+msgstr "清空日志"
+
+msgid "Click to copy"
+msgstr "点击复制"
+
+msgid "Cloud: %s"
+msgstr "云端：%s"
+
+msgid "Configuration"
+msgstr "服务配置"
+
+msgid "Copied to clipboard: %s"
+msgstr "已复制到剪贴板：%s"
+
+msgid "Credential verification failed: %s"
+msgstr "凭证校验失败：%s"
+
+msgid "Credentials verified (%d ms)."
+msgstr "阿里云凭证验证成功（耗时 %d ms）。"
+
+msgid "Custom AccessKey ID"
+msgstr "独立 AccessKey ID"
+
+msgid "Custom AccessKey Secret"
+msgstr "独立 AccessKey Secret"
+
+msgid "Custom HTTP Header"
+msgstr "自定义请求头"
+
+msgid "Custom JSON Payload"
+msgstr "自定义 JSON 请求体"
+
+msgid "Default Line"
+msgstr "默认线路"
+
+msgid "Default Resolution Line"
+msgstr "默认解析线路"
+
+msgid "Default Routing"
+msgstr "默认系统路由"
+
+msgid "Default TTL (Seconds)"
+msgstr "默认 TTL（秒）"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Discover LAN Host Global IPv6 by MAC Address"
+msgstr "按 MAC 地址自动发现内网设备公网 IPv6"
+
+msgid "Domain"
+msgstr "域名"
+
+msgid "Domain & IP Sources"
+msgstr "域名与地址来源"
+
+msgid "Domain Records"
+msgstr "域名解析列表"
+
+msgid "Dynamic Prefix + Fixed Host Suffix (LAN Host)"
+msgstr "动态前缀 + 固定后缀拼接（直通内网设备）"
+
+msgid "Enable Service"
+msgstr "启用服务"
+
+msgid "Enable Webhook Notifications"
+msgstr "启用通知推送"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Enter @ for apex domain, * for wildcard, or a subdomain prefix such as www or nas."
+msgstr "主域名根记录填 @，泛解析填 *，普通子域名填前缀（如 www 或 nas）。"
+
+msgid "Error"
+msgstr "异常"
+
+msgid "Export Log"
+msgstr "导出日志"
+
+msgid "Expose either this router or a downstream LAN host (NAS/server) using dynamic ISP prefix delegation."
+msgstr "可解析本机路由器公网 IPv6，也可结合运营商动态前缀直接解析下级 NAS 或服务器。"
+
+msgid "Filter by domain or IP..."
+msgstr "按域名、IP 或关键字筛选..."
+
+msgid "Fixed IPv6 Host Suffix"
+msgstr "固定 IPv6 主机后缀"
+
+msgid "Full DDNS synchronization has been triggered."
+msgstr "已触发全量域名同步检查。"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Grant UCI and RPCD access for luci-app-aliddns"
+msgstr "授予 luci-app-aliddns 的 UCI 与 RPCD 访问权限"
+
+msgid "HTTP Method"
+msgstr "请求方式"
+
+msgid "Healthy"
+msgstr "正常"
+
+msgid "Host Record (RR)"
+msgstr "主机记录（RR）"
+
+msgid "Hosted domains (%d): %s"
+msgstr "当前账号托管域名（共 %d 个）：%s"
+
+msgid "IPv4 (A)"
+msgstr "IPv4（A）"
+
+msgid "IPv4 Source"
+msgstr "IPv4 地址来源"
+
+msgid "IPv6 (AAAA)"
+msgstr "IPv6（AAAA）"
+
+msgid "IPv6 Address Mode"
+msgstr "IPv6 地址模式"
+
+msgid "IPv6 Interface / Prefix Source"
+msgstr "IPv6 接口 / 前缀来源"
+
+msgid "If the LAN device is idle and absent from neighbor cache, compute its EUI-64 IPv6 from the /64 prefix and MAC."
+msgstr "当内网设备休眠导致邻居表过期时，自动使用 /64 前缀与 MAC 计算标准 EUI-64 地址。"
+
+msgid "Inherit Global Credentials"
+msgstr "继承全局凭证"
+
+msgid "Inherit Global Setting"
+msgstr "继承全局默认设置"
+
+msgid "Interface: %s"
+msgstr "网络接口：%s"
+
+msgid "Invalid host record. Use @, *, or valid subdomain labels (e.g. nas or sub.dev)."
+msgstr "主机记录格式无效，请填写 @、* 或合法的子域名前缀（如 nas 或 sub.dev）。"
+
+msgid "Invalid suffix format. Example: ::8888 or ::be24:11ff:fe12:3456"
+msgstr "后缀格式无效，示例：::8888 或 ::be24:11ff:fe12:3456"
+
+msgid "Kept strictly in memory during HMAC-SHA1 signing and never exposed on process command lines."
+msgstr "仅在内存中完成 HMAC-SHA1 签名运算，绝不通过进程命令行参数暴露。"
+
+msgid "Last Check"
+msgstr "上次检查"
+
+msgid "Last Updated"
+msgstr "最近更新"
+
+msgid "Leave as inherit unless you maintain split-horizon records for different carriers."
+msgstr "除非需要按运营商维护智能分流解析，否则保持继承全局设置即可。"
+
+msgid "Leave empty to inherit the global default TTL."
+msgstr "留空则继承全局默认 TTL。"
+
+msgid "Line / TTL"
+msgstr "线路 / TTL"
+
+msgid "Live synchronization log from /var/log/aliddns.log (automatically retains the latest 300 entries)."
+msgstr "实时显示 /var/log/aliddns.log 同步日志（环形缓冲自动保留最近 300 条记录）。"
+
+msgid "Log Viewer"
+msgstr "运行日志"
+
+msgid "Main Domain"
+msgstr "主域名"
+
+msgid "Manage multiple domains, wildcard records (*), apex records (@), and direct IPv6 exposure for LAN NAS/servers."
+msgstr "支持多域名、泛解析（*）、根域名（@）以及内网 NAS / 服务器 IPv6 动态前缀直通解析。"
+
+msgid "Mode: %s + Suffix"
+msgstr "模式：%s + 后缀"
+
+msgid "Mode: LAN MAC Discovery"
+msgstr "模式：内网 MAC 发现"
+
+msgid "Mode: Public API"
+msgstr "模式：公网探测"
+
+msgid "Never"
+msgstr "从未"
+
+msgid "Newest first"
+msgstr "最新置顶"
+
+msgid "Next Check"
+msgstr "下次检查"
+
+msgid "No domain records configured yet. Add a domain record below to start synchronizing."
+msgstr "尚未配置域名解析记录，请在下方添加记录以开始自动同步。"
+
+msgid "No log entries yet."
+msgstr "暂无运行日志记录。"
+
+msgid "No matching log entries."
+msgstr "没有匹配的日志记录。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Not Enabled"
+msgstr "未启用"
+
+msgid "Notify on Sync Failure"
+msgstr "同步失败告警"
+
+msgid "Optional"
+msgstr "选填"
+
+msgid "Optional Overrides"
+msgstr "独立覆盖项"
+
+msgid "Optional label such as Main Router, Synology NAS, or Home Server."
+msgstr "可选备注名称，例如：主路由、群晖 NAS 或家庭服务器。"
+
+msgid "Optional single header, e.g. Authorization: Bearer YOUR_TOKEN"
+msgstr "可选单条自定义请求头，例如 Authorization: Bearer YOUR_TOKEN"
+
+msgid "Optional: bind curl to a specific WAN interface when using Public IP API mode to bypass transparent proxies or select a multi-WAN uplink."
+msgstr "可选：在公网 API 探测模式下强制绑定指定出口网卡，避免被透明代理分流或在多拨环境下指定线路。"
+
+msgid "Optional: leave empty for built-in DingTalk / Feishu / WeCom JSON formatting, or customize with {title}, {message}, {domain}, {ip}."
+msgstr "可选：留空即自动适配钉钉/飞书/企业微信机器人格式，或使用 {title}、{message}、{domain}、{ip} 自定义 JSON。"
+
+msgid "Optional: override global AccessKey ID if this domain belongs to another Alibaba Cloud account."
+msgstr "可选：若该域名归属于另一阿里云账号，可在此单独指定 AccessKey ID。"
+
+msgid "Optional: override global AccessKey Secret for this domain."
+msgstr "可选：为该域名单独指定 AccessKey Secret。"
+
+msgid "Outbound Interface for Public API"
+msgstr "公网探测出口接口"
+
+msgid "Overseas"
+msgstr "境外线路"
+
+msgid "Pending"
+msgstr "待同步"
+
+msgid "Periodic verification interval in minutes (1–1440). Network reconnects trigger immediate updates automatically."
+msgstr "定时巡检间隔，单位分钟（范围 1–1440）；网络重连会自动立即触发同步。"
+
+msgid "Please enter a valid IPv6 host suffix such as ::1234."
+msgstr "请输入合法的 IPv6 主机后缀，例如 ::1234。"
+
+msgid "Public IP API (Auto Detect)"
+msgstr "公网 API 自动探测"
+
+msgid "Public IPv6 API (Auto Detect)"
+msgstr "公网 IPv6 API 自动探测"
+
+msgid "Push a message whenever a domain IP address changes. Built-in support for Bark, ServerChan, DingTalk, Feishu, WeCom, and custom webhooks."
+msgstr "域名地址更新时自动推送消息，内置适配 Bark、Server 酱、钉钉、飞书、企业微信机器人与自定义 Webhook。"
+
+msgid "Reads the neighbor table (ip -6 neigh) to locate the active Global Unicast IPv6 of the specified LAN device."
+msgstr "读取系统 IPv6 邻居表（ip -6 neigh）自动定位指定 MAC 内网设备的活跃公网单播地址。"
+
+msgid "Remark"
+msgstr "备注"
+
+msgid "Remove extra duplicate records of the same type and line while updating the primary record in place without downtime."
+msgstr "原地无感更新主解析记录的同时，自动删除同线路下多余的重复同名记录。"
+
+msgid "Request failed"
+msgstr "请求失败"
+
+msgid "Resolution Line Override"
+msgstr "独立解析线路"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Router Interface Global IPv6"
+msgstr "路由器接口公网 IPv6"
+
+msgid "Run the event-driven AliDDNS background daemon and monitor IP changes."
+msgstr "运行事件驱动的阿里云 DDNS 后台守护进程并监控地址变更。"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Running (PID: %d)"
+msgstr "运行中（PID：%d）"
+
+msgid "SLAAC EUI-64 Fallback"
+msgstr "SLAAC EUI-64 休眠回退"
+
+msgid "Send Test Message"
+msgstr "发送测试消息"
+
+msgid "Service Status & Domain Monitor"
+msgstr "服务状态与解析监控"
+
+msgid "Showing %d / %d entries"
+msgstr "显示 %d / %d 条"
+
+msgid "Source: %s"
+msgstr "来源：%s"
+
+msgid "Start Service"
+msgstr "启动服务"
+
+msgid "Stop Service"
+msgstr "停止服务"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Subscribe to netifd interface events with 5-second debounce coalescing and automatic failure backoff retry."
+msgstr "订阅 netifd 接口事件并内置 5 秒防抖合并与失败自动阶梯重试（30s/60s/120s）。"
+
+msgid "Supports variables {title}, {message}, {domain}, {type}, {ip}, {old_ip}, {time}. DingTalk, Feishu, and WeCom robot URLs are formatted automatically."
+msgstr "支持变量 {title}、{message}、{domain}、{type}、{ip}、{old_ip}、{time}；钉钉、飞书、企业微信机器人地址可自动生成消息体。"
+
+msgid "Sync"
+msgstr "同步"
+
+msgid "Sync All"
+msgstr "全部同步"
+
+msgid "Sync on Network Reconnect"
+msgstr "网络重连自动同步"
+
+msgid "Synced"
+msgstr "已同步"
+
+msgid "Synchronizing..."
+msgstr "正在同步..."
+
+msgid "TTL Override (Seconds)"
+msgstr "独立 TTL（秒）"
+
+msgid "Target LAN Device MAC"
+msgstr "目标内网设备 MAC"
+
+msgid "Test Credentials & Fetch Domains"
+msgstr "测试凭证并拉取域名"
+
+msgid "Test Notification"
+msgstr "通知连通性测试"
+
+msgid "Test notification delivered (HTTP %d)."
+msgstr "测试通知发送成功（HTTP %d）。"
+
+msgid "The registered root domain hosted on Alibaba Cloud DNS, for example: example.com."
+msgstr "托管在阿里云云解析 DNS 的注册主域名，例如：example.com。"
+
+msgid "Tip: Global AccessKey credentials are not saved yet. Enter your AccessKey ID and Secret below, click \"Test Credentials\", then Save & Apply."
+msgstr "提示：尚未保存全局 AccessKey 凭证。请在下方填写后点击“测试凭证并拉取域名”确认连通，再点击保存并应用。"
+
+msgid "Triggered synchronization for %s."
+msgstr "已触发 %s 的立即同步。"
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Updated"
+msgstr "已更新"
+
+msgid "Updates & Alerts Only"
+msgstr "仅更新与告警"
+
+msgid "Validate TLS certificates when communicating with alidns.aliyuncs.com and HTTPS IP check endpoints."
+msgstr "与 alidns.aliyuncs.com 及 HTTPS 公网探测接口通信时严格校验证书合法性。"
+
+msgid "Verify HTTPS Certificate"
+msgstr "校验 HTTPS 证书"
+
+msgid "Verify unsaved or saved AccessKey credentials live against Alibaba Cloud and fetch your hosted domain list."
+msgstr "无需先保存即可实时向阿里云验证 AccessKey 有效性，并自动拉取账号下托管的域名列表供下拉选择。"
+
+msgid "Warning: Router system time appears unsynchronized. Alibaba Cloud OpenAPI rejects requests when clock skew exceeds 15 minutes — please check NTP settings first."
+msgstr "警告：检测到路由器系统时间尚未同步。阿里云 OpenAPI 要求时间偏差不超过 15 分钟，请先检查系统 NTP 时间同步。"
+
+msgid "Warnings & Errors Only"
+msgstr "仅警告与错误"
+
+msgid "Webhook Notifications"
+msgstr "通知推送"
+
+msgid "Webhook URL"
+msgstr "Webhook 地址"
+
+msgid "Webhook test failed: %s"
+msgstr "Webhook 测试失败：%s"

@@ -1,0 +1,384 @@
+'use strict';
+
+import * as fs from 'fs';
+import * as uci from 'uci';
+import * as ubus from 'ubus';
+
+const RUN_DIR = '/var/run/aliddns';
+const PID_FILE = RUN_DIR + '/aliddns.pid';
+const STATE_FILE = RUN_DIR + '/state.json';
+const DOMAINS_CACHE_FILE = RUN_DIR + '/domains.json';
+const LOCK_DIR = RUN_DIR + '/sync.lock';
+const LOG_FILE = '/var/log/aliddns.log';
+
+let ipc_seq = 0;
+
+function guarded(fn) {
+	try {
+		return fn();
+	} catch (e) {
+		return {
+			ok: false,
+			error: (type(e) == 'object' && e.message) ? ('' + e.message) : ('' + e)
+		};
+	}
+}
+
+function is_truthy(val, def_val) {
+	if (val == null || val == '')
+		return def_val ? true : false;
+	let s = lc(trim('' + val));
+	return (s == '1' || s == 'true' || s == 'yes' || s == 'on' || s == 'enabled');
+}
+
+function is_pid_alive(pid) {
+	if (!pid || pid <= 0)
+		return false;
+	return fs.access(sprintf('/proc/%d/stat', pid), 'f') == true;
+}
+
+function ensure_run_dir() {
+	if (!fs.access(RUN_DIR, 'f')) {
+		fs.mkdir(RUN_DIR);
+		fs.chmod(RUN_DIR, 0700);
+	}
+}
+
+function get_daemon_pid() {
+	let pid = int(trim(fs.readfile(PID_FILE) ?? '0'));
+	if (is_pid_alive(pid))
+		return pid;
+
+	let conn = ubus.connect(null, 2);
+	if (conn) {
+		let svc = conn.call('service', 'list', { name: 'aliddns' });
+		conn.disconnect();
+		let inst = svc?.aliddns?.instances?.main;
+		if (inst?.running && inst?.pid)
+			return int(inst.pid);
+	}
+	return 0;
+}
+
+function read_json_safe(path) {
+	let raw = fs.readfile(path);
+	if (!raw || trim(raw) == '')
+		return {};
+	try {
+		let parsed = json(raw);
+		return (type(parsed) == 'object') ? parsed : {};
+	} catch (e) {
+		return {};
+	}
+}
+
+function extract_gua_ipv6(str) {
+	if (!str)
+		return null;
+	let arr = iptoarr(str);
+	if (!arr || length(arr) != 16)
+		return null;
+	if ((arr[0] & 0xe0) != 0x20)
+		return null;
+	if (arr[0] == 0x20 && arr[1] == 0x01 && arr[2] == 0x0d && arr[3] == 0xb8)
+		return null;
+	return arrtoip(arr);
+}
+
+function get_live_interfaces() {
+	let list = [];
+	let conn = ubus.connect(null, 2);
+	if (!conn)
+		return list;
+	let dump = conn.call('network.interface', 'dump', {});
+	conn.disconnect();
+
+	if (type(dump) != 'object' || type(dump.interface) != 'array')
+		return list;
+
+	for (let ifc in dump.interface) {
+		let name = ifc?.interface;
+		if (!name || name == 'loopback')
+			continue;
+
+		let ipv4 = null;
+		if (type(ifc['ipv4-address']) == 'array') {
+			for (let a4 in ifc['ipv4-address']) {
+				if (a4?.address && a4.address != '127.0.0.1') {
+					ipv4 = a4.address;
+					break;
+				}
+			}
+		}
+
+		let ipv6 = null;
+		let ipv6_pd = null;
+		if (type(ifc['ipv6-address']) == 'array') {
+			for (let a6 in ifc['ipv6-address']) {
+				let g = extract_gua_ipv6(a6?.address);
+				if (g) {
+					ipv6 = g;
+					break;
+				}
+			}
+		}
+		if (type(ifc['ipv6-prefix-assignment']) == 'array') {
+			for (let pfx in ifc['ipv6-prefix-assignment']) {
+				let loc = extract_gua_ipv6(pfx?.['local-address']?.address);
+				let net = extract_gua_ipv6(pfx?.address);
+				if (net)
+					ipv6_pd = sprintf('%s/%d', net, int(pfx?.mask ?? 64));
+				if (!ipv6 && loc)
+					ipv6 = loc;
+			}
+		}
+
+		push(list, {
+			name: name,
+			up: (ifc.up === true),
+			device: ifc.l3_device ?? ifc.device ?? '',
+			ipv4: ipv4,
+			ipv6: ipv6,
+			ipv6_pd: ipv6_pd
+		});
+	}
+	return list;
+}
+
+function format_domain_display(raw_sub, raw_main) {
+	let main = lc(trim(raw_main ?? ''));
+	main = replace(main, /^https?:\/\//, '');
+	main = trim(main, './ ');
+	if (main == '')
+		return '';
+	let sub = lc(trim(raw_sub ?? ''));
+	sub = trim(sub, '. ');
+	if (sub == '' || sub == main)
+		sub = '@';
+	else if (length(sub) > length(main) + 1 && substr(sub, -(length(main) + 1)) == '.' + main)
+		sub = substr(sub, 0, length(sub) - length(main) - 1);
+	return (sub == '@') ? main : (sub + '.' + main);
+}
+
+function run_subcommand_json(flag, payload) {
+	ensure_run_dir();
+	let self_pid = int(fs.readlink('/proc/self') ?? '0');
+	let in_file = sprintf('%s/rpc_in.%d.%d.json', RUN_DIR, self_pid, ++ipc_seq);
+	let fh = fs.open(in_file, 'wxe', 0600);
+	if (!fh)
+		return { ok: false, error: '无法创建临时通信文件' };
+	fh.write(sprintf('%J', payload ?? {}));
+	fh.close();
+
+	let proc = fs.popen([ '/usr/bin/ucode', '/usr/sbin/aliddns', flag, in_file ], 're');
+	if (!proc) {
+		fs.unlink(in_file);
+		return { ok: false, error: '无法启动后台校验进程' };
+	}
+	let raw = proc.read('all') ?? '';
+	proc.close();
+	fs.unlink(in_file);
+
+	try {
+		let parsed = json(trim(raw));
+		return (type(parsed) == 'object') ? parsed : { ok: false, error: '返回数据格式无效' };
+	} catch (e) {
+		return { ok: false, error: trim(raw) || '执行校验命令异常' };
+	}
+}
+
+const methods = {
+	get_status: {
+		call: function() {
+			return guarded(function() {
+				let ctx = uci.cursor();
+				let base = ctx.get_all('aliddns', 'base');
+				if (!base) {
+					ctx.foreach('aliddns', 'base', (s) => {
+						if (!base)
+							base = s;
+					});
+				}
+				base = base ?? {};
+
+				let enabled = is_truthy(base.enable, false);
+				let interval_min = int(base.time ?? '10');
+				if (interval_min != interval_min || interval_min < 1)
+					interval_min = 10;
+
+				let pid = get_daemon_pid();
+				let running = (pid > 0);
+				let st = read_json_safe(STATE_FILE);
+				let st_records = st.records ?? {};
+				let dm_cache = read_json_safe(DOMAINS_CACHE_FILE);
+				let lock_pid = int(trim(fs.readfile(LOCK_DIR + '/pid') ?? '0'));
+				let syncing = (st.syncing === true) || is_pid_alive(lock_pid);
+
+				let records = [];
+				ctx.foreach('aliddns', 'record', (s) => {
+					let id = s['.name'];
+					let sr = st_records[id] ?? {};
+					let dm = format_domain_display(s.sub_domain, s.main_domain);
+					push(records, {
+						id: id,
+						remark: trim(s.remark ?? ''),
+						enabled: is_truthy(s.enabled, true),
+						domain: dm || sr.domain || '',
+						sub_domain: trim(s.sub_domain ?? '') || '@',
+						main_domain: trim(s.main_domain ?? ''),
+						line: trim(s.line ?? '') || trim(base.line ?? '') || 'default',
+						ttl: int(s.ttl ?? base.ttl ?? '600'),
+						ipv4_enabled: is_truthy(s.ipv4, false),
+						ipv4_source: trim(s.interface ?? '') || 'wan',
+						ipv4_local: sr.ipv4_local ?? null,
+						ipv4_remote: sr.ipv4_remote ?? null,
+						ipv4_status: sr.ipv4_status ?? null,
+						ipv4_msg: sr.ipv4_msg ?? null,
+						ipv4_updated_at: sr.ipv4_updated_at ?? null,
+						ipv6_enabled: is_truthy(s.ipv6, false),
+						ipv6_mode: trim(s.ipv6_mode ?? '') || ((trim(s.interface6 ?? '') == 'internet') ? 'public' : 'iface'),
+						ipv6_source: trim(s.interface6 ?? '') || 'wan6',
+						ipv6_local: sr.ipv6_local ?? null,
+						ipv6_remote: sr.ipv6_remote ?? null,
+						ipv6_status: sr.ipv6_status ?? null,
+						ipv6_msg: sr.ipv6_msg ?? null,
+						ipv6_updated_at: sr.ipv6_updated_at ?? null,
+						last_check_at: sr.last_check_at ?? null
+					});
+				});
+
+				let tm = localtime();
+				return {
+					enabled: enabled,
+					running: running,
+					pid: running ? pid : null,
+					syncing: syncing,
+					interval_min: interval_min,
+					sys_time: time(),
+					clock_valid: (tm.year >= 2025),
+					has_credentials: (trim(base.app_key ?? '') != '' && trim(base.app_secret ?? '') != ''),
+					cached_domains: (type(dm_cache.domains) == 'array') ? dm_cache.domains : [],
+					interfaces: get_live_interfaces(),
+					last_run_at: st.last_run_at ?? null,
+					next_run_at: running ? (st.next_run_at ?? null) : null,
+					records: records
+				};
+			});
+		}
+	},
+
+	get_log: {
+		args: { lines: 0 },
+		call: function(req) {
+			return guarded(function() {
+				let max_lines = int(req.args?.lines ?? 300);
+				if (max_lines != max_lines || max_lines < 10)
+					max_lines = 300;
+				if (max_lines > 1000)
+					max_lines = 1000;
+
+				if (!fs.access(LOG_FILE, 'r'))
+					return { log: '', lines: 0, total: 0 };
+
+				let content = fs.readfile(LOG_FILE) ?? '';
+				let arr = split(content, '\n');
+				if (length(arr) > 0 && arr[-1] == '')
+					pop(arr);
+
+				let total = length(arr);
+				if (total > max_lines)
+					arr = slice(arr, total - max_lines);
+
+				return {
+					log: join('\n', arr),
+					lines: length(arr),
+					total: total
+				};
+			});
+		}
+	},
+
+	clear_log: {
+		call: function() {
+			return guarded(function() {
+				let tm = localtime();
+				let ts = sprintf('%04d-%02d-%02d %02d:%02d:%02d',
+					tm.year, tm.mon, tm.mday, tm.hour, tm.min, tm.sec);
+				let fh = fs.open(LOG_FILE, 'we', 0644);
+				if (!fh)
+					return { result: 'error' };
+				fh.write(sprintf('%s [INFO] 日志已通过 LuCI 手动清空\n', ts));
+				fh.close();
+				return { result: 'ok' };
+			});
+		}
+	},
+
+	trigger_update: {
+		args: { force: true, record_id: '' },
+		call: function(req) {
+			return guarded(function() {
+				let force = (req.args?.force !== false);
+				let rec_id = trim('' + (req.args?.record_id ?? ''));
+
+				if (rec_id != '') {
+					if (!match(rec_id, /^[A-Za-z0-9_]{1,64}$/))
+						return { ok: false, error: 'Invalid record_id' };
+					system(sprintf('(/usr/bin/ucode /usr/sbin/aliddns --force --record %s </dev/null >/dev/null 2>&1) &', rec_id));
+					return { ok: true, result: 'spawned_record', record_id: rec_id };
+				}
+
+				let pid = get_daemon_pid();
+				if (pid > 0 && force) {
+					let rc = system([ '/bin/kill', '-USR1', '' + pid ]);
+					if (rc == 0)
+						return { ok: true, result: 'signaled', pid: pid };
+				}
+				let flag = force ? '--force' : '--once';
+				system(sprintf('(/usr/bin/ucode /usr/sbin/aliddns %s </dev/null >/dev/null 2>&1) &', flag));
+				return { ok: true, result: 'spawned' };
+			});
+		}
+	},
+
+	service_action: {
+		args: { action: 'action' },
+		call: function(req) {
+			return guarded(function() {
+				let act = '' + (req.args?.action ?? '');
+				if (act != 'start' && act != 'stop' && act != 'restart' && act != 'reload')
+					return { result: 'invalid_action', code: -1 };
+				let rc = system([ '/etc/init.d/aliddns', act ]);
+				return { result: (rc == 0) ? 'ok' : 'error', code: rc };
+			});
+		}
+	},
+
+	verify_credentials: {
+		args: { app_key: '', app_secret: '' },
+		call: function(req) {
+			return guarded(function() {
+				return run_subcommand_json('--verify', {
+					app_key: '' + (req.args?.app_key ?? ''),
+					app_secret: '' + (req.args?.app_secret ?? '')
+				});
+			});
+		}
+	},
+
+	test_notify: {
+		args: { url: '', method: '', header: '', body: '' },
+		call: function(req) {
+			return guarded(function() {
+				return run_subcommand_json('--test-notify', {
+					url: '' + (req.args?.url ?? ''),
+					method: '' + (req.args?.method ?? ''),
+					header: '' + (req.args?.header ?? ''),
+					body: '' + (req.args?.body ?? '')
+				});
+			});
+		}
+	}
+};
+
+return { 'luci.aliddns': methods };

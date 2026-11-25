@@ -1,0 +1,17 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifupdate" ] || exit 0
+[ "$INTERFACE" = "loopback" ] && exit 0
+
+PIDFILE="/var/run/aliddns/aliddns.pid"
+[ -f "$PIDFILE" ] || exit 0
+
+hotplug="$(uci -q get aliddns.base.hotplug)"
+[ "${hotplug:-1}" = "0" ] && exit 0
+
+pid="$(cat "$PIDFILE" 2>/dev/null)"
+if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+	kill -USR2 "$pid" 2>/dev/null || true
+fi
+
+exit 0

@@ -1,0 +1,198 @@
+/* luci-app-aliddns theme-adaptive styles (Bootstrap / Argon / Material / Footstrap) */
+.aliddns-dashboard {
+	border-radius: 8px;
+}
+
+.aliddns-topbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.aliddns-kpi-group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 18px;
+}
+
+.aliddns-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 12px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: #fff;
+}
+
+.aliddns-pill-running {
+	background: #198754;
+}
+
+.aliddns-pill-syncing {
+	background: #0d6efd;
+}
+
+.aliddns-pill-stopped {
+	background: #6c757d;
+}
+
+.aliddns-pill-error {
+	background: #dc3545;
+}
+
+.aliddns-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: currentColor;
+	display: inline-block;
+}
+
+.aliddns-dot-pulse {
+	animation: aliddns-pulse 1.4s infinite ease-in-out;
+}
+
+@keyframes aliddns-pulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+.aliddns-meta-item {
+	font-size: 12.5px;
+	opacity: 0.88;
+}
+
+.aliddns-meta-item strong {
+	font-weight: 600;
+	margin-right: 4px;
+}
+
+.aliddns-btn-group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.aliddns-alert {
+	margin-top: 12px;
+	padding: 9px 13px;
+	border-radius: 6px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	border-left: 4px solid #f59f00;
+	background: rgba(245, 159, 0, 0.12);
+}
+
+.aliddns-alert-danger {
+	border-left-color: #dc3545;
+	background: rgba(220, 53, 69, 0.12);
+}
+
+.aliddns-alert-success {
+	border-left-color: #198754;
+	background: rgba(25, 135, 84, 0.12);
+}
+
+.aliddns-badge {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	color: #fff;
+	margin-right: 6px;
+	vertical-align: middle;
+}
+
+.aliddns-copyable {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	background: rgba(128, 128, 128, 0.12);
+	cursor: pointer;
+	transition: background 0.15s ease;
+	word-break: break-all;
+}
+
+.aliddns-copyable:hover {
+	background: rgba(13, 110, 253, 0.18);
+}
+
+.aliddns-subtext {
+	font-size: 11px;
+	opacity: 0.72;
+	margin-top: 3px;
+}
+
+.aliddns-errtext {
+	font-size: 11.5px;
+	color: #dc3545;
+	margin-top: 3px;
+	word-break: break-word;
+}
+
+.aliddns-log-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.aliddns-log-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.aliddns-log-box {
+	max-height: 540px;
+	min-height: 300px;
+	overflow: auto;
+	padding: 10px 12px;
+	border-radius: 6px;
+	border: 1px solid rgba(128, 128, 128, 0.25);
+	background: rgba(128, 128, 128, 0.06);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.aliddns-log-line {
+	white-space: pre-wrap;
+	word-break: break-all;
+	padding: 2px 4px;
+	border-radius: 3px;
+}
+
+.aliddns-log-line:hover {
+	background: rgba(128, 128, 128, 0.1);
+}
+
+.aliddns-log-error {
+	color: #dc3545;
+	font-weight: 600;
+	background: rgba(220, 53, 69, 0.08);
+}
+
+.aliddns-log-warn {
+	color: #d97706;
+}
+
+.aliddns-log-updated {
+	color: #198754;
+	font-weight: 600;
+}

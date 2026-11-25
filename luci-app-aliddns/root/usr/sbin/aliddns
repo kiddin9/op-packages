@@ -1,0 +1,1773 @@
+#!/usr/bin/env ucode
+'use strict';
+
+import * as fs from 'fs';
+import * as uci from 'uci';
+import * as ubus from 'ubus';
+import * as uloop from 'uloop';
+import { query as dns_query } from 'resolv';
+
+const RUN_DIR = '/var/run/aliddns';
+const PID_FILE = RUN_DIR + '/aliddns.pid';
+const STATE_FILE = RUN_DIR + '/state.json';
+const DOMAINS_CACHE_FILE = RUN_DIR + '/domains.json';
+const LOCK_DIR = RUN_DIR + '/sync.lock';
+const LOG_FILE = '/var/log/aliddns.log';
+const MAX_LOG_LINES = 300;
+const TRIM_THRESHOLD_LINES = 400;
+const ERROR_NOTIFY_COOLDOWN = 1800;
+const ALIDNS_ENDPOINT = 'https://alidns.aliyuncs.com/';
+
+const IPV4_CHECK_URLS = [
+	'https://4.ipw.cn',
+	'https://myip.ipip.net',
+	'http://members.3322.org/dyndns/getip',
+	'https://ddns.oray.com/checkip',
+	'https://api-ipv4.ip.sb/ip',
+	'https://v4.ident.me'
+];
+
+const IPV6_CHECK_URLS = [
+	'https://6.ipw.cn',
+	'https://speed.neu6.edu.cn/getIP.php',
+	'https://api-ipv6.ip.sb/ip',
+	'https://v6.ident.me',
+	'https://ifconfig.co/ip'
+];
+
+const AUTH_DNS_SERVERS = [
+	'223.5.5.5',
+	'223.6.6.6',
+	'119.29.29.29'
+];
+
+const RETRY_DELAYS_SEC = [ 30, 60, 120 ];
+
+let digest_mod = null;
+try {
+	digest_mod = require('digest');
+} catch (e) {
+	digest_mod = null;
+}
+
+let req_seq = 0;
+
+function get_self_pid() {
+	let target = fs.readlink('/proc/self');
+	if (target)
+		return int(target);
+	let st = fs.readfile('/proc/self/stat', 64);
+	return st ? int(split(st, ' ')[0]) : 0;
+}
+
+function now_str() {
+	let tm = localtime();
+	return sprintf('%04d-%02d-%02d %02d:%02d:%02d',
+		tm.year, tm.mon, tm.mday, tm.hour, tm.min, tm.sec);
+}
+
+function iso_utc_str() {
+	let tm = gmtime();
+	return sprintf('%04d-%02d-%02dT%02d:%02d:%02dZ',
+		tm.year, tm.mon, tm.mday, tm.hour, tm.min, tm.sec);
+}
+
+function monotonic_ms() {
+	let c = clock(true) ?? clock();
+	if (!c)
+		return time() * 1000;
+	return (c[0] * 1000) + int(c[1] / 1000000);
+}
+
+function ensure_run_dir() {
+	if (!fs.access(RUN_DIR, 'f')) {
+		fs.mkdir(RUN_DIR);
+		fs.chmod(RUN_DIR, 0700);
+	}
+}
+
+function is_truthy(val, def_val) {
+	if (val == null || val == '')
+		return def_val ? true : false;
+	let s = lc(trim('' + val));
+	return (s == '1' || s == 'true' || s == 'yes' || s == 'on' || s == 'enabled');
+}
+
+function append_log(level, msg) {
+	let line = sprintf('%s [%s] %s\n', now_str(), level, msg);
+	let fh = fs.open(LOG_FILE, 'ae', 0644);
+	if (fh) {
+		fh.write(line);
+		fh.close();
+	}
+}
+
+function rotate_log_if_needed() {
+	let content = fs.readfile(LOG_FILE);
+	if (!content)
+		return;
+	let lines = split(content, '\n');
+	if (length(lines) > 0 && lines[-1] == '')
+		pop(lines);
+	if (length(lines) <= TRIM_THRESHOLD_LINES)
+		return;
+	let kept = slice(lines, length(lines) - MAX_LOG_LINES);
+	let tmp = LOG_FILE + '.tmp.' + get_self_pid();
+	let fh = fs.open(tmp, 'we', 0644);
+	if (fh) {
+		fh.write(join('\n', kept) + '\n');
+		fh.close();
+		fs.rename(tmp, LOG_FILE);
+	}
+}
+
+function read_json_file(path) {
+	let raw = fs.readfile(path);
+	if (!raw || trim(raw) == '')
+		return null;
+	try {
+		let parsed = json(raw);
+		return (type(parsed) == 'object') ? parsed : null;
+	} catch (e) {
+		return null;
+	}
+}
+
+function write_json_atomic(path, data) {
+	ensure_run_dir();
+	let tmp = sprintf('%s.tmp.%d.%d', path, get_self_pid(), ++req_seq);
+	let fh = fs.open(tmp, 'we', 0600);
+	if (!fh)
+		return false;
+	fh.write(sprintf('%.2J\n', data));
+	fh.close();
+	if (!fs.rename(tmp, path)) {
+		fs.unlink(tmp);
+		return false;
+	}
+	fs.chmod(path, 0644);
+	return true;
+}
+
+function is_pid_alive(pid) {
+	if (!pid || pid <= 0)
+		return false;
+	return fs.access(sprintf('/proc/%d/stat', pid), 'f') == true;
+}
+
+function acquire_sync_lock() {
+	ensure_run_dir();
+	let my_pid = get_self_pid();
+	if (fs.mkdir(LOCK_DIR)) {
+		fs.writefile(LOCK_DIR + '/pid', '' + my_pid);
+		return true;
+	}
+	let holder = int(trim(fs.readfile(LOCK_DIR + '/pid') ?? '0'));
+	if (!holder || !is_pid_alive(holder)) {
+		fs.unlink(LOCK_DIR + '/pid');
+		fs.rmdir(LOCK_DIR);
+		if (fs.mkdir(LOCK_DIR)) {
+			fs.writefile(LOCK_DIR + '/pid', '' + my_pid);
+			return true;
+		}
+	}
+	return false;
+}
+
+function release_sync_lock() {
+	fs.unlink(LOCK_DIR + '/pid');
+	fs.rmdir(LOCK_DIR);
+}
+
+/* ==========================================================================
+ * Pure ucode SHA-1 & HMAC-SHA1 (with optional C digest fast-path)
+ * ========================================================================== */
+
+function sha1_raw(msg) {
+	if (digest_mod && type(digest_mod.sha1) == 'function') {
+		let hex_str = digest_mod.sha1(msg);
+		if (hex_str)
+			return hexdec(hex_str);
+	}
+
+	let mlen = length(msg);
+	let bytes = [];
+	for (let i = 0; i < mlen; i++)
+		push(bytes, ord(msg, i));
+	push(bytes, 0x80);
+	while ((length(bytes) % 64) != 56)
+		push(bytes, 0x00);
+
+	let bit_hi = (mlen >> 29) & 0xffffffff;
+	let bit_lo = (mlen << 3) & 0xffffffff;
+	for (let sh in [24, 16, 8, 0])
+		push(bytes, (bit_hi >> sh) & 0xff);
+	for (let sh in [24, 16, 8, 0])
+		push(bytes, (bit_lo >> sh) & 0xff);
+
+	let h0 = 0x67452301;
+	let h1 = 0xefcdab89;
+	let h2 = 0x98badcfe;
+	let h3 = 0x10325476;
+	let h4 = 0xc3d2e1f0;
+
+	let w = [];
+	for (let i = 0; i < 80; i++)
+		push(w, 0);
+
+	let blen = length(bytes);
+	for (let off = 0; off < blen; off += 64) {
+		for (let i = 0; i < 16; i++) {
+			let j = off + i * 4;
+			w[i] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) & 0xffffffff;
+		}
+		for (let i = 16; i < 80; i++) {
+			let x = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]) & 0xffffffff;
+			w[i] = (((x << 1) & 0xffffffff) | (x >> 31)) & 0xffffffff;
+		}
+
+		let a = h0, b = h1, c = h2, d = h3, e = h4;
+
+		for (let i = 0; i < 80; i++) {
+			let f = 0, k = 0;
+			if (i < 20) {
+				f = ((b & c) | ((b ^ 0xffffffff) & d)) & 0xffffffff;
+				k = 0x5a827999;
+			} else if (i < 40) {
+				f = (b ^ c ^ d) & 0xffffffff;
+				k = 0x6ed9eba1;
+			} else if (i < 60) {
+				f = ((b & c) | (b & d) | (c & d)) & 0xffffffff;
+				k = 0x8f1bbcdc;
+			} else {
+				f = (b ^ c ^ d) & 0xffffffff;
+				k = 0xca62c1d6;
+			}
+			let rot_a = (((a << 5) & 0xffffffff) | (a >> 27)) & 0xffffffff;
+			let temp = (rot_a + f + e + k + w[i]) & 0xffffffff;
+			e = d;
+			d = c;
+			c = (((b << 30) & 0xffffffff) | (b >> 2)) & 0xffffffff;
+			b = a;
+			a = temp;
+		}
+
+		h0 = (h0 + a) & 0xffffffff;
+		h1 = (h1 + b) & 0xffffffff;
+		h2 = (h2 + c) & 0xffffffff;
+		h3 = (h3 + d) & 0xffffffff;
+		h4 = (h4 + e) & 0xffffffff;
+	}
+
+	let out = [];
+	for (let h in [h0, h1, h2, h3, h4]) {
+		push(out,
+			(h >> 24) & 0xff,
+			(h >> 16) & 0xff,
+			(h >> 8) & 0xff,
+			h & 0xff
+		);
+	}
+	return chr(...out);
+}
+
+function hmac_sha1_b64(key, msg) {
+	if (length(key) > 64)
+		key = sha1_raw(key);
+
+	let ipad_bytes = [];
+	let opad_bytes = [];
+	let klen = length(key);
+	for (let i = 0; i < 64; i++) {
+		let kb = (i < klen) ? ord(key, i) : 0;
+		push(ipad_bytes, kb ^ 0x36);
+		push(opad_bytes, kb ^ 0x5c);
+	}
+	let ipad = chr(...ipad_bytes);
+	let opad = chr(...opad_bytes);
+	return b64enc(sha1_raw(opad + sha1_raw(ipad + msg)));
+}
+
+function percent_encode(val) {
+	let s = '' + (val ?? '');
+	let slen = length(s);
+	let parts = [];
+	for (let i = 0; i < slen; i++) {
+		let b = ord(s, i);
+		if ((b >= 65 && b <= 90) ||
+		    (b >= 97 && b <= 122) ||
+		    (b >= 48 && b <= 57) ||
+		    b == 45 || b == 95 || b == 46 || b == 126) {
+			push(parts, substr(s, i, 1));
+		} else {
+			push(parts, sprintf('%%%02X', b));
+		}
+	}
+	return join('', parts);
+}
+
+function gen_nonce() {
+	let fh = fs.open('/dev/urandom', 're');
+	if (fh) {
+		let rnd = fh.read(16);
+		fh.close();
+		if (rnd && length(rnd) == 16)
+			return hexenc(rnd);
+	}
+	let clk = clock();
+	return sprintf('%d%09d%d%d', time(), clk ? clk[1] : 0, get_self_pid(), ++req_seq);
+}
+
+/* ==========================================================================
+ * Secure HTTP Client & Aliyun Error Diagnosis
+ * ========================================================================== */
+
+function diagnose_aliyun_error(code, message) {
+	let c = '' + (code ?? '');
+	if (c == 'InvalidAccessKeyId.NotFound' || c == 'InvalidAccessKeyId.Inactive')
+		return 'AccessKey ID 不存在或已停用，请核对阿里云 RAM 控制台凭证';
+	if (c == 'SignatureDoesNotMatch')
+		return 'AccessKey Secret 签名校验失败，请检查密钥是否完整无误';
+	if (c == 'InvalidTimeStamp.Expired')
+		return '系统时间与阿里云偏差超过 15 分钟，请先同步路由器 NTP 时间';
+	if (c == 'Forbidden.RAM' || c == 'Forbidden' || c == 'NoPermission')
+		return 'RAM 子账号权限不足，请授予 AliyunDNSFullAccess 权限策略';
+	if (c == 'DomainNotExist' || c == 'InvalidDomainName.NoExist')
+		return '主域名未在当前阿里云云解析账号下托管';
+	if (c == 'IncorrectDomainUser')
+		return '该域名归属于其他阿里云账号，无权操作';
+	if (c == 'DomainRecordLocked')
+		return '该解析记录处于锁定状态，请先在阿里云控制台解锁';
+	if (index(c, 'TTL') >= 0 || (message && index('' + message, 'TTL') >= 0))
+		return '当前云解析套餐不支持所设 TTL 值（免费版最低 600 秒）';
+	if (index(c, 'Line') >= 0)
+		return '当前云解析套餐不支持所选解析线路';
+	if (index(c, 'Throttling') >= 0)
+		return '触发阿里云接口频率限制，稍后将自动重试';
+	return sprintf('%s: %s', c, message ?? '阿里云接口调用失败');
+}
+
+function escape_curl_cfg_str(s) {
+	s = replace('' + (s ?? ''), '\\', '\\\\');
+	s = replace(s, '"', '\\"');
+	s = replace(s, '\n', '\\n');
+	s = replace(s, '\r', '\\r');
+	return s;
+}
+
+function run_curl(url, opts) {
+	opts = opts ?? {};
+	ensure_run_dir();
+	let cfg_file = sprintf('%s/curl.%d.%d.conf', RUN_DIR, get_self_pid(), ++req_seq);
+	let body_file = null;
+	let fh = fs.open(cfg_file, 'wxe', 0600);
+	if (!fh)
+		return { ok: false, error: 'Failed to create temporary curl config' };
+
+	fh.write(sprintf('url = "%s"\n', escape_curl_cfg_str(url)));
+	if (opts.method && opts.method != 'GET')
+		fh.write(sprintf('request = "%s"\n', escape_curl_cfg_str(opts.method)));
+	if (type(opts.headers) == 'array') {
+		for (let hdr in opts.headers)
+			fh.write(sprintf('header = "%s"\n', escape_curl_cfg_str(hdr)));
+	}
+	if (opts.post_data != null) {
+		body_file = sprintf('%s/body.%d.%d.dat', RUN_DIR, get_self_pid(), req_seq);
+		let bfh = fs.open(body_file, 'wxe', 0600);
+		if (bfh) {
+			bfh.write('' + opts.post_data);
+			bfh.close();
+			fh.write(sprintf('data-binary = "@%s"\n', escape_curl_cfg_str(body_file)));
+		}
+	}
+	if (opts.write_http_code)
+		fh.write('write-out = "\\n__HTTP_CODE__:%{http_code}"\n');
+	fh.close();
+
+	let argv = [
+		'/usr/bin/curl',
+		'-sSL',
+		'--connect-timeout', '' + (opts.connect_timeout ?? 5),
+		'--max-time', '' + (opts.max_time ?? 15)
+	];
+
+	if (opts.noproxy !== false)
+		push(argv, '--noproxy', '*');
+
+	if (opts.family == 4)
+		push(argv, '-4');
+	else if (opts.family == 6)
+		push(argv, '-6');
+
+	if (opts.bind_dev && match(opts.bind_dev, /^[a-zA-Z0-9_.:-]+$/))
+		push(argv, '--interface', opts.bind_dev);
+
+	if (opts.verify_ssl === false)
+		push(argv, '-k');
+
+	push(argv, '-K', cfg_file);
+
+	let proc = fs.popen(argv, 're');
+	if (!proc) {
+		fs.unlink(cfg_file);
+		if (body_file)
+			fs.unlink(body_file);
+		return { ok: false, error: 'Failed to invoke curl' };
+	}
+
+	let body = proc.read('all') ?? '';
+	let rc = proc.close();
+	fs.unlink(cfg_file);
+	if (body_file)
+		fs.unlink(body_file);
+
+	let http_code = 0;
+	if (opts.write_http_code) {
+		let idx = rindex(body, '\n__HTTP_CODE__:');
+		if (idx >= 0) {
+			http_code = int(substr(body, idx + 15));
+			body = substr(body, 0, idx);
+		}
+	}
+
+	return {
+		ok: (rc == 0),
+		code: rc,
+		http_code: http_code,
+		body: body
+	};
+}
+
+function aliyun_api(ak_id, ak_secret, action, extra_params, verify_ssl) {
+	let params = {
+		AccessKeyId: trim(ak_id),
+		Action: action,
+		Format: 'json',
+		SignatureMethod: 'HMAC-SHA1',
+		SignatureNonce: gen_nonce(),
+		SignatureVersion: '1.0',
+		Timestamp: iso_utc_str(),
+		Version: '2015-01-09',
+		...(extra_params ?? {})
+	};
+
+	let sorted_keys = sort(keys(params));
+	let pairs = [];
+	for (let k in sorted_keys) {
+		if (params[k] == null || params[k] == '')
+			continue;
+		push(pairs, percent_encode(k) + '=' + percent_encode('' + params[k]));
+	}
+	let canonical_query = join('&', pairs);
+	let string_to_sign = 'GET&%2F&' + percent_encode(canonical_query);
+	let signature = hmac_sha1_b64(trim(ak_secret) + '&', string_to_sign);
+	let full_url = ALIDNS_ENDPOINT + '?' + canonical_query + '&Signature=' + percent_encode(signature);
+
+	let t0 = monotonic_ms();
+	let res = run_curl(full_url, {
+		connect_timeout: 4,
+		max_time: 12,
+		verify_ssl: verify_ssl
+	});
+	let latency_ms = monotonic_ms() - t0;
+	if (latency_ms < 0)
+		latency_ms = 0;
+
+	if (!res.body || trim(res.body) == '') {
+		return {
+			ok: false,
+			latency_ms: latency_ms,
+			error: sprintf('连接阿里云接口超时或网络不可达 (curl 状态码 %d)', res.code)
+		};
+	}
+
+	let parsed = null;
+	try {
+		parsed = json(res.body);
+	} catch (e) {
+		return {
+			ok: false,
+			latency_ms: latency_ms,
+			error: '阿里云接口返回了非 JSON 响应，请检查网络劫持或网关状态'
+		};
+	}
+
+	if (type(parsed) != 'object')
+		return { ok: false, latency_ms: latency_ms, error: '阿里云接口响应格式异常' };
+
+	if (parsed.Code) {
+		return {
+			ok: false,
+			latency_ms: latency_ms,
+			api_code: '' + parsed.Code,
+			raw_message: '' + (parsed.Message ?? ''),
+			error: diagnose_aliyun_error(parsed.Code, parsed.Message)
+		};
+	}
+
+	return { ok: true, latency_ms: latency_ms, data: parsed };
+}
+
+/* ==========================================================================
+ * IPv4 & IPv6 Address Acquisition (Including Prefix+Suffix & MAC Neighbor)
+ * ========================================================================== */
+
+function parse_valid_ipv4(str, require_public) {
+	if (!str)
+		return null;
+	let m = match(str, /([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/);
+	if (!m)
+		return null;
+	let o1 = int(m[1]), o2 = int(m[2]), o3 = int(m[3]), o4 = int(m[4]);
+	if (o1 > 255 || o2 > 255 || o3 > 255 || o4 > 255)
+		return null;
+	if (o1 == 0 || o1 == 127 || o1 >= 224)
+		return null;
+	if (o1 == 169 && o2 == 254)
+		return null;
+	if (require_public) {
+		if (o1 == 10)
+			return null;
+		if (o1 == 172 && o2 >= 16 && o2 <= 31)
+			return null;
+		if (o1 == 192 && o2 == 168)
+			return null;
+		if (o1 == 100 && o2 >= 64 && o2 <= 127)
+			return null;
+		if (o1 == 198 && (o2 == 18 || o2 == 19))
+			return null;
+	}
+	return sprintf('%d.%d.%d.%d', o1, o2, o3, o4);
+}
+
+function extract_global_ipv6(str) {
+	if (!str)
+		return null;
+	let tokens = split(str, /[^0-9a-fA-F:]+/);
+	for (let tok in tokens) {
+		if (!tok || index(tok, ':') < 0)
+			continue;
+		let arr = iptoarr(tok);
+		if (!arr || length(arr) != 16)
+			continue;
+		if ((arr[0] & 0xe0) != 0x20)
+			continue;
+		if (arr[0] == 0x20 && arr[1] == 0x01 && arr[2] == 0x0d && arr[3] == 0xb8)
+			continue;
+		return arrtoip(arr);
+	}
+	return null;
+}
+
+function compose_ipv6_prefix_suffix(prefix_ip, mask_bits, suffix_str) {
+	let pfx_arr = iptoarr(prefix_ip);
+	if (!pfx_arr || length(pfx_arr) != 16)
+		return null;
+
+	let sfx = trim(suffix_str ?? '');
+	if (sfx == '')
+		return null;
+	if (substr(sfx, 0, 1) != ':' && index(sfx, '::') < 0)
+		sfx = '::' + sfx;
+
+	let sfx_arr = iptoarr(sfx);
+	if (!sfx_arr || length(sfx_arr) != 16)
+		return null;
+
+	let bits = int(mask_bits ?? 64);
+	if (bits != bits || bits < 16 || bits > 120)
+		bits = 64;
+
+	let out = [];
+	for (let i = 0; i < 16; i++) {
+		let bpos = i * 8;
+		if (bpos + 8 <= bits) {
+			push(out, pfx_arr[i]);
+		} else if (bpos >= bits) {
+			push(out, sfx_arr[i]);
+		} else {
+			let keep = bits - bpos;
+			let m = (0xff << (8 - keep)) & 0xff;
+			push(out, (pfx_arr[i] & m) | (sfx_arr[i] & (m ^ 0xff)));
+		}
+	}
+
+	if ((out[0] & 0xe0) != 0x20)
+		return null;
+	return arrtoip(out);
+}
+
+function normalize_mac(mac_str) {
+	let s = lc(trim(mac_str ?? ''));
+	s = replace(s, '-', ':');
+	if (!match(s, /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/))
+		return null;
+	return s;
+}
+
+function mac_to_eui64_suffix(norm_mac) {
+	let parts = split(norm_mac, ':');
+	if (length(parts) != 6)
+		return null;
+	let b0 = hex(parts[0]) ^ 0x02;
+	let b1 = hex(parts[1]);
+	let b2 = hex(parts[2]);
+	let b3 = hex(parts[3]);
+	let b4 = hex(parts[4]);
+	let b5 = hex(parts[5]);
+	return sprintf('::%02x%02x:%02xff:fe%02x:%02x%02x', b0, b1, b2, b3, b4, b5);
+}
+
+function discover_ipv6_by_mac(target_mac) {
+	let norm = normalize_mac(target_mac);
+	if (!norm)
+		return null;
+
+	let proc = fs.popen([ '/sbin/ip', '-6', 'neigh', 'show' ], 're');
+	if (!proc)
+		return null;
+	let out = proc.read('all') ?? '';
+	proc.close();
+
+	let best = null;
+	let best_score = -1;
+	for (let line in split(out, '\n')) {
+		let l = lc(trim(line));
+		if (l == '' || index(l, 'lladdr ' + norm) < 0)
+			continue;
+		if (index(l, 'failed') >= 0 || index(l, 'incomplete') >= 0)
+			continue;
+		let first_tok = split(l, /[[:space:]]+/)[0];
+		let gua = extract_global_ipv6(first_tok);
+		if (!gua)
+			continue;
+		let score = 1;
+		if (index(l, 'reachable') >= 0)
+			score = 4;
+		else if (index(l, 'delay') >= 0 || index(l, 'probe') >= 0)
+			score = 3;
+		else if (index(l, 'permanent') >= 0)
+			score = 2;
+		if (score > best_score) {
+			best_score = score;
+			best = gua;
+		}
+	}
+	return best;
+}
+
+function dump_ubus_interfaces() {
+	let map_by_name = {};
+	let conn = ubus.connect(null, 5);
+	if (!conn)
+		return map_by_name;
+	let res = conn.call('network.interface', 'dump', {});
+	conn.disconnect();
+	if (type(res) == 'object' && type(res.interface) == 'array') {
+		for (let ifc in res.interface) {
+			if (type(ifc) == 'object' && ifc.interface)
+				map_by_name[ifc.interface] = ifc;
+		}
+	}
+	return map_by_name;
+}
+
+function get_bind_dev(ifmap, net_name) {
+	if (!net_name || net_name == '' || net_name == 'internet')
+		return null;
+	let ifc = ifmap[net_name];
+	if (!ifc)
+		return null;
+	return ifc.l3_device ?? ifc.device ?? null;
+}
+
+function obtain_ipv4(source, bind_network, ifmap, verify_ssl) {
+	let bind_dev = get_bind_dev(ifmap, bind_network);
+	if (!source || source == '' || source == 'internet') {
+		for (let url in IPV4_CHECK_URLS) {
+			let res = run_curl(url, {
+				family: 4,
+				connect_timeout: 3,
+				max_time: 6,
+				bind_dev: bind_dev,
+				verify_ssl: verify_ssl
+			});
+			if (res.ok && res.body) {
+				let ip = parse_valid_ipv4(trim(res.body), true);
+				if (ip)
+					return ip;
+			}
+		}
+		return null;
+	}
+
+	let ifc = ifmap[source];
+	if (!ifc || type(ifc['ipv4-address']) != 'array')
+		return null;
+
+	for (let item in ifc['ipv4-address']) {
+		let ip = parse_valid_ipv4(item?.address, false);
+		if (ip)
+			return ip;
+	}
+	return null;
+}
+
+function collect_iface_gua6(ifc) {
+	let candidates = [];
+	if (!ifc)
+		return candidates;
+
+	if (type(ifc['ipv6-address']) == 'array') {
+		for (let item in ifc['ipv6-address']) {
+			let ip6 = extract_global_ipv6(item?.address);
+			if (ip6) {
+				push(candidates, {
+					addr: ip6,
+					mask: int(item?.mask ?? 64),
+					preferred: int(item?.preferred ?? 3600)
+				});
+			}
+		}
+	}
+
+	if (type(ifc['ipv6-prefix-assignment']) == 'array') {
+		for (let pfx in ifc['ipv6-prefix-assignment']) {
+			let local_addr = pfx?.['local-address']?.address;
+			let pfx_addr = pfx?.address;
+			let ip6 = extract_global_ipv6(local_addr ?? pfx_addr);
+			if (ip6) {
+				push(candidates, {
+					addr: ip6,
+					pfx_addr: extract_global_ipv6(pfx_addr) ?? ip6,
+					mask: int(pfx?.mask ?? 64),
+					preferred: int(pfx?.preferred ?? 3600)
+				});
+			}
+		}
+	}
+
+	sort(candidates, (a, b) => b.preferred - a.preferred);
+	return candidates;
+}
+
+function find_best_gua_prefix(source, ifmap) {
+	let try_list = [ source, source + '_6', 'lan', 'wan6', 'wan_6', 'wan' ];
+	for (let name in try_list) {
+		if (!name || !ifmap[name])
+			continue;
+		let ifc = ifmap[name];
+		if (type(ifc['ipv6-prefix-assignment']) == 'array') {
+			for (let pfx in ifc['ipv6-prefix-assignment']) {
+				let addr = extract_global_ipv6(pfx?.address);
+				if (addr) {
+					let m = int(pfx?.mask ?? 64);
+					return { addr: addr, mask: (m > 64 ? 64 : m) };
+				}
+			}
+		}
+		if (type(ifc['ipv6-prefix']) == 'array') {
+			for (let pfx in ifc['ipv6-prefix']) {
+				let addr = extract_global_ipv6(pfx?.address);
+				if (addr)
+					return { addr: addr, mask: 64 };
+			}
+		}
+		let cands = collect_iface_gua6(ifc);
+		if (length(cands) > 0)
+			return { addr: cands[0].addr, mask: 64 };
+	}
+	return null;
+}
+
+function obtain_ipv6(rec, ifmap, verify_ssl) {
+	let mode = rec.ipv6_mode;
+	let source = rec.interface6;
+
+	if (mode == 'public' || source == 'internet') {
+		let bind_dev = get_bind_dev(ifmap, rec.bind_network);
+		for (let url in IPV6_CHECK_URLS) {
+			let res = run_curl(url, {
+				family: 6,
+				connect_timeout: 3,
+				max_time: 6,
+				bind_dev: bind_dev,
+				verify_ssl: verify_ssl
+			});
+			if (res.ok && res.body) {
+				let ip6 = extract_global_ipv6(trim(res.body));
+				if (ip6)
+					return ip6;
+			}
+		}
+		return null;
+	}
+
+	if (mode == 'suffix') {
+		let pfx = find_best_gua_prefix(source, ifmap);
+		if (!pfx)
+			return null;
+		return compose_ipv6_prefix_suffix(pfx.addr, 64, rec.ipv6_suffix);
+	}
+
+	if (mode == 'mac') {
+		let found = discover_ipv6_by_mac(rec.ipv6_mac);
+		if (found)
+			return found;
+		if (rec.eui64_fallback) {
+			let pfx = find_best_gua_prefix(source, ifmap);
+			let norm = normalize_mac(rec.ipv6_mac);
+			let sfx = norm ? mac_to_eui64_suffix(norm) : null;
+			if (pfx && sfx)
+				return compose_ipv6_prefix_suffix(pfx.addr, 64, sfx);
+		}
+		return null;
+	}
+
+	let cands = collect_iface_gua6(ifmap[source]);
+	if (length(cands) == 0 && ifmap[source + '_6'])
+		cands = collect_iface_gua6(ifmap[source + '_6']);
+	if (length(cands) == 0 && source == 'wan' && ifmap['wan6'])
+		cands = collect_iface_gua6(ifmap['wan6']);
+
+	return (length(cands) > 0) ? cands[0].addr : null;
+}
+
+function resolve_dns_record(fqdn, rr, main_domain, rtype) {
+	let target = fqdn;
+	if (rr == '*')
+		target = '_aliddns-check.' + main_domain;
+	else if (index(rr, '*') >= 0)
+		target = replace(rr, '*', '_aliddns-check') + '.' + main_domain;
+
+	try {
+		let res = dns_query([target], {
+			type: [rtype],
+			nameserver: AUTH_DNS_SERVERS,
+			timeout: 3000,
+			edns_maxsize: 0
+		});
+		let answers = res?.[target]?.[rtype];
+		if (type(answers) == 'array' && length(answers) > 0) {
+			if (rtype == 'AAAA') {
+				let norm = extract_global_ipv6(answers[0]);
+				return norm ?? answers[0];
+			}
+			return answers[0];
+		}
+	} catch (e) {
+		/* Ignore resolver errors */
+	}
+	return null;
+}
+
+/* ==========================================================================
+ * Webhook Notification Engine (Bark / ServerChan / DingTalk / Feishu / WeCom)
+ * ========================================================================== */
+
+function json_escape_str(s) {
+	let raw = sprintf('%J', '' + (s ?? ''));
+	return substr(raw, 1, length(raw) - 2);
+}
+
+function apply_template_vars(tpl, vars, url_mode) {
+	let out = '' + (tpl ?? '');
+	for (let k, v in vars) {
+		let rep = url_mode ? percent_encode('' + v) : json_escape_str('' + v);
+		out = replace(out, '{' + k + '}', rep);
+	}
+	return out;
+}
+
+function send_webhook(notify_cfg, vars) {
+	let raw_url = trim(notify_cfg.url ?? '');
+	if (raw_url == '')
+		return { ok: false, error: '未配置通知 Webhook URL' };
+
+	let final_url = apply_template_vars(raw_url, vars, true);
+	let method = uc(trim(notify_cfg.method ?? 'AUTO'));
+	let custom_body = trim(notify_cfg.body ?? '');
+	let headers = [];
+	let post_data = null;
+
+	let lower_url = lc(raw_url);
+	let is_im_bot = (index(lower_url, 'oapi.dingtalk.com') >= 0 ||
+	                 index(lower_url, 'open.feishu.cn') >= 0 ||
+	                 index(lower_url, 'open.larksuite.com') >= 0 ||
+	                 index(lower_url, 'qyapi.weixin.qq.com') >= 0);
+
+	if (method == 'POST' || (method == 'AUTO' && (custom_body != '' || is_im_bot))) {
+		method = 'POST';
+		push(headers, 'Content-Type: application/json; charset=utf-8');
+		if (custom_body != '') {
+			post_data = apply_template_vars(custom_body, vars, false);
+		} else if (index(lower_url, 'open.feishu.cn') >= 0 || index(lower_url, 'open.larksuite.com') >= 0) {
+			post_data = sprintf('%J', {
+				msg_type: 'text',
+				content: { text: vars.title + '\n' + vars.message }
+			});
+		} else {
+			/* DingTalk, WeCom & generic JSON webhook */
+			post_data = sprintf('%J', {
+				msgtype: 'text',
+				text: { content: vars.title + '\n' + vars.message }
+			});
+		}
+	} else {
+		method = 'GET';
+	}
+
+	if (notify_cfg.header && trim(notify_cfg.header) != '')
+		push(headers, trim(notify_cfg.header));
+
+	let res = run_curl(final_url, {
+		method: method,
+		headers: headers,
+		post_data: post_data,
+		connect_timeout: 4,
+		max_time: 10,
+		noproxy: false,
+		write_http_code: true
+	});
+
+	let ok = res.ok && (res.http_code >= 200 && res.http_code < 400);
+	return {
+		ok: ok,
+		http_code: res.http_code,
+		body: trim(substr(res.body ?? '', 0, 200)),
+		error: ok ? null : sprintf('HTTP %d (curl %d)', res.http_code, res.code)
+	};
+}
+
+/* ==========================================================================
+ * Configuration Loading & Normalization
+ * ========================================================================== */
+
+function normalize_domain_pair(raw_sub, raw_main) {
+	let main = lc(trim(raw_main ?? ''));
+	main = replace(main, /^https?:\/\//, '');
+	main = trim(main, './ ');
+	if (main == '')
+		return null;
+
+	let sub = lc(trim(raw_sub ?? ''));
+	sub = trim(sub, '. ');
+	if (sub == '' || sub == main)
+		sub = '@';
+	else if (length(sub) > length(main) + 1 && substr(sub, -(length(main) + 1)) == '.' + main)
+		sub = substr(sub, 0, length(sub) - length(main) - 1);
+
+	let fqdn_display = (sub == '@') ? main : (sub + '.' + main);
+	let fqdn_api = (sub == '@') ? ('@.' + main) : (sub + '.' + main);
+
+	return {
+		rr: sub,
+		main_domain: main,
+		fqdn_display: fqdn_display,
+		fqdn_api: fqdn_api
+	};
+}
+
+function load_aliddns_config() {
+	let ctx = uci.cursor();
+	let base = ctx.get_all('aliddns', 'base');
+	if (!base) {
+		ctx.foreach('aliddns', 'base', (s) => {
+			if (!base)
+				base = s;
+		});
+	}
+	base = base ?? {};
+
+	let interval_min = int(base.time ?? '10');
+	if (interval_min != interval_min || interval_min < 1)
+		interval_min = 10;
+	if (interval_min > 1440)
+		interval_min = 1440;
+
+	let default_ttl = int(base.ttl ?? '600');
+	if (default_ttl != default_ttl || default_ttl < 1 || default_ttl > 86400)
+		default_ttl = 600;
+
+	let cfg = {
+		enabled: is_truthy(base.enable, false),
+		interval_min: interval_min,
+		app_key: trim(base.app_key ?? ''),
+		app_secret: trim(base.app_secret ?? ''),
+		ttl: default_ttl,
+		line: trim(base.line ?? '') || 'default',
+		clean: is_truthy(base.clean, false),
+		hotplug: is_truthy(base.hotplug, true),
+		verify_ssl: is_truthy(base.verify_ssl, true),
+		notify: {
+			enabled: is_truthy(base.notify_enabled, false),
+			on_error: is_truthy(base.notify_on_error, false),
+			url: trim(base.notify_url ?? ''),
+			method: trim(base.notify_method ?? 'AUTO') || 'AUTO',
+			header: trim(base.notify_header ?? ''),
+			body: trim(base.notify_body ?? '')
+		},
+		records: []
+	};
+
+	ctx.foreach('aliddns', 'record', (s) => {
+		let dm = normalize_domain_pair(s.sub_domain, s.main_domain);
+		let rec_ttl = int(s.ttl ?? '');
+		if (rec_ttl != rec_ttl || rec_ttl < 1 || rec_ttl > 86400)
+			rec_ttl = cfg.ttl;
+
+		let if6 = trim(s.interface6 ?? '') || 'wan6';
+		let v6_mode = trim(s.ipv6_mode ?? '');
+		if (v6_mode == '')
+			v6_mode = (if6 == 'internet') ? 'public' : 'iface';
+
+		push(cfg.records, {
+			id: s['.name'],
+			remark: trim(s.remark ?? ''),
+			enabled: is_truthy(s.enabled, true),
+			sub_domain: dm ? dm.rr : (trim(s.sub_domain ?? '') || '@'),
+			main_domain: dm ? dm.main_domain : trim(s.main_domain ?? ''),
+			fqdn_display: dm ? dm.fqdn_display : '',
+			fqdn_api: dm ? dm.fqdn_api : '',
+			valid_domain: (dm != null),
+			ipv4: is_truthy(s.ipv4, false),
+			interface: trim(s.interface ?? '') || 'wan',
+			ipv6: is_truthy(s.ipv6, false),
+			ipv6_mode: v6_mode,
+			interface6: if6,
+			ipv6_suffix: trim(s.ipv6_suffix ?? ''),
+			ipv6_mac: trim(s.ipv6_mac ?? ''),
+			eui64_fallback: is_truthy(s.eui64_fallback, true),
+			bind_network: trim(s.bind_network ?? ''),
+			ttl: rec_ttl,
+			line: trim(s.line ?? '') || cfg.line,
+			app_key: trim(s.app_key ?? '') || cfg.app_key,
+			app_secret: trim(s.app_secret ?? '') || cfg.app_secret
+		});
+	});
+
+	if (length(cfg.records) == 0 && base.main_domain) {
+		let dm = normalize_domain_pair(base.sub_domain, base.main_domain);
+		if (dm) {
+			let if6 = trim(base.interface6 ?? '') || 'wan6';
+			push(cfg.records, {
+				id: 'legacy_base',
+				remark: '',
+				enabled: true,
+				sub_domain: dm.rr,
+				main_domain: dm.main_domain,
+				fqdn_display: dm.fqdn_display,
+				fqdn_api: dm.fqdn_api,
+				valid_domain: true,
+				ipv4: is_truthy(base.ipv4, true),
+				interface: trim(base.interface ?? '') || 'wan',
+				ipv6: is_truthy(base.ipv6, false),
+				ipv6_mode: (if6 == 'internet') ? 'public' : 'iface',
+				interface6: if6,
+				ipv6_suffix: '',
+				ipv6_mac: '',
+				eui64_fallback: true,
+				bind_network: '',
+				ttl: cfg.ttl,
+				line: cfg.line,
+				app_key: cfg.app_key,
+				app_secret: cfg.app_secret
+			});
+		}
+	}
+
+	return cfg;
+}
+
+/* ==========================================================================
+ * Single Record Family (A / AAAA) Synchronization Logic
+ * ========================================================================== */
+
+function maybe_notify_event(cfg, rec, rtype, old_ip, new_ip, status, detail_msg, prev_state) {
+	if (!cfg.notify.enabled || cfg.notify.url == '')
+		return prev_state?.last_err_notify_ts ?? 0;
+
+	let fam_label = (rtype == 'AAAA') ? 'IPv6 (AAAA)' : 'IPv4 (A)';
+	if (status == 'updated') {
+		let vars = {
+			title: sprintf('AliDDNS 解析已更新: %s', rec.fqdn_display),
+			message: sprintf('域名: %s\n类型: %s\n新地址: %s\n原地址: %s\n时间: %s',
+				rec.fqdn_display, fam_label, new_ip ?? '-', old_ip ?? '首次添加', now_str()),
+			domain: rec.fqdn_display,
+			type: rtype,
+			ip: new_ip ?? '',
+			old_ip: old_ip ?? '',
+			status: 'updated',
+			time: now_str()
+		};
+		let wres = send_webhook(cfg.notify, vars);
+		if (!wres.ok)
+			append_log('WARN', sprintf('%s: 推送 Webhook 通知失败 (%s)', rec.fqdn_display, wres.error));
+		return 0;
+	}
+
+	if (status == 'error' && cfg.notify.on_error) {
+		let last_ts = int(prev_state?.last_err_notify_ts ?? 0);
+		if (time() - last_ts >= ERROR_NOTIFY_COOLDOWN) {
+			let vars = {
+				title: sprintf('AliDDNS 同步异常: %s', rec.fqdn_display),
+				message: sprintf('域名: %s\n类型: %s\n原因: %s\n时间: %s',
+					rec.fqdn_display, fam_label, detail_msg ?? '未知错误', now_str()),
+				domain: rec.fqdn_display,
+				type: rtype,
+				ip: new_ip ?? '',
+				old_ip: old_ip ?? '',
+				status: 'error',
+				time: now_str()
+			};
+			send_webhook(cfg.notify, vars);
+			return time();
+		}
+		return last_ts;
+	}
+
+	return prev_state?.last_err_notify_ts ?? 0;
+}
+
+function sync_record_family(cfg, rec, rtype, local_ip, prev_state, force) {
+	let tag = sprintf('%s (%s/%s)', rec.fqdn_display, rtype, rec.line);
+	let fam_key = (rtype == 'AAAA') ? 'ipv6' : 'ipv4';
+	let prev_ip = prev_state?.[fam_key + '_remote'] ?? null;
+	let prev_rid = prev_state?.[fam_key + '_record_id'] ?? null;
+	let prev_updated = prev_state?.[fam_key + '_updated_at'] ?? null;
+
+	if (!local_ip) {
+		let src_desc = (rtype == 'AAAA')
+			? (rec.ipv6_mode == 'mac' ? ('MAC:' + rec.ipv6_mac) : (rec.ipv6_mode == 'suffix' ? (rec.interface6 + '+后缀') : rec.interface6))
+			: rec.interface;
+		let msg = sprintf('未能从 [%s] 获取有效的公网 %s 地址', src_desc, rtype == 'AAAA' ? 'IPv6' : 'IPv4');
+		append_log('WARN', sprintf('%s: %s', tag, msg));
+		let err_ts = maybe_notify_event(cfg, rec, rtype, prev_ip, null, 'error', msg, prev_state);
+		return {
+			local: null,
+			remote: prev_ip,
+			record_id: prev_rid,
+			updated_at: prev_updated,
+			status: 'error',
+			message: msg,
+			err_notify_ts: err_ts
+		};
+	}
+
+	if (!rec.app_key || !rec.app_secret) {
+		let msg = '未配置阿里云 AccessKey ID 或 Secret';
+		append_log('ERROR', sprintf('%s: %s', tag, msg));
+		return {
+			local: local_ip,
+			remote: prev_ip,
+			record_id: prev_rid,
+			updated_at: prev_updated,
+			status: 'error',
+			message: msg,
+			err_notify_ts: prev_state?.last_err_notify_ts ?? 0
+		};
+	}
+
+	let dns_ip = resolve_dns_record(rec.fqdn_display, rec.sub_domain, rec.main_domain, rtype);
+
+	if (!force && prev_rid && prev_ip == local_ip && dns_ip == local_ip) {
+		append_log('INFO', sprintf('%s: 地址未变化 (%s)，跳过云端请求', tag, local_ip));
+		return {
+			local: local_ip,
+			remote: local_ip,
+			record_id: prev_rid,
+			updated_at: prev_updated ?? now_str(),
+			status: 'synced',
+			message: '地址一致，无需更新',
+			err_notify_ts: 0
+		};
+	}
+
+	let qres = aliyun_api(rec.app_key, rec.app_secret, 'DescribeSubDomainRecords', {
+		DomainName: rec.main_domain,
+		SubDomain: rec.fqdn_api,
+		Type: rtype,
+		Line: rec.line,
+		PageSize: 100
+	}, cfg.verify_ssl);
+
+	if (!qres.ok) {
+		append_log('ERROR', sprintf('%s: 查询解析记录失败 - %s', tag, qres.error));
+		let err_ts = maybe_notify_event(cfg, rec, rtype, prev_ip, local_ip, 'error', qres.error, prev_state);
+		return {
+			local: local_ip,
+			remote: dns_ip ?? prev_ip,
+			record_id: prev_rid,
+			updated_at: prev_updated,
+			status: 'error',
+			message: qres.error,
+			err_notify_ts: err_ts
+		};
+	}
+
+	let raw_list = qres.data?.DomainRecords?.Record;
+	let records = [];
+	if (type(raw_list) == 'array') {
+		for (let item in raw_list) {
+			if (type(item) == 'object' &&
+			    item.Type == rtype &&
+			    (item.Line ?? 'default') == rec.line) {
+				push(records, item);
+			}
+		}
+	}
+
+	if (length(records) == 0) {
+		let ares = aliyun_api(rec.app_key, rec.app_secret, 'AddDomainRecord', {
+			DomainName: rec.main_domain,
+			RR: rec.sub_domain,
+			Type: rtype,
+			Value: local_ip,
+			TTL: rec.ttl,
+			Line: rec.line
+		}, cfg.verify_ssl);
+
+		if (!ares.ok) {
+			append_log('ERROR', sprintf('%s: 新增记录失败 (%s) - %s', tag, local_ip, ares.error));
+			let err_ts = maybe_notify_event(cfg, rec, rtype, null, local_ip, 'error', ares.error, prev_state);
+			return {
+				local: local_ip,
+				remote: null,
+				record_id: null,
+				updated_at: prev_updated,
+				status: 'error',
+				message: ares.error,
+				err_notify_ts: err_ts
+			};
+		}
+
+		let new_id = '' + (ares.data?.RecordId ?? '');
+		let ts = now_str();
+		append_log('INFO', sprintf('%s: 新增解析记录成功 -> %s (RecordId: %s, TTL: %ds)', tag, local_ip, new_id, rec.ttl));
+		maybe_notify_event(cfg, rec, rtype, null, local_ip, 'updated', null, prev_state);
+		return {
+			local: local_ip,
+			remote: local_ip,
+			record_id: new_id,
+			updated_at: ts,
+			status: 'updated',
+			message: '新增解析成功',
+			err_notify_ts: 0
+		};
+	}
+
+	let primary = records[0];
+	let primary_id = '' + primary.RecordId;
+
+	if (cfg.clean && length(records) > 1) {
+		for (let i = 1; i < length(records); i++) {
+			let dup_id = '' + records[i].RecordId;
+			let dres = aliyun_api(rec.app_key, rec.app_secret, 'DeleteDomainRecord', {
+				RecordId: dup_id
+			}, cfg.verify_ssl);
+			if (dres.ok)
+				append_log('INFO', sprintf('%s: 已清理重复记录 RecordId=%s (原值 %s)', tag, dup_id, records[i].Value ?? ''));
+			else
+				append_log('WARN', sprintf('%s: 清理重复记录 RecordId=%s 失败 - %s', tag, dup_id, dres.error));
+		}
+	}
+
+	let cur_val = '' + (primary.Value ?? '');
+	if (rtype == 'AAAA') {
+		let norm_cur = extract_global_ipv6(cur_val);
+		if (norm_cur)
+			cur_val = norm_cur;
+	}
+	let cur_ttl = int(primary.TTL ?? rec.ttl);
+	let cur_line = '' + (primary.Line ?? 'default');
+
+	if (cur_val == local_ip && cur_ttl == rec.ttl && cur_line == rec.line) {
+		append_log('INFO', sprintf('%s: 阿里云端记录已是最新 (%s, RecordId: %s)', tag, local_ip, primary_id));
+		return {
+			local: local_ip,
+			remote: local_ip,
+			record_id: primary_id,
+			updated_at: prev_updated ?? now_str(),
+			status: 'synced',
+			message: '云端记录已是最新',
+			err_notify_ts: 0
+		};
+	}
+
+	let ures = aliyun_api(rec.app_key, rec.app_secret, 'UpdateDomainRecord', {
+		RecordId: primary_id,
+		RR: rec.sub_domain,
+		Type: rtype,
+		Value: local_ip,
+		TTL: rec.ttl,
+		Line: rec.line
+	}, cfg.verify_ssl);
+
+	if (!ures.ok) {
+		if (ures.api_code == 'DomainRecordDuplicate') {
+			append_log('INFO', sprintf('%s: 云端记录无变化 (%s)', tag, local_ip));
+			return {
+				local: local_ip,
+				remote: local_ip,
+				record_id: primary_id,
+				updated_at: prev_updated ?? now_str(),
+				status: 'synced',
+				message: '云端记录无变化',
+				err_notify_ts: 0
+			};
+		}
+		append_log('ERROR', sprintf('%s: 更新记录失败 (%s -> %s) - %s', tag, cur_val, local_ip, ures.error));
+		let err_ts = maybe_notify_event(cfg, rec, rtype, cur_val, local_ip, 'error', ures.error, prev_state);
+		return {
+			local: local_ip,
+			remote: cur_val,
+			record_id: primary_id,
+			updated_at: prev_updated,
+			status: 'error',
+			message: ures.error,
+			err_notify_ts: err_ts
+		};
+	}
+
+	let ts = now_str();
+	append_log('INFO', sprintf('%s: 更新解析成功 %s -> %s (RecordId: %s, TTL: %ds)', tag, cur_val, local_ip, primary_id, rec.ttl));
+	maybe_notify_event(cfg, rec, rtype, cur_val, local_ip, 'updated', null, prev_state);
+	return {
+		local: local_ip,
+		remote: local_ip,
+		record_id: primary_id,
+		updated_at: ts,
+		status: 'updated',
+		message: '更新解析成功',
+		err_notify_ts: 0
+	};
+}
+
+/* ==========================================================================
+ * Sync Cycle, Credential Verification & Notification Test Modes
+ * ========================================================================== */
+
+function run_sync_cycle(force, target_record_id) {
+	if (!acquire_sync_lock()) {
+		append_log('INFO', '已有同步任务正在执行，跳过本次并发触发');
+		return 0;
+	}
+
+	let prev_doc = read_json_file(STATE_FILE) ?? {};
+	let prev_records = prev_doc.records ?? {};
+	let cfg = load_aliddns_config();
+
+	write_json_atomic(STATE_FILE, {
+		...prev_doc,
+		syncing: true,
+		interval_min: cfg.interval_min
+	});
+
+	let ifmap = dump_ubus_interfaces();
+	let next_records = { ...prev_records };
+	if (!target_record_id)
+		next_records = {};
+
+	let active_count = 0;
+	let error_count = 0;
+
+	for (let rec in cfg.records) {
+		if (target_record_id && rec.id != target_record_id)
+			continue;
+
+		let prev_rec = prev_records[rec.id] ?? {};
+		if (!rec.enabled && !target_record_id) {
+			next_records[rec.id] = {
+				...prev_rec,
+				id: rec.id,
+				domain: rec.fqdn_display,
+				enabled: false,
+				ipv4_enabled: rec.ipv4,
+				ipv6_enabled: rec.ipv6,
+				line: rec.line,
+				ttl: rec.ttl,
+				last_check_at: prev_rec.last_check_at ?? null
+			};
+			continue;
+		}
+
+		if (!rec.valid_domain) {
+			append_log('WARN', sprintf('记录 [%s] 未填写有效的主域名，已跳过', rec.id));
+			next_records[rec.id] = {
+				id: rec.id,
+				domain: '(未配置主域名)',
+				enabled: rec.enabled,
+				ipv4_enabled: rec.ipv4,
+				ipv6_enabled: rec.ipv6,
+				ipv4_status: 'invalid',
+				ipv4_msg: '未填写有效主域名',
+				last_check_at: now_str()
+			};
+			error_count++;
+			continue;
+		}
+
+		if (!rec.ipv4 && !rec.ipv6) {
+			append_log('WARN', sprintf('%s: 未启用 IPv4 或 IPv6，已跳过', rec.fqdn_display));
+			next_records[rec.id] = {
+				...prev_rec,
+				id: rec.id,
+				domain: rec.fqdn_display,
+				enabled: rec.enabled,
+				ipv4_enabled: false,
+				ipv6_enabled: false,
+				last_check_at: now_str()
+			};
+			continue;
+		}
+
+		active_count++;
+		let entry = {
+			id: rec.id,
+			domain: rec.fqdn_display,
+			enabled: rec.enabled,
+			ipv4_enabled: rec.ipv4,
+			ipv6_enabled: rec.ipv6,
+			line: rec.line,
+			ttl: rec.ttl,
+			last_check_at: now_str(),
+			last_err_notify_ts: prev_rec.last_err_notify_ts ?? 0
+		};
+
+		if (rec.ipv4) {
+			let ip4 = obtain_ipv4(rec.interface, rec.bind_network, ifmap, cfg.verify_ssl);
+			let r4 = sync_record_family(cfg, rec, 'A', ip4, prev_rec, force);
+			entry.ipv4_local = r4.local;
+			entry.ipv4_remote = r4.remote;
+			entry.ipv4_record_id = r4.record_id;
+			entry.ipv4_updated_at = r4.updated_at;
+			entry.ipv4_status = r4.status;
+			entry.ipv4_msg = r4.message;
+			entry.last_err_notify_ts = r4.err_notify_ts;
+			if (r4.status == 'error')
+				error_count++;
+		}
+
+		if (rec.ipv6) {
+			let ip6 = obtain_ipv6(rec, ifmap, cfg.verify_ssl);
+			let r6 = sync_record_family(cfg, rec, 'AAAA', ip6, prev_rec, force);
+			entry.ipv6_local = ip6;
+			entry.ipv6_remote = r6.remote;
+			entry.ipv6_record_id = r6.record_id;
+			entry.ipv6_updated_at = r6.updated_at;
+			entry.ipv6_status = r6.status;
+			entry.ipv6_msg = r6.message;
+			if (r6.err_notify_ts > entry.last_err_notify_ts)
+				entry.last_err_notify_ts = r6.err_notify_ts;
+			if (r6.status == 'error')
+				error_count++;
+		}
+
+		next_records[rec.id] = entry;
+	}
+
+	if (active_count == 0 && !target_record_id)
+		append_log('WARN', '当前没有已启用且配置完整的域名解析记录');
+
+	let finished_ts = time();
+	let next_ts = finished_ts + (cfg.interval_min * 60);
+	let next_tm = localtime(next_ts);
+	let next_str = sprintf('%04d-%02d-%02d %02d:%02d:%02d',
+		next_tm.year, next_tm.mon, next_tm.mday, next_tm.hour, next_tm.min, next_tm.sec);
+
+	write_json_atomic(STATE_FILE, {
+		syncing: false,
+		interval_min: cfg.interval_min,
+		last_run_at: now_str(),
+		next_run_at: cfg.enabled ? next_str : (prev_doc.next_run_at ?? null),
+		records: next_records
+	});
+
+	rotate_log_if_needed();
+	release_sync_lock();
+	return (error_count > 0) ? 1 : 0;
+}
+
+function run_verify_credentials(input_file) {
+	let cfg = load_aliddns_config();
+	let ak_id = cfg.app_key;
+	let ak_sec = cfg.app_secret;
+
+	if (input_file && fs.access(input_file, 'r')) {
+		let payload = read_json_file(input_file);
+		fs.unlink(input_file);
+		if (payload) {
+			if (payload.app_key && trim('' + payload.app_key) != '')
+				ak_id = trim('' + payload.app_key);
+			if (payload.app_secret && trim('' + payload.app_secret) != '')
+				ak_sec = trim('' + payload.app_secret);
+		}
+	}
+
+	if (!ak_id || !ak_sec) {
+		printf('%J\n', {
+			ok: false,
+			error: '请先填写 AccessKey ID 与 AccessKey Secret'
+		});
+		return 1;
+	}
+
+	let res = aliyun_api(ak_id, ak_sec, 'DescribeDomains', {
+		PageSize: 100
+	}, cfg.verify_ssl);
+
+	if (!res.ok) {
+		printf('%J\n', {
+			ok: false,
+			latency_ms: res.latency_ms ?? 0,
+			api_code: res.api_code ?? null,
+			error: res.error
+		});
+		return 1;
+	}
+
+	let raw_domains = res.data?.Domains?.Domain;
+	let domains = [];
+	if (type(raw_domains) == 'array') {
+		for (let d in raw_domains) {
+			if (type(d) == 'object' && d.DomainName)
+				push(domains, '' + d.DomainName);
+		}
+	}
+	sort(domains);
+
+	write_json_atomic(DOMAINS_CACHE_FILE, {
+		updated_at: now_str(),
+		domains: domains
+	});
+
+	printf('%J\n', {
+		ok: true,
+		latency_ms: res.latency_ms ?? 0,
+		total: int(res.data?.TotalCount ?? length(domains)),
+		domains: domains
+	});
+	return 0;
+}
+
+function run_test_notify(input_file) {
+	let cfg = load_aliddns_config();
+	let notify_cfg = { ...cfg.notify };
+
+	if (input_file && fs.access(input_file, 'r')) {
+		let payload = read_json_file(input_file);
+		fs.unlink(input_file);
+		if (payload) {
+			if (payload.url != null && trim('' + payload.url) != '')
+				notify_cfg.url = trim('' + payload.url);
+			if (payload.method != null && trim('' + payload.method) != '')
+				notify_cfg.method = trim('' + payload.method);
+			if (payload.header != null)
+				notify_cfg.header = trim('' + payload.header);
+			if (payload.body != null)
+				notify_cfg.body = trim('' + payload.body);
+		}
+	}
+
+	let res = send_webhook(notify_cfg, {
+		title: 'AliDDNS 通知推送测试',
+		message: sprintf('这是一条来自 OpenWrt 路由器的 AliDDNS 测试消息。\n发送时间: %s', now_str()),
+		domain: 'test.example.com',
+		type: 'A',
+		ip: '203.0.113.88',
+		old_ip: '203.0.113.10',
+		status: 'test',
+		time: now_str()
+	});
+
+	printf('%J\n', res);
+	return res.ok ? 0 : 1;
+}
+
+/* ==========================================================================
+ * Event-Driven uloop Daemon Mode with Exponential Failure Retry
+ * ========================================================================== */
+
+function run_daemon() {
+	ensure_run_dir();
+	let cfg = load_aliddns_config();
+	if (!cfg.enabled) {
+		append_log('INFO', 'AliDDNS 未启用，守护进程退出');
+		return 0;
+	}
+
+	uloop.init();
+
+	let my_pid = get_self_pid();
+	fs.writefile(PID_FILE, '' + my_pid + '\n');
+
+	let worker = null;
+	let queued_sync = false;
+	let queued_force = false;
+	let retry_idx = 0;
+
+	function spawn_worker;
+
+	let retry_timer = uloop.timer(-1, () => {
+		spawn_worker(false, sprintf('失败自动快速重试 #%d', retry_idx));
+	});
+
+	function spawn_worker(force, reason) {
+		if (worker) {
+			queued_sync = true;
+			if (force)
+				queued_force = true;
+			return;
+		}
+		retry_timer.set(-1);
+		if (reason)
+			append_log('INFO', sprintf('触发同步检查 (%s)', reason));
+
+		let args = [ '/usr/sbin/aliddns', force ? '--force' : '--once' ];
+		worker = uloop.process('/usr/bin/ucode', args, null, (exit_code) => {
+			worker = null;
+			if (queued_sync) {
+				let f = queued_force;
+				queued_sync = false;
+				queued_force = false;
+				spawn_worker(f, '队列续接');
+				return;
+			}
+			if (exit_code == 0) {
+				retry_idx = 0;
+			} else if (retry_idx < length(RETRY_DELAYS_SEC)) {
+				let wait_s = RETRY_DELAYS_SEC[retry_idx++];
+				append_log('INFO', sprintf('部分记录同步未完成，将在 %d 秒后自动重试 (%d/%d)',
+					wait_s, retry_idx, length(RETRY_DELAYS_SEC)));
+				retry_timer.set(wait_s * 1000);
+			}
+		});
+	}
+
+	let debounce_timer = uloop.timer(-1, () => {
+		retry_idx = 0;
+		spawn_worker(false, '网络接口状态变更');
+	});
+
+	let periodic_timer = uloop.interval(cfg.interval_min * 60 * 1000, () => {
+		retry_idx = 0;
+		spawn_worker(false, sprintf('定时周期 %d 分钟', cfg.interval_min));
+	});
+
+	let sig_usr1 = uloop.signal('USR1', () => {
+		retry_idx = 0;
+		spawn_worker(true, '收到手动强制同步信号');
+	});
+
+	let sig_usr2 = uloop.signal('USR2', () => {
+		if (cfg.hotplug)
+			debounce_timer.set(5000);
+	});
+
+	let shutdown = () => {
+		append_log('INFO', 'AliDDNS 守护进程收到停止信号，正在退出');
+		if (worker && type(worker.delete) == 'function')
+			worker.delete();
+		if (retry_timer && type(retry_timer.cancel) == 'function')
+			retry_timer.cancel();
+		if (debounce_timer && type(debounce_timer.cancel) == 'function')
+			debounce_timer.cancel();
+		if (periodic_timer && type(periodic_timer.cancel) == 'function')
+			periodic_timer.cancel();
+		fs.unlink(PID_FILE);
+		uloop.end();
+	};
+
+	let sig_term = uloop.signal('TERM', shutdown);
+	let sig_int = uloop.signal('INT', shutdown);
+
+	let ubus_conn = null;
+	let iface_listener = null;
+	if (cfg.hotplug) {
+		ubus_conn = ubus.connect();
+		if (ubus_conn) {
+			iface_listener = ubus_conn.listener('network.interface', (event, msg) => {
+				let act = msg?.action;
+				let ifname = msg?.interface;
+				if ((act == 'ifup' || act == 'ifupdate') && ifname != 'loopback')
+					debounce_timer.set(5000);
+			});
+		}
+	}
+
+	append_log('INFO', sprintf('AliDDNS 守护进程已启动 (PID: %d, 检查间隔: %d 分钟)', my_pid, cfg.interval_min));
+	spawn_worker(false, '服务启动初始同步');
+
+	uloop.run();
+
+	if (iface_listener)
+		iface_listener.remove();
+	if (ubus_conn)
+		ubus_conn.disconnect();
+	uloop.done();
+	return 0;
+}
+
+function print_status_json() {
+	let cfg = load_aliddns_config();
+	let st = read_json_file(STATE_FILE) ?? {};
+	let pid = int(trim(fs.readfile(PID_FILE) ?? '0'));
+	let running = is_pid_alive(pid);
+	printf('%.2J\n', {
+		enabled: cfg.enabled,
+		running: running,
+		pid: running ? pid : null,
+		interval_min: cfg.interval_min,
+		syncing: st.syncing ?? false,
+		last_run_at: st.last_run_at ?? null,
+		next_run_at: running ? (st.next_run_at ?? null) : null,
+		records: st.records ?? {}
+	});
+	return 0;
+}
+
+/* ==========================================================================
+ * CLI Entrypoint
+ * ========================================================================== */
+
+let mode = 'once';
+let force = false;
+let record_id = null;
+let payload_file = null;
+
+for (let i = 0; i < length(ARGV); i++) {
+	let arg = ARGV[i];
+	if (arg == '--daemon' || arg == '-d')
+		mode = 'daemon';
+	else if (arg == '--force' || arg == '-f')
+		force = true;
+	else if (arg == '--once')
+		mode = 'once';
+	else if (arg == '--status' || arg == '-s')
+		mode = 'status';
+	else if (arg == '--record' && i + 1 < length(ARGV))
+		record_id = ARGV[++i];
+	else if (arg == '--verify') {
+		mode = 'verify';
+		if (i + 1 < length(ARGV))
+			payload_file = ARGV[++i];
+	} else if (arg == '--test-notify') {
+		mode = 'test_notify';
+		if (i + 1 < length(ARGV))
+			payload_file = ARGV[++i];
+	} else if (arg == '--help' || arg == '-h') {
+		print('Usage: aliddns [--once] [--force] [--record <id>] [--daemon] [--status] [--verify [file]] [--test-notify [file]]\n');
+		exit(0);
+	}
+}
+
+if (mode == 'daemon')
+	exit(run_daemon());
+if (mode == 'status')
+	exit(print_status_json());
+if (mode == 'verify')
+	exit(run_verify_credentials(payload_file));
+if (mode == 'test_notify')
+	exit(run_test_notify(payload_file));
+
+exit(run_sync_cycle(force, record_id));
