@@ -6,7 +6,7 @@
  *
  * - tests/navigation.html regression page at phone width
  * - preview pages in zh/en × light/dark × desktop/phone: no script errors,
- *   screenshots written to .cache/screenshots for review
+ *   screenshots written to .cache/screenshots when CARBON_SCREENSHOTS=1
  * - dashboard data (devices, Wi‑Fi, IPv6, sensors, traffic picker)
  * - keyboard / touch / drawer accessibility
  * - the minified release build computes the same styles as the sources
@@ -22,6 +22,12 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SHOTS = path.join(ROOT, '.cache', 'screenshots');
+/* Screenshots are only written for local review: CARBON_SCREENSHOTS=1 npm run test:browser */
+async function shot(target, name, opts = {}) {
+	if (!process.env.CARBON_SCREENSHOTS) return;
+	fs.mkdirSync(SHOTS, { recursive: true });
+	await target.screenshot({ path: path.join(SHOTS, name), ...opts });
+}
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 
 let server, base, browser, minRoot;
@@ -49,7 +55,6 @@ test.before(async () => {
 	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 	base = 'http://127.0.0.1:' + server.address().port;
 	browser = await chromium.launch({ executablePath: process.env.CARBON_TEST_BROWSER || undefined });
-	fs.mkdirSync(SHOTS, { recursive: true });
 });
 
 test.after(async () => {
@@ -169,7 +174,7 @@ test('device speeds preserve leases, handle missing data and pause when hidden',
 		assert.equal(await page.textContent('.cb-count'), count, 'historical traffic cannot create devices');
 		assert.match(await phone.textContent(), /DHCP lease · 10h 33m left/);
 		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-		await page.screenshot({ path: path.join(SHOTS, 'device-speeds-phone.png'), fullPage: true });
+		await shot(page, 'device-speeds-phone.png', { fullPage: true });
 		await page.evaluate(() => {
 			Object.defineProperty(document, 'hidden', { configurable: true, value: true });
 			document.dispatchEvent(new Event('visibilitychange'));
@@ -246,7 +251,7 @@ for (const lang of ['zh-Hans', 'en']) {
 					const widths = await page.$$eval('.cb-clients .cb-list-main', (els) => els.map((e) => e.getBoundingClientRect().width));
 					assert.ok(widths.every((w) => w >= 90), 'lease labels and badges leave room for device names: ' + widths);
 				}
-				await page.screenshot({ path: path.join(SHOTS, `overview-${lang}-${appearance}-${device}.png`), fullPage: true });
+				await shot(page, `overview-${lang}-${appearance}-${device}.png`, { fullPage: true });
 				assert.deepEqual(errors, []);
 				await context.close();
 			});
@@ -391,7 +396,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		await page.waitForSelector('.cb-lb-list.show');
 		await page.keyboard.press('Escape');
 		assert.equal(await page.$('.cb-lb-list'), null);
-		await page.screenshot({ path: path.join(SHOTS, 'custom-drawer-desktop.png') });
+		await shot(page, 'custom-drawer-desktop.png');
 
 		/* Collapse handle straddles the top-left border of the sheet on desktop (mirrors sidebar .cb-collapse) */
 		const deskSheet = await page.locator('.cb-sheet').boundingBox();
@@ -408,7 +413,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		assert.equal(await page.locator('.cb-traffic').count(), 2, 'live draft stays applied while collapsed');
 		const dockBox = await page.locator('.cb-sheet-dock').boundingBox();
 		assert.ok(dockBox.x >= 0 && dockBox.x + dockBox.width <= 1440 && dockBox.y + dockBox.height <= 1000, 'collapsed dock fits inside desktop viewport');
-		await page.screenshot({ path: path.join(SHOTS, 'custom-collapsed-desktop.png') });
+		await shot(page, 'custom-collapsed-desktop.png');
 
 		await page.click('.cb-sheet-expand');
 		await page.waitForSelector('.cb-sheet.show');
@@ -440,7 +445,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		await page.waitForSelector('.cb-sheet-dock.show');
 		await page.click('.cb-sheet-dock .cbi-button-save');
 		await page.waitForFunction(() => !document.querySelector('.cb-sheet'));
-		await page.screenshot({ path: path.join(SHOTS, 'custom-multi-desktop.png'), fullPage: true });
+		await shot(page, 'custom-multi-desktop.png', { fullPage: true });
 
 		await page.reload();
 		await page.waitForSelector('.cb-tile-wifi');
@@ -475,7 +480,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		assert.ok(geom.tiles[2].cls.includes('cb-tile-wide'), 'odd last tile is marked wide');
 		assert.ok(geom.tiles[2].w > geom.tiles[0].w * 1.7, 'odd last tile spans full width on phone: ' + JSON.stringify(geom.tiles));
 		assert.ok(geom.traffics[0] > 300 && geom.traffics[1] > 300, 'stacked traffic charts use full phone width: ' + JSON.stringify(geom.traffics));
-		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-odd-tiles-phone.png'), fullPage: true });
+		await shot(phone.page, 'custom-odd-tiles-phone.png', { fullPage: true });
 
 		await phone.page.click('.cb-customize-btn');
 		await phone.page.waitForSelector('.cb-sheet.show');
@@ -487,7 +492,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		assert.ok(sheetBox.height <= 844 * 0.9, 'bottom sheet leaves top margin');
 		assert.ok(phoneHandle.y < sheetBox.y && phoneHandle.y + phoneHandle.height > sheetBox.y, 'phone collapse handle straddles top border');
 		assert.ok(saveBox.bottom ? saveBox.bottom <= 844 : saveBox.y + saveBox.height <= 844.5, 'sticky save button stays visible inside phone viewport');
-		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-drawer-phone.png') });
+		await shot(phone.page, 'custom-drawer-phone.png');
 		await phone.page.click('.cb-sheet-collapse');
 		await phone.page.waitForSelector('.cb-sheet-dock.show');
 		await phone.page.waitForTimeout(320);
@@ -495,7 +500,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		assert.ok(phoneDock.x >= 0 && phoneDock.x + phoneDock.width <= 391 && phoneDock.y + phoneDock.height <= 844.5, 'collapsed dock fits phone viewport');
 		assert.ok(phoneDock.height <= 64, 'collapsed dock buttons stay on a single row on phone: height=' + phoneDock.height);
 		assert.equal(await phone.page.$eval('.cb-app', (e) => e.hasAttribute('inert')), false, 'phone dashboard interactive when collapsed');
-		await phone.page.screenshot({ path: path.join(SHOTS, 'custom-collapsed-phone.png') });
+		await shot(phone.page, 'custom-collapsed-phone.png');
 		await phone.page.click('.cb-sheet-expand');
 		await phone.page.waitForSelector('.cb-sheet.show');
 		await phone.page.keyboard.press('Escape');
@@ -514,7 +519,7 @@ test('dashboard customization supports presets, multiple traffic panels, Wi-Fi/t
 		await dark.page.click('.cb-customize-btn');
 		await dark.page.waitForSelector('.cb-sheet.show');
 		await dark.page.waitForTimeout(300);
-		await dark.page.screenshot({ path: path.join(SHOTS, 'custom-drawer-dark.png') });
+		await shot(dark.page, 'custom-drawer-dark.png');
 		assert.deepEqual(dark.errors, []);
 	} finally { await dark.context.close(); }
 });
@@ -537,7 +542,7 @@ test('simple menu customization supports search multi-select, reordering, cancel
 			scrimLeft: document.querySelector('.cb-sheet-scrim-menu').getBoundingClientRect().left
 		}));
 		assert.ok(geom.scrimLeft >= geom.sideRight - 1, 'desktop menu scrim leaves sidebar unobstructed: ' + JSON.stringify(geom));
-		await page.screenshot({ path: path.join(SHOTS, 'simple-menu-edit-desktop.png') });
+		await shot(page, 'simple-menu-edit-desktop.png');
 
 		/* Open Add-page picker for Common */
 		await page.click('.cb-sheet-group[data-group="common"] .cb-sheet-add');
@@ -559,18 +564,60 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		await page.click('.cb-sheet-search-clear');
 		await page.click('.cb-picker-item[data-path="network/dhcp"]');
 		await page.click('.cb-picker-item[data-path="network/diagnostics"]');
-		await page.screenshot({ path: path.join(SHOTS, 'simple-menu-picker-desktop.png') });
+		await shot(page, 'simple-menu-picker-desktop.png');
 
 		/* Escape returns from picker to edit view without closing sheet */
 		await page.keyboard.press('Escape');
 		await page.waitForSelector('.cb-sheet-group[data-group="common"] .cb-sheet-add');
 		assert.equal(await page.locator('.cb-sheet.cb-sheet-menu').isVisible(), true);
 
-		/* Reorder System Log up & remove Password, verify live sidebar */
-		await page.click('[data-row-key="common:status/syslog"] .cbi-button-up');
+		/* Edit view uses drag handles only (no up/down buttons) */
+		assert.equal(await page.locator('.cb-sheet-menu .cbi-button-up, .cb-sheet-menu .cbi-button-down').count(), 0, 'simple menu edit view has no up/down arrow buttons');
+		assert.equal(await page.locator('.cb-sheet-menu .cb-sheet-row-drag .cb-drag-handle').count(), initial.length + 3, 'every row shows a drag handle');
+
+		/* Helper to perform a smooth mouse drag from one locator to another */
+		const mouseDrag = async (p, fromLoc, toLoc, opts = {}) => {
+			const src = await fromLoc.boundingBox();
+			const dst = await toLoc.boundingBox();
+			const sx = src.x + (opts.fromX != null ? opts.fromX : src.width / 2);
+			const sy = src.y + src.height / 2;
+			const ex = dst.x + dst.width / 2;
+			const ey = dst.y + (opts.before ? 4 : (opts.after ? dst.height - 4 : dst.height / 2));
+			await p.mouse.move(sx, sy);
+			await p.mouse.down();
+			if (opts.holdMs) await p.waitForTimeout(opts.holdMs);
+			await p.mouse.move(sx, sy + (ey > sy ? 8 : -8), { steps: 3 });
+			if (opts.onDragging) await opts.onDragging();
+			await p.mouse.move(ex, ey, { steps: 10 });
+			if (opts.cancelWithEscape) {
+				await p.keyboard.press('Escape');
+				await p.mouse.up();
+				return;
+			}
+			await p.mouse.up();
+			await p.waitForTimeout(60);
+		};
+
+		/* Drag System Log up above Wi-Fi inside Common, then drag it across groups into System; verify live sidebar & dynamic remove */
+		await mouseDrag(page, page.locator('[data-row-key="common:status/syslog"]'), page.locator('[data-row-key="common:network/wireless"]'), { before: true });
+		let edited = await navLabels();
+		assert.equal(edited.indexOf('系统日志') < edited.indexOf('Wi-Fi'), true, 'dragged item moves up in live sidebar: ' + JSON.stringify(edited));
+
+		await mouseDrag(page, page.locator('[data-row-key="common:status/syslog"]'), page.locator('[data-row-key="system:system/admin"]'), { before: true });
+		assert.equal(await page.locator('[data-row-key="system:status/syslog"]').count(), 1, 'cross-group drag updates row key to system');
+		assert.equal(await page.locator('.cb-sheet-group[data-group="system"] .cb-sheet-group-head .cb-sheet-count').textContent(), '5', 'system group count increments on cross-group drag');
+		edited = await navLabels();
+		assert.equal(edited.indexOf('系统日志') > edited.indexOf('Wi-Fi'), true, 'cross-group dragged item moves into System in live sidebar');
+
+		/* Escape during active drawer drag cancels only the drag and keeps drawer open */
+		const beforeEscDrag = await navLabels();
+		await mouseDrag(page, page.locator('[data-row-key="common:network/wireless"]'), page.locator('[data-row-key="common:status/overview"]'), { before: true, cancelWithEscape: true });
+		assert.equal(await page.locator('.cb-sheet.cb-sheet-menu').isVisible(), true, 'Escape during drag keeps drawer open');
+		assert.deepEqual(await navLabels(), beforeEscDrag, 'Escape during drag restores pre-drag order');
+
+		/* Removing an item after dragging still removes the right row */
 		await page.click('[data-row-key="system:system/admin"] .cbi-button-remove');
-		const edited = await navLabels();
-		assert.equal(edited.indexOf('系统日志') < edited.indexOf('Wi-Fi'), true, 'reordered item moves up in live sidebar');
+		edited = await navLabels();
 		assert.equal(edited.includes('管理密码'), false, 'removed item disappears from live sidebar');
 
 		/* Cancel rolls back completely and restores focus to .cb-nav-customize */
@@ -579,7 +626,7 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		assert.deepEqual(await navLabels(), initial, 'cancel restores previous simple menu');
 		assert.equal(await page.evaluate(() => document.activeElement.classList.contains('cb-nav-customize')), true, 'desktop close restores focus to Customize menu button');
 
-		/* Keyboard focus: Back focuses group Add button; IME Escape stays in Picker; keyboard reorder keeps focus in sheet */
+		/* Keyboard focus: Back focuses group Add button; IME Escape stays in Picker */
 		await page.click('.cb-nav-customize');
 		await page.waitForSelector('.cb-sheet.cb-sheet-menu.show');
 		await page.click('.cb-sheet-group[data-group="common"] .cb-sheet-add');
@@ -589,15 +636,69 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		assert.equal(await page.locator('.cb-sheet-search-input').isVisible(), true, 'IME Escape does not exit picker');
 		await page.click('.cb-sheet-back');
 		assert.equal(await page.evaluate(() => document.activeElement.classList.contains('cb-sheet-add')), true, 'Back moves focus to group Add button');
-		await page.focus('[data-row-key="common:network/wireless"] .cbi-button-up');
-		await page.keyboard.press('Enter');
-		assert.equal(await page.evaluate(() => !!document.activeElement.closest('.cb-sheet-body')), true, 'keyboard reorder preserves focus inside drawer');
 		await page.click('.cb-sheet-foot .cbi-button:has-text("取消")');
 		await page.waitForFunction(() => !document.querySelector('.cb-sheet'));
 
-		/* Re-open, add System Log + Connected Devices, remove Reboot, Save & reload */
+		/* Direct Simple sidebar click-and-hold (long-press >280ms) drag-reorder + quick click check */
+		await page.evaluate(() => {
+			window.__navClicks = [];
+			document.getElementById('topmenu').addEventListener('click', (e) => {
+				const a = e.target.closest('.cb-nav-link');
+				if (a) { e.preventDefault(); window.__navClicks.push(a.dataset.menuRel); }
+			});
+		});
+		/* Quick click fires normally */
+		await page.click('#topmenu .cb-nav-link[data-menu-rel="network/wireless"]');
+		assert.deepEqual(await page.evaluate(() => window.__navClicks), ['network/wireless'], 'quick click on sidebar item still triggers navigation');
+
+		/* Long-press drag inside Common + cross-group drag suppresses click, persists across reload */
+		let ghostSeen = false;
+		await mouseDrag(
+			page,
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="network/wireless"]'),
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="status/overview"]'),
+			{
+				holdMs: 360,
+				before: true,
+				onDragging: async () => { ghostSeen = await page.locator('.cb-drag-ghost-nav').isVisible(); }
+			}
+		);
+		assert.equal(ghostSeen, true, 'long-press lifts floating ghost card in sidebar');
+		assert.deepEqual(await page.evaluate(() => window.__navClicks), ['network/wireless'], 'long-press drag suppresses link click');
+		const afterSideDrag = await navLabels();
+		assert.equal(afterSideDrag[0], 'Wi-Fi', 'long-press drag moves Wi-Fi to first slot: ' + JSON.stringify(afterSideDrag));
+
+		/* Cross-group long-press drag: move Reboot from System into Common */
+		await mouseDrag(
+			page,
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="system/reboot"]'),
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="status/overview"]'),
+			{ holdMs: 360, after: true }
+		);
+		assert.deepEqual(await page.evaluate(() => window.__navClicks), ['network/wireless'], 'cross-group long-press drag suppresses link click');
+		const afterCrossSide = await page.$$eval('#topmenu .cb-nav-simple-list[data-menu-group="common"] .cb-nav-link', (els) => els.map((e) => e.dataset.menuRel));
+		assert.ok(afterCrossSide.includes('system/reboot'), 'cross-group sidebar drag moves Reboot into Common: ' + JSON.stringify(afterCrossSide));
+
+		/* Escape during sidebar long-press drag cancels without changing order */
+		const beforeSideEsc = await navLabels();
+		await mouseDrag(
+			page,
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="network/network"]'),
+			page.locator('#topmenu .cb-nav-link[data-menu-rel="network/wireless"]'),
+			{ holdMs: 360, before: true, cancelWithEscape: true }
+		);
+		assert.deepEqual(await navLabels(), beforeSideEsc, 'Escape during sidebar drag restores order');
+
+		/* Reload confirms sidebar long-press order persisted in localStorage */
+		await page.reload();
+		await dashboardReady(page);
+		assert.deepEqual(await navLabels(), beforeSideEsc, 'sidebar long-press drag persists across reload');
+		assert.equal(await page.locator('#topmenu .cb-nav-simple-list[data-menu-group="common"] [data-menu-rel="system/reboot"]').count(), 1);
+
+		/* Re-open customizer, restore default first, then add System Log + Connected Devices, remove Reboot, Save & reload */
 		await page.click('.cb-nav-customize');
 		await page.waitForSelector('.cb-sheet.cb-sheet-menu.show');
+		await page.click('.cb-sheet-foot .cbi-button-reset');
 		await page.click('.cb-sheet-group[data-group="common"] .cb-sheet-add');
 		await page.click('.cb-picker-item[data-path="status/syslog"]');
 		await page.click('.cb-picker-item[data-path="network/dhcp"]');
@@ -639,7 +740,7 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		await dark.page.waitForSelector('.cb-sheet.cb-sheet-menu.show');
 		await dark.page.waitForTimeout(300);
 		assert.match(await dark.page.locator('[data-row-key="common:services/openclash"]').textContent(), /Not installed/);
-		await dark.page.screenshot({ path: path.join(SHOTS, 'simple-menu-drawer-dark.png') });
+		await shot(dark.page, 'simple-menu-drawer-dark.png');
 		await dark.page.click('[data-row-key="common:services/openclash"] .cbi-button-remove');
 		assert.equal(await dark.page.locator('[data-row-key="common:status/overview"] .cbi-button-remove').isDisabled(), true, 'cannot remove the last remaining menu item');
 		assert.deepEqual(dark.errors, []);
@@ -660,7 +761,7 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		assert.ok(sheetBox.x >= 0 && sheetBox.x + sheetBox.width <= 391, 'phone bottom sheet stays within viewport');
 		assert.ok(saveBox.y + saveBox.height <= 844.5, 'save button stays visible on phone');
 		assert.equal(await phone.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal overflow on phone');
-		await phone.page.screenshot({ path: path.join(SHOTS, 'simple-menu-drawer-phone.png') });
+		await shot(phone.page, 'simple-menu-drawer-phone.png');
 		await phone.page.click('.cb-sheet-group[data-group="common"] .cb-sheet-add');
 		await phone.page.click('.cb-picker-item[data-path="status/syslog"]');
 		await phone.page.click('.cb-sheet-foot .cbi-button-save');
@@ -751,6 +852,34 @@ test('simple menu customization supports search multi-select, reordering, cancel
 		await uci.page.evaluate(() => window.Carbon.setSimpleMenuAttr('common=services/missing_plugin;system=none'));
 		assert.match(await uci.page.textContent('#topmenu .cb-nav-empty'), /No configured pages are currently installed/);
 		assert.equal(await uci.page.locator('#topmenu .cb-nav-customize').isVisible(), true);
+
+		/* Sidebar long-press drag in UCI mode preserves hidden uninstalled entries and rolls back on denied */
+		await uci.page.evaluate(() => {
+			window.__uciCalls = [];
+			window.__uciDeny = false;
+			window.Carbon.setSimpleMenuAttr('common=status/overview services/openclash network/network;system=system/reboot');
+		});
+		const dragSide = async (fromSel, toSel) => {
+			const src = await uci.page.locator(fromSel).boundingBox();
+			const dst = await uci.page.locator(toSel).boundingBox();
+			await uci.page.mouse.move(src.x + src.width / 2, src.y + src.height / 2);
+			await uci.page.mouse.down();
+			await uci.page.waitForTimeout(360);
+			await uci.page.mouse.move(dst.x + dst.width / 2, dst.y + 4, { steps: 10 });
+			await uci.page.mouse.up();
+			await uci.page.waitForTimeout(80);
+		};
+		await dragSide('#topmenu .cb-nav-link[data-menu-rel="network/network"]', '#topmenu .cb-nav-link[data-menu-rel="status/overview"]');
+		const uciSaved = await uci.page.evaluate(() => window.__uciCalls);
+		assert.equal(uciSaved.length, 1, 'UCI sidebar drag saves once');
+		assert.equal(uciSaved[0][1], 'common=network/network status/overview services/openclash;system=system/reboot', 'UCI sidebar drag preserves hidden uninstalled path');
+
+		/* Permission denied rolls back sidebar order and displays inline .cb-nav-status */
+		await uci.page.evaluate(() => { window.__uciDeny = true; });
+		await dragSide('#topmenu .cb-nav-link[data-menu-rel="status/overview"]', '#topmenu .cb-nav-link[data-menu-rel="network/network"]');
+		await uci.page.waitForSelector('#topmenu .cb-nav-status');
+		assert.match(await uci.page.textContent('#topmenu .cb-nav-status'), /Log out and log in again/);
+		assert.deepEqual(await labels(), ['Internet & Network', 'Overview', 'Reboot'], 'denied UCI sidebar drag rolls back order');
 		assert.deepEqual(uci.errors, []);
 	} finally { await uci.context.close(); }
 
@@ -891,9 +1020,100 @@ test('dashboard clarifies load average status and shows multi-SSID wireless band
 		assert.deepEqual(tile.wirelessClients, ['1 台设备', '2 台设备', '3 台设备', '0 台设备']);
 		assert.equal(tile.tileOverflow, false, 'long SSID truncates inside 390px half-width Wi-Fi tile without overflow');
 		assert.equal(tile.overflow, false, '4-SSID Wi-Fi tile and wireless card fit 390px phone without overflow');
-		await page.screenshot({ path: path.join(SHOTS, 'multi-ssid-phone.png'), fullPage: true });
+		await shot(page, 'multi-ssid-phone.png', { fullPage: true });
 		assert.deepEqual(errors, []);
 	} finally { await multi.close(); }
+
+	/* 4. Issue #15 regression: failed wireless RPC shows Unavailable (never No wireless), and N1 iwinfo/disabled='0' renders active 5 GHz AP */
+	const deniedCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+	await deniedCtx.addInitScript(() => {
+		localStorage.setItem('carbon.dashboard', 'hero=0;sections=tiles details monitor;monitor=resources;tiles=wifi;details=wireless');
+	});
+	const deniedPage = await deniedCtx.newPage();
+	const deniedErrors = [];
+	deniedPage.on('pageerror', (e) => deniedErrors.push(e.message));
+	try {
+		await deniedPage.route('**/preview/mock.js', (route) => route.fulfill({
+			contentType: 'text/javascript',
+			body: mock + '\n(' + (() => {
+				const origMount = window.Carbon.Dashboard.mount.bind(window.Carbon.Dashboard);
+				window.Carbon.Dashboard.mount = (host, provider, opts) => origMount(host, provider, Object.assign({}, opts, {
+					urls: Object.assign({}, opts && opts.urls, { wireless: null })
+				}));
+				window.CarbonPreview.provider.wireless = async () => { throw new Error('Access denied'); };
+			}).toString() + ')();'
+		}));
+		await deniedPage.goto(base + '/src/preview/index.html?lang=zh-Hans');
+		await deniedPage.waitForFunction(() => document.querySelector('.cb-tile-wifi .cb-tile-sub')?.textContent === '无法读取');
+		assert.equal(await deniedPage.textContent('.cb-tile-wifi .cb-tile-val'), '—');
+		assert.equal(await deniedPage.textContent('.cb-tile-wifi .cb-tile-sub'), '无法读取');
+		assert.deepEqual(deniedErrors, []);
+	} finally { await deniedCtx.close(); }
+
+	const n1Ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+	await n1Ctx.addInitScript(() => {
+		localStorage.setItem('carbon.dashboard', 'hero=0;sections=tiles details monitor;monitor=resources;tiles=wifi;details=wireless');
+	});
+	const n1Page = await n1Ctx.newPage();
+	const n1Errors = [];
+	n1Page.on('pageerror', (e) => n1Errors.push(e.message));
+	try {
+		await n1Page.route('**/preview/mock.js', (route) => route.fulfill({
+			contentType: 'text/javascript',
+			body: mock + '\n(' + (() => {
+				window.CarbonPreview.provider.wireless = async () => ({
+					radio0: {
+						up: true,
+						config: { type: 'mac80211', channel: 'auto', disabled: '0' },
+						iwinfo: { channel: 36, frequency: 5180, country: 'CN' },
+						interfaces: [{
+							ifname: 'wlan0',
+							config: { mode: 'ap', disabled: '0' },
+							iwinfo: {
+								ssid: 'n1_5G', mode: 'Master', channel: 36, frequency: 5180,
+								encryption: { enabled: 1, wpa: [2], authentication: ['psk'], ciphers: ['ccmp'] }
+							}
+						}]
+					}
+				});
+				window.CarbonPreview.provider.stations = async (ifnames) => ifnames.includes('wlan0') ? [
+					{ ifname: 'wlan0', mac: 'aa:bb:cc:dd:ee:01', signal: -50 }
+				] : [];
+			}).toString() + ')();'
+		}));
+		await n1Page.goto(base + '/src/preview/index.html?lang=zh-Hans');
+		await n1Page.waitForFunction(() => document.querySelector('.cb-tile-wifi .cb-tile-val')?.textContent === '1');
+		assert.equal(await n1Page.textContent('.cb-tile-wifi .cb-wifi-row-ssid'), 'n1_5G');
+		assert.equal(await n1Page.textContent('.cb-tile-wifi .cb-wifi-row-band'), '5 GHz');
+		assert.equal(await n1Page.textContent('.cb-wireless .cb-wifi-ssid'), 'n1_5G');
+		assert.equal(await n1Page.textContent('.cb-wireless .cb-list-sub'), 'CH 36 · WPA2');
+		assert.equal(await n1Page.textContent('.cb-wireless .cb-wifi-clients'), '1 台设备');
+		assert.deepEqual(n1Errors, []);
+	} finally { await n1Ctx.close(); }
+
+	/* 5. Disabled radio (netifd omits interfaces when disabled=true): shows Off + band, never No wireless */
+	const offCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+	await offCtx.addInitScript(() => {
+		localStorage.setItem('carbon.dashboard', 'hero=0;sections=tiles details monitor;monitor=resources;tiles=wifi;details=wireless');
+	});
+	const offPage = await offCtx.newPage();
+	const offErrors = [];
+	offPage.on('pageerror', (e) => offErrors.push(e.message));
+	try {
+		await offPage.route('**/preview/mock.js', (route) => route.fulfill({
+			contentType: 'text/javascript',
+			body: mock + '\n(' + (() => {
+				window.CarbonPreview.provider.wireless = async () => ({
+					radio0: { up: false, disabled: true, config: { band: '5g', disabled: '1' }, interfaces: [] }
+				});
+			}).toString() + ')();'
+		}));
+		await offPage.goto(base + '/src/preview/index.html?lang=zh-Hans');
+		await offPage.waitForFunction(() => document.querySelector('.cb-tile-wifi .cb-tile-val')?.textContent === '已关闭');
+		assert.equal(await offPage.textContent('.cb-tile-wifi .cb-tile-sub'), '5 GHz');
+		assert.equal(await offPage.textContent('.cb-wireless .cb-empty'), '已关闭');
+		assert.deepEqual(offErrors, []);
+	} finally { await offCtx.close(); }
 });
 
 /* every bundled catalogue loads, translates the shell and fits the sidebar */
@@ -918,7 +1138,7 @@ test('bundled catalogues translate the shell and fit the sidebar', async () => {
 		assert.deepEqual(r.navClipped, [], `${code}: menu labels fit or ellipsize`);
 		assert.deepEqual(errors, [], code);
 		if (code === 'de' || code === 'ja')
-			await page.screenshot({ path: path.join(SHOTS, `overview-${code}-light-desktop.png`), fullPage: true });
+			await shot(page, `overview-${code}-light-desktop.png`, { fullPage: true });
 		await context.close();
 	}
 });
@@ -1074,7 +1294,7 @@ test('table dropdown options escape the last row and remain clickable', async ()
 						await page.locator('ul.dropdown > li[data-value="/dev/sdb1"]').click({ timeout: 2000 });
 						assert.equal(await page.locator('#mount-device').getAttribute('data-clicked'), '/dev/sdb1', label);
 						if (mount === 'src' && tag === 'table')
-							await page.screenshot({ path: path.join(SHOTS, `diskman-dropdown-${appearance}-${width}.png`) });
+							await shot(page, `diskman-dropdown-${appearance}-${width}.png`);
 						await page.locator('#mount-device').evaluate((sb) => {
 							sb.querySelector('.preview').remove();
 							sb.removeAttribute('open');
@@ -1331,6 +1551,14 @@ test('button variants stay consistent across <button> and <input> elements, dest
 			const label = `${mount}/${appearance}`;
 			const { page, context, errors } = await open('/src/preview/form.html', { width: 1280, height: 900, appearance });
 			try {
+				/* Exercise late CSS: compute the browser defaults before releasing the stylesheet. */
+				await page.route('**/carbon.css', async (route) => {
+					await page.waitForFunction(() => {
+						const button = document.getElementById('btn-remove');
+						return button && getComputedStyle(button).color;
+					}, null, { polling: 10 });
+					await route.continue();
+				}, { times: 1 });
 				await page.setContent(`<!doctype html><html data-darkmode="${appearance === 'dark'}"><head><meta charset="utf-8">
 					<link rel="icon" href="data:,">
 					<link rel="stylesheet" href="/${mount}/htdocs/luci-static/carbon/carbon.css">
@@ -1397,11 +1625,17 @@ test('button variants stay consistent across <button> and <input> elements, dest
 						<button id="pa-save-after-neg" class="cbi-button cbi-button-save">保存</button>
 					</div>
 					</div></main></body></html>`, { waitUntil: 'load' });
+				await page.waitForFunction(() => { const l = document.querySelector('link[rel="stylesheet"]'); return l && l.sheet && l.sheet.cssRules.length > 0; });
 
-				const readStyles = (ids) => page.evaluate((list) => Object.fromEntries(list.map((id) => {
-					const cs = getComputedStyle(document.getElementById(id));
-					return [id, { bg: cs.backgroundColor, fg: cs.color, shadow: cs.boxShadow }];
-				})), ids);
+				const readStyles = (ids) => page.evaluate(async (list) => {
+					const elements = list.map((id) => document.getElementById(id));
+					/* Loaded CSS can start transitions from browser defaults; read their final values. */
+					await Promise.all(elements.flatMap((el) => el.getAnimations().map((a) => a.finished)));
+					return Object.fromEntries(elements.map((el) => {
+						const cs = getComputedStyle(el);
+						return [el.id, { bg: cs.backgroundColor, fg: cs.color, shadow: cs.boxShadow }];
+					}));
+				}, ids);
 
 				const ids = [
 					'btn-base', 'btn-neutral', 'btn-toggle', 'btn-iface-down', 'btn-add', 'btn-action',
@@ -1456,12 +1690,11 @@ test('button variants stay consistent across <button> and <input> elements, dest
 				assert.deepEqual(st['pa-save-after-apply'], st['btn-base'], `${label}: Save after Apply stays secondary chip`);
 				assert.deepEqual(st['pa-save-after-neg'], st['btn-base'], `${label}: Save after Apply-unchecked stays secondary chip`);
 				if (mount === 'src')
-					await page.screenshot({ path: path.join(SHOTS, `button-variants-${appearance}.png`), fullPage: true });
+					await shot(page, `button-variants-${appearance}.png`, { fullPage: true });
 
 				/* Hover states: <input> variants keep their semantic hover color; solid danger never turns indigo */
 				const hoverStyle = async (id) => {
 					await page.hover('#' + id);
-					await page.evaluate((elId) => Promise.all(document.getElementById(elId).getAnimations().map((a) => a.finished)), id);
 					return (await readStyles([id]))[id];
 				};
 
@@ -1487,7 +1720,6 @@ test('button variants stay consistent across <button> and <input> elements, dest
 
 				/* Clicking <input type="button"> does not trigger text-input focus ring (parity with <button>) */
 				await page.click('#inp-apply');
-				await page.evaluate(() => Promise.all(document.getElementById('inp-apply').getAnimations().map((a) => a.finished)));
 				const clickedApply = (await readStyles(['inp-apply']))['inp-apply'];
 				assert.equal(clickedApply.shadow, st['btn-primary'].shadow, `${label}: mouse-clicking <input type="submit"> keeps button shadow`);
 
@@ -1664,7 +1896,7 @@ test('settings page: buttons, links, fields and status text share one centre lin
 		});
 		assert.deepEqual(notes.tags, ['h2', 'h3', 'ul', 'li', 'strong', 'table', 'pre', 'code']);
 		assert.ok(notes.links && notes.fits);
-		if (width === 1200) await page.screenshot({ path: path.join(SHOTS, 'settings-release-notes.png'), fullPage: true });
+		if (width === 1200) await shot(page, 'settings-release-notes.png', { fullPage: true });
 		rows.forEach((r) => assert.ok(r.spread <= 0.5, `${width}px ${r.row}: ${r.spread}px off centre`));
 		assert.deepEqual(errors, []);
 		await context.close();
@@ -1710,7 +1942,7 @@ test('settings page: the mirror explanation lives in a ? toggletip', async () =>
 			await page.mouse.move(5, 5);
 			await btn.hover();
 			await page.waitForTimeout(200);
-			await section.screenshot({ path: path.join(SHOTS, 'settings-mirror-hint.png') });
+			await shot(section, 'settings-mirror-hint.png');
 		}
 		assert.deepEqual(errors, []);
 		await context.close();

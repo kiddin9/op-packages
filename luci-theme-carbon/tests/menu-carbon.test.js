@@ -8,8 +8,32 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('htdocs/luci-static/resources/menu-carbon.js', 'utf8');
 
-function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, files = {}, trafficSource, dashboardAttr, dashboardRpc, simpleMenuAttr, simpleMenuRpc } = {}) {
-	const calls = [], indicators = [];
+function simulateLuciRpcReply(options, rawReply) {
+	if (rawReply instanceof Error) return Promise.reject(rawReply);
+	let ret = rawReply;
+	if (Array.isArray(rawReply) && rawReply.__ubusFrame) {
+		if (options.reject && rawReply[0] !== 0)
+			return Promise.reject(new Error(`RPC call to ${options.object}/${options.method} failed with ubus code ${rawReply[0]}`));
+		ret = rawReply.length > 1 ? rawReply[1] : rawReply[0];
+	}
+	if (options.expect) {
+		for (const key in options.expect) {
+			if (ret != null && key !== '') ret = ret[key];
+			if (ret == null || Object.prototype.toString.call(ret) !== Object.prototype.toString.call(options.expect[key]))
+				ret = options.expect[key];
+			break;
+		}
+	}
+	return Promise.resolve(ret);
+}
+
+function ubusFrame(...items) {
+	items.__ubusFrame = true;
+	return items;
+}
+
+function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, files = {}, ubus = {}, trafficSource, dashboardAttr, dashboardRpc, simpleMenuAttr, simpleMenuRpc } = {}) {
+	const calls = [], indicators = [], rpcCalls = [];
 	const poll = {
 		running: true,
 		active() { return this.running; },
@@ -17,7 +41,14 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, fil
 		stop() { calls.push('stop'); this.running = false; }
 	};
 	const writes = [];
-	const declare = ({ object, method }) => (...args) => {
+	const declare = (options) => (...args) => {
+		const { object, method } = options;
+		rpcCalls.push([object, method, ...args]);
+		const key = `${object}/${method}`;
+		if (key in ubus) {
+			const val = typeof ubus[key] === 'function' ? ubus[key](...args) : ubus[key];
+			return simulateLuciRpcReply(options, val);
+		}
 		if (object === 'system' && method === 'info') return info instanceof Error ? Promise.reject(info) : Promise.resolve(info);
 		if (object === 'uci' && method === 'get') return Promise.resolve((uci[args[0]] || {})[args[1]] || {});
 		if (object === 'uci' && method === 'set') { writes.push(['set', ...args]); return Promise.resolve(0); }
@@ -72,7 +103,7 @@ function load({ uci = {}, lang = 'en', info = {}, meminfo = null, dirs = {}, fil
 		}
 	};
 	const subject = vm.runInNewContext('(function() {\n' + source + '\n})()', context);
-	return { subject, poll, calls, indicators, writes, listeners, context, appEl };
+	return { subject, poll, calls, rpcCalls, indicators, writes, listeners, context, appEl };
 }
 
 function infoProvider(options) {
@@ -497,4 +528,68 @@ test('temperatures fall back to thermal_zone0 when sysfs directories cannot be l
 		extraFiles: { '/sys/class/thermal/thermal_zone0/temp': '45000\n' }
 	})).temperatures();
 	assert.deepEqual(JSON.parse(JSON.stringify(result)), [{ name: '', value: 45000 }]);
+});
+
+test('wireless provider reads luci-rpc getWirelessDevices when network.wireless status is denied (#15)', async () => {
+	const n1Radio = {
+		radio0: {
+			up: true,
+			config: { type: 'mac80211', channel: 'auto', disabled: '0' },
+			iwinfo: { hardware: { name: 'Cypress CYW43455' }, channel: 36, frequency: 5180 },
+			interfaces: [{ ifname: 'wlan0', config: { mode: 'ap', ssid: 'n1_5G', encryption: 'psk2+ccmp' } }]
+		}
+	};
+	const f = load({
+		ubus: {
+			'luci-rpc/getWirelessDevices': () => ubusFrame(0, n1Radio),
+			'network.wireless/status': () => ubusFrame(6)
+		}
+	});
+	let provider;
+	f.context.window.Carbon = { Dashboard: { mount(h, p) { provider = p; } }, mode: { get: () => 'simple' }, detailsToggle() {} };
+	f.subject.mountDashboard('admin', {});
+
+	const res = await provider.wireless();
+	assert.deepEqual(JSON.parse(JSON.stringify(res)), n1Radio);
+	assert.deepEqual(f.rpcCalls.filter(([o]) => o === 'luci-rpc' || o === 'network.wireless'), [['luci-rpc', 'getWirelessDevices']]);
+});
+
+test('wireless and station providers fall back cleanly and never coerce ubus error codes into empty hardware (#15)', async () => {
+	/* 1. Fallback to network.wireless/status when luci-rpc/getWirelessDevices is unavailable */
+	const fallbackRadio = { radio0: { up: true, config: { band: '5g' }, interfaces: [] } };
+	const fb = infoProvider({
+		ubus: {
+			'luci-rpc/getWirelessDevices': () => ubusFrame(4),
+			'network.wireless/status': () => ubusFrame(0, fallbackRadio)
+		}
+	});
+	assert.deepEqual(JSON.parse(JSON.stringify(await fb.wireless())), fallbackRadio);
+
+	/* 2. Wired-only router (ubus code 0 with empty object) resolves to {} without redundant fallback call */
+	const wiredLoad = load({
+		ubus: {
+			'luci-rpc/getWirelessDevices': () => ubusFrame(0, {}),
+			'network.wireless/status': () => { throw new Error('must not call fallback on valid empty response'); }
+		}
+	});
+	let wiredProvider;
+	wiredLoad.context.window.Carbon = { Dashboard: { mount(h, p) { wiredProvider = p; } }, mode: { get: () => 'simple' }, detailsToggle() {} };
+	wiredLoad.subject.mountDashboard('admin', {});
+	assert.deepEqual(JSON.parse(JSON.stringify(await wiredProvider.wireless())), {});
+
+	/* 3. Both wireless RPCs denied (ubus code 6): must reject instead of resolving to {} (which falsely triggers No wireless) */
+	const denied = infoProvider({
+		ubus: {
+			'luci-rpc/getWirelessDevices': () => ubusFrame(6),
+			'network.wireless/status': () => ubusFrame(6),
+			'iwinfo/assoclist': () => ubusFrame(6)
+		}
+	});
+	await assert.rejects(() => denied.wireless(), /ubus code 6|Invalid wireless/);
+	assert.equal(await denied.stations(['wlan0']), null, 'denied assoclist must return null (unknown), not [] (0 devices)');
+
+	/* 4. ACL includes luci-rpc getWirelessDevices */
+	const acl = JSON.parse(fs.readFileSync('root/usr/share/rpcd/acl.d/luci-theme-carbon.json', 'utf8'))['luci-theme-carbon'];
+	assert.ok(acl.read.ubus['luci-rpc'].includes('getWirelessDevices'));
+	assert.ok(acl.read.ubus['network.wireless'].includes('status'));
 });

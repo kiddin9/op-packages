@@ -10,11 +10,16 @@ const { transform } = require('esbuild');
 
 const ROOT = path.resolve(__dirname, '../..');
 const SHOTS = path.join(ROOT, '.cache/screenshots');
+/* Screenshots are only written for local review: CARBON_SCREENSHOTS=1 npm run test:browser */
+async function shot(target, name, opts = {}) {
+	if (!process.env.CARBON_SCREENSHOTS) return;
+	fs.mkdirSync(SHOTS, { recursive: true });
+	await target.screenshot({ path: path.join(SHOTS, name), ...opts });
+}
 const fixture = (name) => fs.readFileSync(path.join(ROOT, 'tests/fixtures/luci-realtime', name), 'utf8');
 let server, base, browser;
 
 test.before(async () => {
-	fs.mkdirSync(SHOTS, { recursive: true });
 	const source = fs.readFileSync(path.join(ROOT, 'htdocs/luci-static/carbon/carbon.js'), 'utf8');
 	const css = fs.readFileSync(path.join(ROOT, 'htdocs/luci-static/carbon/carbon.css'), 'utf8');
 	const minified = (await transform(source, { minify: true, loader: 'js' })).code;
@@ -131,7 +136,7 @@ for (const kind of ['load', 'bandwidth', 'connections']) {
 				await settle(page);
 				const collapsed = await geometry(page);
 				fillsPlot(collapsed);
-				if (kind === 'load' && !min) await page.screenshot({ path: path.join(SHOTS, 'realtime-load-collapsed.png') });
+				if (kind === 'load' && !min) await shot(page, 'realtime-load-collapsed.png');
 				assert.deepEqual(collapsed.points, initial.points, 'resizing preserves samples');
 				initial.grid.forEach((v, i) => assert(Math.abs(v - collapsed.grid[i]) < 0.001, 'time grid stays aligned'));
 				assert.equal(await page.evaluate(() => rpcCalls), calls, 'resizing does not fetch new data');
@@ -146,7 +151,7 @@ for (const kind of ['load', 'bandwidth', 'connections']) {
 					await page.setViewportSize({ width, height: 850 });
 					await settle(page);
 					fillsPlot(await geometry(page));
-					if (kind === 'load' && !min && width === 390) await page.screenshot({ path: path.join(SHOTS, 'realtime-load-mobile.png') });
+					if (kind === 'load' && !min && width === 390) await shot(page, 'realtime-load-mobile.png');
 				}
 				assert.deepEqual(errors, []);
 			}

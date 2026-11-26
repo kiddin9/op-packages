@@ -660,6 +660,116 @@ test('wirelessSummary computes per-SSID band, bandwidth, encryption and deduplic
 	assert.equal(edgeRes.rows[4].width, null);
 	assert.equal(edgeRes.totalClients, 1, 'stations on disabled, non-AP or unmatched interfaces do not inflate totalClients');
 	assert.equal(C.wirelessSummary(edgeW, []).totalClients, 0, 'empty station list reports 0 total clients');
+
+	// Phicomm N1 / brcmfmac via luci-rpc getWirelessDevices: UCI disabled='0' strings and iwinfo runtime fields (#15)
+	const n1W = {
+		radio0: {
+			up: true,
+			disabled: false,
+			config: { type: 'mac80211', channel: 'auto', disabled: '0' },
+			iwinfo: { channel: 36, frequency: 5180, country: 'CN', hwmodes: ['a', 'b', 'g', 'n', 'ac'] },
+			interfaces: [
+				{
+					section: 'default_radio0',
+					ifname: 'wlan0',
+					config: { mode: 'ap', disabled: '0' },
+					iwinfo: {
+						ssid: 'n1_5G', mode: 'Master', channel: 36, frequency: 5180,
+						bssid: 'BA:27:EB:74:F2:6D',
+						encryption: { enabled: 1, wpa: [2], authentication: ['psk'], ciphers: ['ccmp'] }
+					}
+				},
+				{
+					section: 'disabled_vif',
+					ifname: 'wlan0-1',
+					config: { mode: 'ap', ssid: 'n1_guest', disabled: '1' }
+				},
+				{
+					section: 'client_vif',
+					ifname: 'wlan0-sta',
+					config: {},
+					iwinfo: { ssid: 'Upstream', mode: 'Client', channel: 36, frequency: 5180 }
+				}
+			]
+		},
+		radio1: {
+			up: true,
+			config: { channel: 'auto' },
+			interfaces: [
+				{
+					ifname: 'wlan1',
+					config: { mode: 'Master', ssid: 'Band24', encryption: 'none' },
+					iwinfo: { frequency: 2437, channel: 6, encryption: { enabled: 1, wpa: [2], authentication: ['psk'] } }
+				},
+				{
+					ifname: 'wlan2',
+					config: { ssid: 'Band6G' },
+					iwinfo: { mode: 'Master', frequency: 5955, channel: 1, encryption: { enabled: 1, wpa: [2, 3], authentication: ['psk', 'sae'] } }
+				}
+			]
+		}
+	};
+	const n1Res = plain(C.wirelessSummary(n1W, [{ ifname: 'wlan0', mac: '11:22:33:44:55:66' }]));
+	assert.equal(n1Res.totalClients, 1);
+	assert.equal(n1Res.rows.length, 4, 'iwinfo Client mode excluded while AP/Master rows kept');
+	assert.deepEqual(n1Res.rows[0], {
+		radio: 'radio0', ifname: 'wlan0', ssid: 'n1_5G', hidden: false,
+		band: '5 GHz', bandKey: '5g', channel: '36', width: null, encryption: 'WPA2',
+		meta: 'CH 36 · WPA2', sub: '5 GHz · CH 36 · WPA2', on: true, clients: 1
+	});
+	assert.equal(n1Res.rows[1].ssid, 'n1_guest');
+	assert.equal(n1Res.rows[1].on, false, 'UCI string disabled="1" marks interface off');
+	assert.equal(n1Res.rows[1].channel, null, 'disabled interface with auto radio channel does not invent an active channel');
+	assert.equal(n1Res.rows[2].band, '2.4 GHz');
+	assert.equal(n1Res.rows[2].channel, '6');
+	assert.equal(n1Res.rows[2].encryption, null, 'explicit config encryption="none" stays open even if stale iwinfo object exists');
+	assert.equal(n1Res.rows[3].band, '6 GHz');
+	assert.equal(n1Res.rows[3].bandKey, '6g');
+	assert.equal(n1Res.rows[3].encryption, 'WPA2/WPA3');
+
+	// Review edge cases: hwmode ('11axg', '11n' on 5G, 'auto', '11ad'), channel='0', ap-wds, Master (VLAN), and stopped brcmfmac AP
+	const reviewW = {
+		radio0: {
+			up: true,
+			config: { hwmode: '11axg', channel: '6' },
+			interfaces: [
+				{ ifname: 'rax0', config: { mode: 'ap-wds', ssid: 'WDS-2G', encryption: 'psk2' } }
+			]
+		},
+		radio1: {
+			up: true,
+			config: { hwmode: '11n', channel: '0' },
+			iwinfo: { channel: 36 },
+			interfaces: [
+				{ ifname: 'wlan1', config: { ssid: 'VLAN-5G' }, iwinfo: { mode: 'Master (VLAN)', channel: 36, encryption: { enabled: 1, wpa: [3], authentication: ['sae'] } } }
+			]
+		},
+		radio2: {
+			up: false,
+			config: { hwmode: 'auto', channel: 'auto' },
+			interfaces: [
+				{ ifname: 'wlan2', config: { ssid: 'StoppedBrcm', disabled: '1' }, iwinfo: { mode: 'Client', frequency: 5180 } }
+			]
+		},
+		radio3: {
+			up: true,
+			config: { hwmode: '11ad' },
+			interfaces: [
+				{ ifname: 'wlan3', config: { mode: 'ap', ssid: 'Millimeter' } }
+			]
+		}
+	};
+	const reviewRes = plain(C.wirelessSummary(reviewW, []));
+	assert.equal(reviewRes.rows.length, 4);
+	assert.equal(reviewRes.rows[0].band, '2.4 GHz', '11axg is 2.4 GHz, not 5 GHz');
+	assert.equal(reviewRes.rows[0].ssid, 'WDS-2G', 'ap-wds is retained as AP');
+	assert.equal(reviewRes.rows[1].band, '5 GHz', '11n with channel=0 falls back to iwinfo channel 36 -> 5 GHz');
+	assert.equal(reviewRes.rows[1].channel, '36');
+	assert.equal(reviewRes.rows[1].encryption, 'WPA3');
+	assert.equal(reviewRes.rows[2].ssid, 'StoppedBrcm', 'stopped brcmfmac AP with omitted config.mode is retained as Off');
+	assert.equal(reviewRes.rows[2].on, false);
+	assert.equal(reviewRes.rows[2].band, '5 GHz', 'iwinfo frequency takes precedence over hwmode="auto"');
+	assert.equal(reviewRes.rows[3].band, '60 GHz', '11ad maps to 60 GHz');
 });
 
 test('simpleMenu validates paths, resolves defaults and opkg/package-manager aliases, normalizes and round-trips attributes', () => {

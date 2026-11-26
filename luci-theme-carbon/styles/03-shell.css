@@ -303,7 +303,31 @@
 .cb-sub-ico svg { width: 16px; height: 16px; stroke-width: 1.8; }
 .cb-nav-item.active .cb-sub-ico { opacity: 1; }
 
-/* customize menu button & empty notice in simple mode */
+/* customize menu button, drag reorder & empty notice in simple mode */
+.cb-nav-simple-list { display: flex; flex-direction: column; }
+.cb-nav-link[data-menu-rel] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.cb-nav-link.cb-nav-pressing {
+	transform: scale(.985);
+	background: var(--cb-nav-hover);
+	transition: transform .18s var(--cb-ease), background-color .15s var(--cb-ease);
+}
+.cb-nav-reordering .cb-nav-link:hover { background: transparent; }
+.cb-nav-reordering .cb-nav-simple-list:empty {
+	min-height: 42px;
+	margin: 2px 0;
+	border-radius: 13px;
+	border: 1.5px dashed var(--cb-glass-line);
+	background: var(--cb-nav-hover);
+}
+.cb-nav-status {
+	margin: 12px 2px 0;
+	padding: 8px 10px;
+	border-radius: 10px;
+	background: var(--cb-red-t);
+	color: var(--cb-red);
+	font-size: 12px;
+	line-height: 1.45;
+}
 .cb-nav-empty {
 	margin: 12px 6px 0;
 	padding: 10px 12px;
