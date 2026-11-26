@@ -25,7 +25,8 @@
 // addresses, mac among them: the bridge of each other network has one of
 // its own, which the router would list as one more wired host (#167).
 // Wired hosts come from luci.vantage wired, minus the hosts on the ports
-// towards the gateway or the router (the uplinks), on Wi-Fi ports and
+// towards the gateway or the router (the uplinks, and in another bridge
+// the other VLANs of an uplink's device: the same wire, #167), on Wi-Fi ports and
 // this device's own addresses; none when no uplink is found, so the whole
 // LAN is never passed off as this device's. A port's rx_bytes and tx_bytes are the
 // kernel's; on a DSA switch, where the kernel counts only what passes the
@@ -110,6 +111,26 @@ function sysfs(dev, file) {
 
 function wireless(dev) {
 	return access(NET + '/' + dev + '/phy80211') || access(NET + '/' + dev + '/wireless');
+}
+
+// the device a port is a VLAN of, whatever the names (eth0 for eth0.3 or
+// vlan3), or the port itself: the kernel types a VLAN's device vlan and
+// links the one below it as lower_<name>
+function wire(p) {
+	for (let i = 0; i < 4; i++) {
+		if (index(split(readfile(NET + '/' + p + '/uevent', 256) ?? '', '\n'), 'DEVTYPE=vlan') < 0)
+			break;
+
+		let low = filter(lsdir(NET + '/' + p) ?? [], (n) => index(n, 'lower_') == 0);
+		let d = (length(low) == 1) ? netdev(substr(low[0], 6)) : null;
+
+		if (!d)
+			break;
+
+		p = d;
+	}
+
+	return p;
 }
 
 // IPv4 neighbour -> MAC, complete entries only
@@ -278,7 +299,12 @@ for (let i in ((type(dump) == 'array') ? dump : [])) {
 
 let self = lan ? norm_mac(trim(readfile(NET + '/' + lan + '/address', 64) ?? '')) : null;
 
-// the uplinks: the ports the gateway and the router are heard on
+// the uplinks: the ports the gateway and the router are heard on. This
+// device knows them in its own network only; on a wire that carries other
+// VLANs too, each is a port of its own (eth0.3 beside eth0.1) in a bridge
+// of its own, and what is heard there is as far upstream. A bridge that
+// hears them itself has its uplink where it does: two VLANs of one device
+// in one bridge are two wires (a switch's WAN port joined to its LAN)
 let client = split(getenv('SSH_CLIENT') ?? '', ' ')[0];
 let neigh = neighbours(), towards = {};
 
@@ -287,6 +313,8 @@ for (let ip in [ gw, client ])
 		towards[neigh[ip]] = true;
 
 let hosts = ubus.call('luci.vantage', 'wired')?.hosts, uplinks = {}, any = false;
+let wires = {};                   // port -> its wire, looked up once
+let trunks = {}, heard = {};      // the uplinks' wires; the bridges with an uplink among their ports
 
 hosts = (type(hosts) == 'array') ? hosts : [];
 
@@ -294,8 +322,13 @@ for (let h in hosts) {
 	let m = (type(h) == 'object') ? norm_mac(h.mac) : null, p = m ? netdev(h.port) : null;
 
 	if (p && towards[m]) {
-		uplinks[p] = true;
+		let b = netdev(h.bridge);
+
+		uplinks[p] = trunks[wires[p] ??= wire(p)] = true;
 		any = true;
+
+		if (b)
+			heard[b] = true;
 	}
 }
 
@@ -306,8 +339,9 @@ for (let h in (any ? hosts : [])) {
 		break;
 
 	let m = (type(h) == 'object') ? norm_mac(h.mac) : null, p = m ? netdev(h.port) : null;
+	let b = p ? netdev(h.bridge) : null;
 
-	if (!p || seen[m] || own[m] || uplinks[p] || radios[p] || wireless(p))
+	if (!p || seen[m] || own[m] || ((b && heard[b]) ? uplinks[p] : trunks[wires[p] ??= wire(p)]) || radios[p] || wireless(p))
 		continue;
 
 	if (!ports[p]) {
