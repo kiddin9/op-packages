@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=meow
 PKG_VERSION:=0.30.0
-PKG_RELEASE:=22
+PKG_RELEASE:=23
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/meow-rs/meow-rs/tar.gz/v$(PKG_VERSION)?
@@ -84,11 +84,17 @@ RUST_PKG_FEATURES:=$(strip \
 	$(if $(CONFIG_MEOW_EXTERNAL_UI_DOWNLOAD),external-ui-download) \
 )
 
+CARGO_PKG_ARGS:=$(filter-out --offline,$(CARGO_PKG_ARGS))
+
 CARGO_PKG_VARS+= \
+	TARGET_CXX=$(TARGET_CXX_NOCACHE) \
+	HOST_CXX=$(HOSTCXX_NOCACHE) \
+	TARGET_CXXFLAGS="$(TARGET_CXXFLAGS)" \
+	BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(TOOLCHAIN_DIR)" \
 	MEOW_VERSION_SUFFIX="$(call qstrip,$(CONFIG_MEOW_VERSION_SUFFIX))"
 
 define Build/Compile
-	$(call Build/Compile/Cargo,crates/meow-app,--locked --bin meow $(if $(CONFIG_MEOW_MINIMAL),--no-default-features))
+	$(call Build/Compile/Cargo,crates/meow-app,--bin meow $(if $(CONFIG_MEOW_MINIMAL),--no-default-features))
 endef
 
 define Package/meow/install
