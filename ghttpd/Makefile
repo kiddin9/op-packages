@@ -11,7 +11,7 @@ PKG_ARCH_ghttpd:=$(ARCH)
 
 PKG_NAME:=ghttpd
 PKG_VERSION:=0.0.5
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/Carseason/openwrt-packages/releases/download/prebuilt/
 PKG_HASH:=skip
@@ -27,7 +27,7 @@ define Package/$(PKG_NAME)
 	CATEGORY:=Network
 	SUBMENU:=Web Servers/Proxies
 	TITLE:=ghttpd
-	DEPENDS:=@(x86_64||aarch64||arm) +docker
+	DEPENDS:=@(x86_64||aarch64||arm) +docker +dockerd 
 	URL:=https://github.com/Carseason/openwrt-packages
 endef
 

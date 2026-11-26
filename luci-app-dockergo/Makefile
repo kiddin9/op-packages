@@ -5,7 +5,7 @@ LUCI_DEPENDS:=@(aarch64||arm||x86_64) \
 	+luci-lib-taskd \
 	+curl \
 	+ca-bundle \
-	+docker +dockerd \
+	+docker \
 	+dockerd
 LUCI_PKGARCH:=all
 LUCI_MINIFY_JS:=0
@@ -14,7 +14,7 @@ LUCI_MINIFY_CSS:=0
 PKG_LICENSE:=GPL-2.0-or-later
 PKG_MAINTAINER:=DockerGo
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
