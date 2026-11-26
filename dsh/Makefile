@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dsh
 PKG_VERSION:=0.2.1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKGARCH:=all
 
 include $(INCLUDE_DIR)/package.mk
@@ -18,7 +18,7 @@ define Package/dsh
 	CATEGORY:=Utilities
 	TITLE:=DeepSeek Harness container runtime integration
 	URL:=https://github.com/deepseek-ai/deepseek-harness
-	DEPENDS:=@(x86_64||aarch64) +docker +dockerd +dockerd +ca-bundle +linkease-app-entry
+	DEPENDS:=@(x86_64||aarch64) +docker +dockerd  +ca-bundle +linkease-app-entry
 endef
 
 define Package/dsh/description

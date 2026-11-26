@@ -10,7 +10,7 @@ PKG_ARCH_DOCKERMANAGER:=$(ARCH)
 
 PKG_NAME:=dockermanager
 PKG_VERSION:=0.1.2
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/dockermanager-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip
@@ -26,7 +26,7 @@ define Package/$(PKG_NAME)
 	CATEGORY:=System
 	TITLE:=Docker Manager
 	URL:=https://github.com/linkease/linkease-docker-manager
-	DEPENDS:=+docker +dockerd +dockerd +ca-bundle +linkease-app-entry
+	DEPENDS:=+docker +dockerd  +ca-bundle +linkease-app-entry
 endef
 
 define Package/$(PKG_NAME)/description
