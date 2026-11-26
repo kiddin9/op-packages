@@ -155,7 +155,6 @@ jobs:
         git_clone https://github.com/timsaya/openwrt-bandix bandix2 && mv -f bandix2/openwrt-bandix ./;rm -rf bandix2
         ) &
         (
-        git_clone https://github.com/everburstSun/tencentcloud-openwrt-plugin-ddns && mv -n tencentcloud-openwrt-plugin-ddns/tencentcloud_ddns ./luci-app-tencentddns; rm -rf tencentcloud-openwrt-plugin-ddns
         git_clone https://github.com/Tencent-Cloud-Plugins/tencentcloud-openwrt-plugin-cos && mv -n tencentcloud-openwrt-plugin-cos/tencentcloud_cos ./luci-app-tencentcloud-cos; rm -rf tencentcloud-openwrt-plugin-cos
         git_clone https://github.com/doushang/luci-app-shortcutmenu luci-shortcutmenu && mv -n luci-shortcutmenu/luci-app-shortcutmenu ./ ; rm -rf luci-shortcutmenu
         git_clone https://github.com/aa65535/openwrt-dist-luci
