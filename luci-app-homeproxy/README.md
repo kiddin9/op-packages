@@ -97,7 +97,7 @@
    - 如果上游有新提交，会创建或更新带 `upstream-update` 标签的 Issue。
    - 检查只负责提醒，不会自动合并代码，也不会自动发布新 APK。
 
-11. 支持简洁分流（Simple Routing）模式与内置直连节点
+11. 支持简洁分流（Simple Routing）模式与内置直连节点 (来自 https://github.com/rongxiong/homeproxy)
 
    - 路由模式新增 `简洁分流`：通过单张分流规则表将内置 `MetaCubeX/meta-rules-dat (sing/geo)` 规则集、自定义规则集 URL、自定义域名及 IP/CIDR 指向目标节点。
    - 每个目标节点支持配置多个有序备用（Fallback）节点，基于健康检查地址、间隔与回切容差自动故障转移。

@@ -1,0 +1,457 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Never"
+msgstr ""
+
+msgid "Syncing"
+msgstr ""
+
+msgid "Synced"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "DNSPod Legacy Token"
+msgstr ""
+
+msgid "Tencent Cloud API 3.0 (TC3-HMAC-SHA256)"
+msgstr ""
+
+msgid "Active Rules"
+msgstr ""
+
+msgid "Auth Mode"
+msgstr ""
+
+msgid "Check Interval"
+msgstr ""
+
+msgid "min"
+msgstr ""
+
+msgid "Sync All Now"
+msgstr ""
+
+msgid "Restart Service"
+msgstr ""
+
+msgid "Start Service"
+msgstr ""
+
+msgid "Stop Service"
+msgstr ""
+
+msgid "No DDNS domain rules configured yet. Click Add below to create your first rule."
+msgstr ""
+
+msgid "Domain"
+msgstr ""
+
+msgid "Type / Line"
+msgstr ""
+
+msgid "Local IP"
+msgstr ""
+
+msgid "Remote DNS IP"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Last Check"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Default"
+msgstr ""
+
+msgid "Sync Now"
+msgstr ""
+
+msgid "Test"
+msgstr ""
+
+msgid "Synchronization task triggered. Status will refresh automatically."
+msgstr ""
+
+msgid "Failed to trigger synchronization"
+msgstr ""
+
+msgid "Testing Rule Connectivity"
+msgstr ""
+
+msgid "Testing local IP acquisition and Tencent Cloud API credentials..."
+msgstr ""
+
+msgid "Empty response from backend"
+msgstr ""
+
+msgid "Connectivity and API authentication test passed!"
+msgstr ""
+
+msgid "Issues detected during connectivity test."
+msgstr ""
+
+msgid "Not created yet (API Auth OK)"
+msgstr ""
+
+msgid "Authentication failed"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Connectivity Test Result"
+msgstr ""
+
+msgid "Tencent Cloud DDNS"
+msgstr ""
+
+msgid "Automatically synchronize dynamic public IPv4 / IPv6 addresses to Tencent Cloud DNSPod DNS records via API 3.0 (TC3-HMAC-SHA256) or DNSPod Token."
+msgstr ""
+
+msgid "Service Status"
+msgstr ""
+
+msgid "Global Settings"
+msgstr ""
+
+msgid "Basic & Credentials"
+msgstr ""
+
+msgid "Schedule & Probing"
+msgstr ""
+
+msgid "Enable Service"
+msgstr ""
+
+msgid "Enable background event-driven TencentDDNS daemon and real-time WAN change detection."
+msgstr ""
+
+msgid "Authentication Mode"
+msgstr ""
+
+msgid "Tencent Cloud API 3.0 supports CAM sub-account permission isolation and is recommended for all new deployments."
+msgstr ""
+
+msgid "Tencent Cloud API 3.0 (SecretId / SecretKey, Recommended)"
+msgstr ""
+
+msgid "DNSPod Legacy Token (ID / Token)"
+msgstr ""
+
+msgid "API Endpoint"
+msgstr ""
+
+msgid "Choose Mainland China for dnspod.cn / cloud.tencent.com accounts, or International for dnspod.com / tencentcloud.com accounts."
+msgstr ""
+
+msgid "Mainland China (dnspod.tencentcloudapi.com)"
+msgstr ""
+
+msgid "International (dnspod.intl.tencentcloudapi.com)"
+msgstr ""
+
+msgid "SecretId / Token ID"
+msgstr ""
+
+msgid "Obtain SecretId from <a href=\"https://console.cloud.tencent.com/cam/capi\" target=\"_blank\" rel=\"noopener noreferrer\">Tencent Cloud API Key Console</a> or Token ID from <a href=\"https://console.dnspod.cn/account/token\" target=\"_blank\" rel=\"noopener noreferrer\">DNSPod Token Console</a>."
+msgstr ""
+
+msgid "SecretKey / Token"
+msgstr ""
+
+msgid "Keep your SecretKey confidential. Use a CAM sub-account with QcloudDNSPodFullAccess for least privilege."
+msgstr ""
+
+msgid "Check Interval (Minutes)"
+msgstr ""
+
+msgid "Periodic verification interval in minutes (1-1440). Network interface up/change events also trigger immediate checks."
+msgstr ""
+
+msgid "Force Sync Interval (Hours)"
+msgstr ""
+
+msgid "Re-verify against Tencent Cloud API even if local IP has not changed (0 to disable)."
+msgstr ""
+
+msgid "Failure Retry Interval (Seconds)"
+msgstr ""
+
+msgid "Backoff delay before retrying when IP detection or API request fails."
+msgstr ""
+
+msgid "IPv4 Check URLs"
+msgstr ""
+
+msgid "HTTPS endpoints queried in order when IPv4 source is set to Public Check URL."
+msgstr ""
+
+msgid "IPv6 Check URLs"
+msgstr ""
+
+msgid "HTTPS endpoints queried in order when IPv6 source is set to Public Check URL."
+msgstr ""
+
+msgid "Max Log Lines"
+msgstr ""
+
+msgid "Maximum lines retained in /var/log/tencentddns.log with automatic rolling truncation."
+msgstr ""
+
+msgid "Skip TLS Certificate Verification"
+msgstr ""
+
+msgid "Only enable temporarily for troubleshooting missing CA certificates."
+msgstr ""
+
+msgid "Domain DDNS Rules"
+msgstr ""
+
+msgid "Configure one or more domains/subdomains. Supports root (@), wildcard (*), multi-level subdomains, dual-stack (A + AAAA), and dynamic IPv6 prefix + host suffix synthesis for LAN servers."
+msgstr ""
+
+msgid "Edit Rule"
+msgstr ""
+
+msgid "Edit DDNS Rule"
+msgstr ""
+
+msgid "General Settings"
+msgstr ""
+
+msgid "IP Source"
+msgstr ""
+
+msgid "Custom Credentials"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Remark"
+msgstr ""
+
+msgid "Optional label such as Home Router or NAS."
+msgstr ""
+
+msgid "Host Record (Subdomain)"
+msgstr ""
+
+msgid "Enter @ for root domain, * for wildcard, or a host prefix like www, nas, or *.home."
+msgstr ""
+
+msgid "Host record cannot be empty (use @ for root domain)"
+msgstr ""
+
+msgid "Invalid host record format (examples: @, *, www, nas.home)"
+msgstr ""
+
+msgid "Main Domain"
+msgstr ""
+
+msgid "Registered root domain hosted on DNSPod, for example example.com."
+msgstr ""
+
+msgid "Enter a valid root domain such as example.com"
+msgstr ""
+
+msgid "Record Mode"
+msgstr ""
+
+msgid "Dual-Stack maintains both IPv4 (A) and IPv6 (AAAA) records under a single rule."
+msgstr ""
+
+msgid "IPv4 Only (A)"
+msgstr ""
+
+msgid "IPv6 Only (AAAA)"
+msgstr ""
+
+msgid "Dual-Stack (A + AAAA)"
+msgstr ""
+
+msgid "Split Line"
+msgstr ""
+
+msgid "DNSPod DNS resolution split line. Leave as Default unless split-horizon routing is required."
+msgstr ""
+
+msgid "China Telecom"
+msgstr ""
+
+msgid "China Unicom"
+msgstr ""
+
+msgid "China Mobile"
+msgstr ""
+
+msgid "CERNET"
+msgstr ""
+
+msgid "Overseas"
+msgstr ""
+
+msgid "TTL (Seconds)"
+msgstr ""
+
+msgid "DNS record cache time-to-live (minimum depends on DNSPod plan, default 600)."
+msgstr ""
+
+msgid "Clean Duplicate Records"
+msgstr ""
+
+msgid "Automatically remove extra records of the exact same host, record type, and split line."
+msgstr ""
+
+msgid "Allow Private / CGNAT IP"
+msgstr ""
+
+msgid "Permit RFC1918, CGNAT (100.64.0.0/10), or IPv6 ULA (fd00::/8) addresses for internal/VPN DNS resolution."
+msgstr ""
+
+msgid "IPv4 Source"
+msgstr ""
+
+msgid "Method used to obtain the local IPv4 address."
+msgstr ""
+
+msgid "OpenWrt Network Interface"
+msgstr ""
+
+msgid "Public HTTPS Check URL"
+msgstr ""
+
+msgid "Network Device"
+msgstr ""
+
+msgid "IPv4 Network Interface"
+msgstr ""
+
+msgid "Logical interface providing the public IPv4 address (typically wan)."
+msgstr ""
+
+msgid "IPv4 Network Device"
+msgstr ""
+
+msgid "Physical or PPPoE network device (e.g. pppoe-wan, eth1)."
+msgstr ""
+
+msgid "IPv4 Outbound Device (Optional)"
+msgstr ""
+
+msgid "Optional outbound device binding for multi-WAN public URL probing."
+msgstr ""
+
+msgid "IPv6 Source"
+msgstr ""
+
+msgid "Prefix + Host Suffix dynamically combines ISP delegated IPv6 PD prefix with a static suffix to expose LAN NAS/hosts."
+msgstr ""
+
+msgid "OpenWrt Network Interface (GUA)"
+msgstr ""
+
+msgid "Delegated Prefix + Static Host Suffix (LAN Host DDNS)"
+msgstr ""
+
+msgid "Network Device (GUA)"
+msgstr ""
+
+msgid "IPv6 Network Interface"
+msgstr ""
+
+msgid "Select wan6 / wan_6 or lan (automatically falls back to wan_6 / PD assignment when needed)."
+msgstr ""
+
+msgid "IPv6 Host Suffix"
+msgstr ""
+
+msgid "Static interface identifier combined with delegated prefix, e.g. ::1 for router or ::be24:11ff:fe12:3456 for a LAN host."
+msgstr ""
+
+msgid "IPv6 Network Device"
+msgstr ""
+
+msgid "Network device holding the global unicast IPv6 address (e.g. br-lan, pppoe-wan)."
+msgstr ""
+
+msgid "IPv6 Outbound Device (Optional)"
+msgstr ""
+
+msgid "Optional outbound device binding for multi-WAN IPv6 URL probing."
+msgstr ""
+
+msgid "Override Global Credentials"
+msgstr ""
+
+msgid "Enable if this domain belongs to a separate Tencent Cloud / DNSPod account."
+msgstr ""
+
+msgid "No log entries available."
+msgstr ""
+
+msgid "No matching log entries."
+msgstr ""
+
+msgid "All Levels"
+msgstr ""
+
+msgid "Warnings & Errors"
+msgstr ""
+
+msgid "Errors Only"
+msgstr ""
+
+msgid "Filter by domain or keyword..."
+msgstr ""
+
+msgid "Order: Newest First"
+msgstr ""
+
+msgid "Order: Oldest First"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Export Log"
+msgstr ""
+
+msgid "Clear Log"
+msgstr ""
+
+msgid "Tencent Cloud DDNS - Log Viewer"
+msgstr ""
+
+msgid "Real-time synchronization logs from /var/log/tencentddns.log (auto-refreshes every 5 seconds)."
+msgstr ""
+
+msgid "Configuration"
+msgstr ""
+
+msgid "Log Viewer"
+msgstr ""
+
+msgid "Grant access to Tencent Cloud / DNSPod DDNS configuration"
+msgstr ""

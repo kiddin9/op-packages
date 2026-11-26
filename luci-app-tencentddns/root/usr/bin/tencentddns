@@ -1,0 +1,186 @@
+#!/usr/bin/env ucode
+'use strict';
+
+import * as ubus from 'ubus';
+import * as uloop from 'uloop';
+import * as engine from 'tencentddns.engine';
+
+function usage() {
+	print(
+		'Usage: tencentddns <command> [options]\n\n',
+		'Commands:\n',
+		'  daemon                  Run event-driven procd DDNS daemon (uloop + ubus)\n',
+		'  sync [--force] [id]     Synchronize all enabled rules or a specific UCI section\n',
+		'  test [id]               Test IP detection and Tencent Cloud API authentication\n',
+		'  status                  Print current service and rule status as JSON\n',
+		'  clear-log               Truncate and reset /var/log/tencentddns.log\n'
+	);
+}
+
+function run_daemon() {
+	if (!uloop.init()) {
+		warn('Failed to initialize uloop\n');
+		return 1;
+	}
+
+	let ubus_ctx = ubus.connect();
+	let periodic_timer = null;
+	let debounce_timer = null;
+	let active_proc = null;
+	let queued_sync = null;
+
+	function schedule_next(delay_sec) {
+		let cfg = engine.load_config();
+		let sec = (delay_sec != null) ? delay_sec : (cfg.global.check_interval * 60);
+		if (sec < 5)
+			sec = 5;
+		if (periodic_timer)
+			periodic_timer.set(sec * 1000);
+	}
+
+	function trigger_async_sync(force, section_id, reason) {
+		let cfg = engine.load_config();
+		if (!cfg.global.enabled && !section_id)
+			return false;
+
+		if (active_proc) {
+			queued_sync = { force: !!force, section: section_id || null };
+			return true;
+		}
+
+		if (reason)
+			engine.write_log('INFO', 'daemon', reason, cfg.global.log_max_lines);
+
+		let args = [ '/usr/bin/tencentddns', 'sync' ];
+		if (force)
+			push(args, '--force');
+		if (section_id)
+			push(args, section_id);
+
+		active_proc = uloop.process('/usr/bin/ucode', args, null, function(exit_code) {
+			active_proc = null;
+			if (queued_sync) {
+				let next_req = queued_sync;
+				queued_sync = null;
+				trigger_async_sync(next_req.force, next_req.section, null);
+				return;
+			}
+			let cfg_now = engine.load_config();
+			if (exit_code == 0)
+				schedule_next(cfg_now.global.check_interval * 60);
+			else
+				schedule_next(cfg_now.global.retry_interval);
+		});
+
+		return (active_proc != null);
+	}
+
+	periodic_timer = uloop.timer(1500, function() {
+		trigger_async_sync(false, null, null);
+	});
+
+	debounce_timer = uloop.timer(-1, function() {
+		trigger_async_sync(false, null, 'Network interface update detected, checking DNS records');
+	});
+
+	let net_listener = null;
+	let ubus_obj = null;
+
+	if (ubus_ctx) {
+		net_listener = ubus_ctx.listener('network.interface.*', function(event, msg) {
+			if (event == 'network.interface.up' || event == 'network.interface.update' ||
+			    msg?.action == 'ifup' || msg?.action == 'update') {
+				debounce_timer.set(4000);
+			}
+		});
+
+		ubus_obj = ubus_ctx.publish('tencentddns', {
+			status: {
+				call: function() {
+					return engine.get_runtime_status();
+				}
+			},
+			sync: {
+				args: { section: '', force: false },
+				call: function(req) {
+					let sec = req.args?.section || '';
+					if (length(sec) > 0 && !match(sec, /^[A-Za-z0-9_]+$/))
+						return { ok: false, error: 'Invalid section identifier' };
+					let target_sec = length(sec) > 0 ? sec : null;
+					let started = trigger_async_sync(!!req.args?.force, target_sec,
+						target_sec ? sprintf('Manual sync triggered for rule [%s]', target_sec)
+						           : 'Manual sync triggered for all enabled rules');
+					return { ok: true, queued: started };
+				}
+			},
+			reload: {
+				call: function() {
+					schedule_next(2);
+					return { ok: true };
+				}
+			}
+		});
+	}
+
+	let stop_handler = function() {
+		let cfg = engine.load_config();
+		engine.write_log('INFO', 'daemon', 'Stopping TencentDDNS daemon', cfg.global.log_max_lines);
+		uloop.end();
+	};
+
+	uloop.signal('SIGINT', stop_handler);
+	uloop.signal('SIGTERM', stop_handler);
+
+	let init_cfg = engine.load_config();
+	engine.write_log('INFO', 'daemon',
+		sprintf('TencentDDNS v2.0 daemon started (check: %d min, auth: %s)',
+			init_cfg.global.check_interval, init_cfg.global.api_type),
+		init_cfg.global.log_max_lines);
+
+	uloop.run();
+
+	if (net_listener)
+		net_listener.remove();
+	if (ubus_obj)
+		ubus_obj.remove();
+	if (ubus_ctx)
+		ubus_ctx.disconnect();
+	uloop.done();
+	return 0;
+}
+
+let cmd = ARGV[0] || 'sync';
+
+if (cmd == 'daemon') {
+	exit(run_daemon());
+} else if (cmd == 'sync') {
+	let force = false;
+	let section = null;
+	for (let i = 1; i < length(ARGV); i++) {
+		if (ARGV[i] == '--force' || ARGV[i] == '-f')
+			force = true;
+		else if (match(ARGV[i], /^[A-Za-z0-9_]+$/))
+			section = ARGV[i];
+	}
+	let res = engine.sync_rules({ force: force, section: section });
+	printf('%.2J\n', res);
+	exit(res.ok ? 0 : 1);
+} else if (cmd == 'test') {
+	let section = ARGV[1] || null;
+	if (section && !match(section, /^[A-Za-z0-9_]+$/)) {
+		warn('Invalid section name\n');
+		exit(1);
+	}
+	let res = engine.test_rule_connectivity(section);
+	printf('%.2J\n', res);
+	exit(res.ok ? 0 : 1);
+} else if (cmd == 'status') {
+	printf('%.2J\n', engine.get_runtime_status());
+	exit(0);
+} else if (cmd == 'clear-log') {
+	engine.clear_logs();
+	exit(0);
+} else {
+	usage();
+	exit(cmd == '--help' || cmd == '-h' ? 0 : 1);
+}

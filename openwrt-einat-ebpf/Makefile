@@ -9,7 +9,7 @@ PKG_UPSTREAM_GITHASH:=
 
 PKG_NAME:=einat-ebpf
 PKG_VERSION:=$(PKG_UPSTREAM_VERSION)$(if $(PKG_UPSTREAM_GITHASH),~$(call version_abbrev,$(PKG_UPSTREAM_GITHASH)))
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_SOURCE_SUBDIR)
@@ -52,7 +52,7 @@ include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/rust/rust-package.mk
 
 CARGO_PKG_VARS+= \
-	BINDGEN_EXTRA_CLANG_ARGS=-I$(shell $(TARGET_CC_NOCACHE) -print-file-name=include)
+    BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(TOOLCHAIN_DIR) -I$(shell $(TARGET_CC_NOCACHE) -print-file-name=include)"
 
 # Don't ignore Cargo.lock
 ifeq ($(shell grep -o 'RUST_PKG_LOCKED' $(TOPDIR)/feeds/packages/lang/rust/rust-package.mk 2>/dev/null),)

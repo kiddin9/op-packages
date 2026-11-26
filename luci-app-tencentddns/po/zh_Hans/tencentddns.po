@@ -1,0 +1,460 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-tencentddns 2.0.0\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Never"
+msgstr "从未检查"
+
+msgid "Syncing"
+msgstr "同步中"
+
+msgid "Synced"
+msgstr "已同步"
+
+msgid "Error"
+msgstr "异常"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Pending"
+msgstr "待检测"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "未运行"
+
+msgid "DNSPod Legacy Token"
+msgstr "DNSPod 传统 Token"
+
+msgid "Tencent Cloud API 3.0 (TC3-HMAC-SHA256)"
+msgstr "腾讯云 API 3.0 (TC3-HMAC-SHA256)"
+
+msgid "Active Rules"
+msgstr "启用规则"
+
+msgid "Auth Mode"
+msgstr "鉴权方式"
+
+msgid "Check Interval"
+msgstr "巡检周期"
+
+msgid "min"
+msgstr "分钟"
+
+msgid "Sync All Now"
+msgstr "立即全部同步"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Start Service"
+msgstr "启动服务"
+
+msgid "Stop Service"
+msgstr "停止服务"
+
+msgid "No DDNS domain rules configured yet. Click Add below to create your first rule."
+msgstr "尚未配置任何域名解析规则，请点击下方“添加”按钮创建首条 DDNS 规则。"
+
+msgid "Domain"
+msgstr "完整域名"
+
+msgid "Type / Line"
+msgstr "记录类型 / 线路"
+
+msgid "Local IP"
+msgstr "本机当前 IP"
+
+msgid "Remote DNS IP"
+msgstr "云端解析 IP"
+
+msgid "Status"
+msgstr "同步状态"
+
+msgid "Last Check"
+msgstr "最近检测"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Sync Now"
+msgstr "立即同步"
+
+msgid "Test"
+msgstr "连接测试"
+
+msgid "Synchronization task triggered. Status will refresh automatically."
+msgstr "已触发后台同步任务，状态面板将自动刷新。"
+
+msgid "Failed to trigger synchronization"
+msgstr "触发同步任务失败"
+
+msgid "Testing Rule Connectivity"
+msgstr "正在测试规则连通性"
+
+msgid "Testing local IP acquisition and Tencent Cloud API credentials..."
+msgstr "正在检测本机 IP 获取状态并验证腾讯云 API 密钥权限..."
+
+msgid "Empty response from backend"
+msgstr "后端未返回有效响应"
+
+msgid "Connectivity and API authentication test passed!"
+msgstr "本机 IP 获取与腾讯云 API 鉴权测试全部通过！"
+
+msgid "Issues detected during connectivity test."
+msgstr "连通性或 API 鉴权测试发现异常，请检查下方详情。"
+
+msgid "Not created yet (API Auth OK)"
+msgstr "尚未创建记录（API 鉴权正常，同步时将自动新建）"
+
+msgid "Authentication failed"
+msgstr "API 鉴权失败"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Connectivity Test Result"
+msgstr "连接与鉴权测试结果"
+
+msgid "Tencent Cloud DDNS"
+msgstr "腾讯云 DDNS"
+
+msgid "Automatically synchronize dynamic public IPv4 / IPv6 addresses to Tencent Cloud DNSPod DNS records via API 3.0 (TC3-HMAC-SHA256) or DNSPod Token."
+msgstr "基于 OpenWrt ucode 事件驱动架构，自动将动态公网 IPv4 / IPv6 地址同步至腾讯云 DNSPod 域名解析记录（支持腾讯云 API 3.0 签名与传统 DNSPod Token）。"
+
+msgid "Service Status"
+msgstr "服务运行状态"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Basic & Credentials"
+msgstr "基本与密钥设置"
+
+msgid "Schedule & Probing"
+msgstr "调度与探测设置"
+
+msgid "Enable Service"
+msgstr "启用服务"
+
+msgid "Enable background event-driven TencentDDNS daemon and real-time WAN change detection."
+msgstr "启用腾讯云 DDNS 后台守护进程，支持定时巡检及网络接口重拨/变动实时触发更新。"
+
+msgid "Authentication Mode"
+msgstr "接口鉴权模式"
+
+msgid "Tencent Cloud API 3.0 supports CAM sub-account permission isolation and is recommended for all new deployments."
+msgstr "推荐使用腾讯云 API 3.0（TC3-HMAC-SHA256），支持 CAM 子账号精细化权限隔离，无需依赖旧版 Token。"
+
+msgid "Tencent Cloud API 3.0 (SecretId / SecretKey, Recommended)"
+msgstr "腾讯云 API 3.0 密钥 (SecretId / SecretKey，推荐)"
+
+msgid "DNSPod Legacy Token (ID / Token)"
+msgstr "DNSPod 传统密钥 (ID / Token，兼容旧版)"
+
+msgid "API Endpoint"
+msgstr "接入服务站点"
+
+msgid "Choose Mainland China for dnspod.cn / cloud.tencent.com accounts, or International for dnspod.com / tencentcloud.com accounts."
+msgstr "国内腾讯云 / dnspod.cn 账号请选择中国内地站；国际站 tencentcloud.com / dnspod.com 账号请选择国际站。"
+
+msgid "Mainland China (dnspod.tencentcloudapi.com)"
+msgstr "中国内地站 (dnspod.tencentcloudapi.com / dnsapi.cn)"
+
+msgid "International (dnspod.intl.tencentcloudapi.com)"
+msgstr "国际站 (dnspod.intl.tencentcloudapi.com / api.dnspod.com)"
+
+msgid "SecretId / Token ID"
+msgstr "SecretId / 密钥 ID"
+
+msgid "Obtain SecretId from <a href=\"https://console.cloud.tencent.com/cam/capi\" target=\"_blank\" rel=\"noopener noreferrer\">Tencent Cloud API Key Console</a> or Token ID from <a href=\"https://console.dnspod.cn/account/token\" target=\"_blank\" rel=\"noopener noreferrer\">DNSPod Token Console</a>."
+msgstr "前往 <a href=\"https://console.cloud.tencent.com/cam/capi\" target=\"_blank\" rel=\"noopener noreferrer\">腾讯云 CAM 密钥管理</a> 获取 SecretId，或前往 <a href=\"https://console.dnspod.cn/account/token\" target=\"_blank\" rel=\"noopener noreferrer\">DNSPod 密钥管理</a> 获取传统 Token ID。"
+
+msgid "SecretKey / Token"
+msgstr "SecretKey / 密钥 Token"
+
+msgid "Keep your SecretKey confidential. Use a CAM sub-account with QcloudDNSPodFullAccess for least privilege."
+msgstr "请妥善保管密钥，建议创建仅授予 QcloudDNSPodFullAccess 策略的腾讯云 CAM 子账号密钥以遵循最小权限原则。"
+
+msgid "Check Interval (Minutes)"
+msgstr "巡检间隔（分钟）"
+
+msgid "Periodic verification interval in minutes (1-1440). Network interface up/change events also trigger immediate checks."
+msgstr "后台周期性核对域名解析的时间间隔（1–1440 分钟）；WAN 接口重拨或地址变更时会自动即时触发，无需把间隔设得过小。"
+
+msgid "Force Sync Interval (Hours)"
+msgstr "强制校验周期（小时）"
+
+msgid "Re-verify against Tencent Cloud API even if local IP has not changed (0 to disable)."
+msgstr "即使本机缓存 IP 未变化，每隔指定小时仍向腾讯云 API 强制核对一次远端记录（填 0 表示仅在 IP 变化时查询）。"
+
+msgid "Failure Retry Interval (Seconds)"
+msgstr "失败重试间隔（秒）"
+
+msgid "Backoff delay before retrying when IP detection or API request fails."
+msgstr "当网络未就绪获取不到公网 IP 或 API 请求异常时的自动退避重试间隔（10–3600 秒）。"
+
+msgid "IPv4 Check URLs"
+msgstr "IPv4 公网探测地址"
+
+msgid "HTTPS endpoints queried in order when IPv4 source is set to Public Check URL."
+msgstr "当规则的 IPv4 来源选择“公网 HTTPS 探测”时，按顺序轮询的高可用探测接口。"
+
+msgid "IPv6 Check URLs"
+msgstr "IPv6 公网探测地址"
+
+msgid "HTTPS endpoints queried in order when IPv6 source is set to Public Check URL."
+msgstr "当规则的 IPv6 来源选择“公网 HTTPS 探测”时，按顺序轮询的高可用探测接口。"
+
+msgid "Max Log Lines"
+msgstr "日志保留最大行数"
+
+msgid "Maximum lines retained in /var/log/tencentddns.log with automatic rolling truncation."
+msgstr "日志文件 /var/log/tencentddns.log 保留的最大行数，超出后自动滚动裁剪旧记录。"
+
+msgid "Skip TLS Certificate Verification"
+msgstr "跳过 HTTPS 证书校验"
+
+msgid "Only enable temporarily for troubleshooting missing CA certificates."
+msgstr "仅在固件缺失 CA 根证书排障时临时开启，日常使用请保持关闭以保障通信安全。"
+
+msgid "Domain DDNS Rules"
+msgstr "域名解析规则"
+
+msgid "Configure one or more domains/subdomains. Supports root (@), wildcard (*), multi-level subdomains, dual-stack (A + AAAA), and dynamic IPv6 prefix + host suffix synthesis for LAN servers."
+msgstr "支持同时管理多条主域名与子域名规则，支持根域名 (@)、泛解析 (*)、多级主机头、IPv4/IPv6 双栈同更，以及利用运营商动态 IPv6 前缀合成内网 NAS 地址。"
+
+msgid "Edit Rule"
+msgstr "编辑解析规则"
+
+msgid "Edit DDNS Rule"
+msgstr "编辑 DDNS 规则"
+
+msgid "General Settings"
+msgstr "基础设置"
+
+msgid "IP Source"
+msgstr "IP 获取方式"
+
+msgid "Custom Credentials"
+msgstr "独立密钥覆盖"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Remark"
+msgstr "备注"
+
+msgid "Optional label such as Home Router or NAS."
+msgstr "可选规则备注，例如：主路由、群晖 NAS。"
+
+msgid "Host Record (Subdomain)"
+msgstr "主机记录（子域名）"
+
+msgid "Enter @ for root domain, * for wildcard, or a host prefix like www, nas, or *.home."
+msgstr "根域名直接填 @，泛解析填 *，普通子域名填前缀（如 www、nas 或多级 *.home）。"
+
+msgid "Host record cannot be empty (use @ for root domain)"
+msgstr "主机记录不能为空（解析根域名请填写 @）"
+
+msgid "Invalid host record format (examples: @, *, www, nas.home)"
+msgstr "主机记录格式无效（合法示例：@、*、www、nas.home）"
+
+msgid "Main Domain"
+msgstr "主域名"
+
+msgid "Registered root domain hosted on DNSPod, for example example.com."
+msgstr "托管在腾讯云 / DNSPod 的注册主域名，例如：example.com。"
+
+msgid "Enter a valid root domain such as example.com"
+msgstr "请输入有效的主域名，例如：example.com"
+
+msgid "Record Mode"
+msgstr "解析地址模式"
+
+msgid "Dual-Stack maintains both IPv4 (A) and IPv6 (AAAA) records under a single rule."
+msgstr "选择“双栈 (A + AAAA)”可在单条规则内同时自动维护 IPv4 与 IPv6 两条解析记录。"
+
+msgid "IPv4 Only (A)"
+msgstr "仅 IPv4 (A 记录)"
+
+msgid "IPv6 Only (AAAA)"
+msgstr "仅 IPv6 (AAAA 记录)"
+
+msgid "Dual-Stack (A + AAAA)"
+msgstr "IPv4 + IPv6 双栈 (A + AAAA)"
+
+msgid "Split Line"
+msgstr "解析线路"
+
+msgid "DNSPod DNS resolution split line. Leave as Default unless split-horizon routing is required."
+msgstr "DNSPod 分线路解析名称，常规单线宽带请保持“默认”，多线用户可选择对应运营商线路或手动输入自定义线路。"
+
+msgid "China Telecom"
+msgstr "电信"
+
+msgid "China Unicom"
+msgstr "联通"
+
+msgid "China Mobile"
+msgstr "移动"
+
+msgid "CERNET"
+msgstr "教育网"
+
+msgid "Overseas"
+msgstr "境外"
+
+msgid "TTL (Seconds)"
+msgstr "TTL 缓存时间（秒）"
+
+msgid "DNS record cache time-to-live (minimum depends on DNSPod plan, default 600)."
+msgstr "DNS 解析记录生效缓存时间（最小值取决于域名套餐等级，免费版默认 600 秒）。"
+
+msgid "Clean Duplicate Records"
+msgstr "清理同名重复记录"
+
+msgid "Automatically remove extra records of the exact same host, record type, and split line."
+msgstr "同步时若云端存在多条同主机头、同记录类型且同线路的重复记录，自动删除多余条目（不会影响 TXT/CNAME 等其他记录）。"
+
+msgid "Allow Private / CGNAT IP"
+msgstr "允许内网 / 保留地址"
+
+msgid "Permit RFC1918, CGNAT (100.64.0.0/10), or IPv6 ULA (fd00::/8) addresses for internal/VPN DNS resolution."
+msgstr "允许将局域网私有地址（192.168/10/172.16）、运营商大内网（100.64/10）或 IPv6 ULA（fd00::/8）同步到云端，适用于组网/内网穿透直连场景。"
+
+msgid "IPv4 Source"
+msgstr "IPv4 获取来源"
+
+msgid "Method used to obtain the local IPv4 address."
+msgstr "获取本机公网 IPv4 地址的方式，路由器拨号推荐直接读取网络接口，桥接旁路由推荐选择公网 HTTPS 探测。"
+
+msgid "OpenWrt Network Interface"
+msgstr "OpenWrt 网络接口"
+
+msgid "Public HTTPS Check URL"
+msgstr "公网 HTTPS 接口探测"
+
+msgid "Network Device"
+msgstr "网卡设备直读"
+
+msgid "IPv4 Network Interface"
+msgstr "IPv4 逻辑接口"
+
+msgid "Logical interface providing the public IPv4 address (typically wan)."
+msgstr "承载公网 IPv4 的逻辑网络接口（通常为 wan）。"
+
+msgid "IPv4 Network Device"
+msgstr "IPv4 网卡设备"
+
+msgid "Physical or PPPoE network device (e.g. pppoe-wan, eth1)."
+msgstr "直接从指定网卡读取全局 IPv4 地址（如 pppoe-wan、eth1）。"
+
+msgid "IPv4 Outbound Device (Optional)"
+msgstr "IPv4 探测绑定网卡（可选）"
+
+msgid "Optional outbound device binding for multi-WAN public URL probing."
+msgstr "多拨或多 WAN 环境下，可指定访问公网探测 URL 时绑定的出口物理网卡。"
+
+msgid "IPv6 Source"
+msgstr "IPv6 获取来源"
+
+msgid "Prefix + Host Suffix dynamically combines ISP delegated IPv6 PD prefix with a static suffix to expose LAN NAS/hosts."
+msgstr "若需解析路由器自身公网 IPv6 请选“OpenWrt 网络接口 (GUA)”；若需将下挂 LAN 内固定后缀的 NAS/服务器暴露到外网，请选“动态前缀 + 固定主机后缀合成”。"
+
+msgid "OpenWrt Network Interface (GUA)"
+msgstr "OpenWrt 网络接口 (公网 GUA)"
+
+msgid "Delegated Prefix + Static Host Suffix (LAN Host DDNS)"
+msgstr "动态前缀 + 固定主机后缀合成 (下挂 NAS 专用)"
+
+msgid "Network Device (GUA)"
+msgstr "网卡设备直读 (公网 GUA)"
+
+msgid "IPv6 Network Interface"
+msgstr "IPv6 逻辑接口"
+
+msgid "Select wan6 / wan_6 or lan (automatically falls back to wan_6 / PD assignment when needed)."
+msgstr "选择获取 IPv6 地址或 PD 前缀的接口（如 wan6、wan_6 或 lan，系统会自动兼容 PPPoE 派生的 wan_6 与 PD 本地地址）。"
+
+msgid "IPv6 Host Suffix"
+msgstr "IPv6 主机后缀"
+
+msgid "Static interface identifier combined with delegated prefix, e.g. ::1 for router or ::be24:11ff:fe12:3456 for a LAN host."
+msgstr "填写固定接口标识符（Interface ID），自动与运营商下发的 /56、/60 或 /64 动态前缀按位拼接，例如 ::1 或下挂设备的 EUI-64 后缀 ::be24:11ff:fe12:3456。"
+
+msgid "IPv6 Network Device"
+msgstr "IPv6 网卡设备"
+
+msgid "Network device holding the global unicast IPv6 address (e.g. br-lan, pppoe-wan)."
+msgstr "持有公网 GUA IPv6 地址的网卡设备（例如 br-lan、pppoe-wan）。"
+
+msgid "IPv6 Outbound Device (Optional)"
+msgstr "IPv6 探测绑定网卡（可选）"
+
+msgid "Optional outbound device binding for multi-WAN IPv6 URL probing."
+msgstr "多 WAN 环境下指定 IPv6 公网探测绑定的出口网卡。"
+
+msgid "Override Global Credentials"
+msgstr "使用独立 API 密钥"
+
+msgid "Enable if this domain belongs to a separate Tencent Cloud / DNSPod account."
+msgstr "当该域名归属于另一个腾讯云 / DNSPod 账号时勾选，以覆盖全局设置的默认密钥。"
+
+msgid "No log entries available."
+msgstr "暂无运行日志记录。"
+
+msgid "No matching log entries."
+msgstr "没有符合当前筛选条件的日志。"
+
+msgid "All Levels"
+msgstr "全部日志级别"
+
+msgid "Warnings & Errors"
+msgstr "警告与错误 (WARN + ERROR)"
+
+msgid "Errors Only"
+msgstr "仅看错误 (ERROR)"
+
+msgid "Filter by domain or keyword..."
+msgstr "输入域名或关键字过滤日志..."
+
+msgid "Order: Newest First"
+msgstr "排序：最新置顶"
+
+msgid "Order: Oldest First"
+msgstr "排序：时间正序"
+
+msgid "Refresh"
+msgstr "立即刷新"
+
+msgid "Export Log"
+msgstr "导出日志"
+
+msgid "Clear Log"
+msgstr "清空日志"
+
+msgid "Tencent Cloud DDNS - Log Viewer"
+msgstr "腾讯云 DDNS - 运行日志"
+
+msgid "Real-time synchronization logs from /var/log/tencentddns.log (auto-refreshes every 5 seconds)."
+msgstr "实时读取 /var/log/tencentddns.log 同步日志（每 5 秒自动刷新，支持级别过滤与导出）。"
+
+msgid "Configuration"
+msgstr "实例与配置"
+
+msgid "Log Viewer"
+msgstr "运行日志"
+
+msgid "Grant access to Tencent Cloud / DNSPod DDNS configuration"
+msgstr "授予腾讯云 / DNSPod 动态域名解析配置权限"

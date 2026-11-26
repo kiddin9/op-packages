@@ -38,11 +38,6 @@ stop_service() {
 	rm -f "$PIDFILE"
 }
 
-reload_service() {
-	stop
-	start
-}
-
 service_triggers() {
 	procd_add_reload_trigger "aliddns"
 }

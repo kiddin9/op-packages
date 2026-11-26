@@ -24,13 +24,7 @@ endef
 
 define Build/Prepare/luci-app-aliddns
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/aliddns
-	chmod 0755 $(PKG_BUILD_DIR)/root/etc/hotplug.d/iface/80-aliddns
-	chmod 0755 $(PKG_BUILD_DIR)/root/etc/uci-defaults/40_luci-aliddns
 	chmod 0755 $(PKG_BUILD_DIR)/root/usr/sbin/aliddns
-	chmod 0644 $(PKG_BUILD_DIR)/root/usr/share/rpcd/ucode/luci.aliddns
-	chmod 0644 $(PKG_BUILD_DIR)/root/usr/share/luci/menu.d/luci-app-aliddns.json
-	chmod 0644 $(PKG_BUILD_DIR)/root/usr/share/rpcd/acl.d/luci-app-aliddns.json
-	chmod 0600 $(PKG_BUILD_DIR)/root/etc/config/aliddns
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk

@@ -1,0 +1,29 @@
+{
+	"admin/services/tencentddns": {
+		"title": "Tencent Cloud DDNS",
+		"order": 32,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-tencentddns" ],
+			"uci": { "tencentddns": true }
+		}
+	},
+	"admin/services/tencentddns/config": {
+		"title": "Configuration",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "tencentddns/config"
+		}
+	},
+	"admin/services/tencentddns/log": {
+		"title": "Log Viewer",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "tencentddns/log"
+		}
+	}
+}

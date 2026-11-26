@@ -1,0 +1,38 @@
+{
+	"luci-app-tencentddns": {
+		"description": "Grant access to Tencent Cloud / DNSPod DDNS configuration",
+		"read": {
+			"ubus": {
+				"luci.tencentddns": [
+					"get_status",
+					"get_logs"
+				],
+				"network.interface": [
+					"dump"
+				],
+				"network.device": [
+					"status"
+				],
+				"service": [
+					"list"
+				]
+			},
+			"uci": [
+				"tencentddns"
+			]
+		},
+		"write": {
+			"ubus": {
+				"luci.tencentddns": [
+					"sync_now",
+					"test_rule",
+					"clear_logs",
+					"service_action"
+				]
+			},
+			"uci": [
+				"tencentddns"
+			]
+		}
+	}
+}
