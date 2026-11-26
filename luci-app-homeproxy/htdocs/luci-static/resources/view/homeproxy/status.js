@@ -31,46 +31,6 @@ const css = '				\
 
 const hp_dir = '/var/run/homeproxy';
 
-const callResVersion = rpc.declare({
-	object: 'luci.homeproxy',
-	method: 'resources_get_version',
-	params: ['type'],
-	expect: { '': {} }
-});
-
-const callResUpdate = rpc.declare({
-	object: 'luci.homeproxy',
-	method: 'resources_update',
-	params: ['type'],
-	expect: { '': {} }
-});
-
-const callResUpdateStatus = rpc.declare({
-	object: 'luci.homeproxy',
-	method: 'resources_get_update_status',
-	params: ['type'],
-	expect: { '': {} }
-});
-
-/* LuCI's poll queue is global. Keep track of the callbacks registered by this
- * view so a re-render never leaves old ones reading detached DOM nodes. */
-let logPolls = [];
-
-function updateResultMessage(status) {
-	switch (Number(status)) {
-	case 0:
-		return _('Successfully updated.');
-	case 1:
-		return _('Update failed.');
-	case 2:
-		return _('Already in updating.');
-	case 3:
-		return _('Already at the latest version.');
-	default:
-		return _('Unknown error.');
-	}
-}
-
 function getConnStat(o, site) {
 	const callConnStat = rpc.declare({
 		object: 'luci.homeproxy',
@@ -101,101 +61,55 @@ function getConnStat(o, site) {
 }
 
 function getResVersion(o, type) {
-	let button, version_el, status_el;
-	let statusPollFn = null, deadline = 0;
+	const callResVersion = rpc.declare({
+		object: 'luci.homeproxy',
+		method: 'resources_get_version',
+		params: ['type'],
+		expect: { '': {} }
+	});
 
-	/* The version string itself is the source of truth. Do not rely on the
-	 * RPC error flag: the backend's file error state used to be sticky across
-	 * calls, which kept showing "not found" after a successful update. */
-	const showVersion = (res) => {
-		const version = res?.version || '';
-		version_el.style.setProperty('color', version ? 'green' : 'red');
-		dom.content(version_el, version || 'not found');
-	};
-
-	const refreshVersion = () => L.resolveDefault(callResVersion(type), {})
-		.then(showVersion);
-
-	const finishUpdate = (status) => {
-		if (statusPollFn) {
-			poll.remove(statusPollFn);
-			statusPollFn = null;
-		}
-		button.disabled = false;
-		dom.content(status_el, updateResultMessage(status));
-		return refreshVersion();
-	};
-
-	const pollUpdateStatus = () => {
-		let seenAttached = false;
-		deadline = Date.now() + 300000;
-
-		statusPollFn = () => {
-			/* Do not mistake the initial render (node not in the DOM yet) for
-			 * the user having navigated away. */
-			if (document.body.contains(button))
-				seenAttached = true;
-			else if (seenAttached) {
-				poll.remove(statusPollFn);
-				statusPollFn = null;
-				return;
-			}
-
-			if (Date.now() > deadline)
-				return finishUpdate(1);
-
-			return L.resolveDefault(callResUpdateStatus(type), {}).then((res) => {
-				if (res.status == null || res.status === 'running')
-					return;
-				return finishUpdate(res.status);
-			}).catch(() => finishUpdate(255));
-		};
-
-		poll.add(statusPollFn, 1);
-	};
-
-	const startUpdate = (ev) => {
-		ev.preventDefault();
-		if (button.disabled)
-			return;
-
-		/* Keep the button disabled until the background task reports back, so
-		 * repeated clicks cannot pile up downloads and RPC requests. */
-		button.disabled = true;
-		dom.content(status_el, _('Updating...'));
-
-		return L.resolveDefault(callResUpdate(type), {}).then((res) => {
-			if (Number(res.status) === 254)
-				return pollUpdateStatus();
-			return finishUpdate(res.status);
-		}).catch(() => finishUpdate(255));
-	};
+	const callResUpdate = rpc.declare({
+		object: 'luci.homeproxy',
+		method: 'resources_update',
+		params: ['type'],
+		expect: { '': {} }
+	});
 
 	return L.resolveDefault(callResVersion(type), {}).then((res) => {
-		button = E('button', {
-			'class': 'btn cbi-button cbi-button-action',
-			'click': startUpdate
-		}, [ _('Check update') ]);
+		let spanTemp = E('div', { 'style': 'cbi-value-field' }, [
+			E('button', {
+				'class': 'btn cbi-button cbi-button-action',
+				'click': ui.createHandlerFn(this, () => {
+					return L.resolveDefault(callResUpdate(type), {}).then((res) => {
+						switch (res.status) {
+						case 0:
+							o.description = _('Successfully updated.');
+							break;
+						case 1:
+							o.description = _('Update failed.');
+							break;
+						case 2:
+							o.description = _('Already in updating.');
+							break;
+						case 3:
+							o.description = _('Already at the latest version.');
+							break;
+						default:
+							o.description = _('Unknown error.');
+							break;
+						}
 
-		version_el = E('strong', {}, '');
-
-		/* Update results are shown in place. Re-rendering the whole map would
-		 * re-register every log poll callback and issue another version RPC for
-		 * each resource on every click. */
-		status_el = E('span', { 'style': 'margin-left: 4px' });
-
-		o.default = E('div', { 'style': 'cbi-value-field' }, [
-			button, ' ', version_el, status_el
+						return o.map.reset();
+					});
+				})
+			}, [ _('Check update') ]),
+			' ',
+			E('strong', { 'style': (res.error ? 'color:red' : 'color:green') },
+				[ res.error ? 'not found' : res.version ]
+			),
 		]);
 
-		showVersion(res);
-
-		/* A task started before a page reload keeps running in the background. */
-		if (res.updating) {
-			button.disabled = true;
-			dom.content(status_el, _('Updating...'));
-			pollUpdateStatus();
-		}
+		o.default = spanTemp;
 	});
 }
 
@@ -262,17 +176,8 @@ function getRuntimeLog(o, name, _option_index, section_id, _in_table) {
 		}, _('Collecting data...'))
 	);
 
-	let log, seenAttached = false;
-	const logPollFn = () => {
-		/* Views have no unload hook, so drop this callback once its textarea
-		 * has been attached and later removed from the document. */
-		if (document.body.contains(log_textarea))
-			seenAttached = true;
-		else if (seenAttached) {
-			poll.remove(logPollFn);
-			return;
-		}
-
+	let log;
+	poll.add(L.bind(() => {
 		return fs.read_direct(String.format('%s/%s.log', hp_dir, filename), 'text')
 		.then((res) => {
 			log = E('pre', { 'wrap': 'pre' }, [
@@ -292,9 +197,7 @@ function getRuntimeLog(o, name, _option_index, section_id, _in_table) {
 
 			dom.content(log_textarea, log);
 		});
-	};
-	poll.add(logPollFn);
-	logPolls.push(logPollFn);
+	}));
 
 	return E([
 		E('style', [ css ]),
@@ -323,9 +226,6 @@ function getRuntimeLog(o, name, _option_index, section_id, _in_table) {
 return view.extend({
 	render() {
 		let m, s, o;
-
-		logPolls.forEach((fn) => poll.remove(fn));
-		logPolls = [];
 
 		m = new form.Map('homeproxy');
 

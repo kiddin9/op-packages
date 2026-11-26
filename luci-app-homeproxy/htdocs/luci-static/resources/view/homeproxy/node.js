@@ -6,22 +6,112 @@
 
 'use strict';
 'require form';
-'require fs';
+'require rpc';
 'require uci';
 'require ui';
 'require view';
 
 'require homeproxy as hp';
+'require homeproxy.diagnostics as hpDiagnostics';
+'require homeproxy.tcping as hpTcping';
 'require tools.widgets as widgets';
 
-/* Share links usually omit the port: TLS/QUIC based protocols default to 443. */
-function defaultSharePort(proto) {
-	return ['anytls', 'https', 'hysteria', 'hysteria2', 'hy2', 'trojan', 'tuic', 'vless'].includes(proto) ? '443' : '80';
+const callNodeReferences = rpc.declare({
+	object: 'luci.homeproxy_node_tools',
+	method: 'node_references',
+	params: [ 'node_id' ],
+	expect: { '': {} }
+});
+const callRemoveSubscriptionNodes = rpc.declare({
+	object: 'luci.homeproxy_node_tools',
+	method: 'remove_subscription_nodes',
+	params: [ 'node_ids' ],
+	expect: { '': {} }
+});
+const callUpdateSubscriptions = rpc.declare({
+	object: 'luci.homeproxy_node_tools',
+	method: 'update_subscriptions',
+	expect: { '': {} }
+});
+const callUpdateSubscriptionsStatus = rpc.declare({
+	object: 'luci.homeproxy_node_tools',
+	method: 'update_subscriptions_status',
+	expect: { '': {} }
+});
+
+const SUBSCRIPTION_UPDATE_POLL_INTERVAL = 1000;
+const SUBSCRIPTION_UPDATE_POLL_LIMIT = 180;
+
+function subscriptionRpcErrorMessage(err, fallback) {
+	let message = err?.message || err;
+
+	if (message != null)
+		message = String(message);
+
+	if (!message || message === 'Unknown error.' || message === '未知错误。')
+		message = fallback;
+
+	let lower = (message || '').toLowerCase();
+	if (lower.includes('access denied') ||
+		lower.includes('permission denied') ||
+		lower.includes('ubus') ||
+		lower.includes('rpc') ||
+		lower.includes('session')) {
+		return _('HomeProxy was just upgraded or rpcd has restarted. The current page session may be expired. Refresh the page or sign in again before retrying.');
+	}
+
+	return message || fallback;
 }
 
 function allowInsecureConfirm(ev, _section_id, value) {
 	if (value === '1' && !confirm(_('Are you sure to allow insecure?')))
 		ev.target.firstElementChild.checked = null;
+}
+
+function showNodeReferenceNotice(section_id) {
+	return L.resolveDefault(callNodeReferences(section_id), { result: false, error: _('Unknown error.') }).then((res) => {
+		if (!res.result) {
+			ui.addNotification(null, E('p', res.error || _('Failed to check node references. Please try again later.')), 'warning');
+			return true;
+		}
+
+		let refs = res.references || [];
+		if (!refs.length)
+			return false;
+
+		let label = uci.get('homeproxy', section_id, 'label') || section_id;
+		ui.addNotification(null, E('div', [
+			E('p', _('Node %s is still referenced by these settings. Remove the references before deleting the node.').format(label)),
+			E('ul', refs.map((ref) => E('li', ref?.label || ref?.scope || '')))
+		]), 'warning');
+
+		return true;
+	}).catch((err) => {
+		ui.addNotification(null, E('p', _('Failed to check node references. Please try again later.')), 'warning');
+		return true;
+	});
+}
+
+function wait(ms) {
+	return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function pollSubscriptionUpdateStatus(attempt) {
+	return callUpdateSubscriptionsStatus().catch((err) => {
+		throw new Error(subscriptionRpcErrorMessage(err, _('Failed to read subscription update status.')));
+	}).then((res) => {
+		if (!res.result)
+			throw new Error(res.error || _('Failed to read subscription update status.'));
+
+		if (!res.completed) {
+			if (attempt >= SUBSCRIPTION_UPDATE_POLL_LIMIT)
+				throw new Error(_('Timed out waiting for subscription update to finish.'));
+
+			return wait(SUBSCRIPTION_UPDATE_POLL_INTERVAL).then(() => pollSubscriptionUpdateStatus(attempt + 1));
+		}
+
+		return res;
+	});
 }
 
 function parseShareLink(uri, features) {
@@ -43,7 +133,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'anytls',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				password: url.username ? decodeURIComponent(url.username) : null,
 				tls: '1',
 				tls_sni: params.get('sni'),
@@ -59,7 +149,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'http',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				username: url.username ? decodeURIComponent(url.username) : null,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				tls: (uri[0] === 'https') ? '1' : '0'
@@ -79,7 +169,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'hysteria',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				hysteria_protocol: params.get('protocol') || 'udp',
 				hysteria_auth_type: params.get('auth') ? 'string' : null,
 				hysteria_auth_payload: params.get('auth'),
@@ -106,7 +196,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'hysteria2',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				password: url.username ? (
 					decodeURIComponent(url.username + (url.password ? (':' + url.password) : ''))
 				) : null,
@@ -129,7 +219,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'socks',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				username: url.username ? decodeURIComponent(url.username) : null,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				socks_version: (uri[0].includes('4')) ? '4' : '5'
@@ -176,7 +266,7 @@ function parseShareLink(uri, features) {
 					label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 					type: 'shadowsocks',
 					address: url.hostname,
-					port: url.port || defaultSharePort(uri[0]),
+					port: url.port || '80',
 					shadowsocks_encrypt_method: userinfo[0],
 					password: userinfo[1],
 					shadowsocks_plugin: plugin,
@@ -213,7 +303,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'trojan',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				password: decodeURIComponent(url.username),
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: '1',
@@ -248,7 +338,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'tuic',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				uuid: url.username,
 				password: url.password ? decodeURIComponent(url.password) : null,
 				tuic_congestion_control: params.get('congestion_control'),
@@ -277,7 +367,7 @@ function parseShareLink(uri, features) {
 				label: url.hash ? decodeURIComponent(url.hash.slice(1)) : null,
 				type: 'vless',
 				address: url.hostname,
-				port: url.port || defaultSharePort(uri[0]),
+				port: url.port || '80',
 				uuid: url.username,
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: ['tls', 'xtls', 'reality'].includes(params.get('security')) ? '1' : '0',
@@ -460,6 +550,27 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends({'type': 'direct', '!reverse': true});
 	o.rmempty = false;
 
+	o = s.option(form.DummyValue, '_tcping_delay', '延迟');
+	o.editable = true;
+	o.rmempty = true;
+	o.renderWidget = function(section_id) {
+		hpTcping.ensureStyle();
+		return E('span', {
+			id: hpTcping.nodeId(section_id),
+			class: 'homeproxy-node-tcping homeproxy-latency-pill',
+			role: 'button',
+			tabindex: '0',
+			title: '点击测速',
+			click: (ev) => hpTcping.runNode(section_id, ev),
+			keydown: (ev) => {
+				if (ev.key === 'Enter' || ev.key === ' ') {
+					ev.preventDefault();
+					return hpTcping.runNode(section_id, ev);
+				}
+			}
+		}, '-');
+	}
+
 	o = s.option(form.Value, 'username', _('Username'));
 	o.depends('type', 'http');
 	o.depends('type', 'socks');
@@ -545,7 +656,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends({'type': 'hysteria2', 'hysteria_hopping_port': /[\s\S]/});
 	o.modalonly = true;
 
-	/* Kept for share-link import compatibility; sing-box has no such option. */
 	o = s.option(form.ListValue, 'hysteria_protocol', _('Protocol'));
 	o.value('udp');
 	/* WeChat-Video / FakeTCP are unsupported by sing-box currently
@@ -644,6 +754,69 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends('shadowsocks_plugin', 'obfs-local');
 	o.depends('shadowsocks_plugin', 'v2ray-plugin');
 	o.modalonly = true;
+
+	o = s.option(form.Flag, 'shadowtls_enabled', _('Enable ShadowTLS'));
+	o.depends('type', 'shadowsocks');
+	o.rmempty = false;
+	o.load = function(section_id) {
+		let enabled = uci.get(data[0], section_id, 'shadowtls_enabled');
+		if (enabled != null)
+			return enabled;
+
+		return uci.get(data[0], section_id, 'shadowtls_address') ? '1' : '0';
+	}
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'shadowtls_address', _('ShadowTLS address'));
+	o.datatype = 'host';
+	o.depends({'type': 'shadowsocks', 'shadowtls_enabled': '1'});
+	o.validate = function(section_id, value) {
+		if (section_id) {
+			let type = this.section.formvalue(section_id, 'type');
+			let enabled = this.section.formvalue(section_id, 'shadowtls_enabled');
+			if (type === 'shadowsocks' && enabled === '1' && !value)
+				return _('Cannot be empty');
+		}
+
+		return true;
+	}
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'shadowtls_port', _('ShadowTLS port'));
+	o.datatype = 'port';
+	o.placeholder = '443';
+	o.depends({'type': 'shadowsocks', 'shadowtls_enabled': '1'});
+	o.validate = function(section_id, value) {
+		if (section_id) {
+			let type = this.section.formvalue(section_id, 'type');
+			let enabled = this.section.formvalue(section_id, 'shadowtls_enabled');
+			if (type === 'shadowsocks' && enabled === '1' && !value)
+				return _('Cannot be empty');
+		}
+
+		return true;
+	}
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'shadowtls_password', _('ShadowTLS password'));
+	o.password = true;
+	o.depends({'type': 'shadowsocks', 'shadowtls_enabled': '1'});
+	o.validate = function(section_id, value) {
+		if (section_id) {
+			let type = this.section.formvalue(section_id, 'type');
+			let enabled = this.section.formvalue(section_id, 'shadowtls_enabled');
+			if (type === 'shadowsocks' && enabled === '1' && !value)
+				return _('Cannot be empty');
+		}
+
+		return true;
+	}
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'shadowtls_sni', _('ShadowTLS masquerade SNI'));
+	o.datatype = 'hostname';
+	o.depends({'type': 'shadowsocks', 'shadowtls_enabled': '1'});
+	o.modalonly = true;
 	/* Shadowsocks config end */
 
 	/* ShadowTLS config */
@@ -653,6 +826,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.value('3', _('v3'));
 	o.default = '1';
 	o.depends('type', 'shadowtls');
+	o.depends({'type': 'shadowsocks', 'shadowtls_enabled': '1'});
 	o.rmempty = false;
 	o.modalonly = true;
 
@@ -1195,7 +1369,8 @@ return view.extend({
 	load() {
 		return Promise.all([
 			uci.load('homeproxy'),
-			hp.getBuiltinFeatures()
+			hp.getBuiltinFeatures(),
+			hpDiagnostics.load()
 		]);
 	},
 
@@ -1204,6 +1379,7 @@ return view.extend({
 		let main_node = uci.get(data[0], 'config', 'main_node');
 		let routing_mode = uci.get(data[0], 'config', 'routing_mode');
 		let features = data[1];
+		hpDiagnostics.show(data[2]);
 
 		/* Cache subscription information, it will be called multiple times */
 		let subinfo = [];
@@ -1214,6 +1390,48 @@ return view.extend({
 			subinfo.push({ 'hash': urlhash, 'title': title });
 		}
 
+		let isSubscriptionGrouphash = function(grouphash) {
+			for (let info of subinfo)
+				if (info.hash === grouphash)
+					return true;
+
+			return false;
+		};
+
+		let collectNodeSections = function(grouphash) {
+			let sections = [];
+
+			uci.sections(data[0], 'node', (res) => {
+				if (grouphash ? res.grouphash === grouphash : !isSubscriptionGrouphash(res.grouphash))
+					sections.push(res['.name']);
+			});
+
+			return sections;
+		};
+
+		let addTcpingButton = function(tab, option, grouphash) {
+			o = s.taboption(tab, form.DummyValue, option, '');
+			o.rawhtml = true;
+			o.renderWidget = function() {
+				hpTcping.ensureStyle();
+				return E('div', {
+					'class': 'homeproxy-tcping-toolbar',
+					'style': 'display:flex; align-items:center; gap:.75em; flex-wrap:wrap;'
+				}, [
+					E('button', {
+						'class': 'cbi-button cbi-button-action homeproxy-tcping-button',
+						'title': '测速',
+						'type': 'button',
+						'click': (ev) => hpTcping.runNodes(collectNodeSections(grouphash), ev)
+					}, [ hpTcping.renderIcon('homeproxy-tcping-icon') ]),
+					E('span', {
+						'class': 'homeproxy-tcping-help',
+						'style': 'color:var(--text-color-medium, #777); line-height:1.4;'
+					}, hpTcping.helpText)
+				]);
+			};
+		};
+
 		m = new form.Map('homeproxy', _('Edit nodes'));
 
 		s = m.section(form.NamedSection, 'subscription', 'homeproxy');
@@ -1221,9 +1439,18 @@ return view.extend({
 		/* Node settings start */
 		/* User nodes start */
 		s.tab('node', _('Nodes'));
+		addTcpingButton('node', '_tcping_node');
 		o = s.taboption('node', form.SectionValue, '_node', form.GridSection, 'node');
 		ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode);
 		ss.addremove = true;
+		ss.handleRemove = function(section_id, ev) {
+			return showNodeReferenceNotice(section_id).then((blocked) => {
+				if (blocked)
+					return Promise.resolve();
+
+				return form.GridSection.prototype.handleRemove.apply(this, [ section_id, ev ]);
+			});
+		};
 		ss.filter = function(section_id) {
 			for (let info of subinfo)
 				if (info.hash === uci.get(data[0], section_id, 'grouphash'))
@@ -1326,6 +1553,7 @@ return view.extend({
 		/* Subscription nodes start */
 		for (const info of subinfo) {
 			s.tab('sub_' + info.hash, _('Sub (%s)').format(info.title));
+			addTcpingButton('sub_' + info.hash, '_tcping_' + info.hash, info.hash);
 			o = s.taboption('sub_' + info.hash, form.SectionValue, '_sub_' + info.hash, form.GridSection, 'node');
 			ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode);
 			ss.filter = function(section_id) {
@@ -1392,6 +1620,11 @@ return view.extend({
 		o.rmempty = false;
 		o.onchange = allowInsecureConfirm;
 
+		o = s.taboption('subscription', form.Flag, 'allow_unsupported_tls_pin_fallback', _('Allow unsupported certificate pin fallback'),
+			_('When a subscription node uses a server certificate fingerprint but the current sing-box version cannot express it, skip the node by default. Enable this only if you explicitly accept falling back to TLS insecure mode for compatibility.'));
+		o.rmempty = false;
+		o.onchange = allowInsecureConfirm;
+
 		o = s.taboption('subscription', form.ListValue, 'packet_encoding', _('Default packet encoding'));
 		o.value('', _('none'));
 		o.value('packetaddr', _('packet addr (v2ray-core v5+)'));
@@ -1419,10 +1652,35 @@ return view.extend({
 			}
 		}
 		o.onclick = function() {
-			return fs.exec_direct('/etc/homeproxy/scripts/update_subscriptions.uc').then((res) => {
-				return location.reload();
+			ui.showModal(_('Updating subscriptions...'), [
+				E('p', _('Subscription update is running. The page will refresh automatically when it finishes.'))
+			]);
+
+			return callUpdateSubscriptions().catch((err) => {
+				return {
+					result: false,
+					error: subscriptionRpcErrorMessage(err, _('An error occurred while updating subscriptions.'))
+				};
+			}).then((res) => {
+				if (!res.result) {
+					ui.hideModal();
+					ui.addNotification(null, E('p', res.error || _('An error occurred while updating subscriptions.')), 'warning');
+					return this.map.reset();
+				}
+
+				return pollSubscriptionUpdateStatus(0).then((status) => {
+					ui.hideModal();
+
+					if (!status.update_result) {
+						ui.addNotification(null, E('p', status.error || _('An error occurred while updating subscriptions.')), 'warning');
+						return this.map.reset();
+					}
+
+					return location.reload();
+				});
 			}).catch((err) => {
-				ui.addNotification(null, E('p', _('An error occurred during updating subscriptions: %s').format(err)));
+				ui.hideModal();
+				ui.addNotification(null, E('p', subscriptionRpcErrorMessage(err, _('An error occurred while updating subscriptions.'))), 'warning');
 				return this.map.reset();
 			});
 		}
@@ -1450,19 +1708,17 @@ return view.extend({
 					subnodes = subnodes.concat(res['.name'])
 			});
 
-			for (let i in subnodes)
-				uci.remove(data[0], subnodes[i]);
+			return L.resolveDefault(callRemoveSubscriptionNodes(subnodes), { result: false, error: _('Unknown error.') }).then((res) => {
+				if (!res.result)
+					throw new Error(res.error || _('Unknown error.'));
 
-			if (subnodes.includes(uci.get(data[0], 'config', 'main_node')))
-				uci.set(data[0], 'config', 'main_node', 'nil');
-
-			if (subnodes.includes(uci.get(data[0], 'config', 'main_udp_node')))
-				uci.set(data[0], 'config', 'main_udp_node', 'nil');
-
-			this.inputtitle = _('%s nodes removed').format(subnodes.length);
-			this.readonly = true;
-
-			return this.map.save(null, true);
+				this.inputtitle = _('%s nodes removed').format(res.removed || 0);
+				this.readonly = true;
+				return location.reload();
+			}).catch((err) => {
+				ui.addNotification(null, E('p', _('An error occurred during removing subscription nodes: %s').format(err.message || err)));
+				return this.map.reset();
+			});
 		}
 		/* Subscriptions settings end */
 

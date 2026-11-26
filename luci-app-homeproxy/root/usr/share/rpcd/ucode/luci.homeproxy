@@ -7,7 +7,7 @@
 
 'use strict';
 
-import { access, lstat, popen, readfile, writefile } from 'fs';
+import { access, error, lstat, popen, readfile, writefile } from 'fs';
 
 /* Kanged from ucode/luci */
 function shellquote(s) {
@@ -20,31 +20,6 @@ function hasKernelModule(kmod) {
 
 const HP_DIR = '/etc/homeproxy';
 const RUN_DIR = '/var/run/homeproxy';
-const RES_TYPES = ['china_ip4', 'china_ip6', 'china_list', 'gfw_list'];
-const RES_STATE_TTL = 300;
-
-function resStateFile(type) {
-	return `${RUN_DIR}/update_resources-${type}.status`;
-}
-
-/* The background task leaves "running <epoch>" while it works and a numeric
- * exit code when done. Expire abandoned running states so a killed task can
- * never lock a resource out of future updates. */
-function readResState(type) {
-	const state = readfile(resStateFile(type));
-	if (!state)
-		return { status: 255, running: false };
-
-	const parts = split(trim(state), ' ');
-	if (parts[0] !== 'running')
-		return { status: parts[0], running: false };
-
-	const started = length(parts) > 1 ? +parts[1] : 0;
-	if (time() - started < RES_STATE_TTL)
-		return { status: 'running', running: true };
-
-	return { status: 1, running: false };
-}
 
 const methods = {
 	acllist_read: {
@@ -188,7 +163,7 @@ const methods = {
 			const type = req.args?.type;
 			let result = {};
 
-			const fd = popen(`/usr/bin/sing-box generate ${type} ${shellquote(req.args?.params || '')}`);
+			const fd = popen('/usr/bin/sing-box generate ' + type + ' ' + shellquote(req.args?.params || ''));
 			if (fd) {
 				let ech_cfg_set = false;
 				let ech_key_set = false;
@@ -259,58 +234,24 @@ const methods = {
 	resources_get_version: {
 		args: { type: 'type' },
 		call: function(req) {
-			const type = req.args?.type;
-			if (index(RES_TYPES, type) === -1)
-				return { version: null, error: 'illegal type' };
+			const allowed_types = [ 'china_ip4', 'china_ip6', 'china_list', 'gfw_list' ];
 
-			/* fs.error() is a sticky, VM-wide "last error" which is only
-			 * cleared when read. Any unrelated failed read (e.g. an absent
-			 * update status file after a reboot) would make a perfectly valid
-			 * version look missing. Judge it by the file content instead. */
-			const content = readfile(`${HP_DIR}/resources/${type}.ver`);
-			const version = content ? trim(content) : '';
+			if (index(allowed_types, req.args?.type) === -1)
+				return { version: null, error: 'invalid resource type' };
 
-			return {
-				version: version,
-				error: version === '' ? 'version file is empty or missing' : null,
-				updating: readResState(type).running
-			};
-		}
-	},
-	resources_get_update_status: {
-		args: { type: 'type' },
-		call: function(req) {
-			const type = req.args?.type;
-			if (index(RES_TYPES, type) === -1)
-				return { status: 255, error: 'illegal type' };
-
-			return { status: readResState(type).status };
+			const version = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.ver`) || '');
+			return { version, error: error() };
 		}
 	},
 	resources_update: {
 		args: { type: 'type' },
 		call: function(req) {
-			const type = req.args?.type;
-			if (index(RES_TYPES, type) === -1)
+			if (req.args?.type) {
+				const type = shellquote(req.args?.type);
+				const exit_code = system(`${HP_DIR}/scripts/update_resources.sh ${type}`);
+				return { status: exit_code };
+			} else
 				return { status: 255, error: 'illegal type' };
-
-			const runner = `${HP_DIR}/scripts/update_resources_bg.sh`;
-			if (!access(runner))
-				return { status: 1, error: 'update script not found' };
-
-			if (readResState(type).running)
-				return { status: 2 };
-
-			system(`mkdir -p ${RUN_DIR}`);
-			writefile(resStateFile(type), sprintf('running %d\n', time()));
-
-			/* rpcd handles every ubus call on a single event loop. Running the
-			 * download synchronously here blocks all of LuCI until the wgets
-			 * finish, so detach it and let the view poll for the outcome. */
-			system(sprintf('%s %s >/dev/null 2>&1 </dev/null &',
-				runner, shellquote(type)));
-
-			return { status: 254 };
 		}
 	}
 };

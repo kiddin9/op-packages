@@ -1,0 +1,270 @@
+"""Execute AP policy editing and status rendering through shipped LuCI code."""
+
+import json
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+JS = ROOT / "root/www/luci-static/resources/smart_srun.js"
+LUA = ROOT / "root/usr/lib/lua/luci"
+BSSID = "02:11:22:33:44:55"
+
+
+class APSelectionUITests(unittest.TestCase):
+    def run_js(self, scenario):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is not installed")
+        script = r"""
+const fs = require('fs'), vm = require('vm');
+const scenario = JSON.parse(process.argv[1]);
+let source = fs.readFileSync(process.argv[2], 'utf8');
+const end = source.lastIndexOf('})();');
+source = source.slice(0, end) + `
+window.apTest = { normalize: normalizeApSelection, update: updateCampusAccessModeUI,
+  overview: initOverview, edit: function() { modalType = 'campus'; modalEditId = 'one'; } };
+` + source.slice(end);
+const nodes = {}, sent = [], alerts = [];
+nodes['smart-srun-config-revision'] = {value: '17'};
+['label', 'user_id', 'operator_suffix', 'access_mode', 'wired_iface', 'auth_enabled',
+ 'password', 'base_url', 'ac_id', 'login-n', 'login-type', 'login-enc', 'info-prefix',
+ 'double-stack', 'login-os', 'login-name', 'ssid', 'bssid', 'radio', 'ap_selection'].forEach(key => {
+  nodes['jm-' + key] = {value: '', style: {}};
+});
+['wired-iface', 'auth-enabled', 'ssid', 'bssid', 'radio', 'ap-selection'].forEach(key => {
+  nodes['jm-' + key + '-row'] = {style: {}};
+});
+['smart-srun-overview', 'smart-srun-overview-title', 'smart-srun-overview-meta',
+ 'smart-srun-overview-details-content', 'smart-srun-overview-pending'].forEach(key => {
+  nodes[key] = {style: {}};
+});
+nodes['jm-access_mode'].value = scenario.mode || 'wifi';
+nodes['jm-ap_selection'].value = scenario.policy || 'auto';
+nodes['jm-bssid'].value = scenario.bssid || '';
+function FormData() { this.fields = {}; }
+FormData.prototype.append = function(key, value) { this.fields[key] = value; };
+function XHR() {}
+XHR.prototype.open = function(method, url) { this.url = url; this.method = method; };
+XHR.prototype.send = function(body) {
+  if (this.method === 'POST') { sent.push(body.fields); return; }
+  this.readyState = 4; this.status = 200;
+  this.responseText = JSON.stringify(Object.assign({status: '未知'}, scenario.status));
+  this.onreadystatechange();
+};
+const context = { window: {setInterval() {}}, document: {
+  readyState: 'loading', addEventListener() {},
+  querySelector(selector) { return selector === 'input[name="token"]' ? {value: 'test-csrf'} : null; },
+  getElementById(id) { return nodes[id] || null; }
+}, XMLHttpRequest: XHR, FormData, alert(value) { alerts.push(value); }, Date, JSON };
+vm.runInNewContext(source, context);
+context.window.apTest.edit();
+context.window.apTest.update();
+context.window.smartModalSave();
+context.window.apTest.overview();
+console.log(JSON.stringify({ sent, alerts, bssidDisabled: nodes['jm-bssid'].disabled,
+  policyDisabled: nodes['jm-ap_selection'].disabled,
+  normalizations: [context.window.apTest.normalize(null, scenario.bssid),
+    context.window.apTest.normalize('auto', scenario.bssid)],
+  overview: nodes['smart-srun-overview-details-content'].innerHTML,
+  summary: nodes['smart-srun-overview-meta'].innerHTML,
+  title: nodes['smart-srun-overview-title'].textContent,
+  pending: nodes['smart-srun-overview-pending'].textContent }));
+"""
+        output = subprocess.run(
+            [node, "-e", script, json.dumps(scenario), str(JS)],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", timeout=15,
+        )
+        self.assertEqual(output.returncode, 0, output.stderr)
+        result = json.loads(output.stdout)
+        result["fields"] = dict(re.findall(r"<dt>(.*?)</dt><dd[^>]*>(.*?)</dd>", result["overview"]))
+        return result
+
+    def test_auto_and_strongest_disable_fixed_field_but_preserve_remembered_value(self):
+        for policy in ("auto", "strongest"):
+            with self.subTest(policy=policy):
+                output = self.run_js({"policy": policy, "bssid": BSSID})
+                self.assertTrue(output["bssidDisabled"])
+                self.assertFalse(output["policyDisabled"])
+                self.assertEqual(output["sent"][0]["ap_selection"], policy)
+                self.assertEqual(output["sent"][0]["bssid"], BSSID)
+                self.assertEqual(output["normalizations"], ["fixed", "auto"])
+
+    def test_fixed_invalid_does_not_send_or_lock_save_and_wired_ignores_it(self):
+        for address in ("", "bad", "ff:ff:ff:ff:ff:ff", "01:11:22:33:44:55"):
+            with self.subTest(address=address):
+                output = self.run_js({"policy": "fixed", "bssid": address})
+                self.assertFalse(output["bssidDisabled"])
+                self.assertEqual(output["sent"], [])
+                self.assertIn("固定 BSSID", output["alerts"][0])
+        valid = self.run_js({"policy": "fixed", "bssid": BSSID})
+        self.assertEqual(valid["alerts"], [])
+        self.assertEqual(valid["sent"][0]["bssid"], BSSID)
+        wired = self.run_js({"mode": "wired", "policy": "fixed"})
+        self.assertTrue(wired["bssidDisabled"])
+        self.assertTrue(wired["policyDisabled"])
+        self.assertEqual(len(wired["sent"]), 1)
+
+    def test_status_uses_observed_values_escapes_reason_and_keeps_unknown_signal(self):
+        output = self.run_js({"status": {
+            "current_bssid": BSSID, "current_wireless_ifname": "phy0-sta0",
+            "current_signal": -47, "current_channel": 36,
+            "ap_selection_policy": "strongest", "ap_selection_reason": "<untrusted>",
+        }})
+        self.assertIn("-47 dBm", output["overview"])
+        self.assertEqual(output["fields"]["实际 AP"], BSSID)
+        self.assertEqual(output["fields"]["信道"], "36")
+        self.assertIn("&lt;untrusted&gt;", output["overview"])
+        missing = self.run_js({"status": {"campus_bssid": BSSID, "current_signal": None}})
+        self.assertEqual(missing["fields"]["实际 AP"], "未知")
+        self.assertEqual(missing["fields"]["信号"], "未知")
+        self.assertNotIn(BSSID, missing["overview"])
+        self.assertNotIn("0 dBm", missing["overview"])
+
+    def test_wired_hides_ap_fields_and_hotspot_only_shows_observations(self):
+        wired = self.run_js({"status": {"current_campus_access_mode": "wired"}})
+        self.assertNotIn("实际 AP", wired["fields"])
+        self.assertNotIn("信号", wired["fields"])
+        hotspot = self.run_js({"status": {"mode": "hotspot", "current_bssid": BSSID, "current_signal": -55}})
+        self.assertEqual(hotspot["fields"]["实际 AP"], BSSID)
+        self.assertIn("-55 dBm", hotspot["overview"])
+        self.assertNotIn("AP 选择", hotspot["fields"])
+        self.assertNotIn("选择说明", hotspot["fields"])
+
+    def test_overview_summary_hides_diagnostics_but_keeps_actions_and_errors_visible(self):
+        output = self.run_js({"status": {
+            "status": "在线，下一次检测间隔 45 秒", "current_ssid": "Campus<WiFi>",
+            "current_ip": "192.0.2.4", "online_account_label": "student", "current_signal": -47,
+            "current_bssid": BSSID, "pending_action": "login",
+        }})
+        self.assertEqual(output["title"], "在线")
+        self.assertIn("Campus&lt;WiFi&gt;", output["summary"])
+        self.assertIn("student", output["summary"])
+        for technical in (BSSID, "192.0.2.4", "-47", "45 秒"):
+            self.assertNotIn(technical, output["summary"])
+            self.assertIn(technical, output["overview"])
+        self.assertIn("login", output["pending"])
+        failure = self.run_js({"status": {"status": "认证失败：密码错误"}})
+        self.assertEqual(failure["title"], "认证失败：密码错误")
+        wired = self.run_js({"status": {"current_campus_access_mode": "wired", "current_iface": "wan"}})
+        self.assertIn("有线网络", wired["summary"])
+        self.assertIn("wan", wired["summary"])
+        self.assertNotIn("Wi-Fi", wired["summary"])
+
+    def test_advanced_fields_and_ssr_use_policy_and_observed_state(self):
+        source = JS.read_text(encoding="utf-8")
+        advanced = source.split('<summary>进阶设置</summary>', 1)[1].split("'</details>'", 1)[0]
+        for field in ("jm-ap_selection", "jm-radio", "jm-bssid"):
+            self.assertIn('id="' + field + '"', advanced)
+        cbi = (LUA / "model/cbi/smart_srun.lua").read_text(encoding="utf-8")
+        overview = cbi.split("function overview_status.cfgvalue()", 1)[1].split("\nend", 1)[0]
+        for field in ("current_bssid", "current_signal", "current_channel", "current_wireless_ifname"):
+            self.assertIn("state." + field, overview)
+        self.assertNotIn("campus_bssid", overview)
+        self.assertIn('<details id="smart-srun-overview-details">', overview)
+        self.assertNotIn('<details id="smart-srun-overview-details" open', overview)
+        self.assertIn('ap_selection == "fixed"', cbi)
+
+    def test_real_lua_controller_relays_policy_and_the_daemons_refusal(self):
+        """The policy reaches the daemon intact and a refusal reaches the user.
+
+        The Lua no longer validates the address itself: spec 02 puts business
+        validation in Go, the frozen dialog keeps its client-side hint, and
+        this asserts the third part -- that the page relays both the value and
+        the refusal rather than deciding either. (M00 ledger: ported_behavior
+        -> T27;T39;T51.)
+        """
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua is not installed")
+        result = subprocess.run(
+            [lua, (ROOT / "tests/lua/controller_ap_selection.lua").as_posix(),
+             ROOT.as_posix()],
+            cwd=str(ROOT), stdin=subprocess.DEVNULL, capture_output=True,
+            text=True, encoding="utf-8", timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+
+
+    def test_account_table_only_displays_remembered_bssid_for_fixed_policy(self):
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua is not installed")
+        script = r"""
+local fs = {readfile=function() return nil end}
+local jsonc = {parse=function() return nil end, stringify=function() return "[]" end}
+package.preload["nixio.fs"] = function() return fs end
+package.preload["luci.jsonc"] = function() return jsonc end
+package.preload["nixio"] = function() return {} end
+package.preload["nixio.util"] = function() return {} end
+local schema = dofile(SCHEMA_PATH)
+local util = {pcdata=function(value) return tostring(value or "") end,
+    trim=function(value) return tostring(value or ""):match("^%s*(.-)%s*$") end}
+local function load_state() return {current_mode="campus", current_campus_access_mode="wifi",
+    current_ssid="Campus", current_bssid="02:66:77:88:99:aa", online_account_label="student"} end
+local handle = assert(io.open(CBI_PATH, "rb"))
+local source = handle:read("*a"):gsub("\r\n", "\n")
+handle:close()
+local body = assert(source:match("function tables_html%.cfgvalue%(%)\n(.-)\nend"))
+local render = assert(loadstring("return function() " .. body .. " end"))()
+-- The user-preset store now comes from the daemon; a page that cannot reach
+-- it still has to render the account table.
+local rpc = {call=function() return nil end}
+local context = setmetatable({cfg={}, RADIO_CHOICES={}, school_presets={},
+    schema=schema, util=util, fs=fs, jsonc=jsonc, rpc=rpc, load_state=load_state}, {__index=_G})
+setfenv(render, context)
+for _, case in ipairs({
+    {policy="auto"}, {policy="strongest"}, {policy="fixed", fixed=true},
+    {fixed=true}, {policy="fixed", access="wired"}
+}) do
+    context.cfg = {campus_accounts={{id="one", user_id="student", ssid="Campus",
+        bssid="02:11:22:33:44:55", ap_selection=case.policy, access_mode=case.access or "wifi"}}}
+    local rows = render():match("<tbody>(.-)</tbody>")
+    local label = case.access == "wired" and string.char(226, 128, 148)
+        or schema.ap_selection_label(case.policy or "fixed")
+    assert(rows:find(label, 1, true), rows)
+    assert((rows:find("02:11:22:33:44:55", 1, true) ~= nil) == (case.fixed == true), rows)
+end
+""".replace("SCHEMA_PATH", json.dumps((LUA / "smart_srun/schema.lua").as_posix())).replace(
+            "CBI_PATH", json.dumps((LUA / "model/cbi/smart_srun.lua").as_posix())
+        )
+        subprocess.run([lua, "-e", script], check=True, stdin=subprocess.DEVNULL,
+                       capture_output=True, text=True, encoding="utf-8", timeout=15)
+
+    def test_asset_url_tracks_js_mtime_and_size_with_unavailable_stat_fallback(self):
+        lua = shutil.which("lua")
+        if not lua:
+            self.skipTest("lua is not installed")
+        script = r"""
+local handle = assert(io.open(CBI_PATH, "rb"))
+local source = handle:read("*a"):gsub("\r\n", "\n")
+handle:close()
+local body = assert(source:match("local function render_js_asset_tag%(%)\n(.-)\nend"))
+local render = assert(loadstring("return function() " .. body .. " end"))()
+local path = "/luci-static/resources/smart_srun.js"
+local current
+local fs = {stat=function(actual) assert(actual == "/www" .. path); return current end}
+local context = setmetatable({JS_ASSET_PATH=path, fs=fs,
+    util={pcdata=function(value) return value end}}, {__index=_G})
+setfenv(render, context)
+for _, case in ipairs({
+    {stat={mtime=0, size=72217}, query="?v=0-72217"},
+    {stat={mtime=0, size=72218}, query="?v=0-72218"},
+    {stat={mtime=123, size=72218}, query="?v=123-72218"},
+    {query=""}, {stat={mtime=0}, query=""}, {stat={mtime="invalid", size=10}, query=""}
+}) do
+    current = case.stat
+    assert(render() == '<script src="' .. path .. case.query .. '"></script>')
+end
+fs.stat = nil
+assert(render() == '<script src="' .. path .. '"></script>')
+""".replace("CBI_PATH", json.dumps((LUA / "model/cbi/smart_srun.lua").as_posix()))
+        subprocess.run([lua, "-e", script], check=True, stdin=subprocess.DEVNULL,
+                       capture_output=True, text=True, encoding="utf-8", timeout=15)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,24 @@
+{
+	"items": [
+		{
+			"type": "error",
+			"message": "路由节点配置错误：Selector Selector A 与 rn_b 形成循环引用。",
+			"suggestion": "进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，检查 Selector 节点列表、默认节点和上游出站配置"
+		},
+		{
+			"type": "warning",
+			"message": "路由节点 Selector A 没有可用节点，已在本次生成中临时回退为阻断出站。",
+			"suggestion": "请手动选择节点，或调整节点正则/排除正则以命中可用节点"
+		},
+		{
+			"type": "error",
+			"message": "路由节点配置错误：Selector Selector B 与 rn_a 形成循环引用。",
+			"suggestion": "进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，检查 Selector 节点列表、默认节点和上游出站配置"
+		},
+		{
+			"type": "warning",
+			"message": "路由节点 Selector B 没有可用节点，已在本次生成中临时回退为阻断出站。",
+			"suggestion": "请手动选择节点，或调整节点正则/排除正则以命中可用节点"
+		}
+	]
+}

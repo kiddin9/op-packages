@@ -19,8 +19,11 @@ if (match(proxy_mode, /tun/)) {
 		outbound_node = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
 	else if (routing_mode === 'simple')
 		outbound_node = uci.get(cfgname, 'simple', 'default_outbound') || 'direct-out';
-	else
+	else {
 		outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
+		if (outbound_node === 'nil')
+			outbound_node = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
+	}
 
 	if (outbound_node !== 'nil')
 		tun_name = uci.get(cfgname, 'infra', 'tun_name') || 'singtun0';

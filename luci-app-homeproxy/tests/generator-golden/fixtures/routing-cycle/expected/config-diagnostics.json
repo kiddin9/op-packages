@@ -1,0 +1,34 @@
+{
+	"items": [
+		{
+			"type": "error",
+			"message": "路由节点配置错误：检测到循环引用\n循环路径: rn_b -> rn_a -> rn_b",
+			"suggestion": "进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，检查以下节点的\"出站\"配置，移除循环引用"
+		},
+		{
+			"type": "warning",
+			"message": "路由节点 Cycle A 的节点引用已失效，已在本次生成中临时回退为阻断出站。",
+			"suggestion": "请进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，重新选择有效节点"
+		},
+		{
+			"type": "error",
+			"message": "路由节点配置错误：检测到循环引用\n循环路径: rn_a -> rn_b -> rn_a",
+			"suggestion": "进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，检查以下节点的\"出站\"配置，移除循环引用"
+		},
+		{
+			"type": "warning",
+			"message": "路由节点 Cycle B 的节点引用已失效，已在本次生成中临时回退为阻断出站。",
+			"suggestion": "请进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，重新选择有效节点"
+		},
+		{
+			"type": "error",
+			"message": "路由节点配置错误：检测到循环引用\n循环路径: rn_a -> rn_b -> rn_a",
+			"suggestion": "进入 LuCI 界面 -> 服务 -> HomeProxy -> 路由节点，检查以下节点的\"出站\"配置，移除循环引用"
+		},
+		{
+			"type": "warning",
+			"message": "默认出站 引用了已删除或无效的节点：rn_a，已在本次生成中回退为 block-out。",
+			"suggestion": "请进入 LuCI 界面检查路由、DNS、规则集中的出站引用"
+		}
+	]
+}

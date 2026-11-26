@@ -1,0 +1,163 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-v2raya\n"
+"Report-Msgid-Bugs-To: https://github.com/AmrFateem/luci-V2raya-NextGen/issues\n"
+"POT-Creation-Date: 2026-11-07 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "v2rayA"
+msgstr ""
+
+msgid "Overview"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Log"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "Checking…"
+msgstr ""
+
+msgid "Start"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Service"
+msgstr ""
+
+msgid "v2rayA version"
+msgstr ""
+
+msgid "v2raya_core version"
+msgstr ""
+
+msgid "Listening address"
+msgstr ""
+
+msgid "Web interface"
+msgstr ""
+
+msgid "Open v2rayA"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Enable service"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Transparent proxy"
+msgstr ""
+
+msgid "Logging"
+msgstr ""
+
+msgid "Advanced"
+msgstr ""
+
+msgid "IPv6 support"
+msgstr ""
+
+msgid "nftables support"
+msgstr ""
+
+msgid "Auto"
+msgstr ""
+
+msgid "On"
+msgstr ""
+
+msgid "Off"
+msgstr ""
+
+msgid "Log level"
+msgstr ""
+
+msgid "Trace"
+msgstr ""
+
+msgid "Debug"
+msgstr ""
+
+msgid "Info"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Keep logs for"
+msgstr ""
+
+msgid "Clear log"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "The log is empty."
+msgstr ""
+
+msgid "The log file does not exist yet. Start the service and try again."
+msgstr ""
+
+msgid "v2rayA log"
+msgstr ""
+
+msgid "Settings for the v2rayA service. Save & Apply restarts the service so the new values take effect. v2rayA 2.5.x uses only its bundled v2raya_core; Xray-core and sing-box are not supported backends."
+msgstr ""
+
+msgid "This independent, community-run packaging project is not affiliated with the upstream v2rayA authors. It is AI-assisted and human-maintained."
+msgstr ""
+
+msgid "Warning keeps flash writes down. Use Info while debugging."
+msgstr ""
+
+msgid "Go memory limit"
+msgstr ""
+
+msgid "Soft memory limit for both v2raya and v2raya_core (GOMEMLIMIT). Use 0 to disable, or 96MiB on a larger router."
+msgstr ""
+
+msgid "Go scheduler threads"
+msgstr ""
+
+msgid "GOMAXPROCS. 0 uses every CPU core; 2 is enough for most routers."
+msgstr ""
+
+msgid "Go GC percent"
+msgstr ""
+
+msgid "GOGC. 0 keeps the Go default; lower values use less memory and more CPU."
+msgstr ""
+
+msgid "Open file limit"
+msgstr ""
+
+msgid "Maximum open file descriptors. 16384 is plenty for a home router and bounds a connection flood."
+msgstr ""

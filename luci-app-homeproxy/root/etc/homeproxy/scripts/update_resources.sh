@@ -25,8 +25,15 @@ check_list_update() {
 	local listrepo="$2"
 	local listref="$3"
 	local listname="$4"
+	local lock="$RUN_DIR/update_resources-$listtype.lock"
 	local github_token="$(uci -q get homeproxy.config.github_token)"
 	local wget="wget --timeout=10 -q"
+
+	exec 200>"$lock"
+	if ! flock -n 200 &> "/dev/null"; then
+		log "[$(to_upper "$listtype")] A task is already running."
+		return 2
+	fi
 
 	[ -z "$github_token" ] || github_token="--header=Authorization: Bearer $github_token"
 	local list_info="$($wget "${github_token:--q}" -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
@@ -58,21 +65,6 @@ check_list_update() {
 
 	return 0
 }
-
-# Serialize updates across all resource types and all callers (web UI and
-# cron). Queuing here is cheap because the caller is detached from rpcd.
-# BusyBox flock (the OpenWrt default) only supports -s/-x/-n/-u, not the
-# util-linux -w wait option, so poll for the lock instead.
-exec 9>"$RUN_DIR/update_resources.lock"
-lock_wait=0
-until flock -n 9 2>"/dev/null"; do
-	lock_wait=$((lock_wait + 1))
-	if [ "$lock_wait" -ge 120 ]; then
-		log "[$(to_upper "$1")] A task is already running."
-		exit 2
-	fi
-	sleep 1
-done
 
 case "$1" in
 "china_ip4")

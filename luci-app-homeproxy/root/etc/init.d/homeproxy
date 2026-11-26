@@ -27,6 +27,24 @@ log() {
 	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
 }
 
+delete_ip_rules() {
+	local mark="$1"
+	local table="$2"
+
+	while ip rule del fwmark "$mark" table "$table" 2>"/dev/null"; do
+		:
+	done
+}
+
+delete_ip6_rules() {
+	local mark="$1"
+	local table="$2"
+
+	while ip -6 rule del fwmark "$mark" table "$table" 2>"/dev/null"; do
+		:
+	done
+}
+
 start_service() {
 	config_load "$CONF"
 
@@ -34,13 +52,15 @@ start_service() {
 	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
 	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
 
-	local outbound_node
+	local outbound_node default_outbound
 	if [ "$routing_mode" = "custom" ]; then
 		config_get outbound_node "routing" "default_outbound" "nil"
 	elif [ "$routing_mode" = "simple" ]; then
 		config_get outbound_node "simple" "default_outbound" "direct-out"
 	else
 		config_get outbound_node "config" "main_node" "nil"
+		config_get default_outbound "routing" "default_outbound" "nil"
+		[ "$outbound_node" != "nil" ] || outbound_node="$default_outbound"
 	fi
 
 	local server_enabled
@@ -54,10 +74,7 @@ start_service() {
 
 	if [ "$outbound_node" != "nil" ]; then
 		# Generate/Validate client config
-		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
-			log "Error: failed to generate client configuration."
-			return 1
-		fi
+		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
 
 		if [ ! -e "$RUN_DIR/sing-box-c.json" ]; then
 			log "Error: failed to generate client configuration."
@@ -104,13 +121,9 @@ start_service() {
 		esac
 
 		if [ "$routing_mode" = "simple" ]; then
-			# Repeated LAN lookups can be answered from dnsmasq's in-memory
-			# cache without entering sing-box at all. Only raise the size;
-			# never shrink a value configured in /etc/config/dhcp.
 			local dns_cache_size system_cache_size
 			config_get dns_cache_size "simple" "dns_cache_size" "4096"
 			system_cache_size="$(uci -q get "dhcp.@dnsmasq[0].cachesize" 2>/dev/null)"
-			# cachesize=0 explicitly disables dnsmasq caching; do not override it.
 			if [ "$system_cache_size" = "0" ]; then
 				dns_cache_size=0
 			fi
@@ -140,18 +153,24 @@ start_service() {
 		config_get table_mark "infra" "table_mark" "100"
 		case "$proxy_mode" in
 		"redirect_tproxy")
-			local outbound_udp_node
+			local outbound_udp_node main_node_for_routing default_outbound_for_routing use_default_outbound_routing
 			config_get outbound_udp_node "config" "main_udp_node" "nil"
-			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ] || [ "$routing_mode" = "simple" ]; then
+			config_get main_node_for_routing "config" "main_node" "nil"
+			config_get default_outbound_for_routing "routing" "default_outbound" "nil"
+			[ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && [ "$main_node_for_routing" = "nil" ] && [ "$default_outbound_for_routing" != "nil" ] \
+				&& use_default_outbound_routing="1" || use_default_outbound_routing="0"
+			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ] || [ "$routing_mode" = "simple" ] || [ "$use_default_outbound_routing" = "1" ]; then
 				local tproxy_mark
 				config_get tproxy_mark "infra" "tproxy_mark" "101"
 
+				delete_ip_rules "$tproxy_mark" "$table_mark"
 				ip rule add fwmark "$tproxy_mark" table "$table_mark"
-				ip route add local 0.0.0.0/0 dev lo table "$table_mark"
+				ip route replace local 0.0.0.0/0 dev lo table "$table_mark"
 
 				if [ "$ipv6_support" -eq "1" ]; then
+					delete_ip6_rules "$tproxy_mark" "$table_mark"
 					ip -6 rule add fwmark "$tproxy_mark" table "$table_mark"
-					ip -6 route add local ::/0 dev lo table "$table_mark"
+					ip -6 route replace local ::/0 dev lo table "$table_mark"
 				fi
 			fi
 			;;
@@ -160,14 +179,16 @@ start_service() {
 			config_get tun_name "infra" "tun_name" "singtun0"
 			config_get tun_mark "infra" "tun_mark" "102"
 
-			ip tuntap add mode tun user root name "$tun_name"
+			ip link show "$tun_name" >"/dev/null" 2>&1 || ip tuntap add mode tun user root name "$tun_name"
 			sleep 1s
 			ip link set "$tun_name" up
 
 			ip route replace default dev "$tun_name" table "$table_mark"
+			delete_ip_rules "$tun_mark" "$table_mark"
 			ip rule add fwmark "$tun_mark" lookup "$table_mark"
 
 			ip -6 route replace default dev "$tun_name" table "$table_mark"
+			delete_ip6_rules "$tun_mark" "$table_mark"
 			ip -6 rule add fwmark "$tun_mark" lookup "$table_mark"
 			;;
 		esac
@@ -181,10 +202,7 @@ start_service() {
 		# QUIC-GO GSO is broken on kernel 6.6 currently
 		uname -r | grep -Eq "^6\.6" && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
-		# custom needs the local ruleset directory; simple caches remote rule sets
-	# in cache.db and has not been verified inside ujail yet. Both therefore
-	# deliberately run outside the sandbox until verified on a device.
-	if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
+		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
 			procd_add_jail "sing-box-c" log procfs
 			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
 			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
@@ -205,6 +223,17 @@ start_service() {
 		procd_set_param respawn
 
 		procd_close_instance
+
+		# Clash API display proxy for dashboards.
+		local clash_api_enabled
+		config_get_bool clash_api_enabled "config" "clash_api_enabled" "0"
+		if [ "$clash_api_enabled" = "1" ]; then
+			procd_open_instance "clash-api-proxy"
+			procd_set_param command "/usr/bin/ucode" "$HP_DIR/scripts/clash_api_proxy.uc"
+			procd_set_param stderr 1
+			procd_set_param respawn
+			procd_close_instance
+		fi
 	fi
 
 	if [ "$server_enabled" = "1" ]; then
@@ -299,27 +328,25 @@ stop_service() {
 	config_get tun_name "infra" "tun_name" "singtun0"
 
 	# Tproxy
-	ip rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
+	delete_ip_rules "$tproxy_mark" "$table_mark"
 	ip route del local 0.0.0.0/0 dev lo table "$table_mark" 2>"/dev/null"
-	ip -6 rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
+	delete_ip6_rules "$tproxy_mark" "$table_mark"
 	ip -6 route del local ::/0 dev lo table "$table_mark" 2>"/dev/null"
 
 	# TUN
 	ip route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
-	ip rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
+	delete_ip_rules "$tun_mark" "$table_mark"
 
 	ip -6 route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
-	ip -6 rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
+	delete_ip6_rules "$tun_mark" "$table_mark"
 
 	# Nftables rules
-	# "dstnat" is owned by fw4 and must never be deleted. Chain names below
-	# must match the ones defined in firewall_post.ut.
-	for i in "homeproxy_output_redir" \
+	for i in "homeproxy_dstnat_redir" "homeproxy_output_redir" \
 		 "homeproxy_redirect" "homeproxy_redirect_proxy" \
 		 "homeproxy_redirect_proxy_port" "homeproxy_redirect_lanac" \
 		 "homeproxy_mangle_prerouting" "homeproxy_mangle_output" \
 		 "homeproxy_mangle_tproxy" "homeproxy_mangle_tproxy_port" \
-		 "homeproxy_mangle_lanac" "homeproxy_mangle_mark" \
+		 "homeproxy_mangle_tproxy_lanac" "homeproxy_mangle_mark" \
 		 "homeproxy_mangle_tun" "homeproxy_mangle_tun_mark"; do
 		nft flush chain inet fw4 "$i"
 		nft delete chain inet fw4 "$i"

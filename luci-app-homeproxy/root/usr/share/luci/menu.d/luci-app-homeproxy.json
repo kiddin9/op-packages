@@ -34,6 +34,14 @@
 			"path": "homeproxy/server"
 		}
 	},
+	"admin/services/homeproxy/backup": {
+		"title": "Backup / Restore",
+		"order": 25,
+		"action": {
+			"type": "view",
+			"path": "homeproxy/backup"
+		}
+	},
 	"admin/services/homeproxy/status": {
 		"title": "Service Status",
 		"order": 30,

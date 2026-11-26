@@ -1,0 +1,138 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:66
+msgid "%d hour"
+msgid_plural "%d hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:94
+#: applications/luci-app-51ddns/root/usr/share/luci/menu.d/luci-app-51ddns.json:3
+msgid "51DDNS Remote Access"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:65
+msgid "About %d day"
+msgid_plural "About %d days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:133
+msgid "Account token"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:105
+msgid "Agent version"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:118
+msgid "Bind or purchase a plan"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:123
+msgid "Console"
+msgstr ""
+
+msgid ""
+"Copy the token from the 51DDNS console. Updating it keeps the saved device "
+"ID. A token from another account will be rejected until the device identity is migrated."
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:108
+msgid "Current plan"
+msgstr ""
+
+msgid "Device quota"
+msgstr ""
+
+msgid "Device limit reached. If this router already has a device record in the console, use its exact device ID to continue binding. Upgrade or purchase a plan only when adding another device."
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:129
+msgid "Enable"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:95
+msgid ""
+"Enter your account token. For a device already created in the console, enter "
+"its exact device UUID below. Leave the ID blank for automatic registration "
+"only when this router has no saved device ID and your account has a free device slot."
+msgstr ""
+
+msgid "Enter a valid device UUID from the console."
+msgstr ""
+
+msgid "Existing device ID (optional)"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:60
+msgid "Expired"
+msgstr ""
+
+msgid "Go to device plans"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:111
+msgid "Expires at"
+msgstr ""
+
+#: applications/luci-app-51ddns/root/usr/share/rpcd/acl.d/luci-app-51ddns.json:3
+msgid "Grant access to the 51DDNS configuration"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:109
+msgid "No active plan"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:112
+msgid "Not bound"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:32
+msgid "Not running"
+msgstr ""
+
+msgid "Paste the exact UUID of the device created in the console. If verification failed before this router saved an identity, stop the agent to correct or clear this field. A saved router ID is never cleared here."
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:124
+msgid "Open 51DDNS Console"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:97
+msgid "Quick setup"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:32
+msgid "Running"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:100
+msgid "Service status"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:41
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:56
+msgid "Synchronizing"
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:114
+msgid "Time remaining"
+msgstr ""
+
+msgid "This router already has a configured device ID. Changing it requires a separate migration."
+msgstr ""
+
+msgid "This router already has a saved device ID. Changing it requires a separate migration."
+msgstr ""
+
+msgid "The saved device identity could not be verified. Refresh the page before setting a device ID."
+msgstr ""
+
+msgid "Disable the agent and save first. Then enter the existing device ID and enable it again."
+msgstr ""
+
+#: applications/luci-app-51ddns/htdocs/luci-static/resources/view/51ddns/overview.js:106
+msgid "Unavailable"
+msgstr ""

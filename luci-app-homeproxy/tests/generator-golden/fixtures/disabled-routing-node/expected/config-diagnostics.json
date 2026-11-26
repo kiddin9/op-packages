@@ -1,0 +1,9 @@
+{
+	"items": [
+		{
+			"type": "warning",
+			"message": "默认出站 引用了已删除或无效的节点：rn_disabled，已在本次生成中回退为 block-out。",
+			"suggestion": "请进入 LuCI 界面检查路由、DNS、规则集中的出站引用"
+		}
+	]
+}

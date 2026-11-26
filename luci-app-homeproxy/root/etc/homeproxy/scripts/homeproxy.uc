@@ -67,14 +67,36 @@ export function getTime(epoch) {
 };
 
 export function wGET(url, ua) {
+	const result = wGETResult(url, ua);
+	return result?.stdout;
+};
+
+export function wGETResult(url, ua) {
 	if (!url || type(url) !== 'string')
 		return null;
 
 	if (!ua)
 		ua = 'Wget/1.21 (HomeProxy, like v2rayN)';
 
-	const output = executeCommand(`/usr/bin/wget -qO- --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
-	return trim(output.stdout);
+	let last_result = null;
+
+	for (let extra in [ '', '-4' ]) {
+		const output = executeCommand(`/usr/bin/wget -q ${extra} -O- --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
+
+		output.stdout = trim(output.stdout);
+		output.stderr = trim(output.stderr);
+		last_result = output;
+
+		if (output.exitcode === 0 && output.stdout)
+			return output;
+	}
+
+	if (last_result) {
+		last_result.stdout = trim(last_result.stdout);
+		last_result.stderr = trim(last_result.stderr);
+	}
+
+	return last_result;
 };
 /* Utilities end */
 

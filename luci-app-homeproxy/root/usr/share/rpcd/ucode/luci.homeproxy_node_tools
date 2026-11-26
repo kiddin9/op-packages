@@ -1,0 +1,270 @@
+#!/usr/bin/ucode
+/*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * HomeProxy 节点和订阅 helper RPC。
+ */
+
+'use strict';
+
+import { readfile, writefile } from 'fs';
+import { cursor } from 'uci';
+import {
+	node_filter_compile,
+	expand_node_filter,
+	preview_manual_node_allowed
+} from '/etc/homeproxy/scripts/node_filter.uc';
+import {
+	collect_node_references,
+	remove_subscription_nodes
+} from '/etc/homeproxy/scripts/node_references.uc';
+import { first_value } from '/etc/homeproxy/scripts/clash_api.uc';
+
+function shellquote(s) {
+	return `'${replace(s, "'", "'\\''")}'`;
+}
+
+const HP_DIR = '/etc/homeproxy';
+const RUN_DIR = '/var/run/homeproxy';
+const CONFIG_DIAGNOSTICS = `${RUN_DIR}/config-diagnostics.json`;
+const SUBSCRIPTION_DIAGNOSTICS = `${RUN_DIR}/subscription-diagnostics.json`;
+const SUBSCRIPTION_UPDATE_STATUS = `${RUN_DIR}/subscription-update-status.json`;
+const MAX_NODE_IDS = 1000;
+const MAX_NODE_ID_LEN = 128;
+
+function isEmpty(value) {
+	return !value || value === 'nil' || (type(value) in ['array', 'object'] && length(value) === 0);
+}
+
+function readDiagnostics(path) {
+	let content = readfile(path);
+
+	if (!content)
+		return { result: true, time: null, items: [] };
+
+	try {
+		let payload = json(content);
+		return {
+			result: true,
+			time: payload.time,
+			items: payload.items || []
+		};
+	} catch (e) {
+		return { result: false, error: '诊断文件格式错误' };
+	}
+}
+
+function combinedDiagnostics() {
+	let items = [],
+	    latest_time = null;
+
+	for (let path in [ CONFIG_DIAGNOSTICS, SUBSCRIPTION_DIAGNOSTICS ]) {
+		let payload = readDiagnostics(path);
+		if (!payload.result)
+			return payload;
+
+		if (payload.time && (!latest_time || payload.time > latest_time))
+			latest_time = payload.time;
+
+		for (let item in payload.items)
+			push(items, item);
+	}
+
+	return {
+		result: true,
+		time: latest_time,
+		items
+	};
+}
+
+function readSubscriptionUpdateStatus() {
+	let content = readfile(SUBSCRIPTION_UPDATE_STATUS);
+
+	if (!content) {
+		return {
+			result: true,
+			running: false,
+			completed: false,
+			update_result: null,
+			error: null,
+			time: null
+		};
+	}
+
+	try {
+		let payload = json(content);
+		return {
+			result: true,
+			running: !!payload.running,
+			completed: !!payload.completed,
+			update_result: payload.update_result,
+			error: payload.error,
+			time: payload.time
+		};
+	} catch (e) {
+		return { result: false, error: '订阅更新状态文件格式错误' };
+	}
+}
+
+function writeSubscriptionUpdateStatus(payload) {
+	system(`mkdir -p ${shellquote(RUN_DIR)}`);
+	writefile(SUBSCRIPTION_UPDATE_STATUS, sprintf('%.J\n', payload));
+}
+
+function validNodeId(node_id) {
+	return type(node_id) === 'string' &&
+	       length(node_id) > 0 &&
+	       length(node_id) <= MAX_NODE_ID_LEN &&
+	       match(node_id, /^[A-Za-z0-9_]+$/);
+}
+
+function validateNodeIds(node_ids) {
+	if (type(node_ids) !== 'array')
+		return { result: false, error: 'illegal node_ids' };
+
+	if (length(node_ids) > MAX_NODE_IDS)
+		return { result: false, error: 'too many node_ids' };
+
+	for (let node_id in node_ids)
+		if (!validNodeId(node_id))
+			return { result: false, error: 'illegal node id' };
+
+	return { result: true };
+}
+
+function expandNodeFilterPreview(manual_nodes, node_filter, node_filter_exclude, node_mode) {
+	const hpuci = cursor();
+	hpuci.load('homeproxy');
+
+	return expand_node_filter({
+		uci: hpuci,
+		config: 'homeproxy',
+		node_type: 'node',
+		allow_manual_node: (node_id) => preview_manual_node_allowed(hpuci, 'homeproxy', node_id, node_mode)
+	}, manual_nodes, node_filter, node_filter_exclude);
+}
+
+const methods = {
+	config_diagnostics: {
+		args: {},
+		call: function(_req) {
+			return combinedDiagnostics();
+		}
+	},
+	update_subscriptions_status: {
+		args: {},
+		call: function(_req) {
+			return readSubscriptionUpdateStatus();
+		}
+	},
+	validate_regex: {
+		args: { pattern: 'pattern' },
+		call: function(req) {
+			const pattern = first_value(req.args?.pattern);
+			const validated = node_filter_compile(pattern);
+
+			if (!validated.result)
+				return { result: false, error: validated.error, limits: validated.limits };
+
+			return { result: true, limits: validated.limits };
+		}
+	},
+	preview_node_filter: {
+		args: { manual_nodes: [], node_filter: 'node_filter', node_filter_exclude: 'node_filter_exclude', node: 'node' },
+		call: function(req) {
+			return expandNodeFilterPreview(
+				req.args?.manual_nodes,
+				first_value(req.args?.node_filter),
+				first_value(req.args?.node_filter_exclude),
+				first_value(req.args?.node)
+			);
+		}
+	},
+	node_references: {
+		args: { node_id: 'node_id' },
+		call: function(req) {
+			const node_id = first_value(req.args?.node_id);
+
+			if (!validNodeId(node_id))
+				return { result: false, error: 'illegal node_id' };
+
+			const hpuci = cursor();
+			hpuci.load('homeproxy');
+
+			return {
+				result: true,
+				node_id: node_id,
+				references: collect_node_references(hpuci, 'homeproxy', node_id)
+			};
+		}
+	},
+	remove_subscription_nodes: {
+		args: { node_ids: [] },
+		call: function(req) {
+			const checked = validateNodeIds(req.args?.node_ids);
+			if (!checked.result)
+				return checked;
+
+			const hpuci = cursor();
+			hpuci.load('homeproxy');
+
+			let result = remove_subscription_nodes(hpuci, 'homeproxy', req.args.node_ids);
+			hpuci.commit('homeproxy');
+
+			return {
+				result: true,
+				removed: result.removed,
+				changed: result.changed,
+				changes: result.changes,
+				main_node_fallback: result.main_node_fallback,
+				main_udp_fallback: result.main_udp_fallback
+			};
+		}
+	},
+	update_subscriptions: {
+		args: {},
+		call: function(_req) {
+			const status = readSubscriptionUpdateStatus();
+			if (!status.result)
+				return status;
+
+			if (status.running) {
+				return {
+					result: false,
+					error: '订阅更新正在进行中，请稍候。'
+				};
+			}
+
+			writeSubscriptionUpdateStatus({
+				time: time(),
+				running: true,
+				completed: false,
+				update_result: null,
+				error: null
+			});
+
+			const exit_code = system(`(${HP_DIR}/scripts/update_subscriptions.uc </dev/null >/dev/null 2>&1) &`);
+			if (exit_code !== 0) {
+				writeSubscriptionUpdateStatus({
+					time: time(),
+					running: false,
+					completed: true,
+					update_result: false,
+					error: '启动订阅更新失败，请查看 HomeProxy 日志。'
+				});
+
+				return {
+					result: false,
+					error: '启动订阅更新失败，请查看 HomeProxy 日志。'
+				};
+			}
+
+			return {
+				result: true,
+				started: true
+			};
+		}
+	}
+};
+
+return { 'luci.homeproxy_node_tools': methods };

@@ -10,7 +10,9 @@ LUCI_DEPENDS:= \
 	+sing-box \
 	+firewall4 \
 	+kmod-nft-tproxy \
-	+ucode-mod-digest
+	+ucode-mod-digest \
+	+ucode-mod-socket \
+	+ucode-mod-uloop
 
 PKG_NAME:=luci-app-homeproxy
 

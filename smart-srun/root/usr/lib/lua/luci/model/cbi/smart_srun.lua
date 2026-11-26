@@ -1,0 +1,1082 @@
+local fs = require "nixio.fs"
+local sys = require "luci.sys"
+local util = require "luci.util"
+local jsonc = require "luci.jsonc"
+local http = require "luci.http"
+local dispatcher = require "luci.dispatcher"
+local log_controller = require "luci.controller.smart_srun"
+local schema = require "luci.smart_srun.schema"
+
+local rpc = require "luci.smart_srun.rpc"
+local bridge = require "luci.smart_srun.bridge"
+
+local JS_ASSET_PATH = "/luci-static/resources/smart_srun.js"
+local GLOBAL_SCALAR_KEYS = schema.GLOBAL_SCALAR_KEYS
+local POINTER_KEYS = schema.POINTER_KEYS
+local LIST_KEYS = schema.LIST_KEYS
+local SCHOOL_EXTRA_KEY = schema.SCHOOL_EXTRA_KEY
+local SUPPORTED_SCHOOL_EXTRA_TYPES = {
+    string = true,
+    bool = true,
+    int = true,
+    enum = true,
+}
+local cfg
+local changed = false
+local dirty_scalar_keys = {}
+local school_extra_dirty = false
+local SCALAR_DEFAULTS = schema.SCALAR_DEFAULTS
+local config_revision
+local submitted_revision = bridge.config_revision(http.formvalue("expected_revision"))
+local config_error = nil
+local page_url = dispatcher.build_url("admin", "services", "smart_srun")
+
+local function render_js_asset_tag()
+    local asset_url = JS_ASSET_PATH
+    local stat = fs.stat and fs.stat("/www" .. JS_ASSET_PATH)
+    local mtime = type(stat) == "table" and tonumber(stat.mtime)
+    local size = type(stat) == "table" and tonumber(stat.size)
+    if mtime and size then
+        asset_url = asset_url .. string.format("?v=%.0f-%.0f", mtime, size)
+    end
+    return '<script src="' .. util.pcdata(asset_url) .. '"></script>'
+end
+
+local function load_cfg()
+    local flat, err = bridge.config()
+    if not flat then
+        config_error = rpc.message(err, "无法读取配置")
+        return nil
+    end
+    config_revision = bridge.config_revision(flat.revision)
+    if config_revision == nil then
+        config_error = "配置版本无效"
+        return nil
+    end
+    -- 被决策删除的旧开关在 Go 配置里没有对应字段，退回内置默认值，
+    -- 免得表单把空字符串当成用户的选择显示出来。
+    for _, key in ipairs(GLOBAL_SCALAR_KEYS) do
+        if flat[key] == nil then
+            flat[key] = SCALAR_DEFAULTS[key] or ""
+        end
+    end
+    for _, key in ipairs(POINTER_KEYS) do
+        flat[key] = tostring(flat[key] or "")
+    end
+    for _, key in ipairs(LIST_KEYS) do
+        flat[key] = type(flat[key]) == "table" and flat[key] or {}
+    end
+    flat[SCHOOL_EXTRA_KEY] = type(flat[SCHOOL_EXTRA_KEY]) == "table" and flat[SCHOOL_EXTRA_KEY] or {}
+    return flat
+end
+
+local function save_cfg(cfg)
+    if config_error then
+        return false, "打开页面时没能读到当前配置（" .. config_error .. "），请刷新后再保存"
+    end
+    if submitted_revision == nil or submitted_revision ~= config_revision then
+        return false, "页面配置版本已失效，请重新读取配置后再保存"
+    end
+    local dirty = {}
+    for key in pairs(dirty_scalar_keys) do
+        dirty[key] = true
+    end
+    if school_extra_dirty then
+        dirty[SCHOOL_EXTRA_KEY] = true
+    end
+
+    local patch = bridge.settings_patch(cfg, dirty)
+    if not patch then
+        return true
+    end
+    local result, err = rpc.call_started("config.apply", {
+        expected_revision = submitted_revision,
+        settings = patch,
+    })
+    if not result then
+        return false, rpc.message(err, "保存失败")
+    end
+    return true
+end
+
+local function load_state()
+    return bridge.status() or {}
+end
+
+local function validate_hhmm(v)
+    local value = util.trim(v or "")
+    local h, m = value:match("^(%d%d?):(%d%d)$")
+    if not h then
+        return nil
+    end
+
+    local hour = tonumber(h)
+    local minute = tonumber(m)
+    if not hour or not minute then
+        return nil
+    end
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59 then
+        return nil
+    end
+
+    return string.format("%02d:%02d", hour, minute)
+end
+
+local function validate_non_negative_number(v)
+    local value = util.trim(v or "")
+    local num = tonumber(value)
+    if not num or num < 0 then
+        return nil
+    end
+    return tostring(num)
+end
+
+local function load_radio_choices()
+    local out = {}
+    local seen = {}
+    local raw = sys.exec("uci show wireless 2>/dev/null") or ""
+    for line in raw:gmatch("[^\n]+") do
+        local radio, opt, val = line:match("^wireless%.(radio%d+)%.([%w_]+)=(.+)$")
+        if radio and (opt == "band" or opt == "hwmode") then
+            local entry = out[radio] or { label = radio }
+            val = util.trim(val or "")
+            val = val:gsub("^['\"]", ""):gsub("['\"]$", "")
+            if opt == "band" then
+                if val == "2g" then
+                    entry.label = radio .. " (2.4GHz)"
+                elseif val == "5g" then
+                    entry.label = radio .. " (5GHz)"
+                elseif val == "6g" then
+                    entry.label = radio .. " (6GHz)"
+                else
+                    entry.label = radio .. " (" .. val .. ")"
+                end
+            elseif not seen[radio] then
+                if val:find("a", 1, true) then
+                    entry.label = radio .. " (5GHz)"
+                else
+                    entry.label = radio .. " (2.4GHz)"
+                end
+            end
+            out[radio] = entry
+            seen[radio] = true
+        end
+    end
+    return out
+end
+
+local RADIO_CHOICES = load_radio_choices()
+
+local function render_school_info_html(strategies)
+    -- 文档来自已安装的认证策略元数据，与参数预设目录分开。
+    local doc_url = "https://srun-doc.guiguisocute.com/development/architecture"
+    local selected = tostring(cfg.school or "default")
+    if selected == "" or selected == "default" then
+        doc_url = "https://srun-doc.guiguisocute.com/guide/authentication"
+    end
+    for _, strategy in ipairs(strategies or {}) do
+        if strategy.short_name == selected and type(strategy.doc_url) == "string"
+            and strategy.doc_url:match("^https?://") then
+            doc_url = strategy.doc_url
+            break
+        end
+    end
+
+    return string.format([[
+<div id="smart-school-info" class="cbi-value-description" style="color:#14532d;opacity:0.9;display:block;line-height:1.6;">
+  <div id="smart-school-doclink" style="display:block;">
+    <a id="smart-school-doc-link" href="%s" target="_blank" rel="noopener noreferrer">认证策略说明</a>
+  </div>
+</div>
+<textarea id="smart-auth-strategy-data" style="display:none;">%s</textarea>
+]],
+        util.pcdata(doc_url),
+        util.pcdata(jsonc.stringify(strategies or {}) or "[]"))
+end
+
+local function ensure_school_extra_table()
+    if type(cfg[SCHOOL_EXTRA_KEY]) ~= "table" then
+        cfg[SCHOOL_EXTRA_KEY] = {}
+    end
+    return cfg[SCHOOL_EXTRA_KEY]
+end
+
+local function set_school_extra_value(key, value)
+    local school_extra = ensure_school_extra_table()
+    local normalized = tostring(value or "")
+    if school_extra[key] ~= normalized then
+        school_extra[key] = normalized
+        changed = true
+        school_extra_dirty = true
+    end
+end
+
+local function remove_school_extra_value(key)
+    local school_extra = ensure_school_extra_table()
+    if school_extra[key] ~= nil then
+        school_extra[key] = nil
+        changed = true
+        school_extra_dirty = true
+    end
+end
+
+local function get_school_extra_value(key, default_value)
+    local school_extra = ensure_school_extra_table()
+    local value = school_extra[key]
+    if value == nil or tostring(value) == "" then
+        return tostring(default_value or "")
+    end
+    return tostring(value)
+end
+
+local function normalize_school_runtime_descriptor(descriptor)
+    if type(descriptor) ~= "table" then
+        return nil
+    end
+
+    local key = util.trim(tostring(descriptor.key or ""))
+    if key == "" then
+        return nil
+    end
+
+    local value_type = util.trim(tostring(descriptor.type or "string")):lower()
+    local item = {
+        key = key,
+        type = value_type ~= "" and value_type or "string",
+        label = util.trim(tostring(descriptor.label or key)),
+        description = tostring(descriptor.description or ""),
+        required = descriptor.required == true,
+        default = descriptor.default ~= nil and tostring(descriptor.default) or "",
+        choices = {},
+    }
+
+    if type(descriptor.choices) == "table" then
+        for _, choice in ipairs(descriptor.choices) do
+            item.choices[#item.choices + 1] = tostring(choice)
+        end
+    end
+
+    if item.label == "" then
+        item.label = key
+    end
+    return item
+end
+
+local function bind_school_extra_flag(opt, descriptor, school_changed_ref)
+    opt.rmempty = false
+    function opt.cfgvalue()
+        return get_school_extra_value(descriptor.key, descriptor.default) == "1" and "1" or "0"
+    end
+    function opt.write(self, section, value)
+        if school_changed_ref() then
+            return
+        end
+        set_school_extra_value(descriptor.key, value == "1" and "1" or "0")
+    end
+    function opt.remove(self, section)
+        if school_changed_ref() then
+            return
+        end
+        set_school_extra_value(descriptor.key, "0")
+    end
+end
+
+local function bind_school_extra_text(opt, descriptor, school_changed_ref, normalize_fn)
+    opt.rmempty = not descriptor.required
+    function opt.cfgvalue()
+        return get_school_extra_value(descriptor.key, descriptor.default)
+    end
+    function opt.write(self, section, value)
+        if school_changed_ref() then
+            return
+        end
+        local raw = util.trim(value or "")
+        if raw == "" and not descriptor.required then
+            remove_school_extra_value(descriptor.key)
+            return
+        end
+        if normalize_fn then
+            local normalized = normalize_fn(raw)
+            if normalized == nil then
+                return
+            end
+            set_school_extra_value(descriptor.key, normalized)
+            return
+        end
+        set_school_extra_value(descriptor.key, raw)
+    end
+    function opt.remove(self, section)
+        if school_changed_ref() then
+            return
+        end
+        if descriptor.required then
+            return
+        end
+        remove_school_extra_value(descriptor.key)
+    end
+end
+
+cfg = load_cfg()
+if cfg and http.getenv("REQUEST_METHOD") == "POST" then
+    if submitted_revision == nil then
+        config_error = "页面缺少有效配置版本，请重新读取配置后再保存"
+    elseif submitted_revision ~= config_revision then
+        config_error = "配置已被其他地方修改，请重新读取配置后再保存"
+    end
+end
+if config_error then
+    local unavailable = SimpleForm("smart_srun", "智慧深澜")
+    unavailable.embedded = true
+    unavailable.submit = false
+    unavailable.reset = false
+    function unavailable.parse() end
+    local notice = unavailable:section(SimpleSection):option(DummyValue, "_config_error", "")
+    notice.rawhtml = true
+    function notice.cfgvalue()
+        return '<div role="alert"><p>无法加载可编辑配置：' .. util.pcdata(config_error)
+            .. '</p><a class="cbi-button" href="' .. util.pcdata(page_url) .. '">重新读取配置</a></div>'
+    end
+    return unavailable
+end
+changed = false
+
+-- 认证策略列表与所选策略的字段契约由 Go 的策略注册表提供（M06），
+-- 本次尚未接通：列表为空时下拉框保留当前值，不会把 school 悄悄改掉。
+local schools = {}
+
+-- 学校参数预设来自守护进程的合并目录（内置 + 缓存 + 用户自定义）。
+-- 只读、不联网：远程刷新是独立任务，不在页面渲染里发起。
+local school_presets = bridge.presets() or {}
+
+-- 学校私有字段的描述符来自守护进程发布的 schema，值来自上面已读取的配置。
+-- 这里曾经是 parse_school_runtime_contract("")，传字面空串，描述符恒为空，
+-- 下面整段控件渲染永远不会执行。
+local school_runtime_contract = { field_descriptors = bridge.school_extra_descriptors() or {} }
+local school_runtime_descriptors = {}
+local school_runtime_renderable = type(school_runtime_contract.field_descriptors) == "table"
+    and type(cfg[SCHOOL_EXTRA_KEY]) == "table"
+
+if school_runtime_renderable then
+    for _, descriptor in ipairs(school_runtime_contract.field_descriptors) do
+        local item = normalize_school_runtime_descriptor(descriptor)
+        if item and SUPPORTED_SCHOOL_EXTRA_TYPES[item.type] then
+            school_runtime_descriptors[#school_runtime_descriptors + 1] = item
+        end
+    end
+end
+
+local function set_value(key, value)
+    local v = tostring(value or "")
+    if cfg[key] ~= v then
+        cfg[key] = v
+        changed = true
+        dirty_scalar_keys[key] = true
+    end
+end
+
+local school_changed_during_parse = false
+
+local function school_extra_write_blocked()
+    return school_changed_during_parse
+end
+
+local function bind_flag(opt, key)
+    opt.rmempty = false
+    function opt.cfgvalue()
+        return cfg[key] == "1" and "1" or "0"
+    end
+    function opt.write(self, section, value)
+        set_value(key, (value == "1") and "1" or "0")
+    end
+    function opt.remove(self, section)
+        set_value(key, "0")
+    end
+end
+
+local function bind_text(opt, key, normalize_fn)
+    opt.rmempty = true
+    function opt.cfgvalue()
+        return cfg[key] or ""
+    end
+    function opt.write(self, section, value)
+        local raw = util.trim(value or "")
+        if normalize_fn then
+            local normalized = normalize_fn(raw)
+            if normalized == nil then
+                return
+            end
+            set_value(key, normalized)
+            return
+        end
+        set_value(key, raw)
+    end
+    function opt.remove(self, section)
+        set_value(key, "")
+    end
+end
+
+local quiet_desc = string.format("当前下线/上线时间：%s / %s", cfg.quiet_start or "00:00", cfg.quiet_end or "06:00")
+local version_suffix = string.format(
+    '<span id="smart-srun-version-info" style="margin-left:8px;color:#6b7280;font-size:13px;font-weight:400;vertical-align:middle;">- 当前版本：<a id="smart-srun-version-link" href="https://github.com/matthewlu070111/smart-srun/releases" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">%s<span id="smart-srun-update-dot" style="display:none;width:8px;height:8px;margin-left:6px;border-radius:999px;background:#dc2626;vertical-align:middle;"></span></a></span>',
+    util.pcdata(schema.installed_package_display_text())
+)
+
+m = Map("smart_srun", "智慧深澜", "深澜校园网认证配置 " .. version_suffix)
+if not m.uci:get("smart_srun", "main") then
+    m.uci:section("smart_srun", "main", "main")
+    m.uci:save("smart_srun")
+    m.uci:commit("smart_srun")
+end
+overview = m:section(SimpleSection)
+overview.anonymous = true
+overview_status = overview:option(DummyValue, "_overview_status", "")
+overview_status.rawhtml = true
+function overview_status.cfgvalue()
+    local state = load_state()
+    local function field(label, value, mono, unit)
+        local text = "未知"
+        if value ~= nil and tostring(value) ~= "" then text = tostring(value) .. (unit or "") end
+        return '<div class="smart-overview-field"><dt>' .. util.pcdata(label) .. '</dt><dd'
+            .. (mono and ' class="smart-overview-mono"' or '') .. '>' .. util.pcdata(text) .. '</dd></div>'
+    end
+    local function group(label, fields)
+        return '<section class="smart-overview-group"><h5>' .. util.pcdata(label) .. '</h5><dl>' .. fields .. '</dl></section>'
+    end
+    local wired = state.current_campus_access_mode == "wired" or state.mode_label == "校园网模式（有线）"
+    local wireless_meta = ""
+    local runtime_meta = field('模式', state.mode_label)
+    if not wired then
+        wireless_meta = group('无线连接', field('实际 AP', state.current_bssid, true)
+            .. field('无线接口', state.current_wireless_ifname, true)
+            .. field('信号', tonumber(state.current_signal), true, ' dBm')
+            .. field('信道', tonumber(state.current_channel), true))
+        if state.current_mode ~= "hotspot" and state.mode_label ~= "热点模式" then
+            runtime_meta = runtime_meta .. field('AP 选择', schema.ap_selection_label(state.ap_selection_policy))
+                .. field('选择说明', state.ap_selection_reason)
+        end
+    end
+    local details_meta = group('网络连接', field('网络接口', state.current_iface, true)
+        .. field('IP 地址', state.current_ip, true)) .. wireless_meta .. group('运行信息', runtime_meta)
+    return '<input type="hidden" id="smart-srun-config-revision" name="expected_revision" value="'
+        .. string.format("%.0f", config_revision) .. '">' .. render_js_asset_tag() .. [[
+<style>
+#smart-srun-overview{margin:4px 0 18px;border:1px solid rgba(128,128,128,.18);border-left:4px solid #88909c;background:rgba(128,128,128,.035);padding:20px 24px;border-radius:8px;box-shadow:none;overflow-wrap:anywhere;line-height:1.5;}
+#smart-srun-overview .smart-overview-header{display:flex;align-items:center;gap:24px 36px;flex-wrap:wrap;}
+#smart-srun-overview-title{display:flex;align-items:baseline;gap:10px;font-size:22px;font-weight:700;letter-spacing:.02em;line-height:1.35;max-width:100%;}
+#smart-srun-overview-title::before{content:"";display:inline-block;flex:none;width:9px;height:9px;border-radius:50%;background:currentColor;align-self:center;}
+#smart-srun-overview-meta{display:flex;gap:16px 36px;flex-wrap:wrap;min-width:0;font-size:13px;}
+#smart-srun-overview .smart-overview-primary{min-width:120px;max-width:100%;}
+#smart-srun-overview .smart-overview-primary>span{display:block;font-size:12px;opacity:.7;margin-bottom:3px;}
+#smart-srun-overview .smart-overview-primary>strong{display:block;font-size:16px;font-weight:600;line-height:1.5;color:inherit;}
+#smart-srun-overview-pending{margin-top:14px;padding:8px 12px;border-radius:5px;background:rgba(128,128,128,.1);font-size:13px;}
+#smart-srun-overview-details{margin-top:16px;font-size:13px;}
+#smart-srun-overview-details>summary{cursor:pointer;width:fit-content;font-size:12px;opacity:.75;list-style:none;display:flex;align-items:center;gap:7px;padding:3px 0;}
+#smart-srun-overview-details>summary::-webkit-details-marker{display:none;}
+#smart-srun-overview-details>summary::before{content:"";width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s;}
+#smart-srun-overview-details[open]>summary::before{transform:rotate(45deg);}
+#smart-srun-overview-details>summary:hover,#smart-srun-overview-details>summary:focus{opacity:1;}
+#smart-srun-overview-details>summary:focus-visible{outline:2px solid currentColor;outline-offset:4px;border-radius:2px;}
+#smart-srun-overview-details-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px 32px;margin-top:16px;padding-top:20px;border-top:1px solid rgba(128,128,128,.2);}
+#smart-srun-overview .smart-overview-group{min-width:0;margin:0;padding:0;}
+#smart-srun-overview .smart-overview-group>h5{margin:0 0 14px;padding:0;border:0;background:none;color:inherit;font-size:13px;font-weight:700;line-height:1.5;}
+#smart-srun-overview .smart-overview-group>dl{margin:0;padding:0;display:grid;gap:12px;}
+#smart-srun-overview .smart-overview-field{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:baseline;gap:12px;}
+#smart-srun-overview .smart-overview-field>dt{margin:0;padding:0;opacity:.7;font-size:12px;font-weight:400;}
+#smart-srun-overview .smart-overview-field>dd{margin:0;padding:0;font-size:13px;font-weight:500;line-height:1.6;min-width:0;}
+#smart-srun-overview .smart-overview-mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-variant-numeric:tabular-nums;}
+@media(max-width:600px){#smart-srun-overview{padding:16px;}#smart-srun-overview .smart-overview-header{display:block;}#smart-srun-overview-title{font-size:20px;}#smart-srun-overview-meta{margin-top:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}#smart-srun-overview .smart-overview-primary{min-width:0;}#smart-srun-overview .smart-overview-primary>strong{font-size:15px;}#smart-srun-overview-details-content{grid-template-columns:minmax(0,1fr);gap:22px;}#smart-srun-overview .smart-overview-group+.smart-overview-group{border-top:1px solid rgba(128,128,128,.15);padding-top:18px;}}
+</style>
+<div id="smart-srun-overview">
+  <div class="smart-overview-header">
+    <div id="smart-srun-overview-title" role="status">状态读取中</div>
+    <div id="smart-srun-overview-meta">正在获取连接信息…</div>
+  </div>
+  <div id="smart-srun-overview-pending" style="display:none;"></div>
+  <details id="smart-srun-overview-details">
+    <summary>连接详情</summary>
+    <div id="smart-srun-overview-details-content">
+]] .. details_meta .. [[
+    </div>
+  </details>
+</div>
+]]
+end
+
+s = m:section(NamedSection, "main", "main", "配置")
+s.addremove = false
+s.anonymous = true
+s:tab("basic", "基础设置")
+s:tab("advanced", "进阶设置")
+s:tab("log", "日志")
+
+-- 认证策略选择器；school 为兼容已有配置保留的运行时标识。
+school = s:taboption("basic", ListValue, "school", "认证策略")
+-- "default" 是内置通用深澜运行时：不绑定任何学校，作为出厂默认值。
+school:value("default", "通用深澜认证")
+local school_current = util.trim(tostring(cfg.school or ""))
+local school_listed = school_current == "" or school_current == "default"
+for _, sch in ipairs(schools) do
+    if tostring(sch.short_name or "") ~= "default" then
+        school:value(sch.short_name, sch.name)
+        if tostring(sch.short_name or "") == school_current then
+            school_listed = true
+        end
+    end
+end
+-- schools 列表加载失败或不含当前值时保留原值选项，避免一次保存把 school 悄悄改掉。
+if not school_listed then
+    school:value(school_current, school_current)
+end
+function school.cfgvalue()
+    local value = util.trim(tostring(cfg.school or ""))
+    if value == "" then
+        value = "default"
+    end
+    return value
+end
+function school.write(self, section, value)
+    local next_school = util.trim(value or "")
+    if next_school == "" then
+        next_school = "default"
+    end
+    local current_school = util.trim(tostring(cfg.school or ""))
+    if current_school == "" then
+        current_school = "default"
+    end
+    if next_school ~= current_school then
+        school_changed_during_parse = true
+        cfg[SCHOOL_EXTRA_KEY] = {}
+        changed = true
+        school_extra_dirty = true
+    end
+    set_value("school", next_school)
+end
+school.description = render_school_info_html(schools)
+
+if school_runtime_renderable then
+    for idx, descriptor in ipairs(school_runtime_descriptors) do
+        local option_name = "_school_extra_" .. idx .. "_" .. descriptor.key:gsub("[^%w_]", "_")
+        local label = descriptor.label
+        local description = descriptor.description
+        if descriptor.type == "bool" then
+            local opt = s:taboption("basic", Flag, option_name, label, description)
+            bind_school_extra_flag(opt, descriptor, school_extra_write_blocked)
+        elseif descriptor.type == "enum" then
+            local opt = s:taboption("basic", ListValue, option_name, label, description)
+            for _, choice in ipairs(descriptor.choices or {}) do
+                opt:value(choice, choice)
+            end
+            bind_school_extra_text(opt, descriptor, school_extra_write_blocked, function(raw)
+                if raw == "" and not descriptor.required then
+                    return ""
+                end
+                for _, choice in ipairs(descriptor.choices or {}) do
+                    if raw == choice then
+                        return raw
+                    end
+                end
+                return nil
+            end)
+        elseif descriptor.type == "int" then
+            local opt = s:taboption("basic", Value, option_name, label, description)
+            function opt.validate(self, value)
+                local raw = util.trim(value or "")
+                if raw == "" and not descriptor.required then
+                    return raw
+                end
+                if raw:match("^-?%d+$") then
+                    return raw
+                end
+                return nil, "该字段必须是整数"
+            end
+            bind_school_extra_text(opt, descriptor, school_extra_write_blocked, function(raw)
+                if raw == "" and not descriptor.required then
+                    return ""
+                end
+                if raw:match("^-?%d+$") then
+                    return tostring(tonumber(raw))
+                end
+                return nil
+            end)
+        else
+            local opt = s:taboption("basic", Value, option_name, label, description)
+            bind_school_extra_text(opt, descriptor, school_extra_write_blocked)
+        end
+    end
+end
+
+-- 一键配置：面向没配过校园网的用户。放在学校预设和手动登录之间——先有能用的
+-- 配置，才谈得上手动登录。
+setup_wizard = s:taboption("basic", DummyValue, "_setup_wizard", "一键配置")
+setup_wizard.rawhtml = true
+function setup_wizard.cfgvalue()
+    return [[
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <button id="smart-srun-setup-wizard" type="button" class="cbi-button cbi-button-action">开始一键配置</button>
+  <span id="smart-srun-setup-wizard-hint" style="color:#666;"></span>
+</div>
+]]
+end
+
+manual_login = s:taboption("basic", DummyValue, "_manual_login", "手动登录")
+manual_login.rawhtml = true
+function manual_login.cfgvalue()
+    return [[
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <button id="smart-srun-manual-login" type="button" class="cbi-button cbi-button-apply">立即登录</button>
+  <button id="smart-srun-manual-logout" type="button" class="cbi-button cbi-button-reset">立即登出</button>
+  <span id="smart-srun-manual-result" style="color:#666;"></span>
+</div>
+<div id="smart-srun-manual-portal" style="display:none;margin-top:.5rem;"></div>
+]]
+end
+
+enabled = s:taboption("basic", Flag, "enabled", "启用")
+enabled.description = "自动认证、断线重连与定时切网；不影响手动登录、登出。"
+bind_flag(enabled, "enabled")
+
+multi_wan_enabled = s:taboption("basic", Flag, "multi_wan_enabled", "多 WAN 并行认证")
+multi_wan_enabled.description = "同时维护已勾选“参与并行守护”的有线账号。"
+bind_flag(multi_wan_enabled, "multi_wan_enabled")
+
+quiet_desc = "当前下线/上线时间：" .. tostring(cfg.quiet_start or "00:00") .. " / " .. tostring(cfg.quiet_end or "06:00")
+
+quiet_hours_enabled = s:taboption("basic", Flag, "quiet_hours_enabled", "按时段自动上/下线", quiet_desc)
+bind_flag(quiet_hours_enabled, "quiet_hours_enabled")
+
+quiet_start = s:taboption("basic", Value, "quiet_start", "下线时间（北京时间 HH:MM）")
+quiet_start.default = "00:00"
+function quiet_start.validate(self, value)
+    local t = validate_hhmm(value)
+    if t then
+        return t
+    end
+    return nil, "时间格式应为 HH:MM（24小时制）"
+end
+bind_text(quiet_start, "quiet_start", validate_hhmm)
+
+quiet_end = s:taboption("basic", Value, "quiet_end", "上线时间（北京时间 HH:MM）")
+quiet_end.default = "06:00"
+function quiet_end.validate(self, value)
+    local t = validate_hhmm(value)
+    if t then
+        return t
+    end
+    return nil, "时间格式应为 HH:MM（24小时制）"
+end
+bind_text(quiet_end, "quiet_end", validate_hhmm)
+
+force_logout_in_quiet = s:taboption("basic", Flag, "force_logout_in_quiet", "进入下线时段时强制下线")
+bind_flag(force_logout_in_quiet, "force_logout_in_quiet")
+
+failover_enabled = s:taboption("basic", Flag, "failover_enabled", "登出时自动切换热点上网")
+bind_flag(failover_enabled, "failover_enabled")
+
+switch_test = s:taboption("basic", DummyValue, "_switch_test", "手动切换网络")
+switch_test.rawhtml = true
+function switch_test.cfgvalue()
+    return [[
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  <button id="smart-srun-switch-hotspot" type="button" class="cbi-button cbi-button-apply">切到热点</button>
+  <button id="smart-srun-switch-campus" type="button" class="cbi-button cbi-button-apply">切回校园网</button>
+  <button id="smart-srun-force-close" type="button" class="cbi-button cbi-button-remove">强制关闭插件</button>
+  <span id="smart-srun-switch-result" style="color:#666;"></span>
+</div>
+<div class="cbi-value-description">手动切网会停用自动登录服务，如需启用请再次手动开启。</div>
+]]
+end
+
+-- 校园网账号表格 + 热点配置表格 + 弹窗
+tables_html = s:taboption("basic", DummyValue, "_tables", "")
+tables_html.rawhtml = true
+function tables_html.cfgvalue()
+    local campus = cfg.campus_accounts or {}
+    local hotspots = cfg.hotspot_profiles or {}
+    local state = load_state()
+    local active_cid = cfg.active_campus_id or ""
+    local default_cid = cfg.default_campus_id or ""
+    local active_hid = cfg.active_hotspot_id or ""
+    local default_hid = cfg.default_hotspot_id or ""
+    local current_mode = tostring(state.current_mode or "")
+    local online_account_label = tostring(state.online_account_label or "")
+    -- 部分学校（如南昌航空）rad_user_info 返回带后缀的完整账号，
+    -- 比对账号池条目时只取 @ 前主体
+    local online_account_main = online_account_label:match("^([^@]+)") or online_account_label
+    local current_ssid = tostring(state.current_ssid or "")
+    local current_bssid = tostring(state.current_bssid or "")
+    local current_iface = tostring(state.current_iface or "")
+    local current_campus_access_mode = tostring(state.current_campus_access_mode or "")
+    local multi_wan_on = tostring(cfg.multi_wan_enabled or "0") == "1"
+    local wired_sessions = type(state.wired_auth_sessions) == "table" and state.wired_auth_sessions or {}
+
+    local radio_labels = { [""] = "自动" }
+    local radio_options = '<option value="">自动</option>'
+    for radio, meta in pairs(RADIO_CHOICES) do
+        local label = tostring(meta.label or radio)
+        radio_labels[radio] = label
+        radio_options = radio_options .. '<option value="' .. util.pcdata(radio) .. '">' .. util.pcdata(label) .. '</option>'
+    end
+
+    -- 构建校园网账号表格行
+    local campus_rows = ""
+    if type(campus) == "table" then
+        for _, a in ipairs(campus) do
+            local aid = tostring(a.id or "")
+            local campus_user = tostring(a.user_id or "")
+            local campus_ssid = tostring(a.ssid or "")
+            local ap_selection = schema.normalize_ap_selection(a.ap_selection, a.bssid)
+            local campus_bssid = ap_selection == "fixed" and util.trim(tostring(a.bssid or "")):lower() or ""
+            local access_mode = tostring(a.access_mode or "wifi")
+            local wired_iface = util.trim(tostring(a.wired_iface or ""))
+            if wired_iface == "" then wired_iface = util.trim(tostring(a.network_interface or "")) end
+            if wired_iface == "" then wired_iface = "wan" end
+            local auth_enabled = tostring(a.auth_enabled or "0") == "1"
+            local is_managed = multi_wan_on and access_mode == "wired" and auth_enabled
+            local wired_session = type(wired_sessions[aid]) == "table" and wired_sessions[aid] or {}
+            local ssid_display = access_mode == "wired" and ("有线 (" .. wired_iface .. ")") or tostring(a.ssid or "")
+            local is_active = (aid == active_cid)
+            local is_default = (aid == default_cid)
+            local wifi_match = current_mode == "campus"
+                and current_campus_access_mode == "wifi"
+                and campus_ssid ~= ""
+                and current_ssid == campus_ssid
+                and ((campus_bssid == "") or (current_bssid == campus_bssid))
+            local wired_match = current_mode == "campus"
+                and current_campus_access_mode == "wired"
+                and access_mode == "wired"
+                and current_iface == wired_iface
+            local identity_match = campus_user ~= "" and online_account_main == campus_user
+            local is_connected = false
+            if access_mode == "wired" then
+                is_connected = wired_match and identity_match
+            else
+                is_connected = wifi_match and identity_match
+            end
+            if is_managed and next(wired_session) ~= nil then
+                is_connected = wired_session.online == true
+            end
+            local badge_parts = {}
+            if is_connected then
+                badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#16a34a;font-weight:700;">已认证</span>'
+            elseif is_managed then
+                local session_labels = {
+                    retry_wait = "等待重试",
+                    account_mismatch = "账号冲突",
+                    config_error = "配置错误",
+                    error = "认证失败",
+                    paused = "夜间暂停",
+                }
+                local session_status = tostring(wired_session.status or "")
+                local session_label = session_labels[session_status] or "等待检测"
+                local session_color = session_status == "paused" and "#6b7280" or "#dc2626"
+                badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:' .. session_color .. ';font-weight:700;">' .. util.pcdata(session_label) .. '</span>'
+            end
+            if is_default then
+                if is_active and not is_connected then
+                    badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#2563eb;font-weight:700;">默认</span>'
+                elseif not is_active then
+                    badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#d97706;font-weight:700;">待生效</span>'
+                end
+            else
+                badge_parts[#badge_parts + 1] = ("<button type=\"button\" class=\"cbi-button\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartSetDefault('campus','%s')\">设默认</button>"):format(util.pcdata(aid))
+            end
+            local badge = table.concat(badge_parts, '<br>')
+            campus_rows = campus_rows .. '<tr class="tr">'
+                .. '<td class="td">' .. badge .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(a.label or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(a.base_url or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(a.ac_id or "1")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(a.user_id or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(a.operator_suffix or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(ssid_display) .. '</td>'
+                .. '<td class="td">' .. (auth_enabled and (multi_wan_on and '<span style="color:#16a34a;font-weight:700;">参与</span>' or '<span style="color:#d97706;">待开启全局开关</span>') or '<span style="color:#999;">关闭</span>') .. '</td>'
+                .. '<td class="td">' .. (access_mode == "wired" and '—' or util.pcdata(schema.ap_selection_label(ap_selection)) .. (campus_bssid ~= "" and ('<br>' .. util.pcdata(campus_bssid)) or '')) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(radio_labels[tostring(a.radio or "")] or tostring(a.radio or "自动")) .. '</td>'
+                .. '<td class="td cbi-section-actions"><div class="smart-action-cell">'
+                .. ("<button type=\"button\" class=\"cbi-button\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartEditCampus('%s')\">编辑</button>"):format(util.pcdata(aid))
+                .. ("<button type=\"button\" class=\"cbi-button cbi-button-remove\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartDelete('campus','%s')\">删除</button>"):format(util.pcdata(aid))
+                .. '</div></td></tr>\n'
+        end
+    end
+    if campus_rows == "" then
+        campus_rows = '<tr class="tr"><td class="td" colspan="11" style="text-align:center;color:#999;">暂无账号，请点击"新增"添加</td></tr>'
+    end
+
+    -- 构建热点配置表格行
+    local hotspot_rows = ""
+    if type(hotspots) == "table" then
+        for _, h in ipairs(hotspots) do
+            local hid = tostring(h.id or "")
+            local is_active = (hid == active_hid)
+            local is_default = (hid == default_hid)
+            local hotspot_ssid = tostring(h.ssid or "")
+            local is_connected = current_mode == "hotspot" and hotspot_ssid ~= "" and current_ssid == hotspot_ssid
+            local badge_parts = {}
+            if is_connected then
+                badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#16a34a;font-weight:700;">已连接</span>'
+            end
+            if is_default then
+                if is_active and not is_connected then
+                    badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#2563eb;font-weight:700;">默认</span>'
+                elseif not is_active then
+                    badge_parts[#badge_parts + 1] = '<span style="display:inline-block;color:#d97706;font-weight:700;">待生效</span>'
+                end
+            else
+                badge_parts[#badge_parts + 1] = ("<button type=\"button\" class=\"cbi-button\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartSetDefault('hotspot','%s')\">设默认</button>"):format(util.pcdata(hid))
+            end
+            local badge = table.concat(badge_parts, '<br>')
+            hotspot_rows = hotspot_rows .. '<tr class="tr">'
+                .. '<td class="td">' .. badge .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(h.label or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(h.ssid or "")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(tostring(h.encryption or "psk2")) .. '</td>'
+                .. '<td class="td">' .. util.pcdata(radio_labels[tostring(h.radio or "")] or tostring(h.radio or "自动")) .. '</td>'
+                .. '<td class="td cbi-section-actions"><div class="smart-action-cell">'
+                .. ("<button type=\"button\" class=\"cbi-button\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartEditHotspot('%s')\">编辑</button>"):format(util.pcdata(hid))
+                .. ("<button type=\"button\" class=\"cbi-button cbi-button-remove\" style=\"font-size:12px;padding:1px 8px;\" onclick=\"smartDelete('hotspot','%s')\">删除</button>"):format(util.pcdata(hid))
+                .. '</div></td></tr>\n'
+        end
+    end
+    if hotspot_rows == "" then
+        hotspot_rows = '<tr class="tr"><td class="td" colspan="6" style="text-align:center;color:#999;">暂无热点，请点击"新增"添加</td></tr>'
+    end
+
+    -- 将数据嵌入到前端
+    local campus_json = jsonc.stringify(campus) or "[]"
+    local hotspot_json = jsonc.stringify(hotspots) or "[]"
+    local school_presets_json = jsonc.stringify(school_presets or {}) or "[]"
+    -- 用户自定义预设/运营商由守护进程持有；读不到时按空存储渲染，
+    -- 页面不会拿一份空表去覆盖对方的文件（保存另有 CAS 把关）。
+    local user_presets_raw = "{}"
+    local user_presets = rpc.call("user_presets.get", nil)
+    if type(user_presets) == "table" and type(user_presets.document) == "table" then
+        user_presets_raw = jsonc.stringify(user_presets.document) or "{}"
+    end
+
+    return [[
+<style>
+.smart-native-box{margin:18px 0;}
+.smart-native-box h3{margin:0 0 .75rem 0;font-weight:600;}
+.smart-native-box .cbi-section-table .th,
+.smart-native-box .cbi-section-table .td{vertical-align:middle;}
+.smart-native-box .cbi-section-table .td:last-child{white-space:nowrap;}
+.smart-native-box .cbi-section-table .btn,
+.smart-native-box .cbi-section-table .cbi-button{vertical-align:middle;}
+.smart-native-box .cbi-section-actions{white-space:nowrap;text-align:center;}
+.smart-native-box .smart-action-cell{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;}
+.smart-native-box .smart-box-actions{padding:.75rem 1rem 0 1rem;}
+.smart-native-row{margin-bottom:.75rem;}
+.smart-native-row label{display:block;margin-bottom:.25rem;font-weight:600;}
+.smart-native-row input,.smart-native-row select{width:100%;box-sizing:border-box;}
+.smart-native-advanced{margin:.75rem 0;padding:.75rem;border:1px solid rgba(127,127,127,.25);border-radius:4px;}
+.smart-native-advanced summary{cursor:pointer;font-weight:600;margin:-.25rem 0 .5rem 0;}
+</style>
+
+<div class="cbi-section cbi-tblsection smart-native-box">
+  <h3>校园网账号</h3>
+  <table class="table cbi-section-table">
+    <tr class="tr table-titles"><th class="th" style="width:80px;">状态</th><th class="th">标签</th><th class="th">认证地址</th><th class="th">ACID</th><th class="th">学工号</th><th class="th">运营商后缀</th><th class="th">接入口</th><th class="th">并行守护</th><th class="th">AP 选择 / 固定 BSSID</th><th class="th">频段</th><th class="th cbi-section-actions" style="width:120px;">操作</th></tr>
+    <tbody>]] .. campus_rows .. [[</tbody>
+  </table>
+  <div class="smart-box-actions">
+    <button type="button" class="cbi-button cbi-button-add" onclick="smartEditCampus('')">新增</button>
+  </div>
+</div>
+
+<div class="cbi-section cbi-tblsection smart-native-box">
+  <h3>热点配置</h3>
+  <table class="table cbi-section-table">
+    <tr class="tr table-titles"><th class="th" style="width:80px;">状态</th><th class="th">标签</th><th class="th">SSID</th><th class="th">加密方式</th><th class="th">频段</th><th class="th cbi-section-actions" style="width:120px;">操作</th></tr>
+    <tbody>]] .. hotspot_rows .. [[</tbody>
+  </table>
+  <div class="smart-box-actions">
+    <button type="button" class="cbi-button cbi-button-add" onclick="smartEditHotspot('')">新增</button>
+  </div>
+</div>
+<textarea id="smart-campus-data" style="display:none;">]] .. util.pcdata(campus_json) .. [[</textarea>
+<textarea id="smart-probe-config" style="display:none;">]] .. util.pcdata(jsonc.stringify({sta_iface = cfg.sta_iface or ""})) .. [[</textarea>
+<textarea id="smart-hotspot-data" style="display:none;">]] .. util.pcdata(hotspot_json) .. [[</textarea>
+<textarea id="smart-radio-options" style="display:none;">]] .. util.pcdata(radio_options) .. [[</textarea>
+<textarea id="smart-school-preset-data" style="display:none;">]] .. util.pcdata(school_presets_json) .. [[</textarea>
+<textarea id="smart-user-preset-data" style="display:none;">]] .. util.pcdata(user_presets_raw) .. [[</textarea>
+]]
+end
+
+local preset_auto_update = s:taboption("advanced", Flag, "preset_auto_update_enabled", "自动更新学校预设")
+preset_auto_update.description = "每天检查一次；关闭后仍可手动更新。"
+bind_flag(preset_auto_update, "preset_auto_update_enabled")
+
+local preset_update_time = s:taboption("advanced", ListValue, "preset_update_time", "每天更新时间（北京时间，24 小时制）")
+for hour = 0, 23 do
+    local value = string.format("%02d:00", hour)
+    preset_update_time:value(value, value)
+end
+-- Keep a precise time configured through the CLI selectable in the form.
+local saved_preset_time = validate_hhmm(cfg.preset_update_time or "")
+if saved_preset_time and saved_preset_time:sub(4) ~= "00" then
+    preset_update_time:value(saved_preset_time, saved_preset_time)
+end
+preset_update_time:depends("preset_auto_update_enabled", "1")
+bind_text(preset_update_time, "preset_update_time", validate_hhmm)
+-- CBI calls remove for an unmet dependency. Keep the chosen time when the
+-- checkbox is off, including in the page rendered immediately after saving.
+function preset_update_time.remove() end
+preset_update_time.description = "到点后检查；错过时间会补查一次。更新失败时继续使用本地预设。"
+
+local preset_refresh = s:taboption("advanced", DummyValue, "_preset_refresh", "学校预设")
+preset_refresh.rawhtml = true
+function preset_refresh.cfgvalue()
+    return [[<button id="smart-presets-refresh" type="button" class="cbi-button cbi-button-action" onclick="smartRefreshPresets()">立即更新</button> <span id="smart-presets-refresh-result" role="status" aria-live="polite"></span>]]
+end
+
+backoff_enable = s:taboption("advanced", Flag, "backoff_enable", "登录失败时启用退避重试")
+bind_flag(backoff_enable, "backoff_enable")
+
+backoff_max_retries = s:taboption("advanced", Value, "backoff_max_retries", "最大重试次数（0 为无限）")
+backoff_max_retries.datatype = "uinteger"
+bind_text(backoff_max_retries, "backoff_max_retries")
+
+retry_cooldown_seconds = s:taboption("advanced", Value, "retry_cooldown_seconds", "失败后首次重试等待（秒）")
+function retry_cooldown_seconds.validate(self, value)
+    if validate_non_negative_number(value) then
+        return value
+    end
+    return nil, "首次重试等待时长必须是大于等于 0 的数字"
+end
+retry_cooldown_seconds.placeholder = "10"
+bind_text(retry_cooldown_seconds, "retry_cooldown_seconds", validate_non_negative_number)
+
+retry_max_cooldown_seconds = s:taboption("advanced", Value, "retry_max_cooldown_seconds", "退避等待上限（秒）")
+function retry_max_cooldown_seconds.validate(self, value)
+    if validate_non_negative_number(value) then
+        return value
+    end
+    return nil, "退避等待上限必须是大于等于 0 的数字"
+end
+retry_max_cooldown_seconds.placeholder = "60"
+bind_text(retry_max_cooldown_seconds, "retry_max_cooldown_seconds", validate_non_negative_number)
+
+switch_ready_timeout_seconds = s:taboption("advanced", Value, "switch_ready_timeout_seconds", "切网完成等待时间（秒）",
+    "切换后等待获取 IPv4 的最长时间；部分学校 DHCP 较慢（如出现“未获取到IPv4地址”可调大）")
+switch_ready_timeout_seconds.datatype = "uinteger"
+switch_ready_timeout_seconds.placeholder = "30"
+bind_text(switch_ready_timeout_seconds, "switch_ready_timeout_seconds")
+
+manual_terminal_check_max_attempts = s:taboption("advanced", Value, "manual_terminal_check_max_attempts", "手动登录/登出终态最大检查次数")
+function manual_terminal_check_max_attempts.validate(self, value)
+    if validate_non_negative_number(value) then
+        return value
+    end
+    return nil, "手动终态检查次数必须是大于等于 0 的数字"
+end
+manual_terminal_check_max_attempts.placeholder = "5"
+bind_text(manual_terminal_check_max_attempts, "manual_terminal_check_max_attempts", validate_non_negative_number)
+
+manual_terminal_check_interval_seconds = s:taboption("advanced", Value, "manual_terminal_check_interval_seconds", "手动终态校验间隔（秒）")
+manual_terminal_check_interval_seconds.datatype = "uinteger"
+manual_terminal_check_interval_seconds.placeholder = "2"
+bind_text(manual_terminal_check_interval_seconds, "manual_terminal_check_interval_seconds")
+
+hotspot_failback_enabled = s:taboption("advanced", Flag, "hotspot_failback_enabled", "热点切换失败时自动回切校园网")
+bind_flag(hotspot_failback_enabled, "hotspot_failback_enabled")
+
+connectivity_check_mode = s:taboption("advanced", ListValue, "connectivity_check_mode", "在线判定方式")
+connectivity_check_mode:value("internet", "互联网可达")
+connectivity_check_mode:value("portal", "认证网关可达即可")
+connectivity_check_mode:value("ssid", "仅关联到目标 SSID")
+connectivity_check_mode.rmempty = false
+bind_text(connectivity_check_mode, "connectivity_check_mode")
+
+interval = s:taboption("advanced", Value, "interval", "检测间隔（秒）")
+interval.datatype = "uinteger"
+
+local config_backup = s:taboption("advanced", DummyValue, "_config_backup", "配置备份")
+config_backup.rawhtml = true
+function config_backup.cfgvalue()
+    return [[<div id="smart-srun-config-backup">
+<button type="button" class="cbi-button" id="smart-srun-config-export">导出配置</button>
+<label class="cbi-button" for="smart-srun-config-file">选择备份文件</label>
+<input type="file" id="smart-srun-config-file" accept=".json,application/json" style="display:none">
+<button type="button" class="cbi-button cbi-button-action" id="smart-srun-config-import" disabled>确认导入</button>
+<p class="cbi-value-description">备份含插件设置、校园账号和热点密码，请妥善保管。自建学校预设需单独备份。导入会替换配置并关闭自动守护，请核对账号和网口后再启用。</p>
+<p id="smart-srun-config-result" role="status" aria-live="polite"></p></div>]]
+end
+bind_text(interval, "interval")
+
+log_level = s:taboption("log", ListValue, "log_level", "日志等级",
+    "ALL = 全部；DEBUG = 含调试细节；INFO = 默认；WARN/ERROR 仅记录警告与错误。")
+log_level:value("ALL", "ALL（全部）")
+log_level:value("DEBUG", "DEBUG（调试）")
+log_level:value("INFO", "INFO（信息，默认）")
+log_level:value("WARN", "WARN（仅警告与错误）")
+log_level:value("ERROR", "ERROR（仅错误）")
+log_level.rmempty = false
+log_level.default = "INFO"
+bind_text(log_level, "log_level")
+
+local log_file_omit_info = s:taboption("log", Flag, "log_file_omit_info", "日志文件不记录 INFO 信息",
+    "默认开启。INFO 信息仍显示在下方运行日志中，但不写入日志文件（下载的日志也不含这些信息）；" ..
+    "警告、错误以及服务启动、停止、保存配置、清空日志的记录照常写入。日志等级为 DEBUG 或 ALL 时不生效。")
+log_file_omit_info.default = "1"
+bind_flag(log_file_omit_info, "log_file_omit_info")
+
+log_text = s:taboption("log", DummyValue, "_log_text", "运行日志")
+log_text.rawhtml = true
+function log_text.cfgvalue(self, section)
+    -- 首屏的最近 100 行；之后由页面自己按游标增量轮询。
+    local page = rpc.call("log.tail", { lines = 100 })
+    local t = type(page) == "table" and type(page.lines) == "table"
+        and table.concat(page.lines, "\n") or ""
+    if t ~= "" then
+        t = log_controller.friendly_log_text(t)
+    end
+    if t == "" then
+        t = "暂无日志"
+    end
+
+    local escaped = util.pcdata and util.pcdata(t) or t
+    return [[
+<div id="smart-srun-log-toolbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px;">
+  <select id="smart-srun-log-level-filter" style="max-width:150px;">
+    <option value="ALL">全部等级</option>
+    <option value="DEBUG">调试以上</option>
+    <option value="INFO">信息以上</option>
+    <option value="WARN">警告以上</option>
+    <option value="ERROR">仅错误</option>
+  </select>
+  <div style="flex:1;"></div>
+  <button id="smart-srun-log-start" type="button" class="cbi-button cbi-button-apply">开始刷新</button>
+  <button id="smart-srun-log-stop" type="button" class="cbi-button">停止刷新</button>
+  <button id="smart-srun-log-clear" type="button" class="cbi-button">清空日志</button>
+  <button id="smart-srun-log-download" type="button" class="cbi-button cbi-button-apply">下载日志</button>
+</div>
+<div id="smart-srun-log-box" style="max-height:560px;overflow:auto;border:1px solid #2b2b2b;padding:10px;background:#0b0f14;border-radius:4px;">
+  <pre id="smart-srun-log-pre" style="margin:0;white-space:pre-wrap;word-break:break-all;color:#9ef19e;font-family:monospace;line-height:1.35;">]] .. escaped .. [[</pre>
+</div>
+]]
+end
+
+function m.parse(self, ...)
+    changed = false
+    dirty_scalar_keys = {}
+    school_extra_dirty = false
+    local state = Map.parse(self, ...)
+    if not changed or self.save == false then
+        return state
+    end
+    -- 保存失败必须说出来。旧版无论如何都写“已保存”，于是一次被拒绝的提交
+    -- 看起来和成功一模一样。
+    local saved, failure = save_cfg(cfg)
+    local note = saved and "配置已保存" or ("配置未保存：" .. tostring(failure))
+    if saved then
+        m.uci:set("smart_srun", "main", "_stamp", tostring(os.time()))
+        http.redirect(page_url)
+    end
+    m.message = (m.message and (m.message .. "；") or "") .. note
+    return state
+end
+
+-- 没有 on_before_commit。配置提交后由守护进程自行重新读取和观测，
+-- 页面不再重启服务：服务生命周期只经固定 helper（规范 02）。
+
+return m
