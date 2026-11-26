@@ -4,8 +4,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=51ddns-agent
-PKG_VERSION:=0.6.5-r5
-PKG_RELEASE:=1
+PKG_VERSION:=0.6.5
+PKG_RELEASE:=2
 
 PKG_SOURCE_COMMIT:=c2aaf071964ceffb419b44e96f840b9a91ce974d
 PKG_SOURCE:=51ddns-openwrt-$(PKG_SOURCE_COMMIT).tar.gz

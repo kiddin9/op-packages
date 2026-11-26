@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya-geosite
 PKG_VERSION:=20261125093047
-PKG_RELEASE:=11
+PKG_RELEASE:=12
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
