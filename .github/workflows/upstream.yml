@@ -111,6 +111,7 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-ghfu
         git_clone https://github.com/kiddin9/luci-app-aliddns
         git_clone https://github.com/kiddin9/homeproxy luci-app-homeproxy
+        git_clone https://github.com/kiddin9/tencentcloud-openwrt-plugin-ddns luci-app-tencentddns
         ) &
         (
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall && mvdir openwrt-passwall
