@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=0.1.0-r2
-PKG_RELEASE:=1
+PKG_VERSION:=0.1.0-r3
+PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI support for Moonshot AI Kimi Code
 LUCI_PKGARCH:=all

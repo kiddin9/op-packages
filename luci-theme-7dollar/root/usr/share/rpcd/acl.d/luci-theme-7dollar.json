@@ -37,7 +37,7 @@
 				"/opt/open-box/data/panel-port": [ "read" ],
 				"/bin/ping": [ "exec" ]
 			},
-			"uci": [ "7dollar", "firewall", "luci", "AdGuardHome", "bandix", "homeproxy", "ksmbd", "mosdns", "nikki", "openclash", "passwall", "passwall2", "samba4", "shadowsocksr", "smartdns" ]
+			"uci": [ "7dollar", "firewall", "luci", "AdGuardHome", "bandix", "eqos", "homeproxy", "ksmbd", "mosdns", "nikki", "openclash", "passwall", "passwall2", "samba4", "shadowsocksr", "smartdns" ]
 		},
 		"write": {
 			"ubus": {

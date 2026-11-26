@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 PKG_NAME:=changeguard
 PKG_VERSION:=0.3.5
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 include ./release.mk
 PKG_SOURCE:=changeguard-$(PKG_VERSION)-$(ARCH).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/changeguard-runtime-v$(PKG_VERSION)/
@@ -28,18 +28,24 @@ endef
 define Package/changeguard/preinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT:-}" ] && exit 0
-if [ -x /usr/libexec/changeguard-package ]; then exec /usr/libexec/changeguard-package preinst; fi
+if pidof changeguard_bin >/dev/null 2>&1; then
+	printf '%s\n' 'ChangeGuard stopped for upgrade; any active protection has failed.' >&2
+fi
+ubus call service delete '{"name":"changeguard"}' >/dev/null 2>&1 || true
+killall changeguard_bin >/dev/null 2>&1 || true
 exit 0
 endef
 
 define Package/changeguard/postinst
 #!/bin/sh
 IPKG_INSTROOT="$${IPKG_INSTROOT:-}" "$${IPKG_INSTROOT:-}/usr/libexec/changeguard-package" postinst
+exit 0
 endef
 
 define Package/changeguard/prerm
 #!/bin/sh
 IPKG_INSTROOT="$${IPKG_INSTROOT:-}" "$${IPKG_INSTROOT:-}/usr/libexec/changeguard-package" prerm
+exit 0
 endef
 
 define Package/changeguard/install

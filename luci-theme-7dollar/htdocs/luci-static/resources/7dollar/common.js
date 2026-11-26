@@ -271,7 +271,8 @@ function service(services, path) {
 	});
 	if (!name) return null;
 	const inst = services[name].instances || {};
-	return { name: name, running: Object.keys(inst).some(k => inst[k].running) };
+	const data = services[name].data || {};
+	return { name: name, running: Object.keys(inst).some(k => inst[k].running) || data.status == 'statusSuccess', data: data };
 }
 
 /* ---------------- settings (stored in /etc/config/7dollar) ---------------- */

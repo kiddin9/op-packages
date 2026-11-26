@@ -26,8 +26,11 @@ const MODE = {
 const sec = (cfg, s) => s[0] == '@' ? td.uciType(cfg, s.slice(1)).then(a => Object.values(a)[0] || {}) : td.uciSection(cfg, s);
 const plain = (cfg, s, f) => () => sec(cfg, s).then(c => ({ sub: f(c) }));
 /* current node: the section named in `key`, shown by its `label` field */
-const node = (cfg, s, key, label, more) => () => sec(cfg, s).then(c => (c[key] && c[key] != 'nil' ? td.uciSection(cfg, c[key]) : Promise.resolve({}))
-	.then(n => ({ sub: [ n[label] || (c[key] != 'nil' && c[key]) || T('未选节点', 'No node', 'Узел не выбран'), more && more(c) ].filter(Boolean).join(' · ') })));
+const node = (cfg, s, keys, label, more) => srv => (srv && srv.cfg ? Promise.resolve(srv.cfg) : sec(cfg, s)).then(c => {
+	const id = [].concat(keys).map(k => c[k]).find(v => v && v != 'nil');
+	return (id ? td.uciSection(cfg, id) : Promise.resolve({}))
+		.then(n => ({ sub: [ n[label] || id || T('未选节点', 'No node', 'Узел не выбран'), more && more(c) ].filter(Boolean).join(' · ') }));
+});
 const panel = port => ({ link: `http://${location.hostname}:${port}/` });
 const shares = (cfg, type) => () => Promise.all([ td.uciType(cfg, type), td.mounts() ]).then(([ s, m ]) => {
 	const list = Object.values(s).filter(x => x.path);
@@ -39,7 +42,7 @@ const APPS = {
 	openclash: () => td.uciSection('openclash', 'config').then(c => ({
 		sub: String(c.en_mode || c.operation_mode || '').replace(/^fake-ip/, 'Fake-IP').replace(/^redir-host/, 'Redir-Host').replace(/-(tun|mix)$/, s => ' · ' + s.slice(1).toUpperCase()),
 		seg: c.proxy_mode || 'rule' })),
-	passwall: node('passwall', '@global', 'tcp_node', 'remarks'),
+	passwall: node('passwall', '@global', [ 'tcp_node', 'node' ], 'remarks'),
 	passwall2: node('passwall2', '@global', 'node', 'remarks'),
 	shadowsocksr: node('shadowsocksr', '@global', 'global_server', 'alias', c => MODE[c.run_mode]),
 	homeproxy: node('homeproxy', 'config', 'main_node', 'label', c => MODE[c.routing_mode]),
@@ -50,7 +53,22 @@ const APPS = {
 	smartdns: plain('smartdns', '@smartdns', c => c.port && T('端口 ', 'Port ', 'Порт ') + c.port),
 	bandix: plain('bandix', 'general', c => c.iface && T('监控 ', 'Watching ', 'Интерфейс ') + c.iface),
 	ksmbd: shares('ksmbd', 'share'),
-	samba4: shares('samba4', 'sambashare')
+	samba4: shares('samba4', 'sambashare'),
+	'adblock-fast': s => {
+		const n = +(s && s.data && s.data.entries) || 0;
+		return Promise.resolve({ sub: n ? T(`拦截列表 ${n.toLocaleString()} 个域名`, `${n.toLocaleString()} domains on the block list`, `В списке блокировки доменов: ${n.toLocaleString()}`) : '' });
+	},
+	eqos: () => td.uciType('eqos', 'device').then(d => {
+		const n = Object.values(d || {}).filter(x => x.enabled != '0').length;
+		return { sub: n ? T(`已限速 ${n} 台设备`, `${n} ${n == 1 ? 'device' : 'devices'} limited`, `Лимит устройств: ${n}`) : '' };
+	})
+};
+const appFn = s => APPS[s.name.toLowerCase()];
+/* not procd services: `enabled` in their own config stands for running */
+const NOPROCD = {
+	passwall: [ 'passwall', '@global' ],
+	passwall2: [ 'passwall2', '@global' ],
+	eqos: [ 'eqos', 'config' ]
 };
 const PROTO = { dhcp: T('自动获取', 'DHCP', 'DHCP'), pppoe: T('宽带拨号', 'PPPoE', 'PPPoE'), static: T('静态地址', 'Static', 'Статика'), dhcpv6: 'DHCPv6', qmi: T('移动网络', 'Cellular', 'Мобильная сеть'), ncm: T('移动网络', 'Cellular', 'Мобильная сеть'), modemmanager: T('移动网络', 'Cellular', 'Мобильная сеть') };
 
@@ -519,18 +537,22 @@ return view.extend({
 		});
 	},
 
-	/* ---------- apps card: one procd query plus a config read per shown app, every 30 s; the DOM is touched only when something changed.
+	/* ---------- apps card: one procd query, plus a config read per shown app and per installed app that is not a procd service, every 30 s; the DOM is touched only when something changed.
 	 * Like the devices card it shows a few rows (apps with something to say first) and counts the rest. ---------- */
+
+	liveApps(all) {
+		return Promise.all(this.s.apps.map(p => {
+			const s = td.service(all, p.path), leaf = p.path.split('/').pop().toLowerCase(), cs = NOPROCD[leaf];
+			return s && s.running || !cs ? [ p, s ] : sec(cs[0], cs[1]).then(c => [ p, { name: leaf, running: c.enabled == '1', cfg: c } ]);
+		})).then(found => found.filter(([ , s ]) => s && s.running).sort(([ , a ], [ , b ]) => !appFn(a) - !appFn(b)));
+	},
 
 	paintApps() {
 		const box = this.$('td-apps');
 		if (!box) return Promise.resolve();
-		return td.services().then(all => {
-			const fn = s => APPS[s.name.toLowerCase()];
-			const live = this.s.apps.map(p => [ p, td.service(all, p.path) ]).filter(([ , s ]) => s && s.running)
-				.sort(([ , a ], [ , b ]) => !fn(a) - !fn(b));
+		return td.services().then(all => this.liveApps(all)).then(live => {
 			const top = live.slice(0, live.length > 5 ? 4 : 5), more = live.length - top.length;
-			return Promise.all(top.map(([ p, s ]) => (fn(s) || (() => Promise.resolve({})))().then(x => [ p, x ]))).then(rows => {
+			return Promise.all(top.map(([ p, s ]) => (appFn(s) || (() => Promise.resolve({})))(s).then(x => [ p, x ]))).then(rows => {
 				const html = rows.length ? rows.map(([ p, x ]) => `<div class="td-dev td-run"><div class="td-av">${icon(td.appIcon(p.path))}</div>
 					<div class="nm"><a href="${L.url(p.path)}"><b>${esc(p.title)}</b></a><small>${esc([ T('运行中', 'Running', 'Работает'), x.sub ].filter(Boolean).join(' · '))}</small></div>
 					${x.seg ? `<div class="td-seg" data-oc="${esc(x.seg)}"><button type="button" data-m="rule">${esc(T('按规则', 'Rule', 'По правилам'))}</button><button type="button" data-m="global">${esc(T('全局', 'Global', 'Глобально'))}</button><button type="button" data-m="direct">${esc(T('直连', 'Direct', 'Напрямую'))}</button></div>`

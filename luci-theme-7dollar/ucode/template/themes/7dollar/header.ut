@@ -15,7 +15,7 @@
 	const zh = !!match(lang, /^zh/);
 	const ru = !!match(lang, /^ru/);
 	const T = (z, e, r) => zh ? z : ((ru && r != null) ? r : e);
-	const ver = '1.0.19';
+	const ver = '1.0.20';
 	const hostname = striptags(boardinfo.hostname ?? 'OpenWrt');
 	const model = striptags(boardModel(boardinfo));
 	const sprite = `${media}/icons.svg`;

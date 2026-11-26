@@ -81,7 +81,7 @@ LuCI 原有功能全部保留，只调整了显示方式。
 
 适用于 23.05 / 24.10。25.x 请使用方法二。
 
-1. 下载安装包：[luci-theme-7dollar_1.0.19-r1_all.ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.19-r1_all.ipk)（历史版本见 [Releases](https://github.com/itsmaiGe/luci-theme-7dollar/releases)）
+1. 下载安装包：[luci-theme-7dollar_1.0.20-r1_all.ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.20-r1_all.ipk)（历史版本见 [Releases](https://github.com/itsmaiGe/luci-theme-7dollar/releases)）
 2. 在浏览器中打开路由器后台（通常为 `192.168.1.1`），输入密码登录
 3. 打开 **系统 → 软件包 → 上传软件包…**，选择下载的文件，点击 **上传**，再点击 **安装**
 4. 刷新页面（Windows 按 <kbd>F5</kbd>，Mac 按 <kbd>⌘ R</kbd>）
@@ -212,7 +212,7 @@ install.sh / uninstall.sh        安装 / 卸载脚本
 - Responsive and zoom-friendly; no external fonts or requests; 53 KB package
 - Interface in Chinese, English and Russian, following the LuCI language setting
 
-**Install**: upload [the ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.19-r1_all.ipk) via *System → Software → Upload Package* (23.05 / 24.10), or run over SSH on any version (picks the ipk or the [apk](https://github.com/itsmaiGe/luci-theme-7dollar/tree/main/dist) automatically):
+**Install**: upload [the ipk](https://github.com/itsmaiGe/luci-theme-7dollar/releases/latest/download/luci-theme-7dollar_1.0.20-r1_all.ipk) via *System → Software → Upload Package* (23.05 / 24.10), or run over SSH on any version (picks the ipk or the [apk](https://github.com/itsmaiGe/luci-theme-7dollar/tree/main/dist) automatically):
 
 ```sh
 wget -qO- https://raw.githubusercontent.com/itsmaiGe/luci-theme-7dollar/main/install.sh | sh
