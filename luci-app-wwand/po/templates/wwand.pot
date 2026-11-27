@@ -387,7 +387,7 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:892
+#: htdocs/luci-static/resources/wwand/modemopts.js:906
 msgid "All sentences"
 msgstr ""
 
@@ -504,7 +504,7 @@ msgstr ""
 msgid "Authentication type"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:897
+#: htdocs/luci-static/resources/wwand/modemopts.js:911
 msgid "Auto-correct modem config"
 msgstr ""
 
@@ -819,7 +819,7 @@ msgstr ""
 msgid "Datapath counters (parent)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:813
+#: htdocs/luci-static/resources/wwand/modemopts.js:827
 msgid "Dead-bearer poll count"
 msgstr ""
 
@@ -1079,7 +1079,7 @@ msgstr ""
 msgid "FCC unlock"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:763
+#: htdocs/luci-static/resources/wwand/modemopts.js:766
 msgid ""
 "Failed attempts at which the recovery ladder cycles the radio, resets the "
 "modem and pulses the reset line / repowers it, e.g. \"2 6 12\". One or two "
@@ -1124,7 +1124,7 @@ msgstr ""
 msgid "Fix age"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:891
+#: htdocs/luci-static/resources/wwand/modemopts.js:905
 msgid "Fix only (less CPU)"
 msgstr ""
 
@@ -1173,11 +1173,11 @@ msgstr ""
 msgid "GNSS"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:888
+#: htdocs/luci-static/resources/wwand/modemopts.js:902
 msgid "GNSS NMEA output"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:841
+#: htdocs/luci-static/resources/wwand/modemopts.js:855
 msgid "GNSS receiver"
 msgstr ""
 
@@ -1324,7 +1324,7 @@ msgstr ""
 msgid "Id"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:777
+#: htdocs/luci-static/resources/wwand/modemopts.js:791
 msgid ""
 "If the modem has not answered since boot or since the outage began, pulse "
 "its reset GPIO once after this many seconds. Only a modem with its own reset "
@@ -1464,11 +1464,11 @@ msgstr ""
 #: htdocs/luci-static/resources/wwand/modemopts.js:178
 #: htdocs/luci-static/resources/wwand/modemopts.js:589
 #: htdocs/luci-static/resources/wwand/modemopts.js:664
-#: htdocs/luci-static/resources/wwand/modemopts.js:890
+#: htdocs/luci-static/resources/wwand/modemopts.js:904
 msgid "Leave modem setting unchanged"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:898
+#: htdocs/luci-static/resources/wwand/modemopts.js:912
 msgid ""
 "Let wwand correct what it finds: it re-applies the configured radio mode and "
 "network selection when the modem drifts from them, and writes the modem's "
@@ -1476,7 +1476,7 @@ msgid ""
 "change to /etc/config/network). Off by default."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:877
+#: htdocs/luci-static/resources/wwand/modemopts.js:891
 msgid ""
 "Let wwand step the system clock from the GNSS time — only while the clock is "
 "plainly unset, so it never fights the NTP client. Off by default. For "
@@ -1785,7 +1785,7 @@ msgstr ""
 msgid "NCM (AT + ethernet data port)"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:814
+#: htdocs/luci-static/resources/wwand/modemopts.js:828
 msgid ""
 "NCM modems only. How many consecutive status polls may list no data context "
 "— with no received traffic in between — before wwand declares the bearer "
@@ -2018,8 +2018,10 @@ msgid ""
 "fibocom[:<model_id>]."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:768
-msgid "One to three whole numbers, rising, e.g. \"2 6 12\""
+#: htdocs/luci-static/resources/wwand/modemopts.js:782
+msgid ""
+"One to three rising whole numbers from 1; fewer than three replace only the "
+"first of 8 16 24 and must stay below the rest, e.g. \"2 6 12\""
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/esim.js:222
@@ -2166,7 +2168,7 @@ msgstr ""
 msgid "Parent device"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:790
+#: htdocs/luci-static/resources/wwand/modemopts.js:804
 msgid "Park the radio when idle"
 msgstr ""
 
@@ -2332,7 +2334,7 @@ msgstr ""
 msgid "Public warning"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:791
+#: htdocs/luci-static/resources/wwand/modemopts.js:805
 msgid ""
 "Put the modem's radio into low power once no interface on this modem is up — "
 "for battery and solar installs, where an idle modem still spends a couple of "
@@ -2372,7 +2374,7 @@ msgstr ""
 msgid "QRTR node"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:889
+#: htdocs/luci-static/resources/wwand/modemopts.js:903
 msgid ""
 "Quectel and ASR modems: which NMEA sentences the receiver streams. Written "
 "when wwand starts the receiver; saving a change restarts this modem's bring-"
@@ -2554,11 +2556,11 @@ msgstr ""
 msgid "Reboot after N failures"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:782
+#: htdocs/luci-static/resources/wwand/modemopts.js:796
 msgid "Reboot after N protocol errors"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:783
+#: htdocs/luci-static/resources/wwand/modemopts.js:797
 msgid ""
 "Reboot after this many consecutive control-protocol errors. Gated by the "
 "failure-reboot setting above — with reboot disabled it never fires."
@@ -2598,7 +2600,7 @@ msgstr ""
 msgid "Recovery"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:762
+#: htdocs/luci-static/resources/wwand/modemopts.js:765
 msgid "Recovery steps"
 msgstr ""
 
@@ -2687,7 +2689,7 @@ msgstr ""
 msgid "Repower"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:795
+#: htdocs/luci-static/resources/wwand/modemopts.js:809
 msgid "Repower / reset duration"
 msgstr ""
 
@@ -2719,7 +2721,7 @@ msgstr ""
 msgid "Reset GPIO fallback"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:776
+#: htdocs/luci-static/resources/wwand/modemopts.js:790
 msgid "Reset a never-answering modem after (s)"
 msgstr ""
 
@@ -2741,7 +2743,7 @@ msgstr ""
 msgid "Reset radio/band/usage/roaming settings to defaults?"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:808
+#: htdocs/luci-static/resources/wwand/modemopts.js:822
 msgid ""
 "Reset the modem when, with a connection up, the kernel reports its transmit "
 "queue stuck for this many seconds, i.e. the modem has stopped taking packets "
@@ -2996,7 +2998,7 @@ msgstr ""
 msgid "Seconds between cell scans (at least 600)."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:820
+#: htdocs/luci-static/resources/wwand/modemopts.js:834
 msgid ""
 "Seconds between throughput/signal telemetry samples while connected (0 = "
 "off)."
@@ -3009,7 +3011,7 @@ msgid ""
 "still current."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:796
+#: htdocs/luci-static/resources/wwand/modemopts.js:810
 msgid ""
 "Seconds the modem is held de-powered during a recovery power-cycle (or held "
 "in reset, when a reset GPIO is used). Default 30 s."
@@ -3019,7 +3021,7 @@ msgstr ""
 msgid "Seconds to wait before initializing the modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:802
+#: htdocs/luci-static/resources/wwand/modemopts.js:816
 msgid ""
 "Seconds without received packets before recovery steps in: the modem is "
 "reset, and a board that can repower it does so when the reset is refused or "
@@ -3126,11 +3128,11 @@ msgstr ""
 msgid "Set automatic"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:876
+#: htdocs/luci-static/resources/wwand/modemopts.js:890
 msgid "Set the clock from GNSS"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:828
+#: htdocs/luci-static/resources/wwand/modemopts.js:842
 msgid "Set the clock from the network"
 msgstr ""
 
@@ -3240,7 +3242,7 @@ msgstr ""
 msgid "Steering: scan interval"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:829
+#: htdocs/luci-static/resources/wwand/modemopts.js:843
 msgid ""
 "Step the system clock to the network's time (NITZ) when it is more than two "
 "minutes off. Smaller differences are left to NTP. A router without a real-"
@@ -3296,7 +3298,7 @@ msgid ""
 "contradicts disables hardware recovery for this modem."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:842
+#: htdocs/luci-static/resources/wwand/modemopts.js:856
 msgid ""
 "Switch the modem's GNSS on. With <em>wwand-gps</em> installed wwand reads "
 "the position itself: from the modem's NMEA port (reported as <em>gps_port</"
@@ -3328,7 +3330,7 @@ msgid ""
 "identifier of this cell"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:807
+#: htdocs/luci-static/resources/wwand/modemopts.js:821
 msgid "TX stall timeout"
 msgstr ""
 
@@ -3340,7 +3342,7 @@ msgstr ""
 msgid "Technology"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:819
+#: htdocs/luci-static/resources/wwand/modemopts.js:833
 msgid "Telemetry interval"
 msgstr ""
 
@@ -4014,7 +4016,7 @@ msgstr ""
 msgid "Written to the modem (%d record(s))."
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:801
+#: htdocs/luci-static/resources/wwand/modemopts.js:815
 msgid "Zero-RX timeout"
 msgstr ""
 

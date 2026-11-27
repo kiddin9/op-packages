@@ -779,7 +779,7 @@ return baseclass.extend({
 					return true;
 			}
 
-			return _('One to three whole numbers, rising, e.g. "2 6 12"');
+			return _('One to three rising whole numbers from 1; fewer than three replace only the first of 8 16 24 and must stay below the rest, e.g. "2 6 12"');
 		};
 		bind(o);
 
