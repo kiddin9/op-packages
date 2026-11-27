@@ -24,19 +24,6 @@
  			];
  			if (!coreExists) {
 
---- a/luci-app-adguardhome/po/zh_Hans/adguardhome.po
-+++ b/luci-app-adguardhome/po/zh_Hans/adguardhome.po
-@@ -170,3 +170,9 @@ msgstr "未设置（Go 默认值为 100）"
- #: applications/luci-app-adguardhome/htdocs/luci-static/resources/view/adguardhome/config.js:232
- msgid "unset and matching the number of CPUs"
- msgstr "未设置（默认值与 CPU 数量一致）"
-+
-+msgid "Default Username"
-+msgstr "默认用户名"
-+
-+msgid "Default Password"
-+msgstr "默认密码"
-
 --- a/luci-app-adguardhome/root/etc/adguardhome/adguardhome.yaml
 +++ b/luci-app-adguardhome/root/etc/adguardhome/adguardhome.yaml
 @@ -13,7 +13,7 @@ http:
