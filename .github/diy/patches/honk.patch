@@ -1,11 +1,9 @@
---- a/honk/files/honk.config
-+++ b/honk/files/honk.config
-@@ -1,7 +1,7 @@
- 
- config honk 'config'
+--- a/luci-app-daeuniverse/root/etc/config/daeuniverse
++++ b/luci-app-daeuniverse/root/etc/config/daeuniverse
+@@ -2,5 +2,5 @@
+ config daeuniverse 'config'
  	option enabled '0'
+ 	option core 'honk'
 -	option advanced '0'
 +	option advanced '1'
- 	option dashboard 'none'
- 	option config_file '/etc/honk/config.dae'
- 
+ 	option dashboard 'doona'
