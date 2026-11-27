@@ -417,7 +417,7 @@ jobs:
         git_clone https://github.com/Zesuy/UA-Mask && cp -rf UA-Mask/openwrt/package/Makefile UA-Mask/
         git_clone https://github.com/wrttools/luci-app-liteportal
         git_clone https://github.com/matthewlu070111/smart-srun
-        git_clone https://github.com/amrfateem/luci-V2raya && mv -f luci-V2raya/*v2raya* ./;rm -rf luci-V2raya
+        git_clone https://github.com/amrfateem/luci-V2raya-NextGen luci-V2raya && mv -f luci-V2raya/*v2raya* ./;rm -rf luci-V2raya
         git_clone https://github.com/21hkcloud/51ddns-openwrt && mv -f 51ddns-openwrt/luci-app-51ddns 51ddns-openwrt/packages/51ddns-agent ./;rm -rf 51ddns-openwrt
         ) &
         (
