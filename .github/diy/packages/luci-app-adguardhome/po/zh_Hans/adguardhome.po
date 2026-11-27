@@ -1,0 +1,286 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-adguardhome\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# --- 页面标题与顶部状态栏 (Header & Service Status) ---
+
+msgid "AdGuard Home"
+msgstr "AdGuard Home"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Not running"
+msgstr "未运行"
+
+msgid "Disabled"
+msgstr "未启用"
+
+msgid "Click to enable"
+msgstr "点击启用服务"
+
+msgid "Click to disable"
+msgstr "点击停用服务"
+
+msgid "Will stop after \"Save & Apply\". Click to keep it enabled."
+msgstr "保存应用后将停止运行，再次点击可保持启用"
+
+msgid "Enabled but not running. Click \"Save & Apply\" to start it, or click to disable."
+msgstr "已启用但尚未运行，保存应用后将启动服务，或点击此处取消启用"
+
+msgid "Apply with \"Save & Apply\""
+msgstr "需点击“保存并应用”生效"
+
+msgid "Current Version"
+msgstr "当前版本"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "Core binary not found. Enable the service to trigger an automatic download."
+msgstr "未检测到核心程序，启用服务并保存应用后将自动下载。"
+
+msgid "New version %s available"
+msgstr "发现新版本 %s"
+
+msgid "Go to Core Update"
+msgstr "前往“核心更新”"
+
+# --- 基本设置 (General Settings) ---
+
+msgid "General Settings"
+msgstr "基本设置"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Configuration file"
+msgstr "配置文件路径"
+
+msgid "Working directory"
+msgstr "工作目录"
+
+msgid "Service user"
+msgstr "运行用户"
+
+msgid "Service group"
+msgstr "运行用户组"
+
+msgid "Verbose logging"
+msgstr "详细日志"
+
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Core Update"
+msgstr "核心更新"
+
+msgid "Show the tab and settings for updating the AdGuardHome core binary."
+msgstr "显示用于更新 AdGuard Home 核心程序的标签页及相关选项。"
+
+# --- 文件系统权限与高级设置 (File System Access & Advanced Settings) ---
+
+msgid "File System Access"
+msgstr "文件系统权限"
+
+msgid "Files and directories that AdGuard Home should have read-only or read-write access to."
+msgstr "允许 AdGuard Home 在沙盒环境中以只读或读写方式访问的额外文件与目录。"
+
+msgid "Read-only access"
+msgstr "只读访问路径"
+
+msgid "Read-write access"
+msgstr "读写访问路径"
+
+msgid "Go environment variables that tune garbage collector and memory management."
+msgstr "用于调优 Go 运行时垃圾回收（GC）与内存管理的环境变量。"
+
+msgid "Modify at your own risk."
+msgstr "请谨慎修改，风险自负。"
+
+# --- 服务设置、管理界面与密码加密 (Services Settings, WebUI & Password) ---
+
+msgid "Services Settings"
+msgstr "服务设置"
+
+msgid "WebUI listener (address:port)"
+msgstr "管理界面监听（地址:端口）"
+
+msgid "Open AdGuardHome WebUI"
+msgstr "打开 AdGuard Home 管理界面"
+
+msgid "Service is disabled. Please go to \"General Settings\" to enable it."
+msgstr "服务未启用，请先点击顶部状态开关启用服务并保存应用。"
+
+msgid "The WebUI is served over plain HTTP and listens on all interfaces. Consider binding it to the LAN address."
+msgstr "当前管理界面使用明文 HTTP 协议且监听所有网络接口，建议绑定至 LAN 口地址以提高安全性。"
+
+msgid "Change password"
+msgstr "修改管理密码"
+
+msgid "Please create a new password."
+msgstr "当前未设置密码，请输入新密码"
+
+msgid "Enter the password here. Click the Load calculate Module button below and go on."
+msgstr "输入新密码后，请先点击下方按钮加载加密模块并生成密码哈希，再保存配置。"
+
+msgid " ... Load calculate Module ... "
+msgstr "加载密码加密模块"
+
+msgid "Loading..."
+msgstr "正在加载..."
+
+msgid "Click here to Calculate"
+msgstr "点击生成密码哈希"
+
+msgid " ... Load Error ... "
+msgstr "模块加载失败，请重试"
+
+msgid " ... Nothing inputted yet ... "
+msgstr "请先输入新密码"
+
+msgid "Calculation already DONE !"
+msgstr "密码哈希已生成，无需重复计算"
+
+msgid " ... Click Save/Apply ↘️ ... "
+msgstr "已生成哈希，请点击“保存并应用” ↘️"
+
+msgid "Redirect"
+msgstr "端口重定向"
+
+msgid "AdGuardHome redirect mode"
+msgstr "AdGuard Home DNS 重定向模式"
+
+msgid "No redirect"
+msgstr "不重定向"
+
+msgid "As the upstream server of dnsmasq"
+msgstr "作为 dnsmasq 的上游服务器"
+
+msgid "Redirect port 53 to AdGuardHome"
+msgstr "重定向 53 端口到 AdGuard Home"
+
+msgid "Use port 53 to replace dnsmasq"
+msgstr "使用 53 端口替换 dnsmasq"
+
+# --- 核心更新 (Core Update) ---
+
+msgid "Settings and operations for updating the AdGuardHome core binary."
+msgstr "管理并执行 AdGuard Home 核心二进制程序的版本检查与在线更新。"
+
+msgid "Core Branch"
+msgstr "核心版本分支"
+
+msgid "Select the branch for the core binary update."
+msgstr "选择更新核心程序时使用的版本分支。"
+
+msgid "Latest Version"
+msgstr "最新正式版（Latest）"
+
+msgid "Beta Version"
+msgstr "测试版（Beta）"
+
+msgid "Update URL"
+msgstr "更新下载源"
+
+msgid "Select the download source for the core update. Downloads are verified against the SHA-256 checksums published with the GitHub release."
+msgstr "选择核心程序的下载渠道，下载文件均会通过 GitHub 官方发布的 SHA-256 校验值验证完整性。"
+
+msgid "Official Mirror (AdTidy - Recommended)"
+msgstr "官方镜像源（AdTidy - 推荐）"
+
+msgid "GitHub Releases (Original)"
+msgstr "GitHub Releases（官方源）"
+
+msgid "Action"
+msgstr "更新操作"
+
+msgid "Check update"
+msgstr "检查更新"
+
+msgid "Force update"
+msgstr "强制更新"
+
+msgid "Checking..."
+msgstr "正在检查..."
+
+msgid "Click to update"
+msgstr "立即更新"
+
+msgid "It is the latest version"
+msgstr "已是最新版本"
+
+msgid "Check failed"
+msgstr "检查更新失败"
+
+msgid "Updating..."
+msgstr "正在更新..."
+
+msgid "Updating, are you sure to close?"
+msgstr "核心程序正在更新中，确定要关闭或离开此页面吗？"
+
+msgid "Update successful"
+msgstr "更新成功"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "Retry"
+msgstr "重试"
+
+# --- 路径与表单校验提示 (Validation Messages) ---
+
+msgid "Path must be absolute."
+msgstr "必须使用绝对路径（以 / 开头）。"
+
+msgid "Path contains invalid characters."
+msgstr "路径包含无效字符。"
+
+msgid "Path must not contain \"..\"."
+msgstr "路径中不得包含“..”。"
+
+msgid "Path must not end with a slash."
+msgstr "路径不能以斜杠（/）结尾。"
+
+msgid "Configuration file must be stored in its own directory, and not in '/etc'."
+msgstr "配置文件必须存放在独立子目录中，不能直接放在 /etc 目录下。"
+
+msgid "Mounting the whole root filesystem is not allowed."
+msgstr "禁止挂载整个根文件系统（/）。"
+
+msgid "This directory must not be mounted read-write."
+msgstr "禁止将此系统目录挂载为读写模式。"
+
+msgid "The password has not been hashed yet. Click the calculate button first, then save."
+msgstr "密码尚未进行哈希加密，请先点击下方计算按钮生成哈希后再保存。"
+
+# --- 菜单与权限扩展词条 (LuCI Menu & ACL Common Entries) ---
+
+msgid "Configuration"
+msgstr "配置"
+
+msgid "Base Setting"
+msgstr "基本设置"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Grant access to LuCI app adguardhome"
+msgstr "授予访问 luci-app-adguardhome 的权限"
+
+msgid "Grant UCI access for luci-app-adguardhome"
+msgstr "授予 luci-app-adguardhome 的 UCI 配置访问权限"
+
+msgid "Default Username"
+msgstr "默认用户名"
+
+msgid "Default Password"
+msgstr "默认密码"
