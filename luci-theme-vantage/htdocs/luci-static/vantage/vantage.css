@@ -653,6 +653,7 @@ a.vt-crumb:hover { color: var(--text); }
 /* the daily check's line of help, under its options */
 .vt-appear-set > .vt-appear-note { margin-top: 6px; }
 .vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); display:none; }
+fieldset[aria-describedby="vt-update-help"] {display:none; }
 .vt-appear-num { font-family: var(--mono); }
 .vt-appear-check { margin: 0; padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .vt-appear-check[aria-disabled="true"] { color: var(--text-3); cursor: default; text-decoration: none; }

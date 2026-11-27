@@ -572,14 +572,9 @@ html[data-darkmode="true"] .vt-app {
    details' banner above the head, as high as its close button, which
    goes to the end. The text is the link, as high as the line for a
    finger, and wraps where a phone has no room for it in one line */
-.vt-app .vt-banner.vt-news { margin: 0 0 var(--vt-sp-4); padding: 0 0 0 10px; }
+.vt-app .vt-banner.vt-news { margin: 0 0 var(--vt-sp-4); padding: 0 0 0 10px; display:none; }
 .vt-app .vt-news .vt-link { align-self: stretch; min-width: 0; padding: 4px 0; white-space: normal; }
 .vt-app .vt-news .vt-icon-action { margin-left: auto; }
-
-.vt-app .vt-head {
-	display: flex; align-items: center; gap: 14px;
-	margin: 2px 0 var(--vt-sp-4);
-}
 header::after {
 	height:0 !important;	
 }
@@ -588,6 +583,10 @@ h2, h3{
 }
 header.bg-primary {
     background:none !important;
+}
+.vt-app .vt-head {
+	display: flex; align-items: center; gap: 14px;
+	margin: 2px 0 var(--vt-sp-4);
 }
 .vt-app .vt-orb {
 	position: relative; flex: none;

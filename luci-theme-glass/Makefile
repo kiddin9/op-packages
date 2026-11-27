@@ -10,7 +10,7 @@ LUCI_TITLE:=Glass - Apple-inspired glassmorphism theme for LuCI
 LUCI_DESCRIPTION:=A modern glassmorphism LuCI theme inspired by Apple design.
 LUCI_PKGARCH:=all
 PKG_VERSION:=$(shell cat $(CURDIR)/ucode/template/themes/glass/version | tr -d '[:space:]')
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 # Disable CSS minification (backdrop-filter can break with csstidy)
 LUCI_MINIFY_CSS:=0
