@@ -56,9 +56,9 @@ return baseclass.extend({
 	setup: function() {
 		this.box = document.getElementById('u-stats');
 		if (!this.box) return;
-		this.cpuEl = this.chip('cpu', 'CPU Load');
-		this.ramEl = this.chip('ram', 'Memory Usage');
-		this.uptimeEl = this.chip('uptime', 'Uptime');
+		this.cpuEl = this.chip('cpu', _('CPU Load'));
+		this.ramEl = this.chip('ram', _('Memory Usage'));
+		this.uptimeEl = this.chip('uptime', _('Uptime'));
 		this.box.appendChild(this.cpuEl);
 		this.box.appendChild(this.ramEl);
 		this.box.appendChild(this.uptimeEl);
@@ -128,7 +128,7 @@ return baseclass.extend({
 					self.netLabel = self.netDevice;
 					self.netDevice = phys.conduit;
 				}
-				self.netEl = self.chip('net', 'Throughput');
+				self.netEl = self.chip('net', _('Throughput'));
 				self.box.insertBefore(self.netEl, self.uptimeEl);
 				self.pollNet();
 			});
@@ -148,7 +148,7 @@ return baseclass.extend({
 			var s = pct.toFixed(0) + '%';
 			this.cpuEl.querySelector('.indicator-value').textContent = s;
 			try { sessionStorage.setItem('uniwrt-stat-cpu', s); } catch(e) {}
-			this.cpuEl.title = 'CPU: ' + s + ' (load ' + load1.toFixed(2) + ' on ' + this.numCores + (this.numCores === 1 ? ' core)' : ' cores)');
+			this.cpuEl.title = _('CPU: %s (load %s, cores: %d)').format(s, load1.toFixed(2), this.numCores);
 			this.setLevel(this.cpuEl, pct < 60 ? 'ok' : pct < 85 ? 'warn' : 'crit');
 		}
 		if (info.memory && info.memory.total) {
@@ -157,14 +157,14 @@ return baseclass.extend({
 			var pct = ((total - avail) / total * 100).toFixed(0);
 			this.ramEl.querySelector('.indicator-value').textContent = pct + '%';
 			try { sessionStorage.setItem('uniwrt-stat-ram', pct + '%'); } catch(e) {}
-			this.ramEl.title = 'RAM: ' + this.fmtBytes(total - avail) + ' / ' + this.fmtBytes(total) + ' (' + pct + '%)';
+			this.ramEl.title = _('Memory: %s / %s (%s)').format(this.fmtBytes(total - avail), this.fmtBytes(total), pct + '%');
 			this.setLevel(this.ramEl, pct < 60 ? 'ok' : pct < 85 ? 'warn' : 'crit');
 		}
 		if (info.uptime) {
 			var u = this.fmtUptime(info.uptime);
 			this.uptimeEl.querySelector('.indicator-value').textContent = u;
 			try { sessionStorage.setItem('uniwrt-stat-uptime', u); } catch(e) {}
-			this.uptimeEl.title = 'Uptime: ' + u;
+			this.uptimeEl.title = _('Uptime: %s').format(u);
 		}
 	},
 
@@ -191,7 +191,7 @@ return baseclass.extend({
 
 	fmtUptime: function(s) {
 		var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-		return d > 0 ? d + 'd ' + h + 'h' : h + 'h ' + m + 'm';
+		return d > 0 ? _('%dd %dh').format(d, h) : _('%dh %dm').format(h, m);
 	},
 	fmtBytes: function(b) {
 		if (b >= 1073741824) return (b / 1073741824).toFixed(1) + ' GB';

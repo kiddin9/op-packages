@@ -88,16 +88,15 @@ SRC_DIR="$(cd "$SRC_DIR" && pwd)"
 echo "==> Source: $SRC_DIR"
 echo "==> Target: $RUST_TARGET (zig: $ZIG_TARGET)"
 
-command -v zig >/dev/null 2>&1 || { echo "ERROR: zig not found in PATH" >&2; exit 1; }
-command -v bpf-linker >/dev/null 2>&1 || { echo "ERROR: bpf-linker not found in PATH" >&2; exit 1; }
 command -v cargo >/dev/null 2>&1 || { echo "ERROR: cargo not found in PATH" >&2; exit 1; }
-
-ZIG_ACTUAL="$(zig version)"
-if [ "$ZIG_ACTUAL" != "$ZIG_VERSION" ]; then
-  echo "ERROR: zig ${ZIG_ACTUAL} does not match the honk pin ${ZIG_VERSION}" >&2
-  exit 1
+command -v zig >/dev/null 2>&1 || { echo "ERROR: zig not found in PATH" >&2; exit 1; }
+if ! command -v cargo-zigbuild >/dev/null 2>&1; then
+  echo "==> Installing cargo-zigbuild"
+  cargo install --locked cargo-zigbuild
 fi
-echo "==> zig ${ZIG_ACTUAL}"
+command -v bpf-linker >/dev/null 2>&1 || { echo "ERROR: bpf-linker not found in PATH" >&2; exit 1; }
+
+echo "==> zig $(zig version)"
 
 # bpf-linker 0.11.0 reports 0.0.0; its tarball is checked by sha256 at install time.
 echo "==> $(bpf-linker --version 2>/dev/null | head -n 1)"
@@ -123,19 +122,21 @@ if command -v readelf >/dev/null 2>&1; then
   readelf -S "$EBPF_OBJ" | grep -q '\.BTF' || { echo "ERROR: $EBPF_OBJ has no .BTF section" >&2; exit 1; }
 fi
 
-export ZIGCC_TARGET="$ZIG_TARGET"
-L=$(printf '%s' "$RUST_TARGET" | tr '-' '_')
-U=$(printf '%s' "$RUST_TARGET" | tr 'a-z-' 'A-Z_')
-export "CC_${L}=$SRC_DIR/ci/zigcc"
-export "CXX_${L}=$SRC_DIR/ci/zigcxx"
-export "CARGO_TARGET_${U}_LINKER=$SRC_DIR/ci/zigcc"
-if [[ "$RUST_TARGET" == *-musl ]]; then
-  export "CARGO_TARGET_${U}_RUSTFLAGS=-C link-self-contained=no"
-fi
-export BINDGEN_EXTRA_CLANG_ARGS="$("$SRC_DIR/ci/zig-bindgen-env" "$ZIGCC_TARGET")"
+# boring-sys runs bindgen, which needs the target's headers instead of the host's.
+export BINDGEN_EXTRA_CLANG_ARGS="$(
+  zig cc -target "$ZIG_TARGET" -E -x c /dev/null -v 2>&1 |
+    tr ' ' '\n' |
+    awk '/^-triple$/ { getline; printf "--target=%s ", $0 }
+         /^-isystem$/ { getline; printf "-isystem %s ", $0 }
+         /^-D$/ { getline; if ($0 != "_DEBUG") printf "-D%s ", $0 }'
+)"
+
+# A caller-set linker for this target (OpenWrt-Add pins gcc for its other Rust
+# packages) would beat cargo-zigbuild's own and link musl CRT objects with it.
+unset "CARGO_TARGET_$(printf '%s' "$RUST_TARGET" | tr 'a-z-' 'A-Z_')_LINKER"
 
 echo "==> Building honk-core for $RUST_TARGET..."
-cargo build --release --locked \
+cargo zigbuild --release --locked \
   -p honk-core \
   --no-default-features \
   --features ebpf,rprx,clash-api,native-api,jemalloc \

@@ -39,7 +39,7 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.option(form.Flag, 'menu_expanded', _('Expand all menu sections'),
-			_('Show every section of the side menu opened up, instead of only the section of the current page. Sections can still be folded by clicking them.'));
+			_('Start with all sections open and toggle each one independently. When disabled, opening a section closes the previous one.'));
 		o.default = '0';
 		o.rmempty = false;
 

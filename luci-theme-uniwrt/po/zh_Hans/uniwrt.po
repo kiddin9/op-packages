@@ -1,0 +1,598 @@
+msgid ""
+msgstr ""
+"Language: zh_Hans\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid " (wired)"
+msgstr "（有线）"
+
+msgid "%d Wi-Fi · %d wired"
+msgstr "%d 个无线 · %d 个有线"
+
+msgid "10 seconds"
+msgstr "10 秒"
+
+msgid "3 seconds"
+msgstr "3 秒"
+
+msgid "30 seconds"
+msgstr "30 秒"
+
+msgid "5 seconds"
+msgstr "5 秒"
+
+msgid "<em>apk upgrade</em> failed with code <code>%d</code>."
+msgstr "<em>apk upgrade</em> 执行失败，错误代码：<code>%d</code>。"
+
+msgid "Accent (dark mode)"
+msgstr "深色模式强调色"
+
+msgid "Accent (light mode)"
+msgstr "浅色模式强调色"
+
+msgid "Accent Colour"
+msgstr "强调色"
+
+msgid "Access point"
+msgstr "接入点"
+
+msgid "Access point / Switch"
+msgstr "接入点 / 交换机"
+
+msgid "Active"
+msgstr "活动"
+
+msgid "Add a custom live \"Overview\" dashboard entry to the menu."
+msgstr "在菜单中添加自定义的实时“概览”仪表盘。"
+
+msgid "All packages were upgraded."
+msgstr "所有软件包均已升级。"
+
+msgid "Animate live traffic"
+msgstr "动态显示实时流量"
+
+msgid "Appearance"
+msgstr "外观"
+
+msgid "Appliance"
+msgstr "家用电器"
+
+msgid "Assigned by your main router (not visible to this access point)"
+msgstr "由主路由器分配（此接入点不可见）"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Auto (follow system)"
+msgstr "自动（跟随系统）"
+
+msgid "Backup / Flash"
+msgstr "备份 / 刷写"
+
+msgid "Base font size"
+msgstr "基础字号"
+
+msgid "CPU Load"
+msgstr "CPU 负载"
+
+msgid "Camera / CCTV"
+msgstr "摄像头 / 监控"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Car"
+msgstr "汽车"
+
+msgid "Clients"
+msgstr "客户端"
+
+msgid "Channel %s"
+msgstr "信道 %s"
+
+msgid "Collapse menu"
+msgstr "折叠菜单"
+
+msgid "Collapse navigation by default"
+msgstr "默认折叠导航栏"
+
+msgid "Collecting data…"
+msgstr "正在收集数据…"
+
+msgid "Computer"
+msgstr "电脑"
+
+msgid "Configure the appearance of the UniWRT Portal theme. Changes apply after saving and reloading the page."
+msgstr "配置 UniWRT Portal 主题外观。保存并重新加载页面后生效。"
+
+msgid "Connected for"
+msgstr "已连接时长"
+
+msgid "Connected via"
+msgstr "连接方式"
+
+msgid "Could not save: %s"
+msgstr "无法保存：%s"
+
+msgid "core"
+msgstr "核"
+
+msgid "cores"
+msgstr "核"
+
+msgid "DHCP & DNS"
+msgstr "DHCP 与 DNS"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "Dashboard & Status"
+msgstr "仪表盘与状态"
+
+msgid "Detected as"
+msgstr "识别为"
+
+msgid "Device icon"
+msgstr "设备图标"
+
+msgid "Disk (root)"
+msgstr "磁盘（根分区）"
+
+msgid "Dismiss"
+msgstr "关闭"
+
+msgid "Download"
+msgstr "下载"
+
+msgid "Errors"
+msgstr "错误"
+
+msgid "Expand all menu sections"
+msgstr "展开所有菜单分组"
+
+msgid "Expand menu"
+msgstr "展开菜单"
+
+msgid "Expecting a colour in #RRGGBB format"
+msgstr "颜色格式应为 #RRGGBB"
+
+msgid "Extra large (18px)"
+msgstr "特大（18px）"
+
+msgid "Find device IP addresses on access points"
+msgstr "在接入点上查找设备 IP 地址"
+
+msgid "Firewall"
+msgstr "防火墙"
+
+msgid "Game console"
+msgstr "游戏主机"
+
+msgid "Go to password configuration..."
+msgstr "前往密码设置…"
+
+msgid "Grant access to UniWRT theme settings, overview widgets and network map"
+msgstr "允许访问 UniWRT 主题设置、概览组件和网络地图"
+
+msgid "How often the map asks the router for new data while it is open. Longer intervals mean less work for low-end routers; nothing is polled while the map is closed or the browser tab is hidden."
+msgstr "网络地图打开时向路由器请求数据的间隔。间隔越长，对低性能路由器的负担越小；关闭地图或浏览器标签页隐藏时不会轮询。"
+
+msgid "IP from main router"
+msgstr "IP 来自主路由器"
+
+msgid "IPv4"
+msgstr "IPv4"
+
+msgid "IPv6"
+msgstr "IPv6"
+
+msgid "Icon"
+msgstr "图标"
+
+msgid "Idle"
+msgstr "空闲"
+
+msgid "Interfaces"
+msgstr "网络接口"
+
+msgid "Internet"
+msgstr "互联网"
+
+msgid "Internet %s"
+msgstr "互联网 %s"
+
+msgid "Invalid username and/or password! Please try again."
+msgstr "用户名或密码错误！请重试。"
+
+msgid "JavaScript required!"
+msgstr "需要启用 JavaScript！"
+
+msgid "LAN"
+msgstr "局域网"
+
+msgid "Laptop"
+msgstr "笔记本电脑"
+
+msgid "Large (16px)"
+msgstr "大（16px）"
+
+msgid "Last 24 h"
+msgstr "最近 24 小时"
+
+msgid "Light"
+msgstr "浅色"
+
+msgid "Link rate"
+msgstr "连接速率"
+
+msgid "Live Throughput"
+msgstr "实时吞吐量"
+
+msgid "Live header status bar"
+msgstr "顶部实时状态栏"
+
+msgid "Live overview of this device. Figures refresh automatically."
+msgstr "本设备实时概览。数据会自动刷新。"
+
+msgid "Live view of the devices connected to this router. Tap a device to see details or change its icon."
+msgstr "查看连接到此路由器的设备。点击设备可查看详情或更改图标。"
+
+msgid "Load average"
+msgstr "平均负载"
+
+msgid "Loading…"
+msgstr "正在加载…"
+
+msgid "Log in"
+msgstr "登录"
+
+msgid "Login"
+msgstr "登录"
+
+msgid "Logout"
+msgstr "退出登录"
+
+msgid "MAC"
+msgstr "MAC 地址"
+
+msgid "Main router"
+msgstr "主路由器"
+
+msgid "Measuring…"
+msgstr "正在测量…"
+
+msgid "Memory"
+msgstr "内存"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Network Interfaces"
+msgstr "网络接口"
+
+msgid "Network Map"
+msgstr "网络地图"
+
+msgid "No IP address"
+msgstr "没有 IP 地址"
+
+msgid "No devices"
+msgstr "没有设备"
+
+msgid "No interfaces"
+msgstr "没有网络接口"
+
+msgid "No known clients"
+msgstr "没有已知客户端"
+
+msgid "No password set!"
+msgstr "尚未设置密码！"
+
+msgid "No wireless radios"
+msgstr "没有无线设备"
+
+msgid "Normal (14px)"
+msgstr "标准（14px）"
+
+msgid "Offline"
+msgstr "离线"
+
+msgid "OpenWrt’s notes on upgrading packages"
+msgstr "OpenWrt 软件包升级说明"
+
+msgid "Other"
+msgstr "其他"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Peak"
+msgstr "峰值"
+
+msgid "Phone"
+msgstr "手机"
+
+msgid "Primary colour for links, active items and buttons in dark mode."
+msgstr "深色模式下链接、选中项和按钮的主色。"
+
+msgid "Primary colour for links, active items and buttons in light mode."
+msgstr "浅色模式下链接、选中项和按钮的主色。"
+
+msgid "Printer"
+msgstr "打印机"
+
+msgid "Quick Actions"
+msgstr "快捷操作"
+
+msgid "RAM (tmp)"
+msgstr "内存（tmp）"
+
+msgid "Reboot"
+msgstr "重启"
+
+msgid "Refresh interval"
+msgstr "刷新间隔"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "Run <em>Update lists…</em> first so the newest versions are known. Upgrading many packages at once can take a few minutes; keep this page open until it finishes. Installing a new firmware image (for example with Attended Sysupgrade) is still the most reliable way to update the whole system."
+msgstr "请先运行<em>更新列表…</em>以获取最新版本信息。一次升级多个软件包可能需要几分钟，请保持此页面打开直至完成。安装新的固件镜像（例如使用 Attended Sysupgrade）仍是更新整个系统最可靠的方式。"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Scales all text in the interface."
+msgstr "调整界面中所有文字的大小。"
+
+msgid "Server / NAS"
+msgstr "服务器 / NAS"
+
+msgid "Show CPU, memory, throughput and uptime chips in the header. Disable to reduce polling on low-end devices."
+msgstr "在顶部显示 CPU、内存、吞吐量和运行时间。关闭可减少低性能设备上的轮询。"
+
+msgid "Start with all sections open and toggle each one independently. When disabled, opening a section closes the previous one."
+msgstr "默认展开所有菜单分组，可单独展开或收起每一组。关闭此选项后，展开新分组会自动收起上一个分组。"
+
+msgid "Show moving lines where traffic flows. Runs in your browser only; it does not affect the router."
+msgstr "用流动线条显示流量方向。仅在浏览器中运行，不会影响路由器。"
+
+msgid "Sign in to continue"
+msgstr "登录以继续"
+
+msgid "Signal"
+msgstr "信号"
+
+msgid "Since restart"
+msgstr "自重启以来"
+
+msgid "Skip to main content"
+msgstr "跳转到主内容"
+
+msgid "Small (13px)"
+msgstr "小（13px）"
+
+msgid "Smart device"
+msgstr "智能设备"
+
+msgid "Software"
+msgstr "软件包"
+
+msgid "Speaker"
+msgstr "扬声器"
+
+msgid "Start with the side navigation rail collapsed to icons on desktop."
+msgstr "在桌面设备上默认将侧边导航栏折叠为图标。"
+
+msgid "Storage"
+msgstr "存储"
+
+msgid "Storage info unavailable"
+msgstr "存储信息不可用"
+
+msgid "Swap"
+msgstr "交换空间"
+
+msgid "System"
+msgstr "系统"
+
+msgid "System Log"
+msgstr "系统日志"
+
+msgid "TV / Streamer"
+msgstr "电视 / 播放设备"
+
+msgid "Tablet"
+msgstr "平板电脑"
+
+msgid "The Network Map is part of the UniWRT theme. Switch to UniWRT under System → System → Language and Style to use it."
+msgstr "网络地图是 UniWRT 主题的一部分。请在“系统 → 系统 → 语言和界面”中切换到 UniWRT 主题后使用。"
+
+msgid "Theme mode"
+msgstr "主题模式"
+
+msgid "There is no password set on this router. Please configure a root password to protect the web interface."
+msgstr "此路由器尚未设置密码。请设置 root 密码以保护 Web 管理界面。"
+
+msgid "This router is working as an access point behind your main router"
+msgstr "此路由器正在主路由器后作为接入点运行"
+
+msgid "This upgrades all %d packages listed under Updates, using <em>apk upgrade</em>."
+msgstr "使用 <em>apk upgrade</em> 升级“更新”列表中的全部 %d 个软件包。"
+
+msgid "This upgrades every installed package that has a newer version, using <em>apk upgrade</em>."
+msgstr "使用 <em>apk upgrade</em> 升级所有存在新版本的已安装软件包。"
+
+msgid "Toggle menu"
+msgstr "切换菜单"
+
+msgid "Toggle theme"
+msgstr "切换主题"
+
+msgid "Traffic now"
+msgstr "当前流量"
+
+msgid "Unable to run <em>apk upgrade</em>: %s"
+msgstr "无法运行 <em>apk upgrade</em>：%s"
+
+msgid "UniWRT Overview page"
+msgstr "UniWRT 概览页面"
+
+msgid "UniWRT Theme"
+msgstr "UniWRT 主题"
+
+msgid "Upgrade all"
+msgstr "全部升级"
+
+msgid "Upgrade all (%d)…"
+msgstr "全部升级（%d）…"
+
+msgid "Upgrade all packages"
+msgstr "升级所有软件包"
+
+msgid "Upgrade all…"
+msgstr "全部升级…"
+
+msgid "Upgrading all packages"
+msgstr "正在升级所有软件包"
+
+msgid "Uplink"
+msgstr "上行链路"
+
+msgid "Uplink %s"
+msgstr "上行链路 %s"
+
+msgid "Upload"
+msgstr "上传"
+
+msgid "Uptime"
+msgstr "运行时间"
+
+msgid "Username"
+msgstr "用户名"
+
+msgid "Waiting for <em>apk upgrade</em> to complete…"
+msgstr "正在等待 <em>apk upgrade</em> 完成…"
+
+msgid "Waiting for WAN device…"
+msgstr "正在等待 WAN 设备…"
+
+msgid "Watch"
+msgstr "手表"
+
+msgid "When this router is an access point behind a main router, it does not hand out IP addresses and so does not know them. While the map is open, the router briefly pings each address of its LAN every 5 minutes (at most 16 at a time) to learn them. Has no effect on a main router."
+msgstr "当此路由器作为主路由器后的接入点时，它不会分配 IP 地址，因此也无法直接获知这些地址。打开网络地图时，路由器每 5 分钟会短暂 ping 一次局域网中的地址（同时最多 16 个），以发现设备 IP。此设置不会影响主路由器。"
+
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+msgid "Wi-Fi device"
+msgstr "无线设备"
+
+msgid "Wired devices can’t be listed here: this firmware does not let the map read the LAN bridge’s port table."
+msgstr "无法在此列出有线设备：当前固件不允许网络地图读取 LAN 网桥端口表。"
+
+msgid "Wireless"
+msgstr "无线网络"
+
+msgid "You must enable JavaScript in your browser or LuCI will not work properly."
+msgstr "必须在浏览器中启用 JavaScript，否则 LuCI 无法正常工作。"
+
+msgid "active"
+msgstr "活动"
+
+msgid "device fingerprint"
+msgstr "设备指纹"
+
+msgid "device name “%s”"
+msgstr "设备名称“%s”"
+
+msgid "hardware maker"
+msgstr "硬件制造商"
+
+msgid "idle"
+msgstr "空闲"
+
+msgid "no link"
+msgstr "未连接"
+
+msgid "port %s"
+msgstr "端口 %s"
+
+msgid "private Wi-Fi address (typical of phones)"
+msgstr "私有 Wi-Fi 地址（常见于手机）"
+
+msgid "private address"
+msgstr "私有地址"
+
+msgid "shown per port for wired devices"
+msgstr "有线设备按端口显示"
+
+msgid "uplink to main router"
+msgstr "上联至主路由器"
+
+msgid "via %s"
+msgstr "经由 %s"
+
+msgid "wired device"
+msgstr "有线设备"
+
+msgid "%d device"
+msgid_plural "%d devices"
+msgstr[0] "%d 台设备"
+
+msgid "\"Auto\" follows your operating system's light/dark preference. The header toggle can override this per-browser."
+msgstr "“自动”会跟随操作系统的浅色或深色设置。你也可以用页面顶部的按钮单独切换当前浏览器的主题。"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Disconnected"
+msgstr "已断开"
+
+msgid "Last %d h"
+msgstr "最近 %d 小时"
+
+msgid "Measured over the last %s hours"
+msgstr "根据最近 %s 小时的数据统计"
+
+msgid "+%d more · %d total"
+msgstr "另有 %d 台，共 %d 台"
+
+msgid "%dd"
+msgstr "%d天"
+
+msgid "%dh"
+msgstr "%d小时"
+
+msgid "%dm"
+msgstr "%d分钟"
+
+msgid "%dd %dh"
+msgstr "%d天 %d小时"
+
+msgid "%dh %dm"
+msgstr "%d小时 %d分钟"
+
+msgid "CPU: %s (load %s, cores: %d)"
+msgstr "CPU：%s（负载 %s，%d 核）"
+
+msgid "Memory: %s / %s (%s)"
+msgstr "内存：%s / %s（%s）"
+
+msgid "Uptime: %s"
+msgstr "运行时间：%s"
+
+msgid "Throughput"
+msgstr "吞吐量"
+
+msgid "Memory Usage"
+msgstr "内存使用率"
+
+msgid "Show every section of the side menu opened up, instead of only the section of the current page. Sections can still be folded by clicking them."
+msgstr "展开侧栏菜单中的所有分组，而非仅展开当前页面所在的分组。仍可通过点击折叠分组。"

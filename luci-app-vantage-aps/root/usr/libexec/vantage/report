@@ -302,9 +302,10 @@ let self = lan ? norm_mac(trim(readfile(NET + '/' + lan + '/address', 64) ?? '')
 // the uplinks: the ports the gateway and the router are heard on. This
 // device knows them in its own network only; on a wire that carries other
 // VLANs too, each is a port of its own (eth0.3 beside eth0.1) in a bridge
-// of its own, and what is heard there is as far upstream. A bridge that
-// hears them itself has its uplink where it does: two VLANs of one device
-// in one bridge are two wires (a switch's WAN port joined to its LAN)
+// of its own, and what is heard there is as far upstream, on the device
+// below the VLANs too. A bridge that hears them itself has its uplink
+// where it does: two VLANs of one device in one bridge are two wires (a
+// switch's WAN port joined to its LAN)
 let client = split(getenv('SSH_CLIENT') ?? '', ' ')[0];
 let neigh = neighbours(), towards = {};
 

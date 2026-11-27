@@ -15,7 +15,7 @@ PKG_NAME:=luci-theme-uniwrt
 PKG_VERSION:=$(shell cat $(CURDIR)/ucode/template/themes/uniwrt/version | tr -d '[:space:]')
 # CI may pass THEME_RELEASE (e.g. the run number) for unique nightly builds;
 # falls back to 1 for normal/local builds.
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=ox1d3x3 <https://github.com/ox1d3x3>
 

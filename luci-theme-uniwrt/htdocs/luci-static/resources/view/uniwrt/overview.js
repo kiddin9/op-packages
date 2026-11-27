@@ -32,9 +32,9 @@ function fmtUptime(s) {
 	if (!s) return '–';
 	var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
 	var p = [];
-	if (d) p.push(d + 'd');
-	if (h) p.push(h + 'h');
-	p.push(m + 'm');
+	if (d) p.push(_('%dd').format(d));
+	if (h) p.push(_('%dh').format(h));
+	p.push(_('%dm').format(m));
 	return p.join(' ');
 }
 function level(pct) { return pct < 60 ? 'ok' : pct < 85 ? 'warn' : 'crit'; }
@@ -245,8 +245,8 @@ return view.extend({
 			E('div', { 'class': 'u-tp-stats' }, [
 				E('div', { 'class': 'u-tp-row u-tp-headrow' }, [
 					E('span', { 'class': 'u-tp-label' }, [ '' ]),
-					E('span', { 'class': 'u-tp-down' }, [ '\u2193 ' + _('Down') ]),
-					E('span', { 'class': 'u-tp-up' }, [ '\u2191 ' + _('Up') ])
+					E('span', { 'class': 'u-tp-down' }, [ '\u2193 ' + _('Download') ]),
+					E('span', { 'class': 'u-tp-up' }, [ '\u2191 ' + _('Upload') ])
 				]),
 				tpRow(_('Peak'),          'u-ov-peak-rx', 'u-ov-peak-tx'),
 				tpRow(_('Last 24 h'),     'u-ov-24h-rx',  'u-ov-24h-tx'),
@@ -355,7 +355,7 @@ return view.extend({
 			$('u-ov-cpu').textContent = pct.toFixed(0) + '%';
 			var meter = $('u-ov-cpu-meter');
 			if (meter) { meter.className = 'u-meter ' + level(pct); setMeter(meter, pct); }
-			$('u-ov-cpu-sub').textContent = _('Load average') + ': ' + load1.toFixed(2) + ' (' + cores + (cores === 1 ? ' core)' : ' cores)');
+			$('u-ov-cpu-sub').textContent = _('Load average') + ': ' + load1.toFixed(2) + ' (' + cores + ' ' + (cores === 1 ? _('core') : _('cores')) + ')';
 		}
 		if (info.memory && info.memory.total && $('u-ov-ram')) {
 			var total = info.memory.total, avail = info.memory.available || info.memory.free, used = total - avail;
@@ -480,9 +480,9 @@ return view.extend({
 		if (row24) {
 			var lbl = row24.querySelector('.u-tp-label');
 			if (lbl) lbl.textContent = (winH >= 23.5) ? _('Last 24 h')
-				: (winH >= 1) ? _('Last') + ' ' + Math.round(winH) + ' h'
+				: (winH >= 1) ? _('Last %d h').format(Math.round(winH))
 				: _('Last 24 h');
-			row24.title = base ? _('Measured over the last') + ' ' + winH.toFixed(1) + ' h of history' : '';
+			row24.title = base ? _('Measured over the last %s hours').format(winH.toFixed(1)) : '';
 		}
 
 		if (subEl) subEl.textContent = (this._wanName || dev) + (dev !== this._wanName ? ' \u00b7 ' + dev : '');
@@ -499,7 +499,7 @@ return view.extend({
 			if (!addr && iface['ipv6-address'] && iface['ipv6-address'][0]) addr = iface['ipv6-address'][0].address;
 			rows.push(E('div', { 'class': 'u-kv' }, [
 				E('span', { 'class': 'k' }, [ E('span', { 'class': 'u-dot ' + (up ? 'up' : 'down') }), iface.interface ]),
-				E('span', { 'class': 'v' }, [ addr || (up ? _('up') : _('down')) ])
+				E('span', { 'class': 'v' }, [ addr || (up ? _('Connected') : _('Disconnected')) ])
 			]));
 		});
 		box.innerHTML = '';
@@ -593,7 +593,7 @@ return view.extend({
 				]));
 			});
 			if (list.length > shown.length)
-				box.appendChild(E('div', { 'class': 'u-card-sub', 'style': 'margin-top:8px' }, [ '+' + (list.length - shown.length) + ' ' + _('more') + ' · ' + list.length + ' ' + _('total') ]));
+				box.appendChild(E('div', { 'class': 'u-card-sub', 'style': 'margin-top:8px' }, [ _('+%d more · %d total').format(list.length - shown.length, list.length) ]));
 		});
 	},
 
@@ -610,7 +610,7 @@ return view.extend({
 				/* netifd reports 'up' per radio, not per network: a network is up
 				   when its radio is and it got an interface */
 				var up = ('up' in i) ? !!i.up : (!!radio.up && !!i.ifname && !radio.disabled && cfg.disabled != '1' && cfg.disabled !== true);
-				var meta = (iw.channel ? ('ch ' + iw.channel) : '') + (iw.signal ? ('  ' + iw.signal + ' dBm') : '');
+				var meta = (iw.channel ? (_('Channel %s').format(iw.channel)) : '') + (iw.signal ? ('  ' + iw.signal + ' dBm') : '');
 				rows.push(E('div', { 'class': 'u-kv' }, [
 					E('span', { 'class': 'k' }, [ E('span', { 'class': 'u-dot ' + (up ? 'up' : 'down') }), ssid ]),
 					E('span', { 'class': 'v' }, [ meta || dev ])

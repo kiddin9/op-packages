@@ -139,7 +139,7 @@ function fmtRate(bps) {
 function fmtDur(s) {
 	if (!s && s !== 0) return '–';
 	var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
-	return (d ? d + 'd ' : '') + (d || h ? h + 'h ' : '') + m + 'm';
+	return (d ? _('%dd').format(d) + ' ' : '') + (d || h ? _('%dh').format(h) + ' ' : '') + _('%dm').format(m);
 }
 function bars(dbm) { return dbm >= -55 ? 4 : dbm >= -65 ? 3 : dbm >= -75 ? 2 : 1; }
 function bandName(radio) {
