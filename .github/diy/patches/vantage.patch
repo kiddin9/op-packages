@@ -67,10 +67,15 @@
 
 --- a/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
 +++ b/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
-@@ -568,6 +568,15 @@ html[data-darkmode="true"] .vt-app {
- 	display: flex; align-items: center; gap: 14px;
- 	margin: 2px 0 var(--vt-sp-4);
- }
+@@ -572,10 +572,18 @@ html[data-darkmode="true"] .vt-app {
+    details' banner above the head, as high as its close button, which
+    goes to the end. The text is the link, as high as the line for a
+    finger, and wraps where a phone has no room for it in one line */
+-.vt-app .vt-banner.vt-news { margin: 0 0 var(--vt-sp-4); padding: 0 0 0 10px; }
++.vt-app .vt-banner.vt-news { margin: 0 0 var(--vt-sp-4); padding: 0 0 0 10px; display:none; }
+ .vt-app .vt-news .vt-link { align-self: stretch; min-width: 0; padding: 4px 0; white-space: normal; }
+ .vt-app .vt-news .vt-icon-action { margin-left: auto; }
+-
 +header::after {
 +	height:0 !important;	
 +}
@@ -80,9 +85,9 @@
 +header.bg-primary {
 +    background:none !important;
 +}
- .vt-app .vt-orb {
- 	position: relative; flex: none;
- 	width: 38px; height: 38px; border-radius: 50%;
+ .vt-app .vt-head {
+ 	display: flex; align-items: center; gap: 14px;
+ 	margin: 2px 0 var(--vt-sp-4);
 
 --- a/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
 +++ b/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
@@ -125,12 +130,13 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
-@@ -635,7 +635,7 @@ a.vt-crumb:hover { color: var(--text); }
+@@ -635,7 +635,8 @@ a.vt-crumb:hover { color: var(--text); }
  .vt-appear-note[hidden] { display: none; }
  /* the daily check's line of help, under its options */
  .vt-appear-set > .vt-appear-note { margin-top: 6px; }
 -.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); }
 +.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); display:none; }
++fieldset[aria-describedby="vt-update-help"] {display:none; }
  .vt-appear-num { font-family: var(--mono); }
  .vt-appear-check { margin: 0; padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
  .vt-appear-check[aria-disabled="true"] { color: var(--text-3); cursor: default; text-decoration: none; }
