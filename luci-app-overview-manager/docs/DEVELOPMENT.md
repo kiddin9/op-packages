@@ -8,8 +8,8 @@
 
 ## Building
 
-The IPK is written to `dist/`. The APK is built with the official OpenWrt 25.12
-SDK:
+The package supports OpenWrt 25.12 only and is built as an APK with the
+official OpenWrt 25.12 SDK:
 
 ```sh
 OPENWRT_SDK_DIR=/path/to/openwrt-sdk-25.12.x-target \

@@ -1,0 +1,8 @@
+# /etc/daeuniverse/dae/config.d/group.dae
+group {
+    proxy {
+        # 添加订阅后可改用：filter: subtag(sub) && !name(keyword: 'ExpireAt:')
+        filter: name(node1)
+        policy: min_moving_avg
+    }
+}

@@ -13,7 +13,7 @@ msgstr ""
 msgid "%d min ago"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:184
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:195
 msgid "%d routers can already read this access point. Revoke one first."
 msgstr ""
 
@@ -21,11 +21,11 @@ msgstr ""
 msgid "%d s ago"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:689
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:717
 msgid "%s will no longer be able to read this access point, from its next fetch on."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:490
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:513
 msgid "%s will no longer show on this dashboard. Its access point keeps this router's key until you revoke it there."
 msgstr ""
 
@@ -33,79 +33,83 @@ msgstr ""
 msgid "%s, SSH port %d"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:643
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:171
+msgid "A Dropbear listener on this device runs a command of its own for every login (ForceCommand in /etc/config/dropbear). The routers below are still let in, and through that listener their keys run that command as root instead of the report. Remove the command, or revoke the routers."
+msgstr ""
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:669
 msgid "A router you let in can fetch this device's report (its Wi-Fi networks, clients and wired hosts) over SSH, and nothing else."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:626
 msgid "Access point %s, SSH port %d."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:626
 msgid "Access point %s."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:350
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:368
 #: luci-app-vantage-aps/root/usr/share/luci/menu.d/luci-app-vantage-aps.json:3
 msgid "Access points"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:418
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:441
 msgid "Access points on this dashboard"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:539
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:562
 msgid "Add access point"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:416
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:540
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:439
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:563
 msgid "Add an access point"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:537
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:560
 msgid "Address of the access point"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:424
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:447
 msgid "An access point's SSH must be on and reachable from this device; this page cannot pair one that is not."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:522
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:555
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:709
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:545
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:578
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:737
 msgid "Cancel"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:547
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:570
 msgid "Check the address"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:170
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:181
 msgid "Check the reply and the address: the address must be an IPv4 or IPv6 address, without a port."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:288
 msgid "Copied"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:391
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:414
 msgid "Copy"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:705
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:733
 msgid "Copy this access point's reply"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:542
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:565
 msgid "Copy this router's code"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:326
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:344
 msgid "Could not read the pairing state. Reload the page; if that does not help, reinstall luci-app-vantage-aps."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:711
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:739
 msgid "Done"
 msgstr ""
 
@@ -125,11 +129,11 @@ msgstr ""
 msgid "Dropbear, the SSH server, is not running, so pairing is off. Start it under System → Startup."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:639
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
 msgid "For a router you already let in: paste it there, under Add an access point."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:571
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:594
 msgid "Getting this router's code…"
 msgstr ""
 
@@ -153,116 +157,116 @@ msgstr ""
 msgid "It sent a report this router cannot read. Update Vantage on it."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:681
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:709
 msgid "Its SSH key"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:634
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:712
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:660
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:740
 msgid "Let a router read this access point"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:702
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:730
 msgid "Let the router read"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:445
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:468
 msgid "No access points yet. Add one to see its clients on this dashboard."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:253
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:262
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:270
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:279
 msgid "No live state"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:693
 msgid "No router can read this access point."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:693
 msgid "Not known while this device's SSH keys cannot be read."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:444
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:467
 msgid "Not known while this router's list of access points (/etc/vantage/aps.json) cannot be read."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:260
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:277
 msgid "Not reporting"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:275
 msgid "Offline"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:275
 msgid "Offline, last report %s"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:544
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:567
 msgid "On the access point, open Network → Access points and paste it under “Let a router read this access point”."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:351
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:369
 msgid "Pair access points with a router so its dashboard shows their Wi-Fi and wired clients. Both need Vantage; nothing is shared until a code is pasted on each."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:415
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:438
 msgid "Paired access points"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:706
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:734
 msgid "Paste it on the router, in the form that showed its code."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:546
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:569
 msgid "Paste the access point's reply"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:713
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:741
 msgid "Paste the router's code"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:475
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:491
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:498
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:514
 msgid "Remove"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:474
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:497
 msgid "Remove %s"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:489
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:512
 msgid "Remove access point"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:273
 msgid "Reporting"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:273
 msgid "Reporting, %s"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:677
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:690
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:705
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:718
 msgid "Revoke"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:676
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:704
 msgid "Revoke %s"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:688
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:716
 msgid "Revoke router"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:745
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:773
 msgid "Router %s."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:633
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:642
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:659
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:670
 msgid "Routers that can read this access point"
 msgstr ""
 
@@ -270,85 +274,93 @@ msgstr ""
 msgid "SSH on this device is not ready for pairing."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:288
 msgid "Select and copy it"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:638
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:664
 msgid "Show this access point's reply again"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:183
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:194
 msgid "That is not a router's code. Copy the whole line from the router, starting with vantage-router."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:171
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:182
 msgid "That is not an access point's reply. Copy the whole line from the access point, starting with vantage-ap."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:172
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:183
 msgid "That is this device's own reply. Paste the reply of the access point you want to add."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:177
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:188
 msgid "The access point could not be added."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:534
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:218
+msgid "The access point is removed, but this device could not shut down the service that read it. Try again."
+msgstr ""
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:178
+msgid "The access point is saved, but this device could not set up the service that reads it. Try again."
+msgstr ""
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:557
 msgid "The access point's reply"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:199
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:206
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:210
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:221
 msgid "The device did not do it. Reload the page and try again."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:472
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:495
 msgid "The network it was paired on: this router looks for it there when its address changes"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:211
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:226
 msgid "The request failed: %s"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:187
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:198
 msgid "The router could not be let in."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:700
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:728
 msgid "The router shows it under Network → Access points → Add an access point."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:698
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:726
 msgid "The router's code"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:173
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:184
 msgid "This access point is already on this dashboard."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:636
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:703
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:662
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:731
 msgid "This access point's reply"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:174
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:185
 msgid "This dashboard already reads %d access points. Remove one first."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:198
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:209
 msgid "This device could not make its SSH key. Try again."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:176
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:187
 msgid "This device could not save the access point. Try again."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:205
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:220
 msgid "This device could not save the change. Try again."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:186
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:197
 msgid "This device could not update its SSH keys. Try again."
 msgstr ""
 
@@ -356,11 +368,11 @@ msgstr ""
 msgid "This device has no IPv4 address on its lan interface for a router to reach it at, so pairing is off."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:192
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:203
 msgid "This device has no SSH client (dbclient), so it cannot read access points."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:419
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:442
 msgid "This device reads each access point over SSH and shows it on its dashboard."
 msgstr ""
 
@@ -372,15 +384,15 @@ msgstr ""
 msgid "This device's SSH keys (/etc/dropbear/authorized_keys) cannot be read, or are larger than 256 KiB. Which routers can read this device is not known, so pairing is off."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:605
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:628
 msgid "This does not look like an access point's reply yet."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:604
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:627
 msgid "This is a router's code: paste it on the access point instead."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:744
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:772
 msgid "This is an access point's reply: paste it on the router instead."
 msgstr ""
 
@@ -388,15 +400,15 @@ msgstr ""
 msgid "This router cannot connect to it. Check that it is on and that its SSH port is reachable from here."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:175
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:186
 msgid "This router has no key yet. Close this form and open it again to make one."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:531
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:554
 msgid "This router's code"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:185
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:196
 msgid "This router's key is already in this device's SSH keys, added by hand. Remove it under System → Administration → SSH-Keys first."
 msgstr ""
 
@@ -412,14 +424,14 @@ msgstr ""
 msgid "Vantage's access point add-on is not installed on it. Install luci-app-vantage-aps there again."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:257
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:274
 msgid "Waiting for its first report"
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:549
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:572
 msgid "Where this router reaches it. Change it only if the access point's own address is not reachable from here."
 msgstr ""
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:473
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:496
 msgid "network %s"
 msgstr ""

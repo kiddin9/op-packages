@@ -1175,6 +1175,31 @@ EOF
 			break
 		}
 	done
+	# 手动补段（IP_SPLIT / IP_LIST_DIR，0.5.0）：这是"只在做 IP 分流"的另一种形态。
+	# 旧判据只看 DOMAIN_SPLIT，等于把"用户补了 PCDN 家宽段"当成"什么都没配"，
+	# 结论虽然仍是 ok，但理由错了——有手动段时不能再判"无需片段"，要给一条
+	# 建立在"确实在用 IP 分流"之上的判定（DNS_FRAGMENT_IP_SPLIT_ONLY，verdict 仍
+	# 是 ok：IP 分流本来就不依赖 dnsmasq 片段，判 conflict 就是新增误报）。
+	_l_ipseg=0
+	if [ -n "${IP_SPLIT:-}" ]; then
+		_l_ipseg=$(printf '%s\n' "${IP_SPLIT:-}" |
+			awk 'NF && $0 !~ /^[[:space:]]*#/ && index($0, ":") > 0' | wc -l | tr -d ' ')
+	fi
+	case "${_l_ipseg:-}" in '' | *[!0-9]*) _l_ipseg=0 ;; esac
+	_l_ipcfg=0
+	[ "$_l_ipseg" -gt 0 ] && _l_ipcfg=1
+	_l_ipdir=${IP_LIST_DIR:-}
+	if [ -n "${_l_ipdir:-}" ]; then
+		for _l_ipf in "$_l_ipdir"/*.txt; do
+			[ -f "$_l_ipf" ] && {
+				_l_ipcfg=1
+				_l_ipn=$(grep -c . "$_l_ipf" 2>/dev/null || echo 0)
+				case "${_l_ipn:-}" in '' | *[!0-9]*) _l_ipn=0 ;; esac
+				_l_ipseg=$((_l_ipseg + _l_ipn))
+				break
+			}
+		done
+	fi
 	_l_fexists=0
 	_l_fmtime=""
 	_l_fserver=0
@@ -1194,7 +1219,7 @@ EOF
 		grep -c 'comment "isp-split-dns"' 2>/dev/null) || true
 		case "${_l_dnsrules:-}" in '' | *[!0-9]*) _l_dnsrules=0 ;; esac
 
-	DOC_C1_FACTS="\"mode\":$(_doc_jstr "${DNS_MODE:-unknown}"),\"listeners\":[$_l_listeners],\"hijack_rules\":[$_l_hijack_json],\"dnsmasq_instances\":$_l_inst,\"confdir\":{\"source\":$(_doc_jstr "${DOC_P3_SOURCE:-unknown}"),\"detail\":$(_doc_jstr "${DOC_P3_DETAIL:-}"),\"dirs\":$(_doc_jstr "${DOC_P3_DIRS:-}"),\"loaded_by_running_pid\":[$_l_loaded]},\"domain_split_configured\":$(_doc_jbool "$_l_domcfg"),\"fragment\":{\"path\":$(_doc_jstr "$_l_frag"),\"exists\":$(_doc_jbool "$_l_fexists"),\"mtime\":$(_doc_jstr "$_l_fmtime"),\"server_lines\":$_l_fserver,\"stale\":$(_doc_jbool "$_l_stale")},\"nft_dns_rules\":{\"chain\":\"inet mwan3 mwan3_output\",\"comment\":\"isp-split-dns\",\"count\":${_l_dnsrules:-0}}"
+	DOC_C1_FACTS="\"mode\":$(_doc_jstr "${DNS_MODE:-unknown}"),\"listeners\":[$_l_listeners],\"hijack_rules\":[$_l_hijack_json],\"dnsmasq_instances\":$_l_inst,\"confdir\":{\"source\":$(_doc_jstr "${DOC_P3_SOURCE:-unknown}"),\"detail\":$(_doc_jstr "${DOC_P3_DETAIL:-}"),\"dirs\":$(_doc_jstr "${DOC_P3_DIRS:-}"),\"loaded_by_running_pid\":[$_l_loaded]},\"domain_split_configured\":$(_doc_jbool "$_l_domcfg"),\"ip_split_configured\":$(_doc_jbool "$_l_ipcfg"),\"ip_split_segments\":${_l_ipseg:-0},\"fragment\":{\"path\":$(_doc_jstr "$_l_frag"),\"exists\":$(_doc_jbool "$_l_fexists"),\"mtime\":$(_doc_jstr "$_l_fmtime"),\"server_lines\":$_l_fserver,\"stale\":$(_doc_jbool "$_l_stale")},\"nft_dns_rules\":{\"chain\":\"inet mwan3 mwan3_output\",\"comment\":\"isp-split-dns\",\"count\":${_l_dnsrules:-0}}"
 
 	_l_find=""
 	_doc_find() { # <code> <verdict> <detail> <evidence>
@@ -1221,6 +1246,11 @@ EOF
 			DOC_C1_VERDICT=warn
 			_doc_find "DNS_FRAGMENT_STALE" warn "片段比最新数据旧（sh -x：数据已更新但片段没重写）" "mtime(${_l_fmtime:-0}) < stamp"
 		}
+	elif [ "$_l_dnsq" = "1" ] && [ "$_l_fexists" = "0" ] && [ "$_l_domcfg" = "0" ] && [ "$_l_ipcfg" = "1" ]; then
+		# 只配了 IP 分流（含手动补段）：片段同样不需要，但结论必须写出"看到了
+		# 手动补段"，不能靠 DOMAIN_SPLIT 为空推断成"什么都没配"。
+		DOC_C1_VERDICT=ok
+		_doc_find "DNS_FRAGMENT_IP_SPLIT_ONLY" ok "只配置了 IP 分流（含手动补段），dnsmasq 片段本来就不需要" "IP_SPLIT/IP_LIST_DIR 有 ${_l_ipseg} 条手动段；DOMAIN_SPLIT 为空"
 	elif [ "$_l_dnsq" = "1" ] && [ "$_l_fexists" = "0" ] && [ "$_l_domcfg" = "0" ]; then
 		# 没有域名分流配置：片段本来就不该存在，DNS_TABLE 的 nft 旁路与它无关
 		DOC_C1_VERDICT=ok
@@ -1247,6 +1277,7 @@ EOF
 	# 建议按"根因 code"给：还没生成片段 ≠ 被别人接管，两者的下一步完全不同。
 	_l_code=""
 	case "$_l_find" in
+	*'"code":"DNS_FRAGMENT_IP_SPLIT_ONLY"'*) _l_code=DNS_FRAGMENT_IP_SPLIT_ONLY ;;
 	*'"code":"DNS_FRAGMENT_NOT_NEEDED"'*) _l_code=DNS_FRAGMENT_NOT_NEEDED ;;
 	*'"code":"DNS_FRAGMENT_ORPHAN"'*) _l_code=DNS_FRAGMENT_ORPHAN ;;
 	*'"code":"DNS_BYPASS_DEAD"'*) _l_code=DNS_BYPASS_DEAD ;;
@@ -1258,6 +1289,8 @@ EOF
 	case "$_l_code" in
 	DNS_FRAGMENT_NOT_NEEDED)
 		DOC_C1_ADVICE="只用 IP 分流，不需要 dnsmasq 片段；DNS_TABLE 的按目标 IP 旁路仍在 nft 里生效。" ;;
+	DNS_FRAGMENT_IP_SPLIT_ONLY)
+		DOC_C1_ADVICE="当前是 IP 分流模式（含手动补段）：dnsmasq 片段不需要；要域名也按线解析，再配 DOMAIN_SPLIT 并跑 isp-split dns。" ;;
 	DNS_FRAGMENT_ORPHAN)
 		DOC_C1_ADVICE="dnsmasq 已在跑但还没有分线片段：先 isp-split dns 生成片段；若解析器不是 dnsmasq，就把 DNS_MODE 改成 mark。" ;;
 	DNS_BYPASS_DEAD)

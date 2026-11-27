@@ -1,0 +1,37 @@
+{
+	"luci-app-daeuniverse": {
+		"description": "Grant access for luci-app-daeuniverse",
+		"read": {
+			"ubus": {
+				"luci.daeuniverse": [ "*" ]
+			},
+			"uci": [ "daeuniverse" ],
+			"file": [
+				"/etc/daeuniverse/honk/config.dae",
+				"/etc/daeuniverse/honk/config.d/*",
+				"/etc/daeuniverse/dae/config.dae",
+				"/etc/daeuniverse/dae/api.dae",
+				"/etc/daeuniverse/dae/config.d/*",
+				"/etc/daeuniverse/doona/*",
+				"/etc/daeuniverse/doona-lite/*",
+				"/etc/daeuniverse/zashboard/*"
+			]
+		},
+		"write": {
+			"ubus": {
+				"luci.daeuniverse": [ "*" ]
+			},
+			"uci": [ "daeuniverse" ],
+			"file": [
+				"/etc/daeuniverse/honk/config.dae",
+				"/etc/daeuniverse/honk/config.d/*",
+				"/etc/daeuniverse/dae/config.dae",
+				"/etc/daeuniverse/dae/api.dae",
+				"/etc/daeuniverse/dae/config.d/*",
+				"/etc/daeuniverse/doona/*",
+				"/etc/daeuniverse/doona-lite/*",
+				"/etc/daeuniverse/zashboard/*"
+			]
+		}
+	}
+}

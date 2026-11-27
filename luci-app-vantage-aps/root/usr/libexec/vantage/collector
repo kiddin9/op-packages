@@ -36,7 +36,9 @@
 // a pairing that names none (an earlier version's, or one at an address
 // on no network of this router's) is looked for on the network its
 // pairing address is on now. The address it answers at is kept in memory
-// only: /etc/vantage stays as paired.
+// only: /etc/vantage stays as paired. A pairing that names its network is
+// asked at an address, the kept one too, only while that address is on
+// the named network.
 
 'use strict';
 
@@ -241,21 +243,29 @@ function done(a, s, home, code) {
 function fetch(a) {
 	let s = st[a.id], home = RUN + '/' + a.id, to = s.trying ?? s.addr;
 
-	// The address this pairing was made at is no address of the network
-	// it names any more (that network has another subnet now): whoever
-	// holds it today is not asked. Its MAC is looked for on the named
-	// network at once, as after a fetch that found it gone. A pairing
-	// whose network is gone or down is asked at its own address, like
-	// one that names none.
-	if (!s.trying && a.net && s.addr === a.addr) {
+	// The address to ask (where it was paired, where it answered last
+	// after a move, or one its MAC was found at a moment ago) is no
+	// address of the network its pairing names any more (that network
+	// has another subnet now): whoever holds it today is not asked.
+	// Checked before every connection: a network can be renumbered
+	// twice, and between a search and the fetch it queued. Its MAC is
+	// looked for on the named network at once, as after a fetch that
+	// found it gone. A pairing whose network is gone or down is asked
+	// at its own address, like one that names none.
+	if (a.net) {
 		let ifaces = ubus.call('network.interface', 'dump')?.interface;
 		let net = vaps.network_named(a.net, ifaces);
 
-		if (net && vaps.net_of(a.addr, ifaces) !== a.net) {
+		if (net && vaps.net_of(to, ifaces) !== a.net) {
+			// one that was found and has left the network since: not again
+			if (s.trying)
+				s.tried[s.trying] = true;
+
 			to = vaps.next_addr(a.mac, s.addr, s.tried, readfile(ARP, MAX_TABLE), leases(), net);
 
 			if (!to) {
 				s.error = 'unreachable';
+				s.trying = null;
 				s.hold = s.wait = false;
 				s.started = now();
 				return;

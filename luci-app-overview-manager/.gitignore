@@ -5,7 +5,6 @@ dist/
 # is published; docs/ holds everything that belongs in the repository.
 local/
 *.apk
-*.ipk
 *.key
 *-private.pem
 private-key.pem

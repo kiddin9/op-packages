@@ -190,16 +190,16 @@ rather than the sources, so the checked set cannot drift from what is installed;
 it also runs `busybox ash -n` on each script when a `busybox` binary is present,
 which no pattern list can replace.
 
-Four files reach the router: `CONTROL/postinst`, `CONTROL/prerm`,
-`etc/uci-defaults/luci-app-overview-manager` and `usr/libexec/overview-manager`.
+Two files of the staged tree reach the router, `etc/uci-defaults/luci-app-overview-manager`
+and `usr/libexec/overview-manager`; the package's post-install and pre-removal scripts
+are written in the `Makefile` and are not in the staged tree, so this check does not scan them.
 
 ## Working against a real device
 
 - OpenWrt has no `sftp-server`, so `scp` fails. Stream instead:
   `ssh <host> 'cat > /path' < localfile`.
-- `apk-tools` on the device has no `mkpkg`, and OpenWrt 25.12 cannot install an
-  `.ipk`. Building a package needs the SDK; for a quick check, deploy the payload
-  files and compare checksums.
+- `apk-tools` on the device has no `mkpkg`. Building a package needs the SDK;
+  for a quick check, deploy the payload files and compare checksums.
 - ACL changes need `/etc/init.d/rpcd reload`, which drops active LuCI sessions.
 - Name the package in every transaction. A blanket upgrade is never appropriate
   on a live router; `scripts/check-apk-trust.sh` fails the build if one appears

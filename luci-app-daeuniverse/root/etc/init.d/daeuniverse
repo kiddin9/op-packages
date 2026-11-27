@@ -1,0 +1,208 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=96
+STOP=10
+
+extra_command "hot_reload" "Hot-reload service"
+
+CONF="daeuniverse"
+HOST_IFACE="dae0"
+PEER_IFACE="dae0peer"
+NETNS_NAME="daens"
+NETNS_PATH="/run/netns/$NETNS_NAME"
+RESOLV_FILE="/tmp/resolv.conf.daeuniverse"
+BASE_DIR="/etc/daeuniverse"
+LOG_DIR="/var/log/daeuniverse"
+LOG_FILE="$LOG_DIR/daeuniverse.log"
+
+get_active_core() {
+    local core
+    config_load "$CONF"
+    config_get core "config" "core" "honk"
+    case "$core" in
+        honk|dae) printf '%s\n' "$core" ;;
+        *)        printf 'honk\n' ;;
+    esac
+}
+
+get_core_bin() {
+    case "$1" in
+        dae) printf '/usr/bin/dae\n' ;;
+        *)   printf '/usr/bin/honk-core\n' ;;
+    esac
+}
+
+get_core_config_file() {
+    local core="$1" custom
+    config_load "$CONF"
+    if [ "$core" = "dae" ]; then
+        config_get custom "config" "dae_config_file" "$BASE_DIR/dae/config.dae"
+    else
+        config_get custom "config" "honk_config_file" "$BASE_DIR/honk/config.dae"
+    fi
+    printf '%s\n' "$custom"
+}
+
+set_perms() {
+    mkdir -p "$BASE_DIR/honk/config.d" "$BASE_DIR/honk/state" \
+             "$BASE_DIR/dae/config.d" "$LOG_DIR"
+    chmod 700 "$BASE_DIR" "$BASE_DIR/honk" "$BASE_DIR/honk/config.d" "$BASE_DIR/honk/state" \
+              "$BASE_DIR/dae" "$BASE_DIR/dae/config.d" 2>/dev/null || true
+    chmod -R go= "$BASE_DIR/honk/config.d" "$BASE_DIR/honk/state" "$BASE_DIR/dae/config.d" 2>/dev/null || true
+    chmod 600 "$BASE_DIR/honk/config.dae" "$BASE_DIR/dae/config.dae" "$BASE_DIR/dae/api.dae" \
+              "$BASE_DIR"/honk/config.d/*.dae "$BASE_DIR"/dae/config.d/*.dae 2>/dev/null || true
+}
+
+cleanup_netns() {
+    tc qdisc del dev "$HOST_IFACE" clsact 2>/dev/null || true
+    ip link del "$HOST_IFACE" 2>/dev/null || true
+    ip link del "$PEER_IFACE" 2>/dev/null || true
+    ip netns del "$NETNS_NAME" 2>/dev/null || true
+    umount "$NETNS_PATH" 2>/dev/null || true
+    rm -f "$NETNS_PATH" 2>/dev/null || true
+}
+
+hijack_resolv_conf() {
+    grep -q ' /tmp/resolv\.conf ' /proc/mounts && return 0
+
+    local dns_list WANS
+    . /lib/functions/network.sh
+    unset -v __NETWORK_CACHE
+    __network_ifstatus WANS "" "[@.route[@.target='0.0.0.0' && !@.table]].interface" 2>/dev/null
+    set -- $WANS
+
+    if [ $# -eq 1 ]; then
+        dns_list=$(ubus call "network.interface.$1" status 2>/dev/null | \
+            jsonfilter -e '@["dns-server"][*]' 2>/dev/null)
+        if [ -z "$dns_list" ] && [ -f "/tmp/resolv.conf.d/resolv.conf.auto" ]; then
+            dns_list=$(awk '/^nameserver/{print $2}' "/tmp/resolv.conf.d/resolv.conf.auto")
+        fi
+    fi
+
+    [ -z "$dns_list" ] && dns_list="119.29.29.29 223.5.5.5"
+
+    [ -f /tmp/resolv.conf ] || touch /tmp/resolv.conf
+    grep -E '^(search|domain) ' /tmp/resolv.conf > "$RESOLV_FILE" 2>/dev/null
+
+    for dns in $dns_list; do
+        echo "nameserver $dns" >> "$RESOLV_FILE"
+    done
+
+    mount --bind "$RESOLV_FILE" /tmp/resolv.conf
+    mount -o remount,ro,bind /tmp/resolv.conf
+}
+
+restore_resolv_conf() {
+    while grep -q ' /tmp/resolv\.conf ' /proc/mounts; do
+        mount -o remount,rw,bind /tmp/resolv.conf 2>/dev/null
+        umount /tmp/resolv.conf 2>/dev/null || break
+    done
+    rm -f "$RESOLV_FILE"
+}
+
+get_running_bin() {
+    ubus call service list '{"name":"daeuniverse"}' 2>/dev/null | \
+        jsonfilter -e '@.daeuniverse.instances.daeuniverse.command[0]' 2>/dev/null
+}
+
+start_service() {
+    local enabled core prog config_file
+
+    config_load "$CONF"
+    config_get_bool enabled "config" "enabled" "0"
+    [ "$enabled" -eq "1" ] || return 1
+
+    core=$(get_active_core)
+    prog=$(get_core_bin "$core")
+    if [ ! -x "$prog" ]; then
+        logger -t daeuniverse "not starting: $prog ($core core) is missing or not executable"
+        return 1
+    fi
+
+    config_file=$(get_core_config_file "$core")
+    set_perms
+
+    if [ "$core" = "dae" ]; then
+        if ! DAE_LOCATION_ASSET="/usr/share/v2ray" "$prog" validate -c "$config_file"; then
+            logger -t daeuniverse "dae config validation failed for $config_file"
+            return 1
+        fi
+    fi
+
+    cleanup_netns
+    hijack_resolv_conf
+
+    procd_open_instance "$CONF"
+    if [ "$core" = "honk" ]; then
+        procd_set_param env \
+            DAE_LOCATION_ASSET="/usr/share/v2ray" \
+            MIMALLOC_ARENA_RESERVE="0" \
+            MALLOC_CONF="retain:false"
+        procd_set_param command "$prog" --config "$config_file" --log-file "$LOG_FILE"
+    else
+        if uname -r | grep -Eq "^6\.6"; then
+            procd_set_param env \
+                DAE_LOCATION_ASSET="/usr/share/v2ray" \
+                QUIC_GO_DISABLE_GSO="true"
+        else
+            procd_set_param env DAE_LOCATION_ASSET="/usr/share/v2ray"
+        fi
+        procd_set_param command "$prog" run \
+            --config "$config_file" \
+            --disable-timestamp \
+            --logfile "$LOG_FILE" \
+            --logfile-maxbackups 2 \
+            --logfile-maxsize 5
+    fi
+
+    procd_set_param netdev "$HOST_IFACE" "$PEER_IFACE"
+    procd_set_param limits core="unlimited"
+    procd_set_param limits nofile="1000000 1000000"
+    procd_set_param term_timeout 8
+    procd_set_param respawn 3600 5 5
+    procd_set_param stderr 1
+    procd_close_instance
+}
+
+service_stopped() {
+    restore_resolv_conf
+    cleanup_netns
+}
+
+reload_service() {
+    stop
+    start
+}
+
+service_triggers() {
+    procd_add_reload_trigger "$CONF"
+}
+
+hot_reload() {
+    local core prog running_bin config_file
+    core=$(get_active_core)
+    prog=$(get_core_bin "$core")
+
+    set_perms
+    if /etc/init.d/daeuniverse running; then
+        running_bin=$(get_running_bin)
+        if [ -n "$running_bin" ] && [ "$running_bin" != "$prog" ]; then
+            reload_service
+            return $?
+        fi
+        if [ "$core" = "dae" ]; then
+            config_file=$(get_core_config_file "$core")
+            if ! DAE_LOCATION_ASSET="/usr/share/v2ray" "$prog" validate -c "$config_file"; then
+                logger -t daeuniverse "dae hot_reload aborted: config validation failed"
+                return 1
+            fi
+        fi
+        "$prog" reload || {
+            logger -t daeuniverse "$core hot_reload failed"
+            return 1
+        }
+    else
+        start
+    fi
+}

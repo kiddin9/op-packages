@@ -3,10 +3,8 @@
 #
 #   ./honk/honk_toolchain.sh [--src DIR] [Makefile]
 #
-# Prints HONK_SRC_URL / HONK_SRC_VERSION plus BPF_LINKER_VERSION / SHA256, read
-# from that commit's .github/ci/pins.env (or from --src when the source is
-# already checked out), and ZIG_VERSION, which is always "latest": honk stopped
-# pinning Zig in 2a23ce8736, so any current release builds the same way.
+# Prints HONK_SRC_URL, HONK_SRC_VERSION, BPF_LINKER_VERSION, BPF_LINKER_SHA256
+# (read from .github/ci/pins.env), and ZIG_VERSION ("latest").
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

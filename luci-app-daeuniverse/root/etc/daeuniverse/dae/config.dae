@@ -1,0 +1,6 @@
+# /etc/daeuniverse/dae/config.dae
+# kdae 托管入口配置：仅包含 config.d/*.dae 与同级 api.dae。
+include {
+    config.d/*.dae
+    api.dae
+}

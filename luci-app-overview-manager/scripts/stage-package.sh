@@ -8,7 +8,6 @@ stage="${1:?usage: stage-package.sh STAGE_DIR}"
 
 rm -rf "$stage"
 mkdir -p \
-  "$stage/CONTROL" \
   "$stage/etc/config" \
   "$stage/etc/uci-defaults" \
   "$stage/usr/libexec" \
@@ -39,8 +38,8 @@ install -m 644 "$root/luci/overview.js" \
 install -m 644 "$root/LICENSE" \
   "$stage/usr/share/licenses/$PKG_NAME/LICENSE"
 
-# The APK path compiles the same catalogs from the Makefile, so both packages
-# ship identical translations without needing the LuCI feed host tools.
+# The Makefile compiles the same catalogs with the same script, so this tree
+# matches the APK payload without needing the LuCI feed host tools.
 for po in "$root"/po/*/*.po; do
   [ -f "$po" ] || continue
   language="$(basename "$(dirname "$po")")"
@@ -51,46 +50,3 @@ for po in "$root"/po/*/*.po; do
   # stays byte-identical across build hosts.
   chmod 644 "$catalog"
 done
-
-cat >"$stage/CONTROL/control" <<EOF
-Package: $PKG_NAME
-Version: $PKG_VERSION
-Architecture: $PKG_ARCH
-Maintainer: nikitid
-Depends: luci-base, rpcd-mod-file
-Section: luci
-Priority: optional
-Description: Configure the order and visibility of Status Overview widgets.
-EOF
-
-cat >"$stage/CONTROL/conffiles" <<'EOF'
-/etc/config/overview-manager
-EOF
-
-cat >"$stage/CONTROL/postinst" <<'EOF'
-#!/bin/sh
-[ -n "${IPKG_INSTROOT:-}" ] && exit 0
-# This package defines its own postinst, so the default handler that drains
-# /etc/uci-defaults does not run. Apply the language registration here so a
-# runtime install takes effect without waiting for the next boot.
-if [ -x /etc/uci-defaults/luci-app-overview-manager ]; then
-	/etc/uci-defaults/luci-app-overview-manager &&
-		rm -f /etc/uci-defaults/luci-app-overview-manager
-fi
-rm -f /tmp/luci-indexcache
-rm -rf /tmp/luci-modulecache
-echo "Overview Manager installed. Open LuCI -> Status -> Overview Manager."
-exit 0
-EOF
-
-cat >"$stage/CONTROL/prerm" <<'EOF'
-#!/bin/sh
-[ -n "${IPKG_INSTROOT:-}" ] && exit 0
-case "${1:-}" in upgrade) exit 0 ;; esac
-[ "${PKG_UPGRADE:-0}" = 1 ] && exit 0
-rm -f /tmp/luci-indexcache
-rm -rf /tmp/luci-modulecache
-exit 0
-EOF
-
-chmod 755 "$stage/CONTROL/postinst" "$stage/CONTROL/prerm"

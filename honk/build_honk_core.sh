@@ -135,6 +135,9 @@ export BINDGEN_EXTRA_CLANG_ARGS="$(
 # packages) would beat cargo-zigbuild's own and link musl CRT objects with it.
 unset "CARGO_TARGET_$(printf '%s' "$RUST_TARGET" | tr 'a-z-' 'A-Z_')_LINKER"
 
+# Prevent CI tag refs from overriding the short commit hash via build.rs.
+unset GITHUB_REF
+
 echo "==> Building honk-core for $RUST_TARGET..."
 cargo zigbuild --release --locked \
   -p honk-core \

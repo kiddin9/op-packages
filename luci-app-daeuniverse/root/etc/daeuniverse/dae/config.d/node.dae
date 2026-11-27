@@ -1,0 +1,5 @@
+# /etc/daeuniverse/dae/config.d/node.dae
+node {
+    node1: 'socks5://127.0.0.1:1080'
+    # node2: 'vless://...'
+}

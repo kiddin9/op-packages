@@ -19,18 +19,10 @@ The `luci-app-wrqr` package adds a widget with Wi-Fi QR codes to the LuCI
 
 ## Requirements
 
-- OpenWrt 24.10 (IPK) or OpenWrt 25.12 (APK);
+- OpenWrt 25.12 with `apk`;
 - LuCI.
 
 ## Installation
-
-### OpenWrt 24.10
-
-Download the latest `luci-app-wrqr_*_all.ipk` from
-[Releases](https://github.com/Nikitid/luci-app-wrqr/releases) and upload it
-through **System -> Software -> Upload Package**.
-
-### OpenWrt 25.12
 
 ```sh
 wget -O /tmp/nikitid-feed.sh \

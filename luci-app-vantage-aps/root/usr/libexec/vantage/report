@@ -7,10 +7,13 @@
 // command="/usr/libexec/vantage/report" and no pty or forwarding. It
 // reads this device's state, prints one JSON object and exits. It takes
 // no input (arguments, standard input and SSH_ORIGINAL_COMMAND are ignored) and
-// changes nothing, one run at a time; SSH_CLIENT, which dropbear sets from the connection
+// changes nothing, one run at a time (its lock is an empty file of its own
+// in RAM, DIR: all it ever writes); SSH_CLIENT, which dropbear sets from the connection
 // itself, only tells which port leads to the router, and SSH_PUBKEYINFO,
 // which dropbear sets from the key line that let the caller in, whether
-// that line is still there.
+// that line is still there. It prints nothing while a dropbear listener of
+// this device that takes root runs a command of its own: a router's key
+// would run that there, and the router is to see that something is wrong.
 //
 //   { v: 1, name, model, uptime, mac, macs: [ mac ],
 //     ssids:    [ { ifname, bssid, ssid, freq, channel } ],
@@ -37,10 +40,10 @@
 'use strict';
 
 import { connect } from 'ubus';
-import { access, lsdir, open, readfile } from 'fs';
+import { access, lsdir, lstat, mkdir, open, readfile } from 'fs';
 import * as vaps from 'vantage.aps';
 
-const SELF = '/usr/libexec/vantage/report';
+const DIR = '/var/run/vantage-report';
 const AUTH = '/etc/dropbear/authorized_keys';
 const MAX_AUTH = 262144;          // bytes of authorized_keys read, as luci.vantage.pair reads it
 const NET = '/sys/class/net';
@@ -174,13 +177,24 @@ if (getenv('SSH_ORIGINAL_COMMAND') != null || (type(who) == 'string' && index(wh
 }
 
 // One report at a time: a router's key may open many sessions at once,
-// and each would walk the bridges' tables. The lock is on this file
-// itself, read-only, so nothing is written; a second run waits a moment,
-// then gives up (the router reads that as no report and asks again).
-let self_file = open(SELF, 'r'), locked = !self_file;
+// and each would walk the bridges' tables. The lock is an empty file of
+// its own in DIR, a directory only root can enter (made 0700 on first
+// use, in RAM). Not this program's own file: any account that may read
+// that can hold a lock on it, and an upgrade puts another in its place.
+// A second run waits a moment, then gives up (the router reads that as
+// no report and asks again); so does a run that cannot have the lock at
+// all (DIR not as this program makes it, or the file not opened).
+let st = lstat(DIR);
 
-for (let i = 0; !locked && i < 4; i++) {
-	locked = (self_file.lock('xn') === true);
+if (!st) {
+	mkdir(DIR, 0700);
+	st = lstat(DIR);
+}
+
+let lock = (st?.type == 'directory' && st.uid === 0 && !(st.mode & 0077)) ? open(DIR + '/lock', 'a', 0600) : null, locked = false;
+
+for (let i = 0; lock && !locked && i < 4; i++) {
+	locked = (lock.lock('xn') === true);
 
 	if (!locked)
 		sleep(250);
@@ -195,11 +209,24 @@ let ubus = connect(null, 3);
 if (!ubus)
 	exit(1);
 
+// No report either while a dropbear listener that takes root runs a
+// command of its own (vantage.aps forced_listener: every dropbear procd
+// runs, under any service, one whose command cannot be read among them;
+// OpenWrt's own dropbear service without instances to read is no
+// better): there a router's key runs that command and not this report.
+// The router then shows this access point as not reporting, and this
+// device's pairing page says why. One call, for all of procd's
+// services, before anything of the device is read.
+let services = ubus.call('service', 'list');
+
+if (type(services?.dropbear?.instances) != 'object' || vaps.forced_listener(services))
+	exit(1);
+
 let board = ubus.call('system', 'board'), info = ubus.call('system', 'info');
 
 // the access points and their stations; every Wi-Fi interface, of any
 // mode, is a Wi-Fi port for the wired hosts below
-let ssids = [], stations = [], radios = {}, vlans = [], asked = [], listed = {};
+let ssids = [], stations = [], radios = {}, vlans = [], asked = [], listed = {}, classified = 0;
 let devs = ubus.call('iwinfo', 'devices')?.devices;
 
 for (let dev in ((type(devs) == 'array') ? devs : [])) {
@@ -210,8 +237,16 @@ for (let dev in ((type(devs) == 'array') ? devs : [])) {
 
 	radios[dev] = true;
 
-	if (length(ssids) >= MAX_SSIDS)
+	// Classified whatever is listed already: the networks being full
+	// (MAX_SSIDS) must not hide the stations on the VLAN interfaces of
+	// those listed, which have a budget of their own (MAX_VLANS),
+	// whatever order iwinfo names the interfaces in. One iwinfo call an
+	// interface, and as many a report as it could list of both at most,
+	// whatever the interfaces are
+	if (classified >= MAX_SSIDS + MAX_VLANS)
 		continue;
+
+	classified++;
 
 	let i = ubus.call('iwinfo', 'info', { device: dev });
 
@@ -227,7 +262,7 @@ for (let dev in ((type(devs) == 'array') ? devs : [])) {
 		continue;
 	}
 
-	if (i.mode != 'Master')
+	if (i.mode != 'Master' || length(ssids) >= MAX_SSIDS)
 		continue;
 
 	push(ssids, { ifname: dev, bssid: norm_mac(i.bssid), ssid: text(i.ssid, 32),

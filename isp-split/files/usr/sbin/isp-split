@@ -15,7 +15,7 @@
 #   install    注册开机自启与每日更新
 #   uninstall  卸载所有改动
 set -u
-ISP_VERSION="0.4.1"
+ISP_VERSION="0.5.0"
 
 # 配置表里的注释行（# 开头，允许前导空白）必须在按空白展开之前整行删掉
 # （B-1）。否则 `for row in $ISP_TABLE` 会把 "#" 与后面的文字拆成两个
@@ -76,6 +76,12 @@ MWAN3_SERVICE=${MWAN3_SERVICE:-/etc/init.d/mwan3}
 ISP_TABLE=$(_strip_comments "$(printf '%s' "${ISP_TABLE:-}" | tr -d '\r')")
 DNS_TABLE=$(_strip_comments "$(printf '%s' "${DNS_TABLE:-}" | tr -d '\r')")
 DOMAIN_SPLIT=$(_strip_comments "$(printf '%s' "${DOMAIN_SPLIT:-}" | tr -d '\r')")
+# 手动补段（0.5.0）：与 DOMAIN_SPLIT 同一套写法（注释行、CRLF 都在入口清理）。
+IP_SPLIT=$(_strip_comments "$(printf '%s' "${IP_SPLIT:-}" | tr -d '\r')")
+IP_LIST_DIR=$(printf '%s' "${IP_LIST_DIR:-}" | tr -d '\r')
+# 补段查询阈值（suggest）：<连接数> 或 <字节数> 任一超标即进入建议。
+SUGGEST_MIN_CONNS=${SUGGEST_MIN_CONNS:-1000}
+SUGGEST_MIN_BYTES=${SUGGEST_MIN_BYTES:-1048576}
 
 # ---- 多数据源（0.2.1 默认双源）----
 # ISP_SOURCES 为空 = 单源兼容模式：仍按 ISP_MIRROR/<源名>.txt 拉取，
@@ -92,6 +98,10 @@ STATE_DIR=$BASE/state
 SOURCE_STATE=$STATE_DIR/sources.tsv
 
 ISP_ANCHOR=${ISP_ANCHOR:-'dest_port|src_port|default_rule|https|internet'}
+# 端口钉线（fix42 D4）：这些端口上的用户 mwan3 规则由 wire 提到运营商集合
+# 规则之前。默认值是生产实证过的 B 站 PCDN 回退端口（8082 / 4483）；
+# 留空 = 回到 0.4.x 的纯锚点插入行为。
+ISP_PIN_PORTS=${ISP_PIN_PORTS-"4483 8082"}
 ISP_CRON=${ISP_CRON:-"17 4 * * *"}
 PROBE_BYTES=${PROBE_BYTES:-33554432}
 # 单个源文件的体积上限（默认 4 MiB）。正常数据 < 300 KB；
@@ -1106,6 +1116,255 @@ _fetch_space_precheck() {
 	return 0
 }
 
+# ---------------------------------------------------------------- 手动补段（IP_SPLIT）
+#
+# 为什么单独一层：段表数据（$DATA/<源名>.txt）是运营商汇总的"静态世界"，
+# 视频平台的 PCDN 家宽节点永远不在里面。手动段是覆盖层，必须在**每一次**
+# 渲染集合时合并（fetch 重建数据之后、apply/wire/rollback 之前），否则
+# 04:17 的定时 fetch 会把手工补的段整批冲掉（生产实证：nft add element +
+# 追加数据文件，第二天就被重建丢光）。
+#
+# 数据布局：
+#   $DATA/<源名>.txt          段表数据（纯净，不再被手动段污染）
+#   $DATA/.ipsplit/<集合名>.txt  渲染产物 = 段表数据 - 其它策略的手动段
+#                                              + 本策略的手动段
+# 渲染是纯函数：每次都从段表数据 + 当前配置重算，所以重复执行幂等，
+# 删掉一条手动段后地址也会自动回到原来的集合（不会被"扣掉就回不来"）。
+#
+# 归属优先级：手动段 > 段表数据。重叠时从**其它**集合里扣掉这些地址，
+# 于是同一个 IP 只存在于手动段指定的集合里，mwan3 的规则先后不影响归属
+# （与 build.sh 的"优先级即占位顺序"同一套语义）。
+
+IPS_ACTIVE=0
+IPS_DIR=""
+
+# 严格 IPv4 CIDR（与 cidr2range.awk 同口径：四段十进制 + /0-32）
+_ips_cidr_ok() {
+	_ic=${1:-}
+	case "$_ic" in */*) ;; *) return 1 ;; esac
+	_ic_ip=${_ic%/*}
+	_ic_pf=${_ic##*/}
+	case "$_ic_pf" in '' | *[!0-9]*) return 1 ;; esac
+	[ "${#_ic_pf}" -le 2 ] || return 1
+	[ "$_ic_pf" -ge 0 ] && [ "$_ic_pf" -le 32 ] || return 1
+	_valid_ipv4 "$_ic_ip"
+}
+
+# 策略 -> 集合：ISP_TABLE 里第一个启用行。没有启用的行返回空（渲染时告警跳过）。
+_ips_policy_set() {
+	_ipset_pol=${1:-}
+	[ -n "$_ipset_pol" ] || return 0
+	for _ipset_row in $(_conf_table ISP_TABLE 2>/dev/null); do
+		case "$_ipset_row" in \#*) continue ;; esac
+		_ipset_ifs=$IFS
+		IFS=':'
+		set -- $_ipset_row
+		IFS=$_ipset_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "1" ] || continue
+		[ "$3" = "$_ipset_pol" ] || continue
+		printf '%s' "$2"
+		return 0
+	done
+	return 0
+}
+
+# 把 IP_SPLIT + $IP_LIST_DIR/<策略>.txt 收集成 "<CIDR>\t<策略>" 行。
+# 非法行只告警不中断：每日 fetch 不该因为一行手误而整夜不更新。
+# 返回 0 始终成立；坏行数写入 IPS_BAD。
+_ips_collect() {
+	_icol_out=$1
+	: >"$_icol_out" || return 1
+	IPS_BAD=0
+	_icol_one() { # <cidr> <策略> <来源说明>
+		if ! _ips_cidr_ok "$1"; then
+			log "警告: 手动补段的 CIDR 非法，已跳过（$3）: $1"
+			IPS_BAD=$((IPS_BAD + 1))
+			return 0
+		fi
+		if ! _valid_policy "$2"; then
+			log "警告: 手动补段的策略名非法，已跳过（$3）: $2"
+			IPS_BAD=$((IPS_BAD + 1))
+			return 0
+		fi
+		printf '%s\t%s\n' "$1" "$2" >>"$_icol_out"
+	}
+	for _icol_line in $IP_SPLIT; do
+		case "$_icol_line" in \#*) continue ;; esac
+		_icol_ifs=$IFS
+		IFS=':'
+		set -- $_icol_line
+		IFS=$_icol_ifs
+		if [ $# -ne 2 ]; then
+			log "警告: IP_SPLIT 行格式错误（应为 <CIDR>:<策略>），已跳过: $_icol_line"
+			IPS_BAD=$((IPS_BAD + 1))
+			continue
+		fi
+		_icol_one "$1" "$2" "IP_SPLIT"
+	done
+	if [ -n "${IP_LIST_DIR:-}" ]; then
+		if [ ! -d "$IP_LIST_DIR" ]; then
+			log "警告: IP_LIST_DIR 不存在，已忽略: $IP_LIST_DIR"
+		else
+			for _icol_f in "$IP_LIST_DIR"/*.txt; do
+				[ -f "$_icol_f" ] || continue
+				_icol_pol=${_icol_f##*/}
+				_icol_pol=${_icol_pol%.txt}
+				while IFS= read -r _icol_l || [ -n "$_icol_l" ]; do
+					_icol_l=$(printf '%s' "$_icol_l" | tr -d '\r')
+					_icol_l=${_icol_l%%#*}
+					_icol_l=$(printf '%s' "$_icol_l" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+					[ -n "$_icol_l" ] || continue
+					_icol_one "$_icol_l" "$_icol_pol" "$_icol_f"
+				done <"$_icol_f"
+			done
+		fi
+	fi
+	return 0
+}
+
+# 渲染合并层。$1 = 数据目录（$DATA，或 fetch 的暂存 $WORK/data.new）。
+# 成功返回 0；失败返回 1（调用方必须当致命错误处理：静默跳过 = 手动段消失）。
+_ipsplit_render() {
+	IPS_ACTIVE=0
+	IPS_DIR=""
+	_rd_data=${1:-$DATA}
+	# 没有配置 = 回到"纯净段表"：顺手清掉上一轮的渲染产物，避免 .ipsplit/
+	# 里留着一份过期的合并结果（排查时最容易被它误导）。
+	_rd_clear() {
+		[ -d "$_rd_data/.ipsplit" ] && rm -rf "$_rd_data/.ipsplit" 2>/dev/null
+		return 0
+	}
+	if [ -z "$IP_SPLIT" ] && [ -z "${IP_LIST_DIR:-}" ]; then
+		_rd_clear
+		return 0
+	fi
+	[ -d "$_rd_data" ] || return 0
+	mkdir -p "$WORK" 2>/dev/null || return 1
+	_rd_manual=$WORK/ipsplit.manual.tsv
+	_ips_collect "$_rd_manual" || return 1
+	if [ ! -s "$_rd_manual" ]; then
+		_rd_clear
+		return 0
+	fi
+
+	# 策略没有启用的运营商行 -> 无处可合并，告警并丢弃这一组（不影响其它组）。
+	_rd_out=$_rd_data/.ipsplit
+	_rd_tmp=$WORK/ipsplit.new
+	rm -rf "$_rd_tmp"
+	mkdir -p "$_rd_tmp" || return 1
+
+	# 1) 每个策略：CIDR -> 有序互斥区间
+	: >"$WORK/ipsplit.all.ranges" || return 1
+	for _rd_pol in $(cut -f2 "$_rd_manual" | sort -u); do
+		[ -n "$_rd_pol" ] || continue
+		_rd_set=$(_ips_policy_set "$_rd_pol")
+		[ -n "$_rd_set" ] || {
+			log "警告: 手动补段的策略 '$_rd_pol' 在 ISP_TABLE 中没有启用的运营商行，这些段本次未合并"
+			continue
+		}
+		awk -F'\t' -v p="$_rd_pol" '$2 == p { print $1 }' "$_rd_manual" |
+			awk -f "$LIB/cidr2range.awk" | sort | awk -f "$LIB/merge.awk" \
+				>"$_rd_tmp/pol-$_rd_pol.ranges" || {
+			rm -rf "$_rd_tmp"
+			return 1
+		}
+		cat "$_rd_tmp/pol-$_rd_pol.ranges" >>"$WORK/ipsplit.all.ranges"
+	done
+	[ -s "$WORK/ipsplit.all.ranges" ] || {
+		rm -rf "$_rd_tmp"
+		_rd_clear
+		return 0
+	}
+	sort "$WORK/ipsplit.all.ranges" | awk -f "$LIB/merge.awk" >"$_rd_tmp/all.ranges" || {
+		rm -rf "$_rd_tmp"
+		return 1
+	}
+
+	# 2) 每个启用集合：段表数据 - 其它策略手动段 + 本策略手动段
+	_rd_one() {
+		_rd_src=$1
+		_rd_set=$2
+		_rd_pol=$3
+		_rd_own=$_rd_tmp/pol-$_rd_pol.ranges
+		_rd_other=$_rd_tmp/other-$_rd_pol.ranges
+		if [ -f "$_rd_own" ]; then
+			awk -v claimed="$_rd_own" -f "$LIB/exclude.awk" \
+				"$_rd_tmp/all.ranges" >"$_rd_other" || return 1
+		else
+			cp "$_rd_tmp/all.ranges" "$_rd_other" || return 1
+		fi
+		if [ -s "$_rd_data/$_rd_src.txt" ]; then
+			awk -f "$LIB/cidr2range.awk" "$_rd_data/$_rd_src.txt" | sort |
+				awk -f "$LIB/merge.awk" |
+				awk -v claimed="$_rd_other" -f "$LIB/exclude.awk" \
+					>"$_rd_tmp/base-$_rd_set.ranges" || return 1
+		else
+			: >"$_rd_tmp/base-$_rd_set.ranges" || return 1
+		fi
+		{
+			cat "$_rd_tmp/base-$_rd_set.ranges"
+			[ -f "$_rd_own" ] && cat "$_rd_own"
+		} | sort | awk -f "$LIB/merge.awk" |
+			awk -f "$LIB/range2cidr.awk" >"$_rd_tmp/$_rd_set.txt" || return 1
+		return 0
+	}
+	_rd_all() { _rd_one "$1" "$2" "$3"; }
+	foreach_enabled _rd_all || {
+		rm -rf "$_rd_tmp"
+		log "错误: 手动补段渲染失败（数据目录 $_rd_data 不可写？）"
+		return 1
+	}
+
+	# 3) 只把每个集合的成品 (<集合名>.txt) 收进输出目录，中间文件留在 work 里：
+	#    .ipsplit/ 里出现 all.ranges / pol-*.ranges 只会让现场排查多一层噪音。
+	_rd_final=$WORK/ipsplit.out
+	rm -rf "$_rd_final"
+	mkdir -p "$_rd_final" || {
+		rm -rf "$_rd_tmp"
+		return 1
+	}
+	for _rd_f in "$_rd_tmp"/*.txt; do
+		[ -f "$_rd_f" ] || continue
+		cp "$_rd_f" "$_rd_final/" || {
+			rm -rf "$_rd_tmp" "$_rd_final"
+			return 1
+		}
+	done
+	[ -n "$(ls -A "$_rd_final" 2>/dev/null)" ] || {
+		rm -rf "$_rd_tmp" "$_rd_final"
+		log "警告: 手动补段渲染产物为空，本次不合并"
+		return 0
+	}
+
+	# 4) 原子替换 .ipsplit/（半套渲染产物比没有更危险：某个集合会只剩手动段）
+	rm -rf "$_rd_data/.ipsplit.old"
+	if [ -d "$_rd_data/.ipsplit" ]; then
+		mv "$_rd_data/.ipsplit" "$_rd_data/.ipsplit.old" || {
+			rm -rf "$_rd_tmp" "$_rd_final"
+			return 1
+		}
+	fi
+	if ! mv "$_rd_final" "$_rd_out"; then
+		[ -d "$_rd_data/.ipsplit.old" ] && mv "$_rd_data/.ipsplit.old" "$_rd_data/.ipsplit"
+		rm -rf "$_rd_tmp"
+		return 1
+	fi
+	rm -rf "$_rd_data/.ipsplit.old" "$_rd_tmp"
+	IPS_DIR=$_rd_out
+	IPS_ACTIVE=1
+	return 0
+}
+
+# 某个集合这次该读哪个文件：有手动补段时读渲染产物，否则原样读段表数据。
+_set_data_file() { # <源名> <集合名>
+	if [ "${IPS_ACTIVE:-0}" = "1" ] && [ -n "${IPS_DIR:-}" ] && [ -f "$IPS_DIR/$2.txt" ]; then
+		printf '%s\n' "$IPS_DIR/$2.txt"
+	else
+		printf '%s\n' "$DATA/$1.txt"
+	fi
+}
+
 _cmd_fetch_body() {
 	mkdir -p "$WORK" || die "无法创建 $WORK"
 
@@ -1352,6 +1611,10 @@ _cmd_fetch_body() {
 	mkdir -p "$_new" || die "无法创建暂存目录 $_new"
 	cp "$WORK/out.new"/*.txt "$_new/" ||
 		{ rm -rf "$_new"; die "写入新数据失败（磁盘空间不足？），现有数据未改动"; }
+	# D1：把手动补段合并进这份新数据。必须在替换 $DATA **之前**做完——
+	# 先换数据再合并，中间任何失败都会让线上集合只剩手动段（或只剩段表）。
+	_ipsplit_render "$_new" ||
+		{ rm -rf "$_new"; die "手动补段（IP_SPLIT）合并失败，现有数据未改动"; }
 	date +%s > "$_new/.stamp" ||
 		{ rm -rf "$_new"; die "无法写入数据时间戳，现有数据未改动"; }
 	# 记录本次启用的运营商，下次 fetch 用它判断"表变了没有"
@@ -1530,7 +1793,8 @@ _emit_elements() {
 _apply_one() {
 	_src=$1
 	_set=$2
-	_file=$DATA/$_src.txt
+	# 手动补段（IP_SPLIT）在渲染时已合并进 .ipsplit/，有手动段时读渲染产物。
+	_file=$(_set_data_file "$_src" "$_set")
 
 	if [ "$TABLE" = "mwan3" ] && nft list set inet mwan3 "$_set" >/dev/null 2>&1; then
 		# 即使数据文件为空也必须 flush：否则上游当天把该运营商完全
@@ -1758,6 +2022,10 @@ _cmd_apply_body() {
 		die "nft 中不存在集合 $_fs —— 集合由 wire 创建。先执行: isp-split wire（或 isp-split sync）"
 	fi
 	_work_writable || die "work 目录不可写（$WORK），未做任何改动"
+	# D1：apply 也要重新渲染手动补段——用户改完 IP_SPLIT 后只跑 apply 也能生效，
+	# rollback 换回旧数据后同样按"旧数据 + 当前手动段"重算。
+	_ipsplit_render "$DATA" ||
+		die "手动补段（IP_SPLIT）合并失败，未做任何改动"
 	_gen_batch "$WORK/batch.nft" mwan3
 	[ -s "$WORK/batch.nft" ] || die "没有可应用的集合"
 
@@ -1792,6 +2060,9 @@ cmd_check() {
 	need_nft
 	[ -f "$DATA/.stamp" ] || die "还没有数据，先执行: isp-split fetch"
 	_work_writable || die "work 目录不可写（$WORK），未做任何改动"
+	# D1：干跑必须按与 apply 相同的合并结果校验，否则"check 通过、apply 失败"。
+	_ipsplit_render "$DATA" ||
+		die "手动补段（IP_SPLIT）合并失败，未做任何改动"
 	_gen_batch "$WORK/batch.nft" mwan3
 	[ -s "$WORK/batch.nft" ] || die "没有可应用的集合"
 
@@ -1809,7 +2080,7 @@ cmd_check() {
 		_bc() {
 			_src=$1
 			_set=$2
-			_f="$DATA/$_src.txt"
+			_f=$(_set_data_file "$_src" "$_set")
 			[ -s "$_f" ] || return 0
 			_o=$(awk -f "$LIB/badcidr.awk" "$_f" 2>/dev/null | head -5)
 			if [ -n "$_o" ]; then
@@ -1834,6 +2105,8 @@ cmd_selftest() {
 	_work_writable || die "work 目录不可写（$WORK），未做任何改动"
 	log "在独立表 inet isptest 中实测加载（inet mwan3 不受影响）"
 
+	# 与 apply 同一份合并结果：手动补段也要一起测（否则"测了 13k 条"漏掉补段）
+	_ipsplit_render "$DATA" || die "手动补段（IP_SPLIT）合并失败，未做任何改动"
 	nft delete table inet isptest 2>/dev/null
 	_gen_batch "$WORK/selftest.nft" isptest 1
 	_t0=$(date +%s)
@@ -1847,7 +2120,7 @@ cmd_selftest() {
 	_cidr=0
 	_st() {
 		_n=$(count_set_elements isptest "$2")
-		_c=$(wc -l < "$DATA/$1.txt" 2>/dev/null | tr -d ' ')
+		_c=$(wc -l < "$(_set_data_file "$1" "$2")" 2>/dev/null | tr -d ' ')
 		printf '  %-14s 输入 %5s 条 CIDR -> 内核 %5s 个元素\n' "$2" "${_c:-0}" "$_n"
 		_total=$((_total + _n))
 		_cidr=$((_cidr + ${_c:-0}))
@@ -1885,7 +2158,7 @@ _wire_ipset_check() {
 _wire_ipset_block() {
 	_wb_src=$1
 	_wb_set=$2
-	_wb_file=$DATA/$_wb_src.txt
+	_wb_file=$(_set_data_file "$_wb_src" "$_wb_set")
 	case "$_wb_file" in
 	*"'"*) die "数据文件路径含单引号，无法安全写入 mwan3 配置: $_wb_file" ;;
 	esac
@@ -1942,7 +2215,9 @@ _wire_ipset() {
 	uci set "mwan3.$_sec.name=$_set" || die "无法写入 mwan3.$_sec.name"
 	uci set "mwan3.$_sec.family=ipv4" || die "无法写入 mwan3.$_sec.family"
 	uci set "mwan3.$_sec.counters=1" || die "无法写入 mwan3.$_sec.counters"
-	uci set "mwan3.$_sec.loadfile=$DATA/$_src.txt" ||
+	# loadfile 必须指向"已合并手动段"的文件：mwan3 重启时按 loadfile 灌集合，
+	# 指向纯净数据会让手动段在重启后消失（fix42 D1 的核心）。
+	uci set "mwan3.$_sec.loadfile=$(_set_data_file "$_src" "$_set")" ||
 		die "无法写入 mwan3.$_sec.loadfile"
 	uci set "mwan3.$_sec.enabled=1" || die "无法写入 mwan3.$_sec.enabled"
 	uci set "mwan3.$_sec.isp_split=1" || die "无法写入 mwan3.$_sec.isp_split"
@@ -3227,6 +3502,14 @@ _cmd_wire_body() {
 	_precheck_policies ||
 		die "策略预检失败：上面的策略在 mwan3 中缺失或没有可用成员，规则无法正确渲染（本次未改动任何配置）。运行 isp-split init 绑定线路后重试"
 
+	# 0.5. 手动补段（D1）：必须在写 ipset 段之前渲染好——ipset 段的 loadfile
+	#      指向 .ipsplit/ 下的合并文件，mwan3 reload 时按它灌集合。
+	#      还没有数据目录时（首次 wire）跳过，沿用旧行为。
+	if [ -d "$DATA" ]; then
+		_ipsplit_render "$DATA" ||
+			die "手动补段（IP_SPLIT）合并失败，配置未改动"
+	fi
+
 	# 1. 规则片段（只写 work 目录，不动 UCI）。_write_rule 同时检查
 	#    同名 rule 段是否被用户占用；冲突时在写任何 UCI 之前 die。
 	: > "$WORK/rules.txt" || die "无法写入 $WORK/rules.txt（work 目录不可写？）"
@@ -3266,7 +3549,10 @@ _cmd_wire_body() {
 			die "无法在候选配置中重写 ipset 段 'ipset_$2'，配置未改动"
 	}
 	foreach_enabled _wire_text_all
+	# D4：端口钉线规则必须排在集合规则之前（mwan3_rules 是 first-match，
+	# 集合规则先命中就等于端口规则作废——生产 8082 回退那天实测如此）。
 	awk -v insert="$WORK/rules.txt" -v anchor="$ISP_ANCHOR" \
+		-v pinports="${ISP_PIN_PORTS:-}" \
 		-f "$LIB/rules-splice.awk" "$WORK/mwan3.base" > "$WORK/mwan3.new" ||
 		die "规则注入失败（锚点缺失或配置不可写），配置未改动"
 
@@ -3423,6 +3709,47 @@ cmd_verify() {
 	}
 	foreach_enabled _vf
 
+	# D4：端口钉线必须在集合规则之前，否则对集合内目标永远不命中。
+	# 生产实证：B 站回退 8082 那天，用户那条 dest_port 规则排在集合规则之后，
+	# 等于摆设（wire 已改为把命中 ISP_PIN_PORTS 的规则提到集合规则之前）。
+	echo
+	echo "== 端口钉线顺序（ISP_PIN_PORTS=${ISP_PIN_PORTS:-未配置}）"
+	if [ -z "${ISP_PIN_PORTS:-}" ]; then
+		echo "  （未启用：ISP_PIN_PORTS 为空，端口规则与集合规则按配置顺序排列）"
+	else
+		_pv_first=$(printf '%s\n' "$_body" | grep -n "@isp_" | head -1 | cut -d: -f1)
+		for _pv_p in $ISP_PIN_PORTS; do
+			_pv_ln=$(printf '%s\n' "$_body" | awk -v p="$_pv_p" '
+				{
+					for (i = 1; i <= NF; i++) {
+						if ($i != "dport" && $i != "sport")
+							continue
+						for (j = i + 1; j <= NF; j++) {
+							v = $j
+							gsub(/[{},]/, "", v)
+							if (v == "")
+								continue
+							if (v !~ /^[0-9]+$/)
+								break
+							if (v + 0 == p + 0) {
+								print NR
+								exit
+							}
+						}
+					}
+				}' | head -1)
+			if [ -z "${_pv_ln:-}" ]; then
+				echo "  - 端口 $_pv_p: nft 里没有命中该端口的规则（没配或未渲染）"
+			elif [ -z "${_pv_first:-}" ]; then
+				echo "  ✓ 端口 $_pv_p 的规则在第 $_pv_ln 行（链里没有集合规则，不存在拦截）"
+			elif [ "$_pv_ln" -ge "$_pv_first" ]; then
+				echo "  ✗ 端口 $_pv_p 的规则在第 $_pv_ln 行，位于集合规则（第 $_pv_first 行）之后 —— 永远不生效；重跑 isp-split wire"
+			else
+				echo "  ✓ 端口 $_pv_p 的规则在第 $_pv_ln 行，先于集合规则（第 $_pv_first 行）"
+			fi
+		done
+	fi
+
 	echo
 	echo "== 策略存在且有成员（wire 渲染前置条件，BUG-25）"
 	_vp_any=0
@@ -3499,6 +3826,33 @@ cmd_plan() {
 		printf '%-14s %-14s %-12s %8s %10s\n' "$_set" "$_src" "$_pol" "$_n" "$_st"
 	}
 	foreach_enabled _p1
+
+	# 手动补段（D1）：预演时只读，不写 $DATA，也不外发任何查询。
+	echo
+	echo "手动补段（IP_SPLIT / IP_LIST_DIR，fetch 后自动合并）:"
+	if [ -z "${IP_SPLIT:-}" ] && [ -z "${IP_LIST_DIR:-}" ]; then
+		echo "  （未配置）"
+	else
+		_pl_tmp=$WORK/plan.manual.tsv
+		mkdir -p "$WORK" 2>/dev/null || true
+		IPS_BAD=0
+		_ips_collect "$_pl_tmp" 2>/dev/null || true
+		if [ -s "$_pl_tmp" ]; then
+			while IFS='	' read -r _pl_c _pl_p; do
+				[ -n "$_pl_c" ] || continue
+				_pl_set=$(_ips_policy_set "$_pl_p")
+				if [ -n "$_pl_set" ]; then
+					printf '  %-20s -> %-12s（集合 %s）\n' "$_pl_c" "$_pl_p" "$_pl_set"
+				else
+					printf '  %-20s -> %-12s（无启用的运营商行，本次不会合并）\n' "$_pl_c" "$_pl_p"
+				fi
+			done <"$_pl_tmp"
+		else
+			echo "  （没有可用的手动段）"
+		fi
+		[ "${IPS_BAD:-0}" -gt 0 ] &&
+			printf '  警告: 有 %s 行手动段格式非法，已在上面逐条告警（fetch/apply 会跳过它们）\n' "$IPS_BAD"
+	fi
 
 	echo
 	_sources_report
@@ -5041,6 +5395,9 @@ conf_get() {
 		awk -F: 'NF >= 2 { printf "dns\t%s\t%s\n", $1, $2 }'
 	_conf_table DOMAIN_SPLIT | tr -s ' \t' '\n' |
 		awk -F: 'NF >= 2 { printf "domain\t%s\t%s\n", $1, $2 }'
+	_conf_table IP_SPLIT | tr -s ' \t' '\n' |
+		awk -F: 'NF >= 2 { printf "ipsplit\t%s\t%s\n", $1, $2 }'
+	printf 'ip_list_dir\t%s\n' "${IP_LIST_DIR:-}"
 # lc:begin
 	_lc_g=$(_conf_val LINE_CHECK_GEO); [ -n "$_lc_g" ] || _lc_g=1
 	_lc_gp=$(_conf_val LINE_CHECK_GEO_PROVIDER); [ -n "$_lc_gp" ] || _lc_gp=auto
@@ -5322,7 +5679,7 @@ _conf_validate() {
 	# 空白展开之前，否则 "# 说明:xxx" 会被拆成 "#" 和 "说明:xxx" 两段。
 	# 这里只改局部副本，写回文件的内容仍保留用户注释。
 	case "$_key" in
-	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT) _val=$(_strip_comments "$_val") ;;
+	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT | IP_SPLIT) _val=$(_strip_comments "$_val") ;;
 	esac
 	case "$_val" in
 	*'$'* | *'`'* | *'"'* | *"'"* | *'\'*)
@@ -5332,7 +5689,7 @@ _conf_validate() {
 	# ; | 只在会进 uci 参数 / 表字段的键上禁止；UA/ACCEPT 合法地包含 ';'
 	# （Accept: text/html;q=0.9），URL 的非法字符由专门的 URL 校验挡。
 	case "$_key" in
-	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT)
+	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT | IP_SPLIT | ISP_PIN_PORTS)
 		case "$_val" in
 		*';'* | *'|'*) die "配置值含不允许的字符（; |）" ;;
 		esac
@@ -5407,6 +5764,48 @@ _conf_validate() {
 			*" $2 "*) ;;
 			*) die "mwan3 里不存在策略 '$2'（出错行: $_line）" ;;
 			esac
+		done
+		IFS=$_old_ifs
+		;;
+	IP_SPLIT)
+		# 手动补段：<CIDR>:<策略>。空值是合法配置（等于没补段）。
+		_old_ifs=$IFS
+		set -f
+		for _line in $_val; do
+			IFS=':'
+			set -- $_line
+			IFS=$_old_ifs
+			[ $# -eq 2 ] || die "格式必须是 CIDR:策略（如 110.250.0.0/16:wanb_only）—— 出错行: $_line"
+			_ips_cidr_ok "$1" ||
+				die "CIDR 非法（要求严格的 a.b.c.d/0-32）: '$1' —— 出错行: $_line"
+			_valid_policy "$2" || die "策略名 '$2' 含非法字符（出错行: $_line）"
+			case "$_POLS" in
+			*" $2 "*) ;;
+			*) die "mwan3 里不存在策略 '$2'（出错行: $_line）" ;;
+			esac
+		done
+		IFS=$_old_ifs
+		;;
+	IP_LIST_DIR)
+		# 只在渲染时读目录；这里只挡"能变成第二个 argv / 穿越"的写法。
+		case "$_val" in
+		"") ;;
+		/*) ;;
+		*) die "IP_LIST_DIR 必须为空或绝对路径（当前: '$_val'）" ;;
+		esac
+		case "$_val" in
+		*..* | *[!A-Za-z0-9._/-]*) die "IP_LIST_DIR 含不允许的字符（只允许 [A-Za-z0-9._/-]，且不能含 ..）: '$_val'" ;;
+		esac
+		;;
+	ISP_PIN_PORTS)
+		# 端口钉线：空格分隔的端口号；空 = 关闭（回到纯锚点插入）。
+		_old_ifs=$IFS
+		set -f
+		for _pp in $_val; do
+			case "$_pp" in '' | *[!0-9]*) die "ISP_PIN_PORTS 只能是空格分隔的端口号（当前: '$_val'）" ;; esac
+			[ "${#_pp}" -le 5 ] || die "ISP_PIN_PORTS 的端口号过长: '$_pp'"
+			[ "$_pp" -ge 1 ] && [ "$_pp" -le 65535 ] ||
+				die "ISP_PIN_PORTS 的端口必须在 1-65535 之间（当前: '$_pp'）"
 		done
 		IFS=$_old_ifs
 		;;
@@ -5495,7 +5894,7 @@ _conf_validate() {
 # conf set/check 的小写键 -> 配置变量名。白名单与 _conf_validate 的
 # 分支一一对应，避免“能写但没校验”或“校验了但写不进去”。
 # lc:begin
-_CONF_KEYS_HINT="isp_table / dns_table / domain_split / dns_mode / line_check_enable / line_check_geo / line_check_provider / line_check_interval / line_check_targets / line_check_stun_servers / line_check_echo_urls / line_check_ua / line_check_accept / line_check_timeout / line_check_budget / line_check_geo_ttl / line_check_baseline"
+_CONF_KEYS_HINT="isp_table / dns_table / domain_split / ip_split / ip_list_dir / isp_pin_ports / dns_mode / line_check_enable / line_check_geo / line_check_provider / line_check_interval / line_check_targets / line_check_stun_servers / line_check_echo_urls / line_check_ua / line_check_accept / line_check_timeout / line_check_budget / line_check_geo_ttl / line_check_baseline"
 # lc:end
 _CONF_KEYS_HINT="${_CONF_KEYS_HINT:-isp_table / dns_table / domain_split / dns_mode}"
 _conf_key_norm() {
@@ -5506,6 +5905,9 @@ _conf_key_norm() {
 	isp_table) printf 'ISP_TABLE' ;;
 	dns_table) printf 'DNS_TABLE' ;;
 	domain_split) printf 'DOMAIN_SPLIT' ;;
+	ip_split) printf 'IP_SPLIT' ;;
+	ip_list_dir) printf 'IP_LIST_DIR' ;;
+	isp_pin_ports) printf 'ISP_PIN_PORTS' ;;
 	dns_mode) printf 'DNS_MODE' ;;
 # lc:begin
 	line_check_enable) printf 'LINE_CHECK_ENABLE' ;;
@@ -5754,6 +6156,12 @@ cmd_export() {
 		esac
 	done
 
+	# 导出必须与线上分流一致：手动补段（IP_SPLIT）也要导出，否则代理侧
+	# 拿到的规则集会莫名其妙地漏掉"明明在补段里"的地址。
+	[ -d "$DATA" ] && {
+		_ipsplit_render "$DATA" || die "手动补段（IP_SPLIT）合并失败，未导出任何文件"
+	}
+
 	_n=0
 	_old_ifs=$IFS
 	for row in $ISP_TABLE; do
@@ -5766,7 +6174,7 @@ cmd_export() {
 		_valid_src "$1" ||
 			die "ISP_TABLE 的源名 '$1' 非法（只允许 [A-Za-z0-9._-]）"
 		_src=$1
-		_f="$DATA/$_src.txt"
+		_f=$(_set_data_file "$_src" "${2:-$_src}")
 		[ -s "$_f" ] || continue
 
 		# 目标位置若已是符号链接，直接写会写穿到链接指向的文件；
@@ -5948,6 +6356,487 @@ cmd_rollback() {
 	_rc=$?
 	_op_lock_release
 	return $_rc
+}
+
+# ---------------------------------------------------------------- suggest（geo 反哺，D2）
+#
+# 为什么需要：视频平台 PCDN 化之后，"运营商段表 + 兜底 balanced"对视频流量的
+# 覆盖率持续下降——动态家宽 IP 永远不在段表里，落兜底后被 balanced 摇到另一家
+# 就跨网卡顿（生产实证两次）。体检命令的归属地存档（state/<体检>.geo.tsv）
+# 其实早就记录了这些目标 IP 的归属地：缺口探测器是现成的，缺的是把"兜底量大的
+# 目的网段"翻译成"建议补段"的那一步。
+#
+# 本命令只做两件事：
+#   1. 读 /proc/net/nf_conntrack，按目的 /24 聚合"未命中任何启用集合"的连接
+#      （= 兜底流量），超过阈值（默认 ≥1000 连接 或 ≥1MiB）的段进入候选；
+#   2. 对候选段查归属地（先用体检留下的 geo 缓存，未命中才外发查询），
+#      映射到 ISP_TABLE 里启用的运营商 -> 策略，打印建议；--apply 才写配置。
+#
+# 铁律：**不进 cron**。默认只读；查询只发送聚合后的目标 IP（与体检同一份隐私
+# 纪律：只发目标 IP、默认百度 HTTPS、不发送任何内网/用户信息）。
+#
+# 剥离版（FEATURE_LINECHECK=0）没有归属地查询实现：geo 通道整段被 lc 标记吃掉，
+# suggest 自动降级为"只看本地缓存"，不报错、不瞎猜。
+
+SG_CT_FILE=${ISP_SPLIT_CONNTRACK:-/proc/net/nf_conntrack}
+
+# 建议阈值：纯数字校验，非法值退回默认（不因一次手滑让命令崩掉）
+_sg_num() { # <值> <默认>
+	case "${1:-}" in '' | *[!0-9]*) printf '%s' "$2" ;; *) printf '%s' "$1" ;; esac
+}
+
+# 把 nft 里所有启用集合的成员导出成"零填充区间"文件（一次 nft 调用/集合，
+# 而不是每个目标 IP 一次 —— 13k 元素 × N 个集合 × 上千连接会慢到不可用）。
+_sg_sets_ranges() { # <输出文件>
+	_sgr_out=$1
+	: >"$_sgr_out" || return 1
+	_sgr_dump() {
+		nft list set inet mwan3 "$2" 2>/dev/null
+	}
+	foreach_enabled _sgr_dump | awk '
+		function pad(n,	s) {
+			s = sprintf("%.0f", n)
+			while (length(s) < 10) s = "0" s
+			return s
+		}
+		function ip2n(s,	p) {
+			split(s, p, ".")
+			return p[1] * 16777216 + p[2] * 65536 + p[3] * 256 + p[4]
+		}
+		function cidr(s,	p, n, blk) {
+			n = split(s, p, "/")
+			if (n != 2) return -1
+			blk = 2 ^ (32 - (p[2] + 0))
+			cs = int(ip2n(p[1]) / blk) * blk
+			ce = cs + blk - 1
+			return 1
+		}
+		function emit(t,	rc) {
+			gsub(/[ \t\r]/, "", t)
+			if (t == "") return
+			if (index(t, "-") > 0) {
+				split(t, q, "-")
+				s = ip2n(q[1]); e = ip2n(q[2])
+				if (s <= e) print pad(s), pad(e)
+				return
+			}
+			if (index(t, "/") > 0) {
+				if (cidr(t) > 0) print pad(cs), pad(ce)
+				return
+			}
+			s = ip2n(t)
+			print pad(s), pad(s)
+		}
+		/elements = \{/ { inb = 1 }
+		inb {
+			line = $0
+			if (line !~ /\}/) line = line "}"
+			sub(/.*elements = \{/, "", line)
+			sub(/\}.*/, "", line)
+			n = split(line, f, ",")
+			for (i = 1; i <= n; i++) emit(f[i])
+		}
+	' | sort | awk -f "$LIB/merge.awk" >"$_sgr_out" || return 1
+	return 0
+}
+
+# 归属地文本 -> 运营商源名的候选列表（按 ISP_TABLE 常见命名排）
+_sg_carrier_src() { # <归属地文本>
+	case "${1:-}" in
+	*联通*) printf 'unicom_cnc unicom' ;;
+	*电信*) printf 'chinatelecom chinanet telecom' ;;
+	*教育*) printf 'cernet' ;;
+	*铁通*) printf 'chinabtn tietong' ;;
+	*移动*) printf 'cmcc mobile' ;;
+	*广电* | *长城*) printf 'gwbn' ;;
+	*香港*) printf 'hk' ;;
+	*澳门*) printf 'mo' ;;
+	*台湾*) printf 'tw' ;;
+	*) printf '' ;;
+	esac
+}
+
+_sg_carrier_label() {
+	case "${1:-}" in
+	unicom*) printf '联通' ;;
+	chinatelecom | chinanet | telecom) printf '电信' ;;
+	cernet) printf '教育网' ;;
+	chinabtn) printf '铁通' ;;
+	cmcc | mobile) printf '移动' ;;
+	gwbn) printf '长城宽带' ;;
+	hk) printf '香港' ;;
+	mo) printf '澳门' ;;
+	tw) printf '台湾' ;;
+	*) printf '未知' ;;
+	esac
+}
+
+# 源名 -> "集合\t策略"，只在启用行里找（禁用的行不参与分流，建议没意义）
+_sg_row_of_src() { # <源名>
+	_sgs_src=${1:-}
+	[ -n "$_sgs_src" ] || return 1
+	for _sgs_row in $(_conf_table ISP_TABLE 2>/dev/null); do
+		case "$_sgs_row" in \#*) continue ;; esac
+		_sgs_ifs=$IFS
+		IFS=':'
+		set -- $_sgs_row
+		IFS=$_sgs_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "1" ] || continue
+		[ "$1" = "$_sgs_src" ] || continue
+		printf '%s\t%s' "$2" "$3"
+		return 0
+	done
+	return 1
+}
+
+# 归属地文本 -> "运营商源名\t集合\t策略"；找不到启用的运营商返回 1
+_sg_policy_of_text() { # <归属地文本>
+	_sgp_txt=${1:-}
+	for _sgp_src in $(_sg_carrier_src "$_sgp_txt"); do
+		_sgp_row=$(_sg_row_of_src "$_sgp_src") || continue
+		_sgp_set=${_sgp_row%%	*}
+		_sgp_pol=${_sgp_row#*	}
+		printf '%s\t%s\t%s' "$_sgp_src" "$_sgp_set" "$_sgp_pol"
+		return 0
+	done
+	return 1
+}
+
+# 在体检留下的 geo 缓存里找该 /24 内任一 IP 的归属地（只用缓存，不外发）。
+# 路径用"体检"+printf 拼出来：剥离版要求运行时树里不出现那个子命令的名字，
+# 而缓存文件名与它同名（拼接方式和入口 case 的 line*check 一样，是有意的）。
+_sg_geo_cached() { # <a.b.c> -> 归属地文本（多行取第一行）
+	_sgc_net=${1:-}
+	_sgc_name=$(printf 'line%s.geo.tsv' check)
+	_sgc_file=${LC_GEO:-${STATE_DIR:-/nonexistent}/$_sgc_name}
+	[ -f "$_sgc_file" ] || return 1
+	awk -F'\t' -v p="$_sgc_net." '
+		NF >= 3 && index($1, p) == 1 { print $3; exit }' "$_sgc_file" 2>/dev/null
+}
+
+# 兜底目标的目的网段聚合（/24）：读 conntrack + 已启用集合的区间
+_sg_scan() { # <ct文件> <区间文件> <min_conns> <min_bytes>
+	awk -v rng="$2" -v minc="$3" -v minb="$4" '
+		function ip2n(s,	p) {
+			split(s, p, ".")
+			return p[1] * 16777216 + p[2] * 65536 + p[3] * 256 + p[4]
+		}
+		# 非公网/特殊用途地址不可能是"运营商段表该覆盖却没覆盖"的目标
+		function public(n) {
+			if (n < 16777216) return 0			# 0.0.0.0/8
+			if (n >= 167772160 && n <= 184549375) return 0	# 10/8
+			if (n >= 1681915904 && n <= 1686110207) return 0	# 100.64/10（CGNAT）
+			if (n >= 2130706432 && n <= 2147483647) return 0	# 127/8
+			if (n >= 2851995648 && n <= 2852061183) return 0	# 169.254/16
+			if (n >= 2886729728 && n <= 2887778303) return 0	# 172.16/12
+			if (n >= 3221225472 && n <= 3221225983) return 0	# 192.0.0/24
+			if (n >= 3232235520 && n <= 3232301055) return 0	# 192.168/16
+			if (n >= 3758096384) return 0				# 224/4 + 240/4
+			return 1
+		}
+		BEGIN {
+			nr = 0
+			while ((getline l < rng) > 0) {
+				n = split(l, f, " ")
+				if (n < 2) continue
+				nr++
+				rs[nr] = f[1] + 0
+				re[nr] = f[2] + 0
+			}
+			close(rng)
+			ci = 1
+		}
+		{
+			dst = ""
+			by = 0
+			for (i = 1; i <= NF; i++) {
+				if (dst == "" && $i ~ /^dst=/) dst = substr($i, 5)
+				else if (by == 0 && $i ~ /^bytes=/) by = substr($i, 7) + 0
+			}
+			if (dst == "") next
+			n = ip2n(dst)
+			if (!public(n)) next
+			# 命中任何启用集合 => 不是兜底流量。
+			# ci 必须每条记录重置：conntrack 里目的 IP 是乱序的（先 110.x 后 1.x
+			# 很常见），单调游标一旦走过就再也回不来，会把"其实命中集合"的目标
+			# 误算成兜底。区间数只有个位数，线性重扫比维护数据结构便宜。
+			ci = 1
+			while (ci <= nr && re[ci] < n) ci++
+			if (ci <= nr && rs[ci] <= n) next
+			net = dst
+			sub(/\.[0-9]+$/, ".0", net)
+			cnt[net]++
+			byt[net] += by
+			ipc[dst]++
+			if (rep[net] == "" || ipc[dst] > best[net]) {
+				best[net] = ipc[dst]
+				rep[net] = dst
+			}
+		}
+		END {
+			for (k in cnt)
+				if (cnt[k] >= minc || byt[k] >= minb)
+					printf "%s\t%d\t%d\t%s\n", k, cnt[k], byt[k], rep[k]
+		}' "$1" 2>/dev/null | sort
+}
+
+cmd_suggest() {
+	_sg_apply=0
+	_sg_yes=0
+	_sg_minc=$( _sg_num "${SUGGEST_MIN_CONNS:-}" 1000)
+	_sg_minb=$( _sg_num "${SUGGEST_MIN_BYTES:-}" 1048576)
+	while [ $# -gt 0 ]; do
+		case "${1:-}" in
+		--apply) _sg_apply=1 ;;
+		--assume-yes | -y) _sg_yes=1 ;;
+		--min-conns)
+			shift
+			_sg_minc=$(_sg_num "${1:-}" 1000)
+			;;
+		--min-bytes)
+			shift
+			_sg_minb=$(_sg_num "${1:-}" 1048576)
+			;;
+		*)
+			die "用法: isp-split suggest [--apply [--assume-yes]] [--min-conns N] [--min-bytes N]"
+			;;
+		esac
+		shift
+	done
+	command -v nft >/dev/null 2>&1 || die "suggest 需要 nft（要判断哪些目标未命中运营商集合）"
+	nft list table inet mwan3 >/dev/null 2>&1 ||
+		die "nft 里没有 inet mwan3 表（mwan3 没运行，或还没 wire）。先 isp-split sync"
+
+	echo "== 兜底缺口建议（只读；本命令不会自动执行，也不在任何定时任务里）"
+	printf '阈值: ≥%s 连接 或 ≥%s 字节（SUGGEST_MIN_CONNS / SUGGEST_MIN_BYTES，可用 --min-conns/--min-bytes 覆盖）\n' \
+		"$_sg_minc" "$_sg_minb"
+	echo "口径: 未命中任何启用集合的目的 /24（同 /16 内 ≥2 个 /24 时按 /16 建议）"
+	echo
+
+	# 兜底计数（nft 命名计数器）只作为"总量"参照；逐段统计来自 conntrack。
+	if nft list counter inet mwan3 isp_fallback >/dev/null 2>&1; then
+		_sg_fb=$(nft list counter inet mwan3 isp_fallback 2>/dev/null |
+			grep -oE "packets [0-9]+ bytes [0-9]+" | head -1)
+		_sg_fbp=$(printf '%s' "$_sg_fb" | awk '{print $2}')
+		_sg_fbb=$(printf '%s' "$_sg_fb" | awk '{print $4}')
+		printf '兜底计数（nft counter isp_fallback）: %s 首包 / %s\n' \
+			"${_sg_fbp:-0}" "$(_human "${_sg_fbb:-0}")"
+	else
+		echo "兜底计数（nft counter isp_fallback）: 不存在（COUNT_FALLBACK=0 或还没 apply）"
+	fi
+	[ -r "$SG_CT_FILE" ] ||
+		die "读不到 $SG_CT_FILE（内核没开 conntrack？）。suggest 需要 conntrack 才能逐段定位缺口"
+
+	_sg_ranges="$WORK/suggest.sets"
+	_sg_cand="$WORK/suggest.cand"
+	mkdir -p "$WORK" 2>/dev/null || die "无法创建 $WORK"
+	_sg_sets_ranges "$_sg_ranges" || die "导出启用集合失败"
+	_sg_scan "$SG_CT_FILE" "$_sg_ranges" "$_sg_minc" "$_sg_minb" >"$_sg_cand" ||
+		die "扫描 conntrack 失败"
+	printf 'conntrack 快照: %s（%s 条连接记录）\n' "$SG_CT_FILE" \
+		"$(grep -c . "$SG_CT_FILE" 2>/dev/null || echo 0)"
+
+	if [ ! -s "$_sg_cand" ]; then
+		echo
+		echo "没有超过阈值的兜底目的网段：覆盖率看起来正常，不需要补段。"
+		echo "（样本太小可以调低阈值再看：--min-conns 200）"
+		return 0
+	fi
+
+	# 归属地：先吃体检留下的缓存，未命中才外发（默认百度 HTTPS）。
+	# 键名放进变量：剥离版里这两个键不存在（也不能出现它们的字面量）。
+	_sg_geo_en=1
+	_sg_prov=baidu
+	_sg_geo_name="未启用"
+	# lc:begin
+	_sg_key_geo=$(printf 'LINE_%s_GEO' CHECK)
+	_sg_key_prov=$(printf 'LINE_%s_GEO_PROVIDER' CHECK)
+	_sg_geo_en=$(_conf_val "$_sg_key_geo" 2>/dev/null)
+	[ -n "${_sg_geo_en:-}" ] || _sg_geo_en=1
+	_sg_prov=$(_conf_val "$_sg_key_prov" 2>/dev/null)
+	[ -n "${_sg_geo_name:-}" ] || _sg_geo_name="未启用"
+	_sg_geo_name=${LC_GEO:-未启用}
+	# lc:end
+	case "${_sg_prov:-auto}" in
+	ip-api) _sg_prov=ip-api ;;
+	*) _sg_prov=baidu ;;
+	esac
+	_sg_q=0
+	_sg_rows="$WORK/suggest.rows"
+	: >"$_sg_rows" || die "无法写入 $_sg_rows"
+	while IFS='	' read -r _sg_net _sg_c _sg_b _sg_rep; do
+		[ -n "$_sg_net" ] || continue
+		_sg_pref=${_sg_net%.*}
+		# 归属地通道整体属于体检实现：剥离版没有 _lc_geo_query，保留"未查询"
+		# 降级路径，建议仍然可见（只是没有运营商归属，不会瞎猜）。
+		_sg_txt=""
+		_sg_ev="未查询（本版本不含归属地查询）"
+		# lc:begin
+		_sg_txt=$(_sg_geo_cached "$_sg_pref")
+		_sg_ev="linecheck geo"
+		if [ -z "${_sg_txt:-}" ]; then
+			if [ "$_sg_geo_en" = "0" ]; then
+				_sg_txt=""
+				_sg_ev="未查询(LINE_CHECK_GEO=0)"
+			else
+				_sg_txt=$(_lc_geo_query "$_sg_rep" "$_sg_prov" 2>/dev/null)
+				[ -n "${_sg_txt:-}" ] && _lc_geo_cache_put "$_sg_rep" "$_sg_prov" "$_sg_txt"
+				_sg_q=$((_sg_q + 1))
+				_sg_ev="geo 查询($_sg_prov)"
+			fi
+		fi
+		# lc:end
+		printf '%s\t%s\t%s\t%s\t%s\n' "$_sg_net" "$_sg_c" "$_sg_b" "$_sg_ev" "${_sg_txt:-}" >>"$_sg_rows"
+	done <"$_sg_cand"
+
+	# 把 /24 聚合成建议（同 /16 内 ≥2 个同策略 /24 -> /16）
+	_sg_plan="$WORK/suggest.plan"
+	awk -F'\t' '
+		function pol(t,	s) {
+			if (t ~ /联通/) return "unicom_cnc"
+			if (t ~ /电信/) return "chinatelecom"
+			if (t ~ /教育/) return "cernet"
+			if (t ~ /铁通/) return "chinabtn"
+			if (t ~ /移动/) return "cmcc"
+			if (t ~ /广电/ || t ~ /长城/) return "gwbn"
+			if (t ~ /香港/) return "hk"
+			if (t ~ /澳门/) return "mo"
+			if (t ~ /台湾/) return "tw"
+			return ""
+		}
+		{
+			net = $1; c = $2 + 0; b = $3 + 0; ev = $4; txt = $5
+			c2 = pol(txt)
+			if (c2 == "") {
+				# 空字段会被 read 的 IFS 当成"连续分隔符"吞掉，导致后面整体错位；
+				# 未知来源统一用 "-" 占位（"未知运营商"本身也是合法占位语义）。
+				printf "%s\t%s\t%s\t%s\t%s\t%s\n", net "/24", c, b, "-", ev, txt
+				next
+			}
+			split(net, o, ".")
+			k = o[1] "." o[2] SUBSEP c2
+			n[k]++
+			cc[k] += c
+			bb[k] += b
+			ee[k] = ev
+			tt[k] = txt
+			net24[k] = net "/24"
+		}
+		END {
+			for (k in n) {
+				split(k, kk, SUBSEP)
+				if (n[k] >= 2)
+					printf "%s.0.0/16\t%s\t%s\t%s\t%s\t%s\n", kk[1], cc[k], bb[k], kk[2], ee[k], tt[k]
+				else
+					printf "%s\t%s\t%s\t%s\t%s\t%s\n", net24[k], cc[k], bb[k], kk[2], ee[k], tt[k]
+			}
+		}' "$_sg_rows" | sort -t'	' -k1,1 >"$_sg_plan"
+
+	if [ ! -s "$_sg_plan" ]; then
+		echo
+		echo "候选段都查不到归属地，无法给出补段建议。"
+		echo "（体检的归属地查询可能被关掉了：到配置页检查归属地开关与服务商，或稍后再试）"
+		return 0
+	fi
+
+	# 归属地 -> 启用运营商 -> 策略。找不到启用的运营商时如实说明，不瞎猜。
+	printf '%s\n' "---- 建议 ----"
+	_sg_n=0
+	_sg_add="$WORK/suggest.add"
+	: >"$_sg_add" || die "无法写入 $_sg_add"
+	while IFS='	' read -r _sg_cidr _sg_cc _sg_bb _sg_src _sg_ev _sg_txt; do
+		[ -n "$_sg_cidr" ] || continue
+		[ "${_sg_src:-}" = "-" ] && _sg_src=""
+		if [ -z "${_sg_src:-}" ]; then
+			printf '跳过: %s（归属地未知，证据: %s；%s 连接兜底）\n' \
+				"$_sg_cidr" "$_sg_ev" "$_sg_cc"
+			continue
+		fi
+		_sg_row=$(_sg_row_of_src "$_sg_src") || _sg_row=""
+		if [ -z "${_sg_row:-}" ]; then
+			printf '跳过: %s（%s，但 ISP_TABLE 里没有启用的 %s 行；先在配置页启用该运营商）\n' \
+				"$_sg_cidr" "$(_sg_carrier_label "$_sg_src")" "$_sg_src"
+			continue
+		fi
+		_sg_pol=${_sg_row#*	}
+		printf '建议: %s → %s（%s，证据: %s + %s 连接兜底）\n' \
+			"$_sg_cidr" "$_sg_pol" "$(_sg_carrier_label "$_sg_src")" "$_sg_ev" "$_sg_cc"
+		printf '%s:%s\n' "$_sg_cidr" "$_sg_pol" >>"$_sg_add"
+		_sg_n=$((_sg_n + 1))
+	done <"$_sg_plan"
+	echo
+	if [ "$_sg_q" -gt 0 ]; then
+		printf '隐私: 本次向 %s 发送了 %s 个聚合后的目标 IP（只发目标 IP，不含内网/用户信息）；结果已缓存进 %s\n' \
+			"$_sg_prov" "$_sg_q" "${_sg_geo_name:-未启用}"
+	elif [ "${_sg_geo_name:-未启用}" = "未启用" ]; then
+		echo "隐私: 本次没有外发查询（本版本不含归属地查询）"
+	else
+		echo "隐私: 本次没有外发查询（全部命中体检留下的归属地缓存）"
+	fi
+
+	if [ "$_sg_n" -eq 0 ]; then
+		echo
+		echo "没有可落地的建议（候选段查不到归属地，或归属运营商没启用）。"
+		return 0
+	fi
+
+	if [ "$_sg_apply" != "1" ]; then
+		echo
+		echo "提示: isp-split suggest --apply 可把这些段写进 $CONF 的 IP_SPLIT（写前会再展示一次并要确认）；"
+		echo "      写入后执行 isp-split apply 生效。"
+		return 0
+	fi
+
+	# ---- --apply：写 IP_SPLIT（等价于手工编辑 conf，带双向校验与回滚）----
+	_sg_cur=$(printf '%s\n' "$IP_SPLIT" | awk 'NF')
+	_sg_new="$_sg_cur"
+	_sg_added=0
+	while IFS= read -r _sg_line; do
+		[ -n "$_sg_line" ] || continue
+		_sg_c=${_sg_line%%:*}
+		if printf '%s\n' "$_sg_cur" | awk -F: -v c="$_sg_c" '$1 == c { found = 1 } END { exit(found ? 0 : 1) }'; then
+			printf '已存在，跳过: %s（当前已有该网段的手动段）\n' "$_sg_line"
+			continue
+		fi
+		_sg_new="${_sg_new}
+$_sg_line"
+		_sg_added=$((_sg_added + 1))
+	done <"$_sg_add"
+
+	if [ "$_sg_added" -eq 0 ]; then
+		echo
+		echo "没有需要新增的段（建议里的网段都已在 IP_SPLIT 里）。"
+		return 0
+	fi
+
+	echo
+	echo "== 将要写入 $CONF 的 IP_SPLIT（新增 $_sg_added 条）"
+	printf '%s\n' "$_sg_new" | sed 's/^/  /'
+	if [ "$_sg_yes" != "1" ]; then
+		case "${ISP_SPLIT_ASSUME_YES:-0}" in
+		1) _sg_yes=1 ;;
+		esac
+	fi
+	if [ "$_sg_yes" != "1" ]; then
+		if [ -t 0 ] && [ -t 1 ]; then
+			printf '确认写入？[y/N] '
+			read -r _sg_ans
+			case "${_sg_ans:-}" in
+			y | Y | yes | YES) ;;
+			*)
+				log "已取消（配置未改动）"
+				return 1
+				;;
+			esac
+		else
+			die "非交互环境写入需加 --assume-yes（配置未改动）"
+		fi
+	fi
+	_conf_write IP_SPLIT "$_sg_new" || return $?
+	log "已写入 IP_SPLIT（新增 $_sg_added 条）"
+	echo "下一步: isp-split apply   # 立刻生效；不跑也会在下次 fetch/refresh 时自动合并"
+	return 0
 }
 
 # ---------------------------------------------------------------- install
@@ -8554,7 +9443,7 @@ fi
 # （ls .history/*、cp out.new/*.txt），不能全局 set -f，所以在入口
 # 直接拒绝这几个字符 —— 表里本来只该有 字母数字 : . _ - # 和空白。
 _table_no_glob() {
-	for _tg_v in "$ISP_TABLE" "${DNS_TABLE:-}" "${DOMAIN_SPLIT:-}"; do
+	for _tg_v in "$ISP_TABLE" "${DNS_TABLE:-}" "${DOMAIN_SPLIT:-}" "${IP_SPLIT:-}"; do
 		case "$_tg_v" in
 		*'*'* | *'?'* | *'['* | *']'*)
 			die "配置表里出现通配符字符（* ? [ ]）：展开时会被替换成当前目录的文件名。请删除这些字符（注释里也不要写）"
@@ -8586,6 +9475,7 @@ enable) cmd_enable ;;
 verify) cmd_verify ;;
 policy-check) shift; cmd_policy_check "$@" ;;
 status) shift; cmd_status "$@" ;;
+suggest) shift; cmd_suggest "$@" ;;
 health) shift; cmd_health "$@" ;;
 probe) cmd_probe ;;
 # lc:begin
@@ -8640,6 +9530,8 @@ line*check)
   refresh    fetch + apply（只更新数据，不动 mwan3 配置）
   sync       fetch + wire + apply
   status     查看条目数与命中统计
+  suggest    兜底缺口建议：扫 conntrack + 归属地缓存，给出该补哪些段
+             （只读；--apply 写入 IP_SPLIT，写前确认。绝不进 cron）
   health     数据源健康度 + 双线状态（--json 给 LuCI 用）
   probe      分线实测出口速度
 # lc:begin

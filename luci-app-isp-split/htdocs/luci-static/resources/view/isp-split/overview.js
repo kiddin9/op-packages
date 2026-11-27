@@ -753,6 +753,25 @@ return view.extend({
 		box.appendChild(E('div', { 'class': 'isp-op-sub' }, [
 			_('流量 ') + fmtBytes(fb.bytes) + ' · ' + _('未命中任何运营商集合')
 		]));
+
+		/* D3（fix42）：兜底占比 >30% 时给一行提示条——只提示，不自动跑 suggest。
+		   PCDN 家宽节点永远不在运营商段表里，兜底变高往往意味着"该补段了"，
+		   而补段的入口是 isp-split suggest（手动 / 按钮，绝不进 cron）。 */
+		var totalPk = (+fb.packets || 0);
+		(this.status || []).forEach(function(r) {
+			if (!r || r.set === '兜底')
+				return;
+			totalPk += (+r.packets || 0);
+		});
+		var share = totalPk > 0 ? Math.round((+fb.packets || 0) * 100 / totalPk) : 0;
+		if (totalPk > 0 && share > 30) {
+			box.appendChild(E('div', {
+				'class': 'isp-fb-hint',
+				'title': _('兜底首包 ') + fmtNum(fb.packets) + _(' / 全部首包 ') + fmtNum(totalPk)
+			}, [
+				_('兜底占比 ') + share + _('%，偏高：运行 isp-split suggest 查看缺口建议')
+			]));
+		}
 	},
 
 	/* ---------------- 数据源健康度 ---------------- */

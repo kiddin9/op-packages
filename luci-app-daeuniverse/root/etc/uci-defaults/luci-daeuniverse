@@ -1,0 +1,21 @@
+#!/bin/sh
+
+for s in \
+	/usr/share/daeuniverse/download_dashboard.sh \
+	/etc/init.d/daeuniverse \
+	/etc/hotplug.d/iface/98-daeuniverse
+do
+	[ -f "$s" ] && chmod +x "$s"
+done
+
+mkdir -p /etc/daeuniverse/honk/config.d /etc/daeuniverse/honk/state \
+         /etc/daeuniverse/dae/config.d /var/log/daeuniverse
+chmod 700 /etc/daeuniverse /etc/daeuniverse/honk /etc/daeuniverse/honk/config.d /etc/daeuniverse/honk/state \
+          /etc/daeuniverse/dae /etc/daeuniverse/dae/config.d 2>/dev/null || true
+chmod 600 /etc/daeuniverse/honk/config.dae /etc/daeuniverse/dae/config.dae /etc/daeuniverse/dae/api.dae \
+          /etc/daeuniverse/honk/config.d/*.dae /etc/daeuniverse/dae/config.d/*.dae 2>/dev/null || true
+
+rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache /tmp/luci-*.lmo
+/etc/init.d/rpcd reload 2>/dev/null
+
+exit 0

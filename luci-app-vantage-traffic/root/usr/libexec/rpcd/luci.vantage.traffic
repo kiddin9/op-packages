@@ -60,9 +60,10 @@
 // addressed to it, both ways, for the hosts its neighbour tables give a
 // MAC (IPv4 and IPv6). Not counted: traffic a bridge or a switch passes
 // between hosts of one network, hosts behind another router, an IPv6
-// address the neighbour table does not hold, what an entry carried
-// between the last read and its end. A connection between two hosts of
-// this router's networks counts for both.
+// address the neighbour table does not hold, an address two interfaces
+// give different MACs (a connection's entry does not say which it came
+// by), what an entry carried between the last read and its end. A
+// connection between two hosts of this router's networks counts for both.
 //
 // Reads: /proc/net/nf_conntrack (TABLE) line by line, the accounting switch
 // (ACCT), the IPv4 and IPv6 neighbour tables (one read-only rtnl dump
@@ -73,8 +74,10 @@
 //   state.json   { v, at, flows: { key: [ orig bytes, reply bytes, read
 //                at ] }, totals: { mac: [ rx, tx, counted at ] } }, at:
 //                when the read that wrote it began; about 100 bytes an
-//                entry, never more than MAX_STATE (one that is larger or
-//                not of this form is not used: the counting starts over)
+//                entry, never more than MAX_STATE (one that is larger,
+//                not of this form or of another v is not used: the
+//                counting starts over; v is 3 since 1.2.2, whose keys
+//                hold the entry's zone)
 //   answer.json  the last answer, as printed, written only after the
 //                state it comes from
 // DIR is made 0700 and the files 0600, root's: no other account can read
@@ -93,7 +96,7 @@ const THEME = 'vantage_theme';    // read only: is Low-power router on
 const MAX_ENTRIES = 16384;        // entries read a time (nf_conntrack_max: 2048 up, by RAM)
 const MAX_HOSTS = 512;            // hosts counted, as luci.vantage wired lists
 const MAX_NEIGH = 4096;           // neighbour entries taken, both families
-const MAX_KEY = 160;              // characters of an entry's key: 115 at most by the layout table (IPv6 gre), about 140 by parse_slow
+const MAX_KEY = 160;              // characters of an entry's key: 115 at most by the layout table (IPv6 gre), 15 more with a zone
 // The most state.json holds, as %J writes it: 2 x MAX_ENTRIES entries (those
 // a read saw, as many it did not), each a key of MAX_KEY characters at most,
 // three numbers of 20 at most (a 64-bit integer; a double, which ucode
@@ -157,8 +160,21 @@ function kv(s, key) {
 	return (i < 0) ? s : substr(s, 0, i);
 }
 
+// The conntrack zone of a line's entry, as its key ends: '' for zone 0
+// and for none. The kernel knows an entry by its original addresses and
+// ports and that direction's zone, so the same ones may stand in the
+// table once for each zone. It prints a zone of both directions near the
+// line's end ("zone=N"; zone=0 for an entry in none where it has zones,
+// as OpenWrt's does) and one of the original direction alone among that
+// direction's fields ("zone-orig=N"), where the key holds it already. One
+// of the reply alone ("zone-reply=N") leaves the original in zone 0.
+function zone(l) {
+	let z = count(kv(l, ' zone='));
+	return z ? 'zone=' + z : '';
+}
+
 // "ipv4     2 tcp      6 7438 ESTABLISHED src=A dst=B sport=.. dport=..
-// packets=.. bytes=N src=B dst=C ... bytes=M [ASSURED] mark=0 use=2", by
+// packets=.. bytes=N src=B dst=C ... bytes=M [ASSURED] mark=0 zone=0 use=2", by
 // the layout table, into e: [ key, the original direction's src field,
 // its bytes, the reply's src field, its bytes, the field after them
 // ('[ASSURED]', '[OFFLOAD]', '[HW_OFFLOAD]', 'mark=0' ...) ]. false where
@@ -169,7 +185,9 @@ function kv(s, key) {
 // parse_slow. A line costs feed six builtin calls (the read, then here
 // split, slice, join and two substr) and one function call, this one;
 // before 1.2.0 it cost about 30 builtin calls (26 in parse_slow) and 8
-// function calls.
+// function calls. The zone costs an entry in none one or two comparisons
+// (zone=0 is the third field after the reply's bytes, the second without
+// [ASSURED]); any other line asks zone().
 function parse(l, e) {
 	let t = split(l, ' '), p = PROTO[t[6]];
 	if (!p)
@@ -184,11 +202,13 @@ function parse(l, e) {
 	e[3] = t[r];
 	e[4] = +substr(t[r + a], 6);
 	e[5] = t[r + a + 1];
+	if (t[r + a + 3] != 'zone=0' && t[r + a + 2] != 'zone=0')
+		e[0] += zone(l);
 	return true;
 }
 
 // The same line by searching it: any layout, at about eight times the
-// calls. The second src= starts the reply.
+// calls. The second src= starts the reply. The key as parse spells it.
 function parse_slow(l) {
 	if (type(l) != 'string')
 		return null;
@@ -205,7 +225,7 @@ function parse_slow(l) {
 	if (end < 0)
 		end = index(o, ' [');
 	return {
-		key: substr(head, 0, b + e) + ' ' + ((end < 0) ? o : substr(o, 0, end)),
+		key: substr(head, b, e) + 'src=' + join('', split((end < 0) ? o : substr(o, 0, end), ' ')) + zone(l),
 		osrc: substr(o, 0, sp),
 		obytes: count(ob),
 		rsrc: (rs > 0) ? substr(r, 0, rs) : null,
@@ -226,7 +246,10 @@ function norm(a) {
 }
 
 // address -> MAC, from the IPv4 and IPv6 neighbour tables: entries that
-// name a unicast MAC and are not failed or incomplete
+// name a unicast MAC and are not failed or incomplete. An address two
+// interfaces give different MACs (two networks with one subnet, each in
+// a zone of its own) is '', nobody's: an entry's line does not say which
+// of them it came by, and the last one listed is not the answer.
 function neighbours() {
 	let out = {}, n = 0;
 	for (let family in [ rtnl.const.AF_INET, rtnl.const.AF_INET6 ]) {
@@ -239,7 +262,7 @@ function neighbours() {
 			    mac != '00:00:00:00:00:00' && type(e.state) == 'int' && (e.state & NUD_VALID)) {
 				let a = norm(e.dst);
 				if (a)
-					out[a] = mac;
+					out[a] = (out[a] == null || out[a] == mac) ? mac : '';
 			}
 		}
 	}
@@ -412,12 +435,13 @@ function dir_ok() {
 	return st?.type == 'directory' && st.uid === 0 && !(st.mode & 0077);
 }
 
-// text written whole beside the file, then put in its place: a call that
-// rpcd kills midway leaves the file before it, and a write that fails
-// (a full /tmp) leaves nothing beside it
+// text written whole beside the file, checked to be all there (a full
+// /tmp leaves it short, and writefile's count does not say so), then put
+// in its place: a call that rpcd kills midway leaves the file before it,
+// and a write that fails leaves nothing beside it
 function put(name, text) {
 	let tmp = DIR + '/' + name + '.new', file = DIR + '/' + name;
-	if (writefile(tmp, text) == length(text) && chmod(tmp, 0600) && rename(tmp, file) === true)
+	if (writefile(tmp, text) == length(text) && lstat(tmp)?.size === length(text) && chmod(tmp, 0600) && rename(tmp, file) === true)
 		return true;
 	unlink(tmp);
 	return false;
@@ -440,7 +464,7 @@ function load_state() {
 	let text = readfile(DIR + '/state.json', MAX_STATE + 1), st = null;
 	if (type(text) == 'string' && length(text) <= MAX_STATE)
 		try { st = json(text); } catch (err) { st = null; }
-	let ok = type(st) == 'object' && st.v == 2 && type(st.flows) == 'object' && type(st.totals) == 'object' &&
+	let ok = type(st) == 'object' && st.v == 3 && type(st.flows) == 'object' && type(st.totals) == 'object' &&
 		(st.at == null || st.at === +st.at) && length(st.totals) <= MAX_HOSTS;
 	for (let k, v in (ok ? st.flows : {}))
 		if (length(k) > MAX_KEY || !entry_ok(v)) {
@@ -460,7 +484,7 @@ function load_state() {
 
 // the counters' state for the next read; false when it could not be written
 function save_state(now) {
-	return put('state.json', sprintf('%J', { v: 2, at: now, flows, totals }));
+	return put('state.json', sprintf('%J', { v: 3, at: now, flows, totals }));
 }
 
 // the last answer and its text, or null

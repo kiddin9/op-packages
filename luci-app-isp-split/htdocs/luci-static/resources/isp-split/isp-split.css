@@ -758,6 +758,15 @@
 	overflow-wrap: anywhere;
 }
 
+/* 兜底占比偏高提示（fix42 D3）：只在 >30% 时出现，一行文字，不抢卡片数字 */
+.isp-fb-hint {
+	margin-top: 6px;
+	font-size: 0.74rem;
+	line-height: 1.45;
+	color: var(--warn-color-high, #b35c00);
+	overflow-wrap: anywhere;
+}
+
 .isp-test-result {
 	font-size: 0.78rem;
 	line-height: 1.35;

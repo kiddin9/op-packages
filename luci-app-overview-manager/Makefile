@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-overview-manager
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=nikitid
 PKGARCH:=all
@@ -60,7 +60,7 @@ define Package/luci-app-overview-manager/install
 
 	# scripts/po2lmo.py is a byte-compatible reimplementation of the luci-base
 	# po2lmo tool. Using it keeps this package independent of the LuCI feed
-	# host tools and produces the same catalogs as the SDK-less IPK build.
+	# host tools and produces the same catalogs as scripts/stage-package.sh.
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(foreach language,$(LUCI_LANGUAGES), \
 		$(foreach po,$(wildcard ${CURDIR}/po/$(language)/*.po), \

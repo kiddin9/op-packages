@@ -2,7 +2,6 @@
 'require view';
 'require rpc';
 'require ui';
-'require uci';
 
 var callGetStatus = rpc.declare({
 	object: 'luci.ap-switch',
@@ -27,17 +26,14 @@ return L.view.extend({
 	handleReset: null,
 
 	load: function() {
-		return Promise.all([
-			callGetStatus(),
-			uci.load('ap-switch')
-		]);
+		return callGetStatus();
 	},
 
-	render: function(data) {
+	render: function(status) {
 		var self = this;
-		var status = data[0];
+		status = status || {};
 		var mode = status.mode || 'router';
-		var lan_ip = status.lan_ip || 'N/A';
+		var lan_ip = status.lan_ip || '';
 		var lan_proto = status.lan_proto || 'static';
 		var lan_mac = status.lan_mac || 'N/A';
 
@@ -114,9 +110,12 @@ return L.view.extend({
 						ui.hideModal();
 						ui.addNotification(null, E('p', _('Mode switched successfully. Please check your network connection.')), 'info');
 					}, 5000);
+				} else if (res && res.result === 'Already in target mode') {
+					ui.hideModal();
+					ui.addNotification(null, E('p', _('Mode switched successfully. Please check your network connection.')), 'info');
 				} else {
 					ui.hideModal();
-					ui.addNotification(null, E('p', _('Failed to switch mode: %s').format(res.error || 'Unknown error')), 'error');
+					ui.addNotification(null, E('p', _('Failed to switch mode: %s').format((res && res.error) || 'Unknown error')), 'error');
 				}
 			}).catch(function(err) {
 				ui.hideModal();

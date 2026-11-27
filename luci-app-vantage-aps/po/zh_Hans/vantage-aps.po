@@ -22,7 +22,7 @@ msgstr "%d 小时前"
 msgid "%d min ago"
 msgstr "%d 分钟前"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:184
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:195
 msgid "%d routers can already read this access point. Revoke one first."
 msgstr "已有 %d 个路由器可以读取此接入点。请先撤销其中一个。"
 
@@ -30,12 +30,12 @@ msgstr "已有 %d 个路由器可以读取此接入点。请先撤销其中一�
 msgid "%d s ago"
 msgstr "%d 秒前"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:689
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:717
 msgid ""
 "%s will no longer be able to read this access point, from its next fetch on."
 msgstr "从下一次读取起，%s 将无法再读取此接入点。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:490
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:513
 msgid ""
 "%s will no longer show on this dashboard. Its access point keeps this "
 "router's key until you revoke it there."
@@ -46,7 +46,18 @@ msgstr ""
 msgid "%s, SSH port %d"
 msgstr "%s，SSH 端口 %d"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:643
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:171
+msgid ""
+"A Dropbear listener on this device runs a command of its own for every login "
+"(ForceCommand in /etc/config/dropbear). The routers below are still let in, "
+"and through that listener their keys run that command as root instead of the "
+"report. Remove the command, or revoke the routers."
+msgstr ""
+"此设备上的某个 Dropbear 实例会在每次登录时运行自己的命令（/etc/config/"
+"dropbear 中的 ForceCommand）。下方的路由器仍然获准，且经由该实例，它们的密钥"
+"会以 root 身份运行该命令，而不是报告。请移除该命令，或撤销这些路由器。"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:669
 msgid ""
 "A router you let in can fetch this device's report (its Wi-Fi networks, "
 "clients and wired hosts) over SSH, and nothing else."
@@ -54,82 +65,82 @@ msgstr ""
 "获准的路由器可以通过 SSH 读取此设备的报告（其 Wi-Fi 网络、客户端和有线主"
 "机），除此之外什么也做不了。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:626
 msgid "Access point %s, SSH port %d."
 msgstr "接入点 %s，SSH 端口 %d。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:603
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:626
 msgid "Access point %s."
 msgstr "接入点 %s。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:350
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:368
 #: luci-app-vantage-aps/root/usr/share/luci/menu.d/luci-app-vantage-aps.json:3
 msgid "Access points"
 msgstr "接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:418
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:441
 msgid "Access points on this dashboard"
 msgstr "此仪表盘上的接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:539
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:562
 msgid "Add access point"
 msgstr "添加接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:416
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:540
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:439
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:563
 msgid "Add an access point"
 msgstr "添加接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:537
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:560
 msgid "Address of the access point"
 msgstr "接入点的地址"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:424
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:447
 msgid ""
 "An access point's SSH must be on and reachable from this device; this page "
 "cannot pair one that is not."
 msgstr "接入点的 SSH 必须已开启，且此设备能够访问；否则此页面无法与其配对。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:522
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:555
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:709
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:545
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:578
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:737
 msgid "Cancel"
 msgstr "取消"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:547
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:570
 msgid "Check the address"
 msgstr "检查地址"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:170
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:181
 msgid ""
 "Check the reply and the address: the address must be an IPv4 or IPv6 "
 "address, without a port."
 msgstr "请检查应答码和地址：地址必须是 IPv4 或 IPv6 地址，不带端口。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:288
 msgid "Copied"
 msgstr "已复制"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:391
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:414
 msgid "Copy"
 msgstr "复制"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:705
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:733
 msgid "Copy this access point's reply"
 msgstr "复制此接入点的应答码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:542
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:565
 msgid "Copy this router's code"
 msgstr "复制此路由器的配对码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:326
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:344
 msgid ""
 "Could not read the pairing state. Reload the page; if that does not help, "
 "reinstall luci-app-vantage-aps."
 msgstr ""
 "无法读取配对状态。请重新加载页面；若仍无效，请重新安装 luci-app-vantage-aps。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:711
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:739
 msgid "Done"
 msgstr "完成"
 
@@ -161,12 +172,12 @@ msgid ""
 msgstr ""
 "SSH 服务器 Dropbear 未运行，因此无法配对。请在 系统 → 启动项 中启动它。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:639
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
 msgid ""
 "For a router you already let in: paste it there, under Add an access point."
 msgstr "供已获准的路由器使用：在该路由器的“添加接入点”下粘贴。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:571
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:594
 msgid "Getting this router's code…"
 msgstr "正在获取此路由器的配对码…"
 
@@ -196,61 +207,61 @@ msgstr "它拒绝了此路由器的密钥：可能已在该设备上被撤销。
 msgid "It sent a report this router cannot read. Update Vantage on it."
 msgstr "它发送的报告此路由器无法读取。请更新它上面的 Vantage。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:681
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:709
 msgid "Its SSH key"
 msgstr "其 SSH 密钥"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:634
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:712
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:660
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:740
 msgid "Let a router read this access point"
 msgstr "允许路由器读取此接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:702
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:730
 msgid "Let the router read"
 msgstr "允许该路由器读取"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:445
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:468
 msgid "No access points yet. Add one to see its clients on this dashboard."
 msgstr "尚无接入点。添加一个即可在此仪表盘上查看其客户端。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:253
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:262
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:270
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:279
 msgid "No live state"
 msgstr "无实时状态"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:693
 msgid "No router can read this access point."
 msgstr "没有路由器可以读取此接入点。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:665
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:693
 msgid "Not known while this device's SSH keys cannot be read."
 msgstr "此设备的 SSH 密钥无法读取，暂时无法得知。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:444
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:467
 msgid ""
 "Not known while this router's list of access points (/etc/vantage/aps.json) "
 "cannot be read."
 msgstr "此路由器的接入点列表（/etc/vantage/aps.json）无法读取，暂时无法得知。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:260
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:277
 msgid "Not reporting"
 msgstr "未上报"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:275
 msgid "Offline"
 msgstr "离线"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:258
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:275
 msgid "Offline, last report %s"
 msgstr "离线，上次报告 %s"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:544
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:567
 msgid ""
 "On the access point, open Network → Access points and paste it under “Let a "
 "router read this access point”."
 msgstr "在接入点上打开 网络 → 接入点，在“允许路由器读取此接入点”下粘贴。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:351
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:369
 msgid ""
 "Pair access points with a router so its dashboard shows their Wi-Fi and "
 "wired clients. Both need Vantage; nothing is shared until a code is pasted "
@@ -259,62 +270,62 @@ msgstr ""
 "将接入点与路由器配对，路由器的仪表盘即可显示其 Wi-Fi 和有线客户端。两者都需要"
 "安装 Vantage；在双方各自粘贴对方的配对码或应答码之前，不会共享任何内容。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:415
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:438
 msgid "Paired access points"
 msgstr "已配对的接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:706
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:734
 msgid "Paste it on the router, in the form that showed its code."
 msgstr "在路由器上显示其配对码的表单中粘贴。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:546
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:569
 msgid "Paste the access point's reply"
 msgstr "粘贴接入点的应答码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:713
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:741
 msgid "Paste the router's code"
 msgstr "粘贴路由器的配对码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:475
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:491
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:498
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:514
 msgid "Remove"
 msgstr "删除"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:474
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:497
 msgid "Remove %s"
 msgstr "删除 %s"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:489
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:512
 msgid "Remove access point"
 msgstr "删除接入点"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:273
 msgid "Reporting"
 msgstr "正在上报"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:256
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:273
 msgid "Reporting, %s"
 msgstr "正在上报，%s"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:677
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:690
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:705
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:718
 msgid "Revoke"
 msgstr "撤销"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:676
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:704
 msgid "Revoke %s"
 msgstr "撤销 %s"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:688
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:716
 msgid "Revoke router"
 msgstr "撤销路由器"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:745
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:773
 msgid "Router %s."
 msgstr "路由器 %s。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:633
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:642
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:659
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:670
 msgid "Routers that can read this access point"
 msgstr "可读取此接入点的路由器"
 
@@ -322,94 +333,106 @@ msgstr "可读取此接入点的路由器"
 msgid "SSH on this device is not ready for pairing."
 msgstr "此设备上的 SSH 尚不能用于配对。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:271
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:288
 msgid "Select and copy it"
 msgstr "请选中并复制"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:638
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:664
 msgid "Show this access point's reply again"
 msgstr "再次显示此接入点的应答码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:183
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:194
 msgid ""
 "That is not a router's code. Copy the whole line from the router, starting "
 "with vantage-router."
 msgstr "这不是路由器的配对码。请从路由器复制以 vantage-router 开头的整行。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:171
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:182
 msgid ""
 "That is not an access point's reply. Copy the whole line from the access "
 "point, starting with vantage-ap."
 msgstr "这不是接入点的应答码。请从接入点复制以 vantage-ap 开头的整行。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:172
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:183
 msgid ""
 "That is this device's own reply. Paste the reply of the access point you "
 "want to add."
 msgstr "这是此设备自己的应答码。请粘贴要添加的接入点的应答码。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:177
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:188
 msgid "The access point could not be added."
 msgstr "无法添加该接入点。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:534
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:218
+msgid ""
+"The access point is removed, but this device could not shut down the service "
+"that read it. Try again."
+msgstr "接入点已移除，但此设备无法关闭读取它的服务。请重试。"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:178
+msgid ""
+"The access point is saved, but this device could not set up the service that "
+"reads it. Try again."
+msgstr "接入点已保存，但此设备无法设置读取它的服务。请重试。"
+
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:557
 msgid "The access point's reply"
 msgstr "接入点的应答码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:199
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:206
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:210
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:221
 msgid "The device did not do it. Reload the page and try again."
 msgstr "设备未执行该操作。请重新加载页面后重试。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:472
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:495
 msgid ""
 "The network it was paired on: this router looks for it there when its "
 "address changes"
 msgstr "配对时它所在的网络：其地址变化时，此路由器在该网络中查找它"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:211
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:226
 msgid "The request failed: %s"
 msgstr "请求失败：%s"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:187
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:198
 msgid "The router could not be let in."
 msgstr "无法允许该路由器读取。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:700
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:728
 msgid ""
 "The router shows it under Network → Access points → Add an access point."
 msgstr "路由器在 网络 → 接入点 → 添加接入点 中显示它。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:698
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:726
 msgid "The router's code"
 msgstr "路由器的配对码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:173
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:184
 msgid "This access point is already on this dashboard."
 msgstr "此接入点已在此仪表盘上。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:636
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:703
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:662
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:731
 msgid "This access point's reply"
 msgstr "此接入点的应答码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:174
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:185
 msgid "This dashboard already reads %d access points. Remove one first."
 msgstr "此仪表盘已读取 %d 个接入点。请先删除其中一个。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:198
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:209
 msgid "This device could not make its SSH key. Try again."
 msgstr "此设备无法生成其 SSH 密钥。请重试。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:176
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:187
 msgid "This device could not save the access point. Try again."
 msgstr "此设备无法保存该接入点。请重试。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:205
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:220
 msgid "This device could not save the change. Try again."
 msgstr "此设备无法保存更改。请重试。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:186
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:197
 msgid "This device could not update its SSH keys. Try again."
 msgstr "此设备无法更新其 SSH 密钥。请重试。"
 
@@ -419,12 +442,12 @@ msgid ""
 "it at, so pairing is off."
 msgstr "此设备的 lan 接口没有可供路由器访问的 IPv4 地址，因此无法配对。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:192
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:203
 msgid ""
 "This device has no SSH client (dbclient), so it cannot read access points."
 msgstr "此设备没有 SSH 客户端（dbclient），因此无法读取接入点。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:419
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:442
 msgid ""
 "This device reads each access point over SSH and shows it on its dashboard."
 msgstr "此设备通过 SSH 读取每个接入点，并将其显示在仪表盘上。"
@@ -446,15 +469,15 @@ msgstr ""
 "无法读取此设备的 SSH 密钥（/etc/dropbear/authorized_keys），或其大小超过 256 "
 "KiB。无法得知哪些路由器可以读取此设备，因此无法配对。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:605
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:628
 msgid "This does not look like an access point's reply yet."
 msgstr "这看起来还不像接入点的应答码。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:604
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:627
 msgid "This is a router's code: paste it on the access point instead."
 msgstr "这是路由器的配对码：请改在接入点上粘贴。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:744
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:772
 msgid "This is an access point's reply: paste it on the router instead."
 msgstr "这是接入点的应答码：请改在路由器上粘贴。"
 
@@ -465,16 +488,16 @@ msgid ""
 msgstr ""
 "此路由器无法连接到它。请检查它是否已开机，以及从这里能否访问其 SSH 端口。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:175
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:186
 msgid ""
 "This router has no key yet. Close this form and open it again to make one."
 msgstr "此路由器尚无密钥。请关闭此表单并重新打开以生成一个。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:531
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:554
 msgid "This router's code"
 msgstr "此路由器的配对码"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:185
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:196
 msgid ""
 "This router's key is already in this device's SSH keys, added by hand. "
 "Remove it under System → Administration → SSH-Keys first."
@@ -520,19 +543,29 @@ msgstr ""
 "其上未安装 Vantage 的接入点附加组件。请在该设备上重新安装 luci-app-vantage-"
 "aps。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:257
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:274
 msgid "Waiting for its first report"
 msgstr "正在等待首次报告"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:549
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:572
 msgid ""
 "Where this router reaches it. Change it only if the access point's own "
 "address is not reachable from here."
 msgstr "此路由器访问它所用的地址。仅当从这里无法访问接入点自身的地址时才更改。"
 
-#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:473
+#: luci-app-vantage-aps/htdocs/luci-static/resources/view/vantage/aps.js:496
 msgid "network %s"
 msgstr "网络 %s"
+
+#~ msgid ""
+#~ "The access point is removed, but this device could not stop the service "
+#~ "that read it. Try again."
+#~ msgstr "接入点已移除，但此设备无法停止读取它的服务。请重试。"
+
+#~ msgid ""
+#~ "The access point is saved, but this device could not start the service "
+#~ "that reads it. Try again."
+#~ msgstr "接入点已保存，但此设备无法启动读取它的服务。请重试。"
 
 #~ msgid "Not known while the key file cannot be read."
 #~ msgstr "密钥文件无法读取，暂时无法得知。"

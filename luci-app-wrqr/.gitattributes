@@ -7,7 +7,6 @@
 Makefile text eol=lf
 
 *.apk binary
-*.ipk binary
 *.bin binary
 *.img binary
 *.gz binary

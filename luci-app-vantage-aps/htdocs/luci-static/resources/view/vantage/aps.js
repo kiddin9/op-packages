@@ -163,8 +163,19 @@ function sshProblem(state) {
 	return _('SSH on this device is not ready for pairing.');
 }
 
-/* add_ap's refusals */
+/* routers let in, and a Dropbear listener that runs a command of its own
+   for every login (status ap.forced): what their keys do there. Said in
+   place of the 'unsupported' warning, which only says pairing is off */
+function forcedProblem(s) {
+	return s.forced && s.routers.length
+		? _('A Dropbear listener on this device runs a command of its own for every login (ForceCommand in /etc/config/dropbear). The routers below are still let in, and through that listener their keys run that command as root instead of the report. Remove the command, or revoke the routers.')
+		: null;
+}
+
+/* add_ap's refusals; saved with the collector's service not enabled or not running is one */
 function addError(res, overridden) {
+	if (isObject(res) && typeof res.id === 'string')
+		return _('The access point is saved, but this device could not set up the service that reads it. Try again.');
 	var e = isObject(res) ? res.error : 'none';
 	if (e === 'invalid') return overridden
 		? _('Check the reply and the address: the address must be an IPv4 or IPv6 address, without a port.')
@@ -199,8 +210,12 @@ function codeError(res) {
 	return _('The device did not do it. Reload the page and try again.');
 }
 
-/* remove_ap's and revoke_router's refusals; unknown (already gone) is none */
+/* remove_ap's and revoke_router's refusals; unknown (already gone) is
+   none. The last access point removed with the collector's service not
+   stopped or not disabled is one: asked again, the device does both again */
 function dropError(res) {
+	if (isObject(res) && res.collector === false)
+		return _('The access point is removed, but this device could not shut down the service that read it. Try again.');
 	if (isObject(res) && (res.ok === true || res.error === 'unknown')) return null;
 	if (isObject(res) && res.error === 'failed') return _('This device could not save the change. Try again.');
 	return _('The device did not do it. Reload the page and try again.');
@@ -228,6 +243,8 @@ function normStatus(s) {
 			return { key: x.key, name: String(x.name == null ? '' : x.name) };
 		}),
 		reply: typeof a.reply === 'string' ? a.reply : null,
+		/* routers let in and a listener with a command of its own (forcedProblem) */
+		forced: a.forced === true,
 		/* a list whose file is there and could not be read: empty, and saying nothing */
 		apsUnread: r.unread === true,
 		keysUnread: a.unread === true || a.ssh === 'keys-unreadable'
@@ -302,6 +319,7 @@ return view.extend({
 	shortKey: shortKey,
 	reportError: reportError,
 	sshProblem: sshProblem,
+	forcedProblem: forcedProblem,
 	addError: addError,
 	allowError: allowError,
 	codeError: codeError,
@@ -374,13 +392,18 @@ return view.extend({
 		this.paintRouters();
 	},
 
+	/* lead: its text, or the element itself for a tile that hides it at times (lead()) */
 	tile: function(ic, title, lead, body) {
 		return E('section', { 'class': 'vt-tile', 'aria-label': title }, [
 			E('header', { 'class': 'vt-tile-head' }, [
 				E('h3', { 'class': 'vt-tile-title' }, [ icon(ic), E('span', {}, [ title ]) ])
 			]),
-			E('p', { 'class': 'vt-hint vt-pair-lead' }, [ lead ])
+			typeof lead === 'string' ? this.lead(lead) : lead
 		].concat(body));
+	},
+
+	lead: function(text) {
+		return E('p', { 'class': 'vt-hint vt-pair-lead' }, [ text ]);
 	},
 
 	/* a read-only field with its Copy button and what copying did */
@@ -613,12 +636,15 @@ return view.extend({
 		f.go.disabled = true;
 		f.err.hidden = true;
 		return callAddAp(code, addr).then(function(res) {
-			if (isObject(res) && typeof res.id === 'string') {
+			var saved = isObject(res) && typeof res.id === 'string';
+			if (saved && res.collector !== false) {
 				self.closeAdd();
 				return self.refresh();
 			}
 			f.err.hidden = false;
 			dom.content(f.err, [ addError(res, addr !== undefined) ]);
+			/* saved all the same: its row shows behind the form */
+			if (saved) return self.refresh();
 		}, function(e) {
 			f.err.hidden = false;
 			dom.content(f.err, [ failed(e) ]);
@@ -639,8 +665,9 @@ return view.extend({
 			E('p', { 'class': 'vt-hint' }, [ _('For a router you already let in: paste it there, under Add an access point.') ]),
 			el.again.el
 		]);
-		return this.tile('router', _('Routers that can read this access point'),
-			_('A router you let in can fetch this device\'s report (its Wi-Fi networks, clients and wired hosts) over SSH, and nothing else.'), [
+		/* what a router's key can do here: not said beside the warning that it does more (paintRouters) */
+		el.apLead = this.lead(_('A router you let in can fetch this device\'s report (its Wi-Fi networks, clients and wired hosts) over SSH, and nothing else.'));
+		return this.tile('router', _('Routers that can read this access point'), el.apLead, [
 				el.ssh,
 				el.routerRows,
 				E('div', { 'class': 'vt-pair-actions' }, [ el.allowBtn ]),
@@ -651,7 +678,8 @@ return view.extend({
 
 	paintRouters: function() {
 		var self = this, el = this.el, s = this.status;
-		var problem = sshProblem(s.ssh);
+		var forced = forcedProblem(s), problem = forced || sshProblem(s.ssh);
+		el.apLead.hidden = !!forced;
 		if (problem !== this.sshShown) {
 			this.sshShown = problem;
 			dom.content(el.ssh, problem ? [ warnNote(problem) ] : []);

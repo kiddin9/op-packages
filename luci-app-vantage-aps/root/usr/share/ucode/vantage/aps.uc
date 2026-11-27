@@ -249,6 +249,78 @@ function parse_auth_line(line) {
 	return (length(rest) == 2 && name(rest[0]) && rest[1] === key_id(f[2])) ? { key: f[2], name: rest[0], comment: f[3] } : null;
 }
 
+// Dropbear's options as it reads them (svr-runopts.c, 2025.89): a word
+// after the program is a "-" and one or more option letters. Those of
+// DROPBEAR_VALUE take a value, which ends the word: the rest of that
+// word, or else the whole next word. The others take none.
+const DROPBEAR_VALUE = 'bcdrDpPlGWKITA2';
+const DROPBEAR_FLAG = 'aBeEFghijkmRstuvVwz';
+
+// Whether a dropbear command line (argv: the program, then its words)
+// takes root and runs a command of its own: a c among its options (uci's
+// ForceCommand) and no w (RootLogin off), read the way dropbear reads
+// them, letters in one word and a value in the same word included
+// ("-Fsc x", "-c/bin/x"). A value is never read as options: it is
+// passed over with the option that takes it (a pid file, a port, an
+// interface, the command itself). A line dropbear itself would refuse
+// (a word that is no option, a letter it does not have, a value that is
+// missing) cannot be read, and counts: what runs there is not known.
+function own_command(argv) {
+	let own = false, root = true;
+
+	for (let i = 1; i < length(argv); i++) {
+		let word = argv[i];
+
+		if (type(word) != 'string' || length(word) < 2 || substr(word, 0, 1) != '-')
+			return true;
+
+		for (let j = 1; j < length(word); j++) {
+			let o = substr(word, j, 1);
+
+			if (index(DROPBEAR_VALUE, o) >= 0) {
+				if (o == 'c')
+					own = true;
+
+				if (j == length(word) - 1 && ++i >= length(argv))
+					return true;
+
+				break;
+			}
+
+			if (index(DROPBEAR_FLAG, o) < 0)
+				return true;
+
+			if (o == 'w')
+				root = false;
+		}
+	}
+
+	return own && root;
+}
+
+// Whether a dropbear listener procd runs takes root and runs a command
+// of its own (services: ubus service list, all of it). Dropbear runs
+// that for every key that logs in there, a router's too, in place of
+// the report its key line names, and every listener reads the same
+// authorized_keys. Every running instance whose program is a dropbear
+// (the last part of its path) is one, whatever its service is called.
+// A running instance whose command cannot be read counts: what it runs
+// is not known.
+function forced_listener(services) {
+	for (let name, s in ((type(services) == 'object') ? services : {}))
+		for (let n, i in ((type(s) == 'object' && type(s.instances) == 'object') ? s.instances : {})) {
+			if (type(i) != 'object' || i.running !== true)
+				continue;
+
+			let argv = i.command, prog = (type(argv) == 'array' && type(argv[0]) == 'string') ? split(argv[0], '/') : null;
+
+			if (!prog || (prog[-1] == 'dropbear' && own_command(argv)))
+				return true;
+		}
+
+	return false;
+}
+
 /* ------------------------------------------------- the paired list */
 
 // /etc/vantage/aps.json -> [ { id, name, key, addr, port, mac } ], the valid
@@ -773,4 +845,4 @@ function view(r, prev, dt) {
 	};
 }
 
-export { MAX_APS, MAX_ROUTERS, MAX_CODE, COMMENT, key, name, name_of, id, addr, mac, net, port, router_code, ap_code, parse_router, parse_ap, auth_line, parse_auth_line, aps, network_of, net_of, network_named, find_addrs, next_addr, own_file, fetch_error, state, moved, band, parseable, normalize, view };
+export { MAX_APS, MAX_ROUTERS, MAX_CODE, COMMENT, key, name, name_of, id, addr, mac, net, port, router_code, ap_code, parse_router, parse_ap, auth_line, parse_auth_line, forced_listener, aps, network_of, net_of, network_named, find_addrs, next_addr, own_file, fetch_error, state, moved, band, parseable, normalize, view };

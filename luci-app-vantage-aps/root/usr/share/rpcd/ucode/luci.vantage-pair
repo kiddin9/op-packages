@@ -7,7 +7,7 @@
 //
 // As a router (this device's dashboard shows the access points):
 //   status        { router: { code, aps: [ { id, name, addr, port, net } ] },
-//                   ap: { ssh, routers: [ { name, key } ], reply } }
+//                   ap: { ssh, routers: [ { name, key } ], reply, forced } }
 //                 code: this router's pairing code (null before the
 //                 first router_code); net: the name of this router's
 //                 network the access point was paired on ("lan"), only
@@ -17,14 +17,23 @@
 //                 'keys-unreadable': authorized_keys is there and cannot be
 //                 read whole, so who may log in is not known; 'no-address');
 //                 reply: this device's answer to a router (null without one
-//                 allowed, or ssh not ok)
+//                 allowed, or ssh not ok); forced: routers are let in and
+//                 a dropbear listener (of any procd service) runs a command
+//                 of its own for every login, theirs too (ssh is
+//                 'unsupported' then)
 //   router_code   {}: { code }, this router's key made on first use
 //   add_ap        { code, addr }: pair with the access point whose reply
-//                 code this is, at addr when given (else the reply's); { id }.
+//                 code this is, at addr when given (else the reply's);
+//                 { id, collector }, collector: whether the collector's
+//                 service took enable and start and runs. The same pairing
+//                 again stores nothing anew and runs the two again.
 //                 The network that address is on (ubus network.interface
 //                 dump, vantage.aps net_of) is kept with it by name, when
 //                 it is on one: there the collector looks for it later
-//   remove_ap     { id }
+//   remove_ap     { id }: { ok, collector }; collector is false when the
+//                 last one went and the service did not take stop and
+//                 disable or still runs (asked again, 'unknown' by then,
+//                 they run again)
 // As an access point:
 //   allow_router  { code }: let the router whose code this is read the
 //                 report; { reply }
@@ -37,7 +46,8 @@
 //   runs    dropbearkey -t ed25519 -f /etc/vantage/id_ed25519 (router_code,
 //           once; it also writes id_ed25519.pub beside it);
 //           /etc/init.d/vantage-collector enable, start, stop, disable
-//           (add_ap, remove_ap)
+//           (add_ap, remove_ap; collector(), which then asks procd
+//           whether the service runs)
 //   writes  /etc/vantage/aps.json (add_ap, remove_ap); in
 //           /etc/dropbear/authorized_keys its own lines (vantage.aps
 //           auth_line: the report command's options, then ssh-ed25519
@@ -72,6 +82,8 @@ const NET = '/sys/class/net';
 const MAX_AUTH = 262144;          // bytes of authorized_keys read
 const MAX_DROPBEAR = 4194304;     // bytes of the dropbear binary searched
 const MAX_APS_FILE = 65536;
+const STOP_TRIES = 10;            // after stop: looks at whether procd still runs the service,
+const STOP_WAIT_MS = 100;         // this far apart
 const RE_NETDEV = /^[A-Za-z0-9_.-]{1,15}$/;
 const RE_MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
 const RE_BLANK = /[ \t]+/;
@@ -159,6 +171,37 @@ function router_code() {
 	return k ? { code: vaps.router_code(k, hostname('router')) } : { error: 'failed' };
 }
 
+// whether procd runs an instance of the collector's service now
+function collector_runs() {
+	let inst = connect(null, 3)?.call('service', 'list', { name: 'vantage-collector' })?.['vantage-collector']?.instances;
+
+	for (let n, i in ((type(inst) == 'object') ? inst : {}))
+		if (type(i) == 'object' && i.running === true)
+			return true;
+
+	return false;
+}
+
+// The collector's service as the paired list wants it: enabled and
+// started with an access point on it, stopped and disabled with none.
+// false when the init script refused one of the two, or procd does not
+// run it as asked (the script ends well without starting anything when
+// there is no dbclient): the list is saved all the same, and the same
+// call again runs them again. stop only asks the collector to end:
+// procd lists it until it has, so that is waited for, a second at most.
+function collector(on) {
+	let a = on ? system([ COLLECTOR, 'enable' ], 10000) : system([ COLLECTOR, 'stop' ], 10000);
+	let b = on ? system([ COLLECTOR, 'start' ], 10000) : system([ COLLECTOR, 'disable' ], 10000);
+	let runs = collector_runs();
+
+	for (let i = 0; !on && runs && i < STOP_TRIES; i++) {
+		sleep(STOP_WAIT_MS);
+		runs = collector_runs();
+	}
+
+	return a === 0 && b === 0 && runs === on;
+}
+
 function add_ap(args) {
 	let a = vaps.parse_ap(args.code);
 
@@ -177,9 +220,15 @@ function add_ap(args) {
 	if (!list)
 		return { error: 'failed' };
 
+	let addr = vaps.addr(args.addr) ?? a.addr;
+
+	// paired already. The same pairing again (after one whose collector
+	// did not start) stores nothing: the collector is set as the list
+	// wants it, and the pairing's id is the answer once more
 	for (let e in list)
 		if (e.key == a.key)
-			return { error: 'duplicate' };
+			return (e.name === a.name && e.addr === addr && e.port === a.port && e.mac === a.mac)
+				? { id: e.id, collector: collector(true) } : { error: 'duplicate' };
 
 	if (length(list) >= vaps.MAX_APS)
 		return { error: 'full' };
@@ -193,7 +242,7 @@ function add_ap(args) {
 	if (!id)
 		return { error: 'failed' };
 
-	let entry = { id, name: a.name, key: a.key, addr: vaps.addr(args.addr) ?? a.addr, port: a.port, mac: a.mac };
+	let entry = { id, name: a.name, key: a.key, addr, port: a.port, mac: a.mac };
 	// The network that address is on now, by name, when it is on one of
 	// this router's: the collector looks for the access point there once
 	// it has left the address, whatever subnet the network has by then.
@@ -209,10 +258,7 @@ function add_ap(args) {
 	if (!save_aps(list))
 		return { error: 'failed' };
 
-	system([ COLLECTOR, 'enable' ], 10000);
-	system([ COLLECTOR, 'start' ], 10000);
-
-	return { id };
+	return { id, collector: collector(true) };
 }
 
 function remove_ap(args) {
@@ -221,20 +267,19 @@ function remove_ap(args) {
 	if (!list)
 		return { error: 'failed' };
 
-	let left = filter(list, (e) => e.id !== args.id);
+	let left = filter(list, (e) => e.id !== args.id), gone = length(left) == length(list);
 
-	if (length(left) == length(list))
-		return { error: 'unknown' };
-
-	if (!save_aps(left))
+	if (!gone && !save_aps(left))
 		return { error: 'failed' };
 
-	if (!length(left)) {
-		system([ COLLECTOR, 'stop' ], 10000);
-		system([ COLLECTOR, 'disable' ], 10000);
-	}
+	// with none left the collector is stopped, also when asked for one
+	// that is gone already: the call after one whose stop failed
+	let off = length(left) > 0 || collector(false);
 
-	return { ok: true };
+	if (gone)
+		return off ? { error: 'unknown' } : { error: 'unknown', collector: false };
+
+	return { ok: true, collector: off };
 }
 
 /* ----------------------------------------------------- access point */
@@ -281,6 +326,34 @@ function dropbear_conf() {
 	return found ?? { port: 22, plain: true };
 }
 
+// procd's services (service list, all of them): { name: { instances:
+// { name: { running, command } } } }. All, since a dropbear may run
+// under another service than OpenWrt's own.
+function services(ubus) {
+	let svc = ubus?.call('service', 'list');
+
+	return (type(svc) == 'object') ? svc : {};
+}
+
+// A listener that lets root in and runs a command of its own (uci
+// ForceCommand, dropbear's -c): dropbear runs that for every key that
+// logs in there, a router's too, in place of the report its key line
+// names, and every listener reads the same authorized_keys. So any
+// section that is on counts, not only the first, and any dropbear procd
+// runs under any service (vantage.aps forced_listener: also one uci
+// does not show, and one whose command cannot be read).
+function forced(svc) {
+	let uci = cursor(), yes = false;
+
+	if (uci.load('dropbear'))
+		uci.foreach('dropbear', 'dropbear', (s) => {
+			if (index(OFF, s.enable) < 0 && index(OFF, s.RootLogin) < 0 && s.ForceCommand != null)
+				yes = true;
+		});
+
+	return yes || vaps.forced_listener(svc);
+}
+
 // this device on its LAN: { addr, mac }, the address a router is told to
 // use and the MAC it finds this device by when that address changes;
 // null without either
@@ -324,16 +397,16 @@ function ssh_state() {
 	if (!key_options())
 		return 'no-key-options';
 
-	if (!dropbear_conf().plain)
+	let ubus = connect(null, 3), svc = services(ubus), running = false;
+
+	if (!dropbear_conf().plain || forced(svc))
 		return 'unsupported';
 
 	if (!public_key(HOST_KEY))
 		return 'no-host-key';
 
-	let ubus = connect(null, 3);
-	let svc = ubus?.call('service', 'list', { name: 'dropbear' })?.dropbear?.instances, running = false;
-
-	for (let n, i in ((type(svc) == 'object') ? svc : {}))
+	// OpenWrt's own dropbear service: the one whose port a router is told
+	for (let n, i in ((type(svc.dropbear?.instances) == 'object') ? svc.dropbear.instances : {}))
 		if (type(i) == 'object' && i.running === true)
 			running = true;
 
@@ -440,7 +513,9 @@ function status() {
 			aps: map(list ?? [], (e) => ({ id: e.id, name: e.name, addr: e.addr, port: e.port, ...(e.net ? { net: e.net } : {}) })),
 			unread: !list
 		},
-		ap: { ssh, routers, unread: !auth, reply: (ssh == 'ok' && length(routers)) ? reply() : null }
+		ap: { ssh, routers, unread: !auth, reply: (ssh == 'ok' && length(routers)) ? reply() : null,
+			// routers let in before a listener got a command of its own: their keys run it there
+			forced: ssh == 'unsupported' && length(routers) > 0 && forced(services(connect(null, 3))) }
 	};
 }
 

@@ -1,0 +1,6 @@
+
+config daeuniverse 'config'
+	option enabled '0'
+	option core 'honk'
+	option advanced '1'
+	option dashboard 'doona'

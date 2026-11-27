@@ -7,14 +7,187 @@ import { readfile, unlink } from 'fs';
 const UCI_CONFIG = 'ap-switch';
 const PROBE_FILE = '/tmp/ap_switch_probed_ip';
 
+function str_trim(v) {
+	if (type(v) !== 'string')
+		return '';
+	return trim(v);
+}
+
+function section_exists(uci_cursor, cfg, sec) {
+	return uci_cursor.get(cfg, sec) != null;
+}
+
+function ensure_section(uci_cursor, cfg, sec, stype) {
+	if (!section_exists(uci_cursor, cfg, sec)) {
+		uci_cursor.set(cfg, sec, stype);
+	}
+}
+
+function clean_list(val) {
+	let out = [];
+	if (type(val) === 'array') {
+		for (let v in val) {
+			let s = str_trim(v);
+			if (s !== '')
+				push(out, s);
+		}
+	} else if (type(val) === 'string') {
+		let s = str_trim(val);
+		if (s !== '')
+			push(out, s);
+	}
+	return out;
+}
+
+function set_or_delete(uci_cursor, cfg, sec, opt, val) {
+	if (val == null) {
+		uci_cursor.delete(cfg, sec, opt);
+		return;
+	}
+	if (type(val) === 'array') {
+		let cleaned = clean_list(val);
+		if (length(cleaned) === 0) {
+			uci_cursor.delete(cfg, sec, opt);
+		} else {
+			uci_cursor.set(cfg, sec, opt, cleaned);
+		}
+		return;
+	}
+	let s = trim('' + val);
+	if (s === '') {
+		uci_cursor.delete(cfg, sec, opt);
+	} else {
+		uci_cursor.set(cfg, sec, opt, s);
+	}
+}
+
+function split_words(val) {
+	if (type(val) === 'array')
+		return clean_list(val);
+	if (type(val) === 'string') {
+		let out = [];
+		for (let w in split(val, /\s+/)) {
+			let s = str_trim(w);
+			if (s !== '')
+				push(out, s);
+		}
+		return out;
+	}
+	return [];
+}
+
+function get_lan_ipv4() {
+	let lan_ip = '';
+	let ubus_conn = connect();
+	if (ubus_conn) {
+		let lan_status = ubus_conn.call('network.interface.lan', 'status');
+		if (lan_status && type(lan_status['ipv4-address']) === 'array' && length(lan_status['ipv4-address']) > 0) {
+			lan_ip = lan_status['ipv4-address'][0].address || '';
+		}
+		ubus_conn.disconnect();
+	}
+	return lan_ip;
+}
+
+function bridge_add_port(uci_cursor, dev) {
+	if (!dev)
+		return false;
+	let handled = false;
+	let added = false;
+
+	uci_cursor.foreach('network', 'device', (s) => {
+		if (s.name === 'br-lan') {
+			handled = true;
+			let ports = clean_list(s.ports);
+			let exists = false;
+			for (let p in ports) {
+				if (p === dev) {
+					exists = true;
+					break;
+				}
+			}
+			if (!exists) {
+				push(ports, dev);
+				set_or_delete(uci_cursor, 'network', s['.name'], 'ports', ports);
+				added = true;
+			}
+		}
+	});
+
+	// Fallback for legacy OpenWrt bridge config: config interface 'lan' + option type 'bridge' + option ifname
+	if (!handled && uci_cursor.get('network', 'lan', 'type') === 'bridge') {
+		let raw_ifname = uci_cursor.get('network', 'lan', 'ifname');
+		let ports = split_words(raw_ifname);
+		let exists = false;
+		for (let p in ports) {
+			if (p === dev) {
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			push(ports, dev);
+			if (type(raw_ifname) === 'array') {
+				set_or_delete(uci_cursor, 'network', 'lan', 'ifname', ports);
+			} else {
+				set_or_delete(uci_cursor, 'network', 'lan', 'ifname', join(' ', ports));
+			}
+			added = true;
+		}
+	}
+
+	return added;
+}
+
+function bridge_remove_port(uci_cursor, dev) {
+	if (!dev)
+		return;
+	let handled = false;
+
+	uci_cursor.foreach('network', 'device', (s) => {
+		if (s.name === 'br-lan') {
+			handled = true;
+			let ports = clean_list(s.ports);
+			let new_ports = [];
+			for (let p in ports) {
+				if (p !== dev)
+					push(new_ports, p);
+			}
+			set_or_delete(uci_cursor, 'network', s['.name'], 'ports', new_ports);
+		}
+	});
+
+	if (!handled && uci_cursor.get('network', 'lan', 'type') === 'bridge') {
+		let raw_ifname = uci_cursor.get('network', 'lan', 'ifname');
+		let ports = split_words(raw_ifname);
+		let new_ports = [];
+		for (let p in ports) {
+			if (p !== dev)
+				push(new_ports, p);
+		}
+		if (type(raw_ifname) === 'array') {
+			set_or_delete(uci_cursor, 'network', 'lan', 'ifname', new_ports);
+		} else {
+			set_or_delete(uci_cursor, 'network', 'lan', 'ifname', join(' ', new_ports));
+		}
+	}
+}
+
+function is_effectively_ap(uci_cursor) {
+	let lan_proto = uci_cursor.get('network', 'lan', 'proto') || '';
+	let dhcp_ignore = uci_cursor.get('dhcp', 'lan', 'ignore') || '0';
+	let wan_ok = (!section_exists(uci_cursor, 'network', 'wan')) || (uci_cursor.get('network', 'wan', 'disabled') === '1');
+	return (lan_proto === 'dhcp' && dhcp_ignore === '1' && wan_ok);
+}
+
 const methods = {
 	get_status: {
 		call: function() {
 			let uci_cursor = cursor();
 			let mode = uci_cursor.get(UCI_CONFIG, 'settings', 'mode') || 'router';
-			
+
 			let lan_proto = uci_cursor.get('network', 'lan', 'proto') || 'static';
-			let lan_ip = ''; // We will get the real-time IP
+			let lan_ip = '';
 
 			let ubus_conn = connect();
 			let lan_mac = '';
@@ -22,16 +195,14 @@ const methods = {
 			let wan_ip = '';
 
 			if (ubus_conn) {
-				// 1. Get real-time LAN IP and MAC
 				let lan_status = ubus_conn.call('network.interface.lan', 'status');
 				if (lan_status && type(lan_status['ipv4-address']) === 'array' && length(lan_status['ipv4-address']) > 0) {
-					lan_ip = lan_status['ipv4-address'][0].address;
+					lan_ip = lan_status['ipv4-address'][0].address || '';
 				}
-				
+
 				let lan_dev = ubus_conn.call('network.device', 'status', { name: 'br-lan' });
 				lan_mac = lan_dev?.macaddr || '';
 
-				// 2. Get current WAN interface status and its physical device MAC
 				let wan_status = ubus_conn.call('network.interface.wan', 'status');
 				let wan_device_name = wan_status?.device || '';
 				if (wan_device_name) {
@@ -39,15 +210,14 @@ const methods = {
 					wan_mac = wan_dev?.macaddr || '';
 				}
 
-				// 3. Get current WAN IP
 				if (wan_status && type(wan_status['ipv4-address']) === 'array' && length(wan_status['ipv4-address']) > 0) {
-					wan_ip = wan_status['ipv4-address'][0].address;
+					wan_ip = wan_status['ipv4-address'][0].address || '';
 				}
 				ubus_conn.disconnect();
 			}
-			
+
 			let probed_ip = rtrim(readfile(PROBE_FILE) || '');
-			
+
 			return {
 				mode: mode,
 				lan_proto: lan_proto,
@@ -63,15 +233,15 @@ const methods = {
 	probe_ip: {
 		call: function() {
 			unlink(PROBE_FILE);
-			// Run udhcpc on br-lan with a short timeout and our probe script
-			// -n: exit if no lease
-			// -q: quit after obtaining lease
-			// -t 3: send 3 discover packets
-			// -T 2: pause 2 seconds between packets
-			let rc = system('udhcpc -i br-lan -n -q -t 3 -T 2 -s /usr/share/luci-app-ap-switch/dhcp-probe.sh >/dev/null 2>&1');
-			
+			let lan_ip = get_lan_ipv4();
+			let env_prefix = '';
+			if (match(lan_ip, /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/)) {
+				env_prefix = 'AP_SWITCH_LOCAL_IP=' + lan_ip + ' ';
+			}
+			let rc = system(env_prefix + 'udhcpc -i br-lan -n -q -t 3 -T 2 -s /usr/share/luci-app-ap-switch/dhcp-probe.sh >/dev/null 2>&1');
+
 			let ip = rtrim(readfile(PROBE_FILE) || '');
-			return { success: (rc === 0), ip: ip };
+			return { success: (rc === 0 && ip !== ''), ip: ip };
 		}
 	},
 
@@ -84,57 +254,93 @@ const methods = {
 			}
 
 			let uci_cursor = cursor();
-			let current_mode = uci_cursor.get(UCI_CONFIG, 'settings', 'mode') || 'router';
+			ensure_section(uci_cursor, UCI_CONFIG, 'settings', 'global');
+			ensure_section(uci_cursor, UCI_CONFIG, 'router_state', 'backup');
 
+			let current_mode = uci_cursor.get(UCI_CONFIG, 'settings', 'mode') || 'router';
 			if (target_mode === current_mode) {
 				return { result: 'Already in target mode' };
 			}
 
 			if (target_mode === 'ap') {
-				// --- Switch to AP Mode (Full Lossless Snapshot) ---
-				
-				// 1. Identify WAN device
-				let wan_device = uci_cursor.get('network', 'wan', 'device');
-				if (!wan_device) {
-					wan_device = uci_cursor.get('network', 'wan', 'ifname');
+				// Guard against state drift: do not overwrite router_state snapshot if already effectively in AP mode
+				if (is_effectively_ap(uci_cursor)) {
+					uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'ap');
+					uci_cursor.commit(UCI_CONFIG);
+					return { success: true, result: 'Already in target mode' };
+				}
+
+				// 1. Identify WAN / WAN6 devices and keys (device vs legacy ifname)
+				let wan_exists = section_exists(uci_cursor, 'network', 'wan');
+				let wan_dev_key = '';
+				let wan_device = '';
+				if (wan_exists) {
+					let d = str_trim(uci_cursor.get('network', 'wan', 'device'));
+					let i = str_trim(uci_cursor.get('network', 'wan', 'ifname'));
+					if (d !== '') {
+						wan_dev_key = 'device';
+						wan_device = d;
+					} else if (i !== '') {
+						wan_dev_key = 'ifname';
+						wan_device = i;
+					}
+				}
+
+				let wan6_exists = section_exists(uci_cursor, 'network', 'wan6');
+				let wan6_dev_key = '';
+				let wan6_device = '';
+				if (wan6_exists) {
+					let d = str_trim(uci_cursor.get('network', 'wan6', 'device'));
+					let i = str_trim(uci_cursor.get('network', 'wan6', 'ifname'));
+					if (d !== '') {
+						wan6_dev_key = 'device';
+						wan6_device = d;
+					} else if (i !== '') {
+						wan6_dev_key = 'ifname';
+						wan6_device = i;
+					}
 				}
 
 				// 2. Full Snapshot Backup of Router Mode state
 				let lan_proto = uci_cursor.get('network', 'lan', 'proto') || 'static';
-				let lan_ipaddr = uci_cursor.get('network', 'lan', 'ipaddr') || '';
-				let lan_netmask = uci_cursor.get('network', 'lan', 'netmask') || '';
-				let lan_gateway = uci_cursor.get('network', 'lan', 'gateway') || '';
-				let lan_dns = uci_cursor.get('network', 'lan', 'dns') || [];
+				let lan_ipaddr = uci_cursor.get('network', 'lan', 'ipaddr');
+				let lan_netmask = uci_cursor.get('network', 'lan', 'netmask');
+				let lan_gateway = uci_cursor.get('network', 'lan', 'gateway');
+				let lan_dns = uci_cursor.get('network', 'lan', 'dns');
+				let lan_ip6assign = uci_cursor.get('network', 'lan', 'ip6assign');
 				let dhcp_ignore = uci_cursor.get('dhcp', 'lan', 'ignore') || '0';
-				let wan_disabled = uci_cursor.get('network', 'wan', 'disabled') || '0';
-				let wan6_disabled = uci_cursor.get('network', 'wan6', 'disabled') || '0';
+				let dhcp_ra = uci_cursor.get('dhcp', 'lan', 'ra');
+				let dhcp_dhcpv6 = uci_cursor.get('dhcp', 'lan', 'dhcpv6');
+				let dhcp_ndp = uci_cursor.get('dhcp', 'lan', 'ndp');
+				let wan_disabled = (wan_exists && uci_cursor.get('network', 'wan', 'disabled')) || '0';
+				let wan_auto = wan_exists ? uci_cursor.get('network', 'wan', 'auto') : null;
+				let wan6_disabled = (wan6_exists && uci_cursor.get('network', 'wan6', 'disabled')) || '0';
+				let wan6_auto = wan6_exists ? uci_cursor.get('network', 'wan6', 'auto') : null;
 
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_proto', lan_proto);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_ipaddr', lan_ipaddr);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_netmask', lan_netmask);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_gateway', lan_gateway);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_dns', lan_dns);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'dhcp_ignore', dhcp_ignore);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_device', wan_device || '');
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_disabled', wan_disabled);
-				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan6_disabled', wan6_disabled);
+				// 3. Bridge WAN device to LAN
+				let wan_bridged = bridge_add_port(uci_cursor, wan_device);
+
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_proto', lan_proto);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_ipaddr', lan_ipaddr);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_netmask', lan_netmask);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_gateway', lan_gateway);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_dns', lan_dns);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'lan_ip6assign', lan_ip6assign);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'dhcp_ignore', dhcp_ignore);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'dhcp_ra', dhcp_ra);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'dhcp_dhcpv6', dhcp_dhcpv6);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'dhcp_ndp', dhcp_ndp);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan_device', wan_device);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan_dev_key', wan_dev_key);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan_bridged', wan_bridged ? '1' : '0');
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan_disabled', wan_disabled);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan_auto', wan_auto);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan6_device', wan6_device);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan6_dev_key', wan6_dev_key);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan6_disabled', wan6_disabled);
+				set_or_delete(uci_cursor, UCI_CONFIG, 'router_state', 'wan6_auto', wan6_auto);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'snapshot_version', '2');
 				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'ap');
-
-				// 3. Bridge WAN device to LAN bridge
-				if (wan_device) {
-					uci_cursor.foreach('network', 'device', (s) => {
-						if (s.name === 'br-lan') {
-							let ports = s.ports || [];
-							if (type(ports) === 'string') ports = [ports];
-							let exists = false;
-							for (let p in ports) if (p === wan_device) exists = true;
-							if (!exists) {
-								push(ports, wan_device);
-								uci_cursor.set('network', s['.name'], 'ports', ports);
-							}
-						}
-					});
-				}
 
 				// 4. Set LAN to DHCP client
 				uci_cursor.set('network', 'lan', 'proto', 'dhcp');
@@ -142,81 +348,142 @@ const methods = {
 				uci_cursor.delete('network', 'lan', 'netmask');
 				uci_cursor.delete('network', 'lan', 'gateway');
 				uci_cursor.delete('network', 'lan', 'dns');
+				uci_cursor.delete('network', 'lan', 'ip6assign');
 
-				// 5. Disable WAN interface
-				uci_cursor.set('network', 'wan', 'disabled', '1');
-				uci_cursor.set('network', 'wan6', 'disabled', '1');
+				// 5. Unbind device and disable WAN / WAN6 interfaces so physical port belongs solely to br-lan
+				if (wan_exists) {
+					uci_cursor.delete('network', 'wan', 'device');
+					uci_cursor.delete('network', 'wan', 'ifname');
+					uci_cursor.set('network', 'wan', 'disabled', '1');
+					uci_cursor.set('network', 'wan', 'auto', '0');
+				}
+				if (wan6_exists) {
+					uci_cursor.delete('network', 'wan6', 'device');
+					uci_cursor.delete('network', 'wan6', 'ifname');
+					uci_cursor.set('network', 'wan6', 'disabled', '1');
+					uci_cursor.set('network', 'wan6', 'auto', '0');
+				}
 
-				// 6. Disable DHCP Server
-				uci_cursor.set('dhcp', 'lan', 'ignore', '1');
-
+				// 6. Disable IPv4 DHCP and IPv6 RA/DHCPv6/NDP Server on LAN
+				if (section_exists(uci_cursor, 'dhcp', 'lan')) {
+					uci_cursor.set('dhcp', 'lan', 'ignore', '1');
+					uci_cursor.set('dhcp', 'lan', 'ra', 'disabled');
+					uci_cursor.set('dhcp', 'lan', 'dhcpv6', 'disabled');
+					uci_cursor.set('dhcp', 'lan', 'ndp', 'disabled');
+				}
 			} else {
 				// --- Switch to Router Mode (Lossless State Restoration) ---
-
-				// 1. Read Snapshot
-				let wan_device = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_device');
-				let lan_proto = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_proto') || 'static';
-				let lan_ipaddr = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_ipaddr') || '192.168.1.1';
-				let lan_netmask = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_netmask') || '';
-				let lan_gateway = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_gateway') || '';
-				let lan_dns = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_dns') || [];
+				let is_v2 = (uci_cursor.get(UCI_CONFIG, 'router_state', 'snapshot_version') === '2');
+				let wan_device = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_device'));
+				let wan_dev_key = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_dev_key'));
+				let wan_bridged = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_bridged');
+				let wan_auto = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_auto');
+				let wan6_device = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_device'));
+				let wan6_dev_key = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_dev_key'));
+				let wan6_auto = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_auto');
+				let lan_proto = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_proto')) || 'static';
+				let lan_ipaddr = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_ipaddr');
+				let lan_netmask = str_trim(uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_netmask'));
+				let lan_gateway = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_gateway');
+				let lan_dns = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_dns');
+				let lan_ip6assign = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_ip6assign');
 				let dhcp_ignore = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_ignore') || '0';
+				let dhcp_ra = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_ra');
+				let dhcp_dhcpv6 = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_dhcpv6');
+				let dhcp_ndp = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_ndp');
 				let wan_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_disabled') || '0';
 				let wan6_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_disabled') || '0';
 
 				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'router');
 
-				// 2. Remove WAN device from LAN bridge
-				if (wan_device) {
-					uci_cursor.foreach('network', 'device', (s) => {
-						if (s.name === 'br-lan') {
-							let ports = s.ports || [];
-							if (type(ports) === 'string') ports = [ports];
-							let new_ports = [];
-							for (let p in ports) if (p !== wan_device) push(new_ports, p);
-							uci_cursor.set('network', s['.name'], 'ports', new_ports);
-						}
-					});
+				// 2. Remove WAN device from LAN bridge (default to true for backward compatibility with older snapshots)
+				if (wan_device !== '' && wan_bridged !== '0') {
+					bridge_remove_port(uci_cursor, wan_device);
 				}
 
-				// 3. Restore LAN settings accurately without hardcoding
+				// 3. Restore LAN settings
 				uci_cursor.set('network', 'lan', 'proto', lan_proto);
-				if (lan_ipaddr) uci_cursor.set('network', 'lan', 'ipaddr', lan_ipaddr);
-				if (lan_netmask) uci_cursor.set('network', 'lan', 'netmask', lan_netmask);
-				if (lan_gateway) uci_cursor.set('network', 'lan', 'gateway', lan_gateway);
-				if (type(lan_dns) === 'array' && length(lan_dns) > 0) {
-					uci_cursor.set('network', 'lan', 'dns', lan_dns);
-				} else if (type(lan_dns) === 'string' && lan_dns !== '') {
-					uci_cursor.set('network', 'lan', 'dns', lan_dns);
+				if (lan_proto === 'static') {
+					let ip_is_empty = (lan_ipaddr == null) || (type(lan_ipaddr) === 'string' && trim(lan_ipaddr) === '') || (type(lan_ipaddr) === 'array' && length(clean_list(lan_ipaddr)) === 0);
+					if (ip_is_empty) {
+						lan_ipaddr = '192.168.1.1';
+					}
+					set_or_delete(uci_cursor, 'network', 'lan', 'ipaddr', lan_ipaddr);
+
+					let is_cidr = (type(lan_ipaddr) === 'string' && index(lan_ipaddr, '/') !== -1);
+					if (lan_netmask === '' && !is_cidr && type(lan_ipaddr) === 'string') {
+						lan_netmask = '255.255.255.0';
+					}
+					set_or_delete(uci_cursor, 'network', 'lan', 'netmask', lan_netmask);
+					set_or_delete(uci_cursor, 'network', 'lan', 'gateway', lan_gateway);
+					set_or_delete(uci_cursor, 'network', 'lan', 'dns', lan_dns);
+				} else {
+					uci_cursor.delete('network', 'lan', 'ipaddr');
+					uci_cursor.delete('network', 'lan', 'netmask');
+					uci_cursor.delete('network', 'lan', 'gateway');
+					set_or_delete(uci_cursor, 'network', 'lan', 'dns', lan_dns);
+				}
+				if (is_v2) {
+					set_or_delete(uci_cursor, 'network', 'lan', 'ip6assign', lan_ip6assign);
 				}
 
-				// 4. Restore WAN / WAN6 states
-				if (wan_disabled === '1') {
-					uci_cursor.set('network', 'wan', 'disabled', '1');
-				} else {
-					uci_cursor.delete('network', 'wan', 'disabled');
+				// 4. Restore WAN / WAN6 devices and states
+				if (section_exists(uci_cursor, 'network', 'wan')) {
+					if (wan_device !== '') {
+						let existing = str_trim(uci_cursor.get('network', 'wan', 'device') || uci_cursor.get('network', 'wan', 'ifname'));
+						if (wan_dev_key !== '' || existing === '') {
+							let key = (wan_dev_key === 'ifname') ? 'ifname' : 'device';
+							uci_cursor.set('network', 'wan', key, wan_device);
+						}
+					}
+					if (wan_disabled === '1') {
+						uci_cursor.set('network', 'wan', 'disabled', '1');
+					} else {
+						uci_cursor.delete('network', 'wan', 'disabled');
+					}
+					if (is_v2) {
+						set_or_delete(uci_cursor, 'network', 'wan', 'auto', wan_auto);
+					}
 				}
-				if (wan6_disabled === '1') {
-					uci_cursor.set('network', 'wan6', 'disabled', '1');
-				} else {
-					uci_cursor.delete('network', 'wan6', 'disabled');
+				if (section_exists(uci_cursor, 'network', 'wan6')) {
+					if (wan6_device !== '') {
+						let existing = str_trim(uci_cursor.get('network', 'wan6', 'device') || uci_cursor.get('network', 'wan6', 'ifname'));
+						if (wan6_dev_key !== '' || existing === '') {
+							let key = (wan6_dev_key === 'ifname') ? 'ifname' : 'device';
+							uci_cursor.set('network', 'wan6', key, wan6_device);
+						}
+					}
+					if (wan6_disabled === '1') {
+						uci_cursor.set('network', 'wan6', 'disabled', '1');
+					} else {
+						uci_cursor.delete('network', 'wan6', 'disabled');
+					}
+					if (is_v2) {
+						set_or_delete(uci_cursor, 'network', 'wan6', 'auto', wan6_auto);
+					}
 				}
 
-				// 5. Restore DHCP Server state
-				if (dhcp_ignore === '1') {
-					uci_cursor.set('dhcp', 'lan', 'ignore', '1');
-				} else {
-					uci_cursor.delete('dhcp', 'lan', 'ignore');
+				// 5. Restore DHCP / IPv6 Server states
+				if (section_exists(uci_cursor, 'dhcp', 'lan')) {
+					if (dhcp_ignore === '1') {
+						uci_cursor.set('dhcp', 'lan', 'ignore', '1');
+					} else {
+						uci_cursor.delete('dhcp', 'lan', 'ignore');
+					}
+					if (is_v2) {
+						set_or_delete(uci_cursor, 'dhcp', 'lan', 'ra', dhcp_ra);
+						set_or_delete(uci_cursor, 'dhcp', 'lan', 'dhcpv6', dhcp_dhcpv6);
+						set_or_delete(uci_cursor, 'dhcp', 'lan', 'ndp', dhcp_ndp);
+					}
 				}
 			}
 
-			uci_cursor.commit('ap-switch');
+			uci_cursor.commit(UCI_CONFIG);
 			uci_cursor.commit('network');
 			uci_cursor.commit('dhcp');
 
-			// Apply changes in background
-			system('/etc/init.d/network restart &');
-			system('/etc/init.d/dnsmasq restart &');
+			// Apply changes sequentially in background after response is sent, with stdio detached
+			system('(sleep 2; /etc/init.d/network restart; /etc/init.d/dnsmasq restart; [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart) </dev/null >/dev/null 2>&1 &');
 
 			return { success: true, result: 'success' };
 		}

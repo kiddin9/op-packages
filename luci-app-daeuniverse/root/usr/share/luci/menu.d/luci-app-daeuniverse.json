@@ -1,0 +1,69 @@
+{
+	"admin/services/daeuniverse": {
+		"title": "DAE Universe",
+		"order": -1,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-daeuniverse" ],
+			"uci": { "daeuniverse": true }
+		}
+	},
+	"admin/services/daeuniverse/global": {
+		"title": "Global Settings",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/global"
+		}
+	},
+	"admin/services/daeuniverse/dns": {
+		"title": "DNS Settings",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/dns"
+		}
+	},
+	"admin/services/daeuniverse/node": {
+		"title": "Node Settings",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/node"
+		}
+	},
+	"admin/services/daeuniverse/route": {
+		"title": "Routing Settings",
+		"order": 4,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/route"
+		}
+	},
+	"admin/services/daeuniverse/api": {
+		"title": "API Settings",
+		"order": 5,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/api"
+		}
+	},
+	"admin/services/daeuniverse/dashboard": {
+		"title": "Dashboard",
+		"order": 6,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/dashboard"
+		}
+	},
+	"admin/services/daeuniverse/log": {
+		"title": "Logs",
+		"order": 7,
+		"action": {
+			"type": "view",
+			"path": "daeuniverse/log"
+		}
+	}
+}

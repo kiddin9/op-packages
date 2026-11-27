@@ -8,8 +8,7 @@
 
 ## Building
 
-The IPK for OpenWrt 24.10 is written to `dist/` by `scripts/build-ipk.sh`. The
-APK for OpenWrt 25.12 needs a compatible SDK:
+The package supports OpenWrt 25.12 only. The APK needs a compatible SDK:
 
 ```sh
 OPENWRT_SDK_DIR=/path/to/openwrt-sdk-25.12.5-mediatek-filogic \

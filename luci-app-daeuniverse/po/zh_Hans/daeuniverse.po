@@ -1,0 +1,499 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-daeuniverse 2.0.0\n"
+"PO-Revision-Date: 2026-11-27 14:30+0800\n"
+"Last-Translator: QiuSimons <45143996+QiuSimons@users.noreply.github.com>\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "DAE Universe"
+msgstr "DAE Universe"
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Collecting data..."
+msgstr "收集数据..."
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Core Engine"
+msgstr "代理核心"
+
+msgid "honk"
+msgstr "honk"
+
+msgid "honk (Not installed)"
+msgstr "honk（未安装）"
+
+msgid "dae"
+msgstr "dae"
+
+msgid "dae (Not installed)"
+msgstr "dae（未安装）"
+
+msgid "honk-core is not installed on this system."
+msgstr "系统尚未安装 honk-core 核心。"
+
+msgid "dae is not installed on this system."
+msgstr "系统尚未安装 dae 核心。"
+
+msgid "Select the proxy engine core. Each core uses its own native configuration directory under /etc/daeuniverse/."
+msgstr "选择代理核心引擎。两个核心在 /etc/daeuniverse/ 下各自使用独立的原生配置目录，互不干扰。"
+
+msgid "Entry File"
+msgstr "入口配置"
+
+msgid "automatically includes config.d/*.dae and api.dae."
+msgstr "自动引入 config.d/*.dae 与 api.dae。"
+
+msgid "Editing /etc/daeuniverse/dae/config.d/global.dae (dae core)."
+msgstr "正在编辑 /etc/daeuniverse/dae/config.d/global.dae（dae 核心）。"
+
+msgid "Editing /etc/daeuniverse/honk/config.dae (honk core). Configure include for split configs or full global block."
+msgstr "正在编辑 /etc/daeuniverse/honk/config.dae（honk 核心）。请配置 include 引入拆分文件或在此填写完整全局配置。"
+
+msgid "Failed to prepare target core"
+msgstr "准备目标核心失败"
+
+msgid "Configuration validation failed"
+msgstr "配置校验失败"
+
+msgid "Configuration saved."
+msgstr "配置已保存。"
+
+msgid "Reload Service"
+msgstr "重载服务"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "DNS Settings"
+msgstr "DNS 设置"
+
+msgid "Node Settings"
+msgstr "节点设置"
+
+msgid "Routing Settings"
+msgstr "路由设置"
+
+msgid "Global Configuration"
+msgstr "全局配置"
+
+msgid "DNS Configuration"
+msgstr "DNS 配置"
+
+msgid "Node Configuration (/etc/daeuniverse/honk/config.d/node.dae)"
+msgstr "节点配置（/etc/daeuniverse/honk/config.d/node.dae）"
+
+msgid "Subscription Configuration (/etc/daeuniverse/dae/config.d/subscription.dae)"
+msgstr "订阅配置（/etc/daeuniverse/dae/config.d/subscription.dae）"
+
+msgid "Node Configuration (/etc/daeuniverse/dae/config.d/node.dae)"
+msgstr "节点配置（/etc/daeuniverse/dae/config.d/node.dae）"
+
+msgid "Group Configuration (/etc/daeuniverse/dae/config.d/group.dae)"
+msgstr "分流组配置（/etc/daeuniverse/dae/config.d/group.dae）"
+
+msgid "Route Configuration"
+msgstr "路由配置"
+
+msgid "Configure global settings for DAE Universe."
+msgstr "调整 DAE Universe 的全局设置与核心引擎。"
+
+msgid "Configure DNS settings for HONK (/etc/daeuniverse/honk/config.d/dns.dae)."
+msgstr "调整 HONK 核心 DNS 配置（/etc/daeuniverse/honk/config.d/dns.dae）。"
+
+msgid "Configure DNS settings for DAE (/etc/daeuniverse/dae/config.d/dns.dae)."
+msgstr "调整 DAE 核心 DNS 配置（/etc/daeuniverse/dae/config.d/dns.dae）。"
+
+msgid "Configure nodes, subscriptions, and groups for HONK (/etc/daeuniverse/honk/config.d/node.dae)."
+msgstr "调整 HONK 核心节点、订阅与分流组配置（/etc/daeuniverse/honk/config.d/node.dae）。"
+
+msgid "Configure subscriptions, inline nodes, and groups for DAE."
+msgstr "调整 DAE 核心的订阅、节点与分组配置。"
+
+msgid "Configure routing rules for HONK (/etc/daeuniverse/honk/config.d/route.dae)."
+msgstr "调整 HONK 核心路由规则（/etc/daeuniverse/honk/config.d/route.dae）。"
+
+msgid "Configure routing rules for DAE (/etc/daeuniverse/dae/config.d/routing.dae)."
+msgstr "调整 DAE 核心路由规则（/etc/daeuniverse/dae/config.d/routing.dae）。"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Memory Usage"
+msgstr "内存占用"
+
+msgid "Format Code"
+msgstr "格式化代码"
+
+msgid "Clear logs"
+msgstr "清空日志"
+
+msgid "Logs cleared successfully."
+msgstr "日志已清空。"
+
+msgid "Failed to clear logs:"
+msgstr "清空日志失败："
+
+msgid "Configuration applied and service reloaded."
+msgstr "配置已生效并重载服务。"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Running Status"
+msgstr "运行状态"
+
+msgid "Formatted"
+msgstr "已格式化"
+
+msgid "Failed to format code:"
+msgstr "格式化代码失败："
+
+msgid "Checking Dashboard and API configuration..."
+msgstr "正在检测控制面板与 API 配置..."
+
+msgid "Enabling Native API and restarting service..."
+msgstr "正在启用 Native API 并重启服务..."
+
+msgid "One-click Enable Default Native API"
+msgstr "一键启用默认 Native API 配置"
+
+msgid "Successfully enabled! Restarting service and initializing dashboard..."
+msgstr "已成功启用！正在重启服务并初始化面板..."
+
+msgid "Failed to enable:"
+msgstr "启用失败："
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Dashboard / Native API Unconfigured"
+msgstr "控制面板 / Native API 未配置"
+
+msgid "The active core has not enabled Native API in its configuration file. Dashboard requires native API listener and dashboard UI path."
+msgstr "当前核心尚未在配置文件中启用 Native API。控制面板需要依赖 API 监听端口与面板静态文件路径。"
+
+msgid "Please configure api { ... } block in API Settings, and ensure enabled, listen, secret and ui are configured."
+msgstr "请在【API 设置】中配置 api { ... } 语法块，并确保配置了 enabled、listen、secret 与 ui。"
+
+msgid "Please configure experimental.native_api block in API Settings, and ensure listen and ui are configured."
+msgstr "请在【API 设置】的配置文件中配置 experimental.native_api 语法块，并确保配置了 listen 和 ui。"
+
+msgid "Example Configuration (%s):"
+msgstr "参考配置示例（%s）："
+
+msgid "Configure in API Settings"
+msgstr "前往【API 设置】手动配置"
+
+msgid "(Not set)"
+msgstr "（未设置）"
+
+msgid "Preparing download..."
+msgstr "准备下载..."
+
+msgid "Please enter a valid download URL"
+msgstr "请输入有效的下载 URL"
+
+msgid "Processing..."
+msgstr "正在处理..."
+
+msgid "Start Download & Install Dashboard"
+msgstr "开始下载并安装控制面板"
+
+msgid "%s UI Files Not Found"
+msgstr "未检测到 %s 面板文件"
+
+msgid "Listen Address & Port"
+msgstr "监听地址与端口"
+
+msgid "API Secret"
+msgstr "API 认证密钥"
+
+msgid "Download Source:"
+msgstr "下载源："
+
+msgid "Custom URL"
+msgstr "自定义 URL"
+
+msgid "HTTPS access detected:"
+msgstr "检测到当前通过 HTTPS 访问 LuCI："
+
+msgid "Modern browsers may block HTTP iframe resources under HTTPS. If the dashboard fails to display, open it in a new tab."
+msgstr "现代浏览器可能会阻止直接加载 HTTP 协议的控制面板。如无法正常显示，请点击右侧按钮在新标签页打开。"
+
+msgid "Open in New Tab"
+msgstr "在新标签页打开"
+
+msgid "Service is currently not running:"
+msgstr "服务当前未运行："
+
+msgid "Dashboard API port ("
+msgstr "Dashboard API 端口（"
+
+msgid ") is not listening. Start the service to display data."
+msgstr "）尚未监听。启动服务后即可正常显示数据。"
+
+msgid "New Tab"
+msgstr "新标签页"
+
+msgid "Open independently in a new tab"
+msgstr "在新标签页中独立打开"
+
+msgid "Update Dashboard"
+msgstr "更新控制面板"
+
+msgid "Update to latest"
+msgstr "更新至最新版"
+
+msgid "The latest version (%s) will be downloaded and deployed to:"
+msgstr "系统将下载最新版本（%s）并重新部署至目标目录："
+
+msgid "Select download source"
+msgstr "选择下载源"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Start Update"
+msgstr "开始更新"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Refresh dashboard content"
+msgstr "刷新面板内容"
+
+msgid "Fullscreen"
+msgstr "全屏"
+
+msgid "Toggle fullscreen display"
+msgstr "切换全屏显示"
+
+msgid "Initializing download task...\n"
+msgstr "正在初始化下载任务...\n"
+
+msgid "Failed to trigger download:"
+msgstr "触发下载失败："
+
+msgid "Installation completed successfully!"
+msgstr "安装成功，最新版本已部署。"
+
+msgid "Installation failed. Please check logs."
+msgstr "安装失败，请检查日志。"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Download error:"
+msgstr "触发下载异常："
+
+msgid "Not configured (Empty)"
+msgstr "未设置（留空）"
+
+msgid "Reloading..."
+msgstr "正在重载..."
+
+msgid "Service reload triggered successfully."
+msgstr "已成功触发服务重载。"
+
+msgid "Failed to reload service:"
+msgstr "重载服务失败："
+
+msgid "DNS configuration saved and service reloaded."
+msgstr "DNS 配置已保存并重载服务。"
+
+msgid "Node configuration saved and service reloaded."
+msgstr "节点配置已保存并重载服务。"
+
+msgid "Routing configuration saved and service reloaded."
+msgstr "路由配置已保存并重载服务。"
+
+msgid "Dashboard"
+msgstr "控制面板"
+
+msgid "Mirror"
+msgstr "镜像源"
+
+msgid "Mirror 1"
+msgstr "镜像源 1"
+
+msgid "Mirror 2"
+msgstr "镜像源 2"
+
+msgid "Tip: If the dashboard still shows the old version, press Ctrl+F5 or open in a new tab to bypass PWA cache."
+msgstr "提示：若更新后仍显示旧版本，请按 Ctrl+F5 强刷或在新标签页中打开以绕过 PWA 缓存。"
+
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Enable to display full configuration editor and advanced routing/DNS/node tabs."
+msgstr "启用后将显示完整的全局配置编辑器以及路由、DNS、节点的高级分页。"
+
+msgid "Target Dashboard"
+msgstr "目标面板"
+
+msgid "Dashboard Type"
+msgstr "面板类型"
+
+msgid "Select the active web dashboard."
+msgstr "选择当前生效的 Web 管理面板。"
+
+msgid "Doona"
+msgstr "Doona"
+
+msgid "Doona Lite"
+msgstr "Doona Lite"
+
+msgid "Native API is configured, but dashboard files are missing in the UI directory. You can download and deploy it directly."
+msgstr "Native API 已配置，但 UI 目录中缺少面板文件。您可以直接下载并部署。"
+
+msgid "Target Directory (ui)"
+msgstr "目标目录 (ui)"
+
+msgid "Click to copy API Token"
+msgstr "点击复制 API 认证密钥"
+
+msgid "Token copied to clipboard: "
+msgstr "认证密钥已复制到剪贴板: "
+
+msgid "Token: "
+msgstr "认证密钥: "
+
+msgid "API Settings"
+msgstr "API 设置"
+
+msgid "Configure Native API settings for HONK (/etc/daeuniverse/honk/config.d/api.dae). Changes require a service restart."
+msgstr "调整 HONK 核心 Native API 配置（/etc/daeuniverse/honk/config.d/api.dae），修改后需重启服务。"
+
+msgid "Configure API settings for DAE (/etc/daeuniverse/dae/api.dae). Changes require a service restart."
+msgstr "调整 DAE 核心 API 配置（/etc/daeuniverse/dae/api.dae），修改后需重启服务。"
+
+msgid "Active core is DAE: uses root api { ... } in /etc/daeuniverse/dae/api.dae, and requires a non-empty secret when config_write is enabled."
+msgstr "当前激活核心为 DAE：使用 /etc/daeuniverse/dae/api.dae 中的 api { ... } 根段，开启 config_write 时必须设置非空 secret。"
+
+msgid "Active core is HONK: uses experimental { native_api { ... } } in /etc/daeuniverse/honk/config.d/api.dae."
+msgstr "当前激活核心为 HONK：使用 /etc/daeuniverse/honk/config.d/api.dae 中的 experimental { native_api { ... } } 语法。"
+
+msgid "API Configuration"
+msgstr "API 配置"
+
+msgid "API configuration saved and service restarted."
+msgstr "API 配置已保存并重启服务。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Dashboard Disabled"
+msgstr "面板未启用"
+
+msgid "Dashboard type is currently set to \"None\". Web dashboard and API listener are disabled."
+msgstr "当前面板类型为“无”，Web 管理面板和 Native API 监听已禁用。"
+
+msgid "Failed to switch dashboard:"
+msgstr "切换面板失败："
+
+msgid "GitHub Release "
+msgstr "GitHub Release "
+
+msgid "Service did not accept the request"
+msgstr "服务未接受该请求"
+
+msgid "Failed to apply configuration:"
+msgstr "应用配置失败："
+
+msgid "Service did not come back up; check the logs"
+msgstr "服务未能重新启动，请检查日志"
+
+msgid "Configuration saved. DAE Universe is disabled, so the service was not started."
+msgstr "配置已保存。DAE Universe 处于禁用状态，未启动服务。"
+
+msgid "Download did not finish in time."
+msgstr "下载超时未完成。"
+
+msgid "Download task stopped reporting progress."
+msgstr "下载任务已停止上报进度。"
+
+msgid "Configuration saved, but the service state could not be confirmed."
+msgstr "配置已保存，但无法确认服务状态。"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Not Running"
+msgstr "未运行"
+
+msgid "Zashboard"
+msgstr "Zashboard"
+
+msgid "Saved, but the panel files are not installed yet — download the panel first."
+msgstr "配置已保存，但面板文件尚未安装，请先下载面板。"
+
+msgid "This page belongs to the advanced mode. Enable Advanced Settings in the global settings to use it."
+msgstr "此页面属于高级模式，请先在全局设置中启用「高级设置」。"
+
+msgid "This page belongs to a web dashboard. Select one in the global settings to use it."
+msgstr "此页面属于 Web 管理面板，请先在全局设置中选择面板类型。"
+
+msgid "Open Global Settings"
+msgstr "前往全局设置"
+
+msgid "Exit Fullscreen"
+msgstr "退出全屏"
+
+msgid "Click to switch scale (85% / 100% / 75%)"
+msgstr "点击切换缩放比例（85% / 100% / 75%）"
+
+msgid "/usr/bin/dae is not installed"
+msgstr "/usr/bin/dae 未安装"
+
+msgid "dae configuration validation failed"
+msgstr "dae 配置校验失败"
+
+msgid "Invalid core"
+msgstr "无效的核心"
+
+msgid "Selected core is not installed"
+msgstr "所选核心未安装"
+
+msgid "Entry file should only contain include { config.d/*.dae api.dae } for kdae managed editing."
+msgstr "入口文件应只包含 include { config.d/*.dae api.dae }，以兼容 kdae 托管编辑。"
+
+msgid "Failed to reload service"
+msgstr "重载服务失败"
+
+msgid "Failed to restart service"
+msgstr "重启服务失败"
+
+msgid "Invalid URL"
+msgstr "无效的 URL"
+
+msgid "Refusing to deploy to an unsafe target directory"
+msgstr "拒绝部署到不安全的目标目录"
+
+msgid "Download script not found"
+msgstr "未找到下载脚本"
+
+msgid "Failed to start download task"
+msgstr "启动下载任务失败"
+
+msgid "Invalid dashboard type"
+msgstr "无效的面板类型"
+
+msgid "native_api.config_write requires secret or password_auth."
+msgstr "开启 native_api.config_write 时必须设置 secret 或启用 password_auth。"
+
+msgid "native_api.listen must be a numeric IP:port (for example 0.0.0.0:9527)."
+msgstr "native_api.listen 必须是数字形式的 IP:端口（例如 0.0.0.0:9527）。"
+
+msgid "Installed versions:"
+msgstr "已安装版本："

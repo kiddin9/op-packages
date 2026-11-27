@@ -90,6 +90,16 @@ function isDomain(s) {
 	return s.indexOf('..') < 0;
 }
 
+function isCIDR(s) {
+	var p = String(s).split('/');
+	if (p.length !== 2 || !isIPv4(p[0]))
+		return false;
+	if (!/^\d{1,2}$/.test(p[1]))
+		return false;
+	var n = +p[1];
+	return n >= 0 && n <= 32;
+}
+
 function isSrc(s) {
 	return /^[A-Za-z0-9._-]+$/.test(s);
 }
@@ -135,6 +145,7 @@ return view.extend({
 			isp: [],
 			dns: [],
 			domains: [],
+			ipsplit: [],
 			/* lc:begin */
 			lc: { enable: true, geo: true, provider: 'auto', interval: 60 }
 			/* lc:end */
@@ -158,6 +169,10 @@ return view.extend({
 				model.dns.push({ policy: f[1], dns: f[2], test: null });
 			else if (f[0] === 'domain' && f.length >= 3)
 				model.domains.push({ domain: f[1], policy: f[2] });
+			else if (f[0] === 'ipsplit' && f.length >= 3)
+				model.ipsplit.push({ cidr: f[1], policy: f[2] });
+			else if (f[0] === 'ip_list_dir')
+				model.ipListDir = (f[1] || '').trim();
 			/* lc:begin */
 			else if (f[0] === 'line_check_enable')
 				model.lc.enable = (f[1] || '1') === '1';
@@ -550,6 +565,119 @@ return view.extend({
 			}
 		}, [ svgIcon('plus'), E('span', {}, [_('添加域名')]) ]);
 
+		/* ============================================================ 三、手动补段 */
+
+		/* 为什么单独一块：PCDN 家宽节点（B 站 mcdn 等）的 IP 是动态家宽地址，
+		   永远不在运营商段表里。手动补段是覆盖层，fetch 重建集合后会自动重新
+		   合并——所以这里不需要"每次 fetch 后再点一遍保存"。 */
+		var ipsTbody = E('tbody', {});
+
+		function renderIpsplit() {
+			while (ipsTbody.firstChild)
+				ipsTbody.removeChild(ipsTbody.firstChild);
+
+			if (!model.ipsplit.length) {
+				ipsTbody.appendChild(E('tr', {}, [
+					E('td', { 'colspan': 3, 'data-th': '' }, [
+						E('div', { 'class': 'isp-empty' }, [
+							_('未配置。只有"运营商段表覆盖不到、又必须走某条线"的网段才需要写在这里。')
+						])
+					])
+				]));
+				return;
+			}
+
+			model.ipsplit.forEach(function(row, idx) {
+				var inp = E('input', {
+					'type': 'text', 'class': 'cbi-input-text',
+					'placeholder': _('网段，如 110.250.0.0/16'),
+					'value': row.cidr
+				});
+				inp.addEventListener('input', function() {
+					row.cidr = inp.value.trim();
+					validateIpRow(row);
+				});
+
+				var sel = E('select', { 'class': 'cbi-input-select' },
+					model.policies.map(function(p) {
+						return E('option', { 'value': p, 'selected': p === row.policy ? '' : null }, [ p ]);
+					}));
+				sel.addEventListener('change', function() {
+					row.policy = sel.value;
+					validateIpRow(row);
+				});
+
+				var del = E('button', {
+					'class': 'isp-icon-btn is-danger', 'title': _('删除'),
+					'click': function() {
+						ui.showModal(_('确认删除'), [
+							E('p', {}, [
+								_('把 ') + (row.cidr || _('这一行')) + _(' 从手动补段里删掉？')
+							]),
+							E('div', { 'class': 'right' }, [
+								E('button', { 'class': 'btn', 'click': ui.hideModal }, [_('取消')]),
+								' ',
+								E('button', {
+									'class': 'cbi-button cbi-button-negative',
+									'click': function() {
+										ui.hideModal();
+										model.ipsplit.splice(idx, 1);
+										renderIpsplit();
+									}
+								}, [_('删除')])
+							])
+						]);
+					}
+				}, [ svgIcon('trash', 15) ]);
+
+				var err = errBox();
+				row._err = err;
+
+				ipsTbody.appendChild(E('tr', {}, [
+					E('td', { 'data-th': _('网段（CIDR）') }, [ inp, err ]),
+					E('td', { 'data-th': _('钉到线路') }, [ sel ]),
+					E('td', { 'data-th': _('操作') }, [
+						E('div', { 'class': 'isp-row-actions' }, [ del ])
+					])
+				]));
+				validateIpRow(row);
+			});
+		}
+
+		function validateIpRow(row) {
+			if (!row.cidr) {
+				setErr(row._err, '');
+				row._valid = true;
+				return true;
+			}
+			if (!isCIDR(row.cidr)) {
+				setErr(row._err, _('必须是 a.b.c.d/0-32 形式的 IPv4 网段'));
+				row._valid = false;
+				return false;
+			}
+			var dup = model.ipsplit.filter(function(r) {
+				return r !== row && r.cidr === row.cidr;
+			}).length;
+			if (dup) {
+				setErr(row._err, _('网段重复'));
+				row._valid = false;
+				return false;
+			}
+			setErr(row._err, '');
+			row._valid = true;
+			return true;
+		}
+
+		renderIpsplit();
+
+		var addIpBtn = E('button', {
+			'class': 'cbi-button cbi-button-positive',
+			'click': function() {
+				model.ipsplit.push({ cidr: '', policy: model.policies[0] || '' });
+				renderIpsplit();
+			}
+		}, [ svgIcon('plus'), E('span', {}, [_('添加网段')]) ]);
+
 		/* lc:begin */
 		/* ============================================================ 三、线路体检 */
 
@@ -714,10 +842,14 @@ return view.extend({
 			var domVal = model.domains.filter(function(r) { return r.domain; })
 				.map(function(r) { return r.domain + ':' + r.policy; }).join('|');
 
+			var ipVal = model.ipsplit.filter(function(r) { return r.cidr; })
+				.map(function(r) { return r.cidr + ':' + r.policy; }).join('|');
+
 			return {
 				isp: ispVal,
 				dns: dnsVal,
 				dom: domVal,
+				ips: ipVal,
 				mode: modeSel.value,
 				/* lc:begin */
 				lcEnable: model.lc.enable ? '1' : '0',
@@ -734,6 +866,7 @@ return view.extend({
 			model.isp.forEach(function(r) { ok = validateIspRow(r) && ok; });
 			model.dns.forEach(function(r) { ok = validateDnsRow(r) && ok; });
 			model.domains.forEach(function(r) { ok = validateDomainRow(r) && ok; });
+			model.ipsplit.forEach(function(r) { ok = validateIpRow(r) && ok; });
 
 			if (!model.isp.length) {
 				ui.addNotification(null, E('p', {}, [
@@ -766,6 +899,10 @@ return view.extend({
 				if (r._valid === false)
 					msgs.push(_('域名行 ') + (r.domain || '?') + _(' 有错误'));
 			});
+			model.ipsplit.forEach(function(r) {
+				if (r._valid === false)
+					msgs.push(_('补段行 ') + (r.cidr || '?') + _(' 有错误'));
+			});
 			return msgs;
 		}
 
@@ -790,6 +927,7 @@ return view.extend({
 				'isp_table', v.isp,
 				'dns_table', v.dns,
 				'domain_split', v.dom,
+				'ip_split', v.ips,
 				'dns_mode', v.mode
 				/* lc:begin */
 				,'line_check_enable', v.lcEnable,
@@ -819,6 +957,7 @@ return view.extend({
 			step(['conf', 'set', 'isp_table', v.isp], log)
 				.then(function() { return step(['conf', 'set', 'dns_table', v.dns], log); })
 				.then(function() { return step(['conf', 'set', 'domain_split', v.dom], log); })
+				.then(function() { return step(['conf', 'set', 'ip_split', v.ips], log); })
 				.then(function() { return step(['conf', 'set', 'dns_mode', v.mode], log); })
 				/* lc:begin */
 				.then(function() { return step(['conf', 'set', 'line_check_enable', v.lcEnable], log); })
@@ -972,6 +1111,31 @@ return view.extend({
 					domTbody
 				]),
 				E('div', { 'class': 'isp-btn-row' }, [ addDomBtn ])
+			]),
+
+			/* ---- 手动补段（IP_SPLIT，0.5.0） ---- */
+			E('section', { 'class': 'isp-section' }, [
+				E('h3', {}, [ _('手动补段'), E('span', { 'class': 'isp-tag' }, [ _('fetch 后自动合并') ]) ]),
+				E('p', { 'class': 'isp-desc' }, [
+					_('运营商段表覆盖不到的网段（典型：视频平台的 PCDN 家宽节点）写在这里。'),
+					_('每次 fetch 重建集合后都会自动重新合并，手动段不会再被每日更新冲掉；'),
+					_('与段表数据重叠时手动段优先（其它集合让出这些地址）。')
+				]),
+				E('table', { 'class': 'isp-form-table' }, [
+					E('thead', {}, [
+						E('tr', {}, [
+							E('th', {}, [_('网段（CIDR）')]),
+							E('th', {}, [_('钉到线路')]),
+							E('th', {}, [_('操作')])
+						])
+					]),
+					ipsTbody
+				]),
+				E('div', { 'class': 'isp-btn-row' }, [ addIpBtn ]),
+				E('div', { 'class': 'isp-note' }, [
+					_('批量维护可以放文件里：$IP_LIST_DIR/<策略>.txt，每行一个 CIDR（改配置页的 IP_LIST_DIR 指向该目录）。'),
+					_('缺口建议用命令行的 isp-split suggest 生成（只读，不会自动跑、也不在任何定时任务里）。')
+				])
 			]),
 
 			/* lc:begin */

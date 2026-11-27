@@ -1,0 +1,11 @@
+# /etc/daeuniverse/honk/config.d/api.dae
+# Native API configuration for honk dashboard & controller access.
+experimental {
+    native_api {
+        enabled: true
+        listen: '0.0.0.0:9527'
+        secret: 'daeuniverse114514'
+        ui: '/etc/daeuniverse/doona'
+        config_write: true
+    }
+}

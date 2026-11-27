@@ -19,18 +19,10 @@ QR-кодами для подключения к Wi-Fi.
 
 ## Требования
 
-- OpenWrt 24.10 (IPK) или OpenWrt 25.12 (APK);
+- OpenWrt 25.12 с `apk`;
 - LuCI.
 
 ## Установка
-
-### OpenWrt 24.10
-
-Скачайте последний `luci-app-wrqr_*_all.ipk` из
-[Releases](https://github.com/Nikitid/luci-app-wrqr/releases) и загрузите его
-через **System -> Software -> Upload Package**.
-
-### OpenWrt 25.12
 
 ```sh
 wget -O /tmp/nikitid-feed.sh \

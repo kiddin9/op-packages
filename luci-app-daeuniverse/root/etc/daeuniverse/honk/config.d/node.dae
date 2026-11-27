@@ -1,0 +1,23 @@
+# node.dae
+node {
+    node1: 'socks5://127.0.0.1:1080'
+    # node2: 'vless://...'
+}
+
+subscription {
+    # 短形式：默认 86400s 刷新一次
+    # sub: 'http://sub'
+
+    # 短形式 + UA：默认 86400s 刷新一次
+    # sub_ua: 'http://sub'(honk/1.0 like)
+
+    # 块形式可按订阅名自定义 url / ua / interval（如 '10000s'，或设 0 禁用刷新；注意勿在注释里保留大括号）
+}
+
+group {
+    proxy {
+        # filter: subtag(sub) && !name(keyword: 'ExpireAt:')
+        filter: name(node1)
+        policy: score
+    }
+}

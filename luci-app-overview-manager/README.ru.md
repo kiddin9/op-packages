@@ -20,7 +20,6 @@
 
 ## Требования
 
-- официальный OpenWrt `24.10.x` с `opkg`;
 - официальный OpenWrt `25.12.x` с `apk`;
 - стандартная страница `luci-mod-status` Status Overview;
 - сторонние виджеты, установленные как LuCI status include.
@@ -30,14 +29,6 @@
 общей раскладки Overview Manager.
 
 ## Установка
-
-### OpenWrt 24.10
-
-Скачайте `luci-app-overview-manager_*_all.ipk` из
-[Releases](https://github.com/Nikitid/luci-app-overview-manager/releases) и загрузите его
-через **System -> Software -> Upload Package**.
-
-### OpenWrt 25.12
 
 ```sh
 wget -O /tmp/nikitid-feed.sh \

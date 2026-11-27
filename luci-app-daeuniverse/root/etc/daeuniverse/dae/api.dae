@@ -1,0 +1,9 @@
+# /etc/daeuniverse/dae/api.dae
+api {
+    enabled: true
+    listen: '0.0.0.0:9527'
+    secret: 'daeuniverse114514'
+    ui: '/etc/daeuniverse/doona'
+    config_write: true
+    direct_stats: false
+}

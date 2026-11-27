@@ -20,7 +20,6 @@ the cards on the **Status -> Overview** page.
 
 ## Requirements
 
-- official OpenWrt `24.10.x` with `opkg`;
 - official OpenWrt `25.12.x` with `apk`;
 - the stock `luci-mod-status` Status Overview page;
 - third-party widgets installed as a LuCI status include.
@@ -30,14 +29,6 @@ On OpenWrt 25.12 the stock Hide button keeps its state separately, in the
 Overview Manager layout.
 
 ## Installation
-
-### OpenWrt 24.10
-
-Download `luci-app-overview-manager_*_all.ipk` from
-[Releases](https://github.com/Nikitid/luci-app-overview-manager/releases) and upload it
-through **System -> Software -> Upload Package**.
-
-### OpenWrt 25.12
 
 ```sh
 wget -O /tmp/nikitid-feed.sh \

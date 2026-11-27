@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Compile a gettext PO catalog into LuCI's LMO format.
 
-This is a byte-for-byte reimplementation of po2lmo from luci-base. Both package
-build paths use it so the SDK-less IPK and the SDK-built APK ship identical
-catalogs and neither depends on the LuCI feed host tools being available.
+This is a byte-for-byte reimplementation of po2lmo from luci-base. The
+SDK-built APK and the staged tree checked by scripts/ci-check.sh use it, so
+both carry identical catalogs without the LuCI feed host tools.
 
 The reference implementation is modules/luci-base/src/po2lmo.c; the reader that
 consumes the output is modules/luci-base/src/lib/lmo.c. scripts/test-po2lmo.py

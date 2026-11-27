@@ -12,7 +12,7 @@ find runtime scripts -type f -name '*.sh' -exec sh -n {} +
 find luci -type f -name '*.js' -exec node --check {} +
 node ./scripts/test-overview-ui.js
 PYTHONPYCACHEPREFIX="$root/build/pycache" \
-  python3 -m py_compile scripts/pack-ipk.py scripts/po2lmo.py scripts/test-po2lmo.py
+  python3 -m py_compile scripts/po2lmo.py scripts/test-po2lmo.py
 PYTHONPYCACHEPREFIX="$root/build/pycache" \
   python3 ./scripts/test-po2lmo.py
 python3 - <<'PY'
@@ -24,13 +24,17 @@ for path in Path("luci").glob("*.json"):
     print(f"json OK: {path}")
 PY
 ./scripts/test-runtime.sh
-./scripts/build-ipk.sh
-# The staged tree is exactly what lands on the router, so check it rather than
+stage="${BUILD_DIR:-$root/build}/stage"
+tree_hash() {
+  (cd "$stage" && find . -type f | LC_ALL=C sort | xargs sha256sum | sha256sum)
+}
+./scripts/stage-package.sh "$stage"
+# The staged tree is the payload the APK installs, so check it rather than
 # the sources: the build host has GNU coreutils and the router does not.
-./scripts/check-busybox-compat.sh "${BUILD_DIR:-$root/build/ipk}/stage"
-first="$(sha256sum dist/*.ipk | awk '{print $1}')"
-./scripts/build-ipk.sh
-second="$(sha256sum dist/*.ipk | awk '{print $1}')"
+./scripts/check-busybox-compat.sh "$stage"
+first="$(tree_hash)"
+./scripts/stage-package.sh "$stage"
+second="$(tree_hash)"
 [ "$first" = "$second" ]
 git diff --check 2>/dev/null || true
 printf 'ci-check OK\n'

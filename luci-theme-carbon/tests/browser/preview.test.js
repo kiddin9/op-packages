@@ -2062,6 +2062,52 @@ test('collapsed rail: keyboard opens and leaves the sub-menu, touch taps toggle 
 	await context.close();
 });
 
+test('simple mode nav hint can be dismissed via top-right close button and persists in localStorage', async () => {
+	const { page, context, errors } = await open('/src/preview/index.html?lang=zh-cn', { width: 1440, height: 900 });
+	try {
+		await dashboardReady(page);
+		const hint = page.locator('#topmenu .cb-nav-hint');
+		const close = page.locator('#topmenu .cb-nav-hint-close');
+		assert.equal(await hint.count(), 1, 'simple mode shows the nav hint by default');
+		assert.equal(await close.getAttribute('aria-label'), '关闭');
+
+		/* Close button sits in the top-right corner of the hint card without overlapping the text */
+		const geom = await page.evaluate(() => {
+			const h = document.querySelector('#topmenu .cb-nav-hint').getBoundingClientRect();
+			const c = document.querySelector('#topmenu .cb-nav-hint-close').getBoundingClientRect();
+			const tx = document.querySelector('#topmenu .cb-nav-hint-text').getBoundingClientRect();
+			return { h, c, tx };
+		});
+		assert.ok(geom.c.right <= geom.h.right && geom.c.right >= geom.h.right - 12, 'close button anchored to right edge');
+		assert.ok(geom.c.top >= geom.h.top && geom.c.top <= geom.h.top + 12, 'close button anchored to top edge');
+		assert.ok(geom.tx.right <= geom.c.left + 1, 'hint text does not overlap close button');
+
+		/* Pro mode link inside the hint still switches to Pro mode before dismissal */
+		await page.click('#topmenu .cb-nav-hint a');
+		await page.waitForSelector('#topmenu .cb-nav-group');
+		await page.click('#cb-mode .cb-seg-btn:first-child');
+		await page.waitForSelector('#topmenu .cb-nav-hint');
+
+		/* Clicking close removes the hint and persists across mode toggles and reloads */
+		await close.click();
+		assert.equal(await hint.count(), 0, 'hint is removed immediately on close');
+		assert.equal(await page.evaluate(() => localStorage.getItem('carbon.hintDismissed')), '1');
+
+		await page.click('#cb-mode .cb-seg-btn:last-child');
+		await page.waitForSelector('#topmenu .cb-nav-group');
+		await page.click('#cb-mode .cb-seg-btn:first-child');
+		await page.waitForSelector('#topmenu .cb-nav-customize');
+		assert.equal(await hint.count(), 0, 'hint stays hidden after switching modes');
+
+		await page.reload();
+		await dashboardReady(page);
+		assert.equal(await hint.count(), 0, 'hint stays hidden after reload');
+		assert.deepEqual(errors, []);
+	} finally {
+		await context.close();
+	}
+});
+
 test('phone drawer traps the page behind it and restores focus', async () => {
 	const { page, context } = await open('/src/preview/index.html?lang=en', { width: 390, height: 844 });
 	await page.waitForSelector('.cb-nav a');
