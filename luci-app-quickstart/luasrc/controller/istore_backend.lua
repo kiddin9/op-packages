@@ -108,16 +108,14 @@ end
 
 function istore_backend() 
   local sock = nixio.socket("unix", "stream")
-  if sock and not sock:connect(ISTOREOS_SOCKET) then
+  if not sock then
+    http.status(500, "connect failed")
+    return
+  end
+  if not sock:connect(ISTOREOS_SOCKET) then
     sock:close()
-	sock = nil
-  end
-  if not sock then
-	sock = nixio.connect("127.0.0.1", 3038)
-  end
-  if not sock then
-	http.status(500, "connect failed")
-	return
+    http.status(500, "connect failed")
+    return
   end
   local input = {}
   input[#input+1] = http.getenv("REQUEST_METHOD") .. " " .. http.getenv("REQUEST_URI") .. " HTTP/1.1"
