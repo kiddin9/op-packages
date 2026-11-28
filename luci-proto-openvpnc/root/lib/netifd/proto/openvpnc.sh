@@ -103,7 +103,7 @@ openvpnc_get_dev_type() {
 openvpnc_get_auth_file() {
 	local file="$1"
 	local mode
-	local sidecar
+	local sidecar="$2"
 
 	mode="$(awk '
 		/^[[:space:]]*[#;]/ { next }
@@ -125,7 +125,7 @@ openvpnc_get_auth_file() {
 			return 2
 			;;
 		required)
-			sidecar="${file%.ovpn}.auth"
+			[ -f "$sidecar" ] || sidecar="${file%.ovpn}.auth"
 			[ -f "$sidecar" ] || return 3
 			echo "$sidecar"
 			return 0
@@ -205,13 +205,16 @@ openvpnc_write_auth_file() {
 	local file="$1"
 	local username="$2"
 	local password="$3"
+	local tmp
 
 	mkdir -p "${file%/*}" || return 1
-	umask 077
-	{
-		printf '%s\n' "$username"
-		printf '%s\n' "$password"
-	} > "$file"
+	tmp="$(mktemp "$file.XXXXXX")" || return 1
+	if printf '%s\n' "$username" "$password" > "$tmp" && mv -f "$tmp" "$file"; then
+		return 0
+	fi
+
+	rm -f "$tmp"
+	return 1
 }
 
 openvpnc_zone_name() {
@@ -324,6 +327,7 @@ openvpnc_ensure_firewall() {
 
 proto_openvpnc_init_config() {
 	proto_config_add_string "ovpn_file"
+	proto_config_add_string "profile_revision"
 	proto_config_add_string "username"
 	proto_config_add_string "password"
 	proto_config_add_int "mtu"
@@ -334,6 +338,7 @@ proto_openvpnc_init_config() {
 proto_openvpnc_setup() {
 	local config="$1"
 	local ovpn_file username password mtu
+	local profile="/etc/openvpnc/profile-$config"
 	local ifname dev_type auth_file auth_state auth_required auth_inline ovpn_run_file
 
 	json_get_vars ovpn_file username password mtu
@@ -342,7 +347,7 @@ proto_openvpnc_setup() {
 	[ -n "$password" ] || password="$(uci -q get network.$config.password)"
 
 	ifname="vpn-$config"
-	mkdir -p /etc/openvpn/openvpnc
+	[ ! -f "$profile.ovpn" ] || ovpn_file="$profile.ovpn"
 
 	[ -n "$ovpn_file" ] && [ -f "$ovpn_file" ] || {
 		logger -t openvpnc "missing profile for $config"
@@ -362,15 +367,14 @@ proto_openvpnc_setup() {
 	}
 
 	dev_type="$(openvpnc_get_dev_type "$ovpn_file")"
-	auth_file="$(openvpnc_get_auth_file "$ovpn_file")"
+	auth_file="$(openvpnc_get_auth_file "$ovpn_file" "$profile.auth")"
 	auth_state="$?"
 	auth_required=0
 	auth_inline=0
 
 	case "$auth_state" in
-		0|3)
+		0)
 			auth_required=1
-			auth_file="${ovpn_file%.ovpn}.auth"
 			;;
 		2)
 			auth_required=1
@@ -386,7 +390,7 @@ proto_openvpnc_setup() {
 			return 1
 		}
 
-		auth_file="${ovpn_file%.ovpn}.auth"
+		auth_file="$profile.auth"
 		openvpnc_write_auth_file "$auth_file" "$username" "$password" || {
 			logger -t openvpnc "failed to write auth file $auth_file for $config"
 			proto_setup_failed "$config"
@@ -395,10 +399,11 @@ proto_openvpnc_setup() {
 		}
 		auth_required=1
 		auth_state=0
+		auth_inline=0
 	fi
 
 	if [ "$auth_state" = "3" ]; then
-		logger -t openvpnc "profile $ovpn_file requires auth-user-pass; set username and password in UCI or create ${ovpn_file%.ovpn}.auth with username on first line and password on second line"
+		logger -t openvpnc "profile $ovpn_file requires auth-user-pass; set username and password in UCI or create $profile.auth with username on first line and password on second line"
 		proto_setup_failed "$config"
 		proto_block_restart "$config"
 		return 1

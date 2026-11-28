@@ -1,26 +1,55 @@
 'use strict';
 'require form';
+'require fs';
 'require network';
+'require request';
+'require rpc';
 'require uci';
-'require ui';
-
-var profileDirectory = '/etc/openvpn/openvpnc';
 
 network.registerPatternVirtual(/^vpn-.+$/);
 
-function getProfilePath(section, section_id) {
-	return section.formvalue(section_id, 'ovpn_file') ||
-		uci.get('network', section_id, 'ovpn_file') ||
-		'%s/default-%s.ovpn'.format(profileDirectory, section_id);
+function getProfilePath(section_id) {
+	return '/etc/openvpnc/profile-%s.ovpn'.format(section_id);
 }
 
-function getAuthPath(section, section_id) {
-	var profile = getProfilePath(section, section_id);
+function hasProfile(path) {
+	return fs.stat(path).then(function(stat) {
+		return stat.type === 'file' && stat.size > 0;
+	}, function() {
+		return false;
+	});
+}
 
-	if (profile != null && profile !== '')
-		return profile.replace(/\.ovpn$/, '.auth');
+var writeProfile = rpc.declare({
+	object: 'file',
+	method: 'write',
+	params: [ 'path', 'data', 'mode', 'base64' ],
+	reject: true
+});
 
-	return '%s/default-%s.auth'.format(profileDirectory, section_id);
+async function uploadProfile(path, file) {
+	// Keep the Base64-encoded request within the ubus message size limit.
+	if (file.size <= 32 * 1024) {
+		var encoded = await new Promise(function(resolve, reject) {
+			var reader = new FileReader();
+			reader.onload = function() { resolve(reader.result.split(',', 2)[1]); };
+			reader.onerror = function() { reject(reader.error); };
+			reader.readAsDataURL(file);
+		});
+		await writeProfile(path, encoded, 384, true); // 0600
+		return;
+	}
+
+	var data = new FormData();
+	data.append('sessionid', rpc.getSessionID());
+	data.append('filename', path);
+	data.append('filemode', '0600');
+	data.append('filedata', file);
+
+	var response = await request.post(L.env.cgi_base + '/cgi-upload', data, { timeout: 120000 });
+	var result = response.json();
+	if (!response.ok || result.failure)
+		throw new Error(result.message || _('Upload failed'));
 }
 
 return network.registerProtocol('openvpnc', {
@@ -55,50 +84,63 @@ return network.registerProtocol('openvpnc', {
 	renderFormOptions: function(s) {
 		var o;
 
-		o = s.taboption('general', form.FileUpload, 'ovpn_file', _('OpenVPN configuration'),
-			_('Upload or choose the client profile stored under %s. Only .ovpn files are accepted.').format(profileDirectory));
-		o.root_directory = profileDirectory;
-		o.enable_remove = false;
-		o.rmempty = false;
-		o.renderWidget = function(section_id, option_index, cfgvalue) {
-			var browserEl = new ui.FileUpload((cfgvalue != null) ? cfgvalue : this.default, {
-				id: this.cbid(section_id),
-				name: this.cbid(section_id),
-				show_hidden: this.show_hidden,
-				enable_upload: this.enable_upload,
-				enable_remove: this.enable_remove,
-				root_directory: this.root_directory,
-				disabled: (this.readonly != null) ? this.readonly : this.map.readonly
+		o = s.taboption('general', form.Value, 'profile_revision', _('OpenVPN configuration'));
+		o.renderWidget = async function(section_id) {
+			var path = getProfilePath(section_id);
+			var legacy = uci.get('network', section_id, 'ovpn_file');
+			var installed = await hasProfile(path);
+			var current = installed ? path : legacy && await hasProfile(legacy) ? legacy : null;
+			var status = E('div', { 'role': 'status' }, current
+				? _('Current profile: %s').format(current)
+				: _('No profile uploaded'));
+			var error = E('div', { 'class': 'cbi-value-error', 'role': 'alert' });
+			var input = E('input', {
+				'id': this.cbid(section_id),
+				'type': 'file',
+				'accept': '.ovpn',
+				'disabled': (this.readonly != null ? this.readonly : this.map.readonly) || null,
+				'change': function() { error.textContent = ''; }
 			});
 
-			browserEl.renderListing = function(container, path, list) {
-				return ui.FileUpload.prototype.renderListing.apply(this, [
-					container,
-					path,
-					list.filter(function(entry) {
-						return entry.type == 'directory' ||
-							(entry.type == 'file' && entry.name.match(/\.ovpn$/));
-					})
-				]);
-			};
-
-			return browserEl.render();
+			input.profileInstalled = !!current;
+			return E('div', {}, [
+				status, input, error,
+				E('div', { 'class': 'cbi-value-description' },
+					_('Choose an .ovpn file with embedded certificates and keys. Save to upload it to %s.').format(path))
+			]);
 		};
-		o.validate = function(section_id, value) {
-			if (value == null || value === '')
-				return _('Please upload or choose an .ovpn file');
+		o.parse = async function(section_id) {
+			var input = this.map.findElement('id', this.cbid(section_id));
+			if (!input || input.disabled || !this.isActive(section_id))
+				return;
 
-			if (value.indexOf(profileDirectory + '/') !== 0)
-				return _('Selected file must be stored in %s').format(profileDirectory);
+			var file = input.files[0];
+			var error = input.nextElementSibling;
+			try {
+				if (!file) {
+					if (!input.profileInstalled)
+						throw new Error(_('Choose an .ovpn file to upload'));
+					return;
+				}
 
-			if (!value.match(/\.ovpn$/))
-				return _('Selected file must use the .ovpn extension');
+				if (!file.size || !/\.ovpn$/i.test(file.name))
+					throw new Error(_('Choose a non-empty .ovpn file'));
 
-			return true;
+				await uploadProfile(getProfilePath(section_id), file);
+
+				// netifd must reload even when the profile path stays the same.
+				this.map.data.set(this.map.config, section_id, this.option, String(Date.now()));
+				this.map.data.unset(this.map.config, section_id, 'ovpn_file');
+				error.textContent = '';
+			}
+			catch (e) {
+				error.textContent = e.message;
+				throw e;
+			}
 		};
 
 		o = s.taboption('general', form.Value, 'username', _('Username'),
-			_('If the selected profile uses auth-user-pass, a matching .auth file will be generated automatically from these credentials.'));
+			_('If your VPN requires a username and password, enter both here. OpenVPN saves them in the interface’s .auth file when it starts.'));
 		o.rmempty = true;
 
 		o = s.taboption('general', form.Value, 'password', _('Password'));
@@ -139,19 +181,9 @@ return network.registerProtocol('openvpnc', {
 		o.depends('domain_dns_enable', '1');
 		o.rmempty = true;
 
-		o = s.taboption('advanced', form.DummyValue, '_auth_file', _('Authentication file'));
-		o.cfgvalue = function(section_id) {
-			return getAuthPath(this.section, section_id);
-		};
-
 		o = s.taboption('advanced', form.Value, 'mtu', _('Override MTU'));
 		o.placeholder = '1500';
 		o.datatype = 'max(9200)';
 		o.rmempty = true;
-
-		o = s.taboption('advanced', form.DummyValue, '_profile_path', _('Stored profile path'));
-		o.cfgvalue = function(section_id) {
-			return getProfilePath(this.section, section_id);
-		};
 	}
 });

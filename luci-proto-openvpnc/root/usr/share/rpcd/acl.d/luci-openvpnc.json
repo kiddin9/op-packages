@@ -3,18 +3,21 @@
 		"description": "Grant access to LuCI OpenVPN Client procedures",
 		"read": {
 			"file": {
-				"/etc/openvpn/openvpnc": [ "list" ],
-				"/etc/openvpn/openvpnc/*.ovpn": [ "read" ]
+				"/etc/openvpnc/profile-*.ovpn": [ "list" ],
+				"/etc/openvpn/openvpnc/*.ovpn": [ "list" ]
 			},
 			"ubus": {
-				"file": [ "list", "stat" ]
+				"file": [ "stat" ]
 			},
 			"uci": [ "network" ]
 		},
 		"write": {
 			"cgi-io": [ "upload" ],
+			"ubus": {
+				"file": [ "write" ]
+			},
 			"file": {
-				"/etc/openvpn/openvpnc/*.ovpn": [ "write" ]
+				"/etc/openvpnc/profile-*.ovpn": [ "write" ]
 			},
 			"uci": [ "network" ]
 		}
