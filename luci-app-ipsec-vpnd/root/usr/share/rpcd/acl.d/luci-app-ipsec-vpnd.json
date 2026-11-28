@@ -3,15 +3,12 @@
 		"description": "Grant access to ipsec configuration",
 		"read": {
 			"ubus": {
-				"ipsec-vpnd": [ "sessions", "deps", "status" ],
-				"rc": [ "init" ],
-				"service": [ "list" ]
+				"ipsec-vpnd": [ "sessions", "deps", "status" ]
 			},
 			"uci": [ "ipsec-vpnd" ]
 		},
 		"write": {
 			"ubus": {
-				"rc": [ "init" ],
 				"ipsec-vpnd": [ "apply", "clear_history" ]
 			},
 			"uci": [ "ipsec-vpnd" ]

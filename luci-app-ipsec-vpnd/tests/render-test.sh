@@ -109,10 +109,13 @@ run_render() {
 }
 
 # --- 1. enabled=1 ----------------------------------------------------------
+# 用非默认值：如果 stubs 或渲染器把选项名搞错（例如 clientip 写成 client_ip），
+# 值会退回内置默认 10.9.8.10/24，下面的断言就会失败。用默认值当输入的话，
+# 选项名写错也照样"通过"。
 cat > "$TMP/uci" <<'EOF'
 enabled=1
-clientip=10.9.8.10/24
-clientdns=10.9.8.1
+clientip=172.30.0.50/24
+clientdns=172.30.0.1
 account=acc1
 password=pw1
 secret=psk1
@@ -121,8 +124,8 @@ EOF
 rc="$(run_render "$TMP/uci")"
 check "enabled=1 时渲染成功" "0" "$rc"
 check "生成 conn xauth_psk" "1" "$(count_matches '^conn xauth_psk$' "$TMP/etc/ipsec.conf")"
-check "rightsourceip 取自 UCI" "1" "$(count_matches 'rightsourceip=10.9.8.10/24' "$TMP/etc/ipsec.conf")"
-check "rightdns 取自 UCI" "1" "$(count_matches 'rightdns=10.9.8.1' "$TMP/etc/ipsec.conf")"
+check "rightsourceip 取自 UCI" "1" "$(count_matches 'rightsourceip=172.30.0.50/24' "$TMP/etc/ipsec.conf")"
+check "rightdns 取自 UCI" "1" "$(count_matches 'rightdns=172.30.0.1' "$TMP/etc/ipsec.conf")"
 check "secrets 含 PSK" "1" "$(count_matches '^: PSK "psk1"$' "$TMP/etc/ipsec.secrets")"
 check "secrets 含 XAuth" "1" "$(count_matches '^acc1 : XAUTH "pw1"$' "$TMP/etc/ipsec.secrets")"
 check "secrets 权限 0600" "600" "$(file_mode "$TMP/etc/ipsec.secrets")"
@@ -214,7 +217,98 @@ check "enabled=0 时不生成 IKEv2 conn" "0" "$(count_matches '^conn ikev2_psk$
 check "enabled=0 时清掉遗留 secrets" "0" "$([ -e "$TMP/etc/ipsec.secrets" ] && echo 1 || echo 0)"
 check "enabled=0 时报告 changed" "changed" "$(cat "$TMP/out")"
 
-# --- 3. 依赖自检不通过 -----------------------------------------------------
+# --- 5. 凭据校验 ------------------------------------------------------------
+# 这些值会直接拼进 ipsec.secrets，含引号/反斜杠/空格/非 ASCII 会破坏语法，
+# 导致 charon 加载失败（整个服务不可用）。渲染器必须拒绝而不是照写。
+rm -f "$TMP/etc/ipsec.conf" "$TMP/etc/ipsec.secrets"
+write_bad() {
+	# write_bad <选项名> <值>：其余选项用合法值，被替换的那个只出现一次
+	# （stub 的 config_get 取第一行，重复写会让非法值永远读不到）
+	{
+		echo "enabled=1"
+		echo "clientip=10.9.8.10/24"
+		echo "clientdns=10.9.8.1"
+		echo "account=acc1"
+		echo "password=pw1"
+		echo "secret=psk1"
+	} | grep -v "^$1=" > "$TMP/uci"
+	printf '%s=%s\n' "$1" "$2" >> "$TMP/uci"
+}
+
+write_bad secret 'ab"c'
+rc="$(run_render "$TMP/uci")"
+check "PSK 含双引号时拒绝渲染" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+check "PSK 含双引号时不写 ipsec.secrets" "0" "$([ -e "$TMP/etc/ipsec.secrets" ] && echo 1 || echo 0)"
+
+write_bad password 'ab\c'
+rc="$(run_render "$TMP/uci")"
+check "密码含反斜杠时拒绝渲染" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+
+write_bad password 'pw 1'
+rc="$(run_render "$TMP/uci")"
+check "密码含空格时拒绝渲染" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+
+write_bad account 'a#b'
+rc="$(run_render "$TMP/uci")"
+check "账号可含 #（不算非法字符）" "0" "$rc"
+
+# 默认占位值必须当成未配置：否则一键启用就是弱口令服务端
+rm -f "$TMP/etc/ipsec.secrets"
+{
+	echo "enabled=1"
+	echo "clientip=10.9.8.10/24"
+	echo "clientdns=10.9.8.1"
+	echo "account=vpnuser"
+	echo "password=changeme"
+	echo "secret=changeme"
+} > "$TMP/uci"
+rc="$(run_render "$TMP/uci")"
+check "默认占位凭据时拒绝启用" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+check "默认占位凭据时不写 ipsec.secrets" "0" "$([ -e "$TMP/etc/ipsec.secrets" ] && echo 1 || echo 0)"
+
+# IKEv1 不可用时 account/password 不进 ipsec.secrets，不该再拦启用：
+# 否则只启用 IKEv2 的用户永远开不了服务，且报错指向一个他用不到的字段。
+rm -f "$TMP/etc/ipsec.secrets"
+{
+	echo "enabled=1"
+	echo "clientip=10.9.8.10/24"
+	echo "clientdns=10.9.8.1"
+	echo "account=vpnuser"
+	echo "password=changeme"
+	echo "secret=MyStrongPsk2026"
+	echo "ikev2=1"
+} > "$TMP/uci"
+mv "$TMP/xauth-generic.conf" "$TMP/xauth-generic.conf.off"
+rc="$(run_render "$TMP/uci")"
+check "IKEv1 不可用时默认 account/password 不阻塞 IKEv2" "0" "$rc"
+check "IKEv1 不可用时不写 XAUTH 行" "0" "$(count_matches 'XAUTH' "$TMP/etc/ipsec.secrets")"
+check "IKEv1 不可用时仍写出强 PSK" "1" "$(count_matches 'MyStrongPsk2026' "$TMP/etc/ipsec.secrets")"
+mv "$TMP/xauth-generic.conf.off" "$TMP/xauth-generic.conf"
+
+# 但 IKEv1 可用时默认 account 仍然要拦
+rm -f "$TMP/etc/ipsec.secrets"
+rc="$(run_render "$TMP/uci")"
+check "IKEv1 可用时默认 account 仍拒绝启用" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+
+# secret 是两条路共用的 PSK，IKEv1 不可用时也必须是改过的
+rm -f "$TMP/etc/ipsec.secrets"
+sed 's/^secret=.*/secret=changeme/' "$TMP/uci" > "$TMP/uci2"
+mv "$TMP/xauth-generic.conf" "$TMP/xauth-generic.conf.off"
+rc="$(run_render "$TMP/uci2")"
+check "IKEv1 不可用时默认 PSK 仍拒绝启用" "1" "$([ "$rc" != "0" ] && echo 1 || echo 0)"
+mv "$TMP/xauth-generic.conf.off" "$TMP/xauth-generic.conf"
+
+# 停用时不该因为凭据问题而失败（用户就是要关掉）
+{
+	echo "enabled=0"
+	echo "account=vpnuser"
+	echo "password=changeme"
+	echo "secret=changeme"
+} > "$TMP/uci"
+rc="$(run_render "$TMP/uci")"
+check "停用时默认凭据不阻塞" "0" "$rc"
+
+# --- 6. 依赖自检不通过 -----------------------------------------------------
 cat > "$TMP/uci" <<'EOF'
 enabled=1
 clientip=10.9.8.10/24

@@ -60,6 +60,56 @@ if [ ! -f "$IKEV1_PLUGIN_CONF" ]; then
 	logger -t ipsec-vpnd "未找到 xauth-generic 插件，IKEv1/XAuth 不可用；继续生成 IKEv2 配置"
 fi
 
+# 凭据校验。ipsec.secrets 的语法里 " 与 \ 是引号/转义符，账号名在行首、
+# 引号外还是字段分隔，含这些字符会直接把 secrets 弄坏：starter 加载失败后
+# 整个服务起不来，而 render 只比内容不校验语法，apply 还会报"成功"。
+#
+# 只放行 `!`~`~`（可打印 ASCII，排除空格），并额外排除 `"` 与 `\` —— 它们在
+# secrets 的引号内是引号/转义符。这样同时满足：
+#   - 不需要为 secrets 做转义
+#   - 不含空格 / 控制字符，TSV 状态文件与 ipsec.conf 也安全
+#     （clientip/clientdns 直接写进 ipsec.conf 的 rightsourceip/rightdns）
+bad_value() {
+	# bad_value <显示名> <值>；LC_ALL=C 下按字节判断，避免多字节字符被当成合法
+	if printf '%s' "$2" | LC_ALL=C grep -q '[^!-~]' ||
+	   printf '%s' "$2" | grep -q '["\\]'; then
+		printf 'luci-ipsec-vpnd-render: %s 含非法字符（只允许可打印 ASCII，不能含空格、双引号、反斜杠），已拒绝生成配置\n' "$1" >&2
+		logger -t ipsec-vpnd "$1 含非法字符，已拒绝生成配置"
+		return 1
+	fi
+	return 0
+}
+
+# 默认占位凭据必须换掉才能启用：否则一键打开就是一个弱 PSK + 弱口令的 VPN 服务端。
+#
+# 只检查真正会用到的字段：secret 是 IKEv1/IKEv2 共用的 PSK，始终检查；
+# account/password 只用于 XAuth，vt_ikev1=0 时（strongSwan 6.1 无 xauth-generic，
+# 只提供 IKEv2）它们根本不会写进 ipsec.secrets，此时还拿默认值拦启用，
+# 等于让用户去改一个他用不到的字段，而且改完也照样开不起来。
+if [ "$vt_enabled" = "1" ]; then
+	_check_defaults() {
+		# _check_defaults <显示名> <值>
+		case "$2" in
+			changeme|vpnuser)
+				printf 'luci-ipsec-vpnd-render: %s 仍是默认占位值，请先在页面上改成自己的再启用\n' "$1" >&2
+				logger -t ipsec-vpnd "$1 仍是默认占位值，拒绝启用"
+				exit 1
+				;;
+		esac
+	}
+	_check_defaults secret "$vt_secret"
+	if [ "$vt_ikev1" = "1" ]; then
+		_check_defaults account "$vt_account"
+		_check_defaults password "$vt_password"
+	fi
+	unset -f _check_defaults
+	bad_value clientip "$vt_clientip" || exit 1
+	bad_value clientdns "$vt_clientdns" || exit 1
+	bad_value account "$vt_account" || exit 1
+	bad_value password "$vt_password" || exit 1
+	bad_value secret "$vt_secret" || exit 1
+fi
+
 # 两条路都没有时不生成配置，避免服务起来却谁都连不上。
 if [ "$vt_enabled" = "1" ] && [ "$vt_ikev1" = "0" ] && [ "$vt_ikev2" != "1" ]; then
 	logger -t ipsec-vpnd "IKEv1 不可用且未启用 IKEv2，未生成 ipsec.conf"
@@ -71,6 +121,10 @@ fi
 # 不应该把正在跑的 VPN 连接踢掉。
 TMP_CONF="$(mktemp /tmp/.ipsec.conf.XXXXXX)"
 TMP_SECRETS="$(mktemp /tmp/.ipsec.secrets.XXXXXX)"
+# mktemp 建文件时的权限取决于调用方的 umask；secrets 里是明文 PSK 与口令，
+# 不等后面用 chmod 补，创建后立刻收紧，避免出现可读窗口。
+chmod 600 "$TMP_CONF" "$TMP_SECRETS"
+trap 'rm -f "$TMP_CONF" "$TMP_SECRETS"' EXIT
 
 cat > "$TMP_CONF" <<EOF
 # ipsec.conf - strongSwan IPsec configuration file
@@ -184,17 +238,25 @@ elif [ -e /etc/ipsec.secrets ]; then
 fi
 
 if [ "$changed" = "1" ]; then
-	cat "$TMP_CONF" > /etc/ipsec.conf
+	# 先写临时文件、再 rename 覆盖，避免 strongSwan 读到只写了一半的配置。
+	# /etc 与 /tmp 可能不是同一个文件系统，跨设备时 rename 会失败，退回原地写。
+	install_conf() {
+		# install_conf <源> <目标> <权限>
+		if mv -f "$1" "$2" 2>/dev/null; then
+			chmod "$3" "$2"
+		else
+			cat "$1" > "$2" && chmod "$3" "$2"
+		fi
+	}
 	if [ "$vt_enabled" = "1" ]; then
-		cat "$TMP_SECRETS" > /etc/ipsec.secrets
-		chmod 600 /etc/ipsec.secrets
+		install_conf "$TMP_SECRETS" /etc/ipsec.secrets 600
 	else
 		rm -f /etc/ipsec.secrets
 	fi
+	install_conf "$TMP_CONF" /etc/ipsec.conf 644
 	echo "changed"
 else
 	echo "unchanged"
 fi
 
-rm -f "$TMP_CONF" "$TMP_SECRETS"
 exit 0

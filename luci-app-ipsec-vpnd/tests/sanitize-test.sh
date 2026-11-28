@@ -41,6 +41,21 @@ check "不能误删含 n/t/r/o/l 的名字" "notroll" "$(printf '%s' 'notroll' |
 check "多个控制字符一起剥掉" "abc" "$(printf '%s' "a${TAB}b${NL}c${CR}" | sh "$SAN")"
 check "空输入输出为空" "" "$(printf '%s' '' | sh "$SAN")"
 
+# 长度上限：XAuth 用户名由客户端可控，不限长会撑大 /etc 状态文件与 JSON 响应。
+# 默认 64；SANITIZE_MAXLEN 可覆盖。
+LONG="$(awk 'BEGIN { s = ""; for (i = 0; i < 200; i++) s = s "A"; print s }')"
+check "超长输入被截断到 64" "64" "$(printf '%s' "$LONG" | sh "$SAN" | wc -c | tr -d ' ')"
+check "恰好 64 字符不被截断" "64" \
+	"$(printf '%s' "$(printf '%s' "$LONG" | cut -c 1-64)" | sh "$SAN" | wc -c | tr -d ' ')"
+check "不足 64 字符原样保留" "shortuser" "$(printf '%s' 'shortuser' | sh "$SAN")"
+check "SANITIZE_MAXLEN 可覆盖上限" "16" \
+	"$(printf '%s' "$LONG" | SANITIZE_MAXLEN=16 sh "$SAN" | wc -c | tr -d ' ')"
+# 截断是字节语义（head -c），不是字符语义：busybox 的 cut/awk 按字节、
+# macOS/BSD 的按字符，用 head -c 才能让测试与目标机行为一致。
+# 多字节被切成半个字节序列不影响功能：该值只作为不透明字节串进出 TSV/JSON。
+check "截断按字节计（6 个汉字 18 字节，上限 9 得 9 字节）" "9" \
+	"$(printf '%s' '用户名测试' | SANITIZE_MAXLEN=9 sh "$SAN" | wc -c | tr -d ' ')"
+
 if [ "$fail" -eq 0 ]; then
 	echo "sanitize-test: 全部通过"
 	exit 0

@@ -64,9 +64,12 @@ files() {
 }
 
 # 取已安装包的版本号；apk 与 opkg 两种包管理器都支持
+#
+# apk 第一列是 "名字-版本-r修订"（如 strongswan-minimal-6.0.7-r13），不是裸版本号，
+# 这里把名字前缀和 arch/仓库等后续列去掉，只留版本部分。
 pkg_version() {
 	if command -v apk >/dev/null 2>&1; then
-		apk list --installed "$1" 2>/dev/null | awk 'NR==1{print $1}'
+		apk list -I -v "$1" 2>/dev/null | awk -v n="$1" 'NR==1 { sub("^" n "-", "", $1); print $1 }'
 	elif command -v opkg >/dev/null 2>&1; then
 		opkg list-installed "$1" 2>/dev/null | awk 'NR==1{print $3}'
 	fi

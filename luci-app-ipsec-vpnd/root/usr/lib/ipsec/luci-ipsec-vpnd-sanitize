@@ -1,13 +1,31 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 #
-# 去掉输入里的所有控制字符（\t \n \r 等）。
+# 清洗外部输入（XAuth 用户名 / 对端身份 / 对端地址）：
+#   1. 去掉所有控制字符（\t \n \r 等）
+#   2. 截断到 MAXLEN **字节**
 #
-# 为什么需要：XAuth 用户名由客户端完全可控（任何能连到 UDP 500 的人都能影响它），
-# 控制字符会把 TSV 记录撕开、字段错位并被持久化到历史文件里。
+# 为什么需要：
+#   - 控制字符会把 TSV 记录撕开、字段错位并被持久化到历史文件里。
+#   - 长度无上限时，客户端可以塞任意长的身份串：它会被写进 /etc 的状态文件、
+#     塞进返回给 LuCI 的 JSON，而状态文件只限行数（MAXROWS=200）不限行宽。
+#     XAuth 用户名在 IKEv1 里是 ID 载荷，64 字节足够任何实际可用的身份。
 #
-# 实现说明：**不要用 `tr -d '[:cntrl:]'`** —— busybox 的 tr 不认字符类，
-# 会把字面字符 : [ c n t r o l ] 全部删掉（实测 "testuser" 被删成 "esuse"）。
-# busybox 的 sed / awk 认 POSIX 字符类，用 sed 最稳。
+# 实现说明：
+#   - **不要用 `tr -d '[:cntrl:]'`** —— busybox 的 tr 不认字符类，会把字面
+#     字符 : [ c n t r o l ] 全部删掉（实测 "testuser" 被删成 "esuse"）。
+#     busybox 的 sed / awk 认 POSIX 字符类，用 sed 最稳。
+#   - **不要用 `cut -c` / `awk substr`** —— 这两种"字符"语义在 busybox
+#     （按字节）与 macOS/BSD（按字符）上不一致，测试与目标机行为会分叉。
+#     `head -c` 在两边都是明确的字节语义。
+#   - 代价：按字节截断可能把一个多字节字符切成半个。这不会影响功能——
+#     该值只被当作不透明字节串写进 TSV、再原样塞进 JSON 字符串，
+#     下游不做 UTF-8 解码；非法字节最多让前端显示一个乱码字符。
+#     用 `iconv -c` 修掉是更干净的做法，但 busybox 默认不带 iconv。
+#
+# 注意 rpcd 侧 awk 里也有一份等价清洗（parse_statusall / sessions），改这里
+# 要同步改那里，两个入口必须一致。
 
-sed 's/[[:cntrl:]]//g'
+MAXLEN="${SANITIZE_MAXLEN:-64}"
+
+sed 's/[[:cntrl:]]//g' | head -c "$MAXLEN"

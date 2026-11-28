@@ -25,10 +25,26 @@ LOCK_FILE="/tmp/.luci-app-ipsec-vpnd-sessions.lock"
 # Best-effort advisory lock: serialises the read/merge/write against the updown
 # hook. If flock is unavailable each writer still uses its own tmp, so the worst
 # case is a lost update in a tiny race window, never a corrupted file.
+#
+# 注意 busybox 的 flock 不支持 `-w`（真机实测：flock: unrecognized option: w），
+# 写成 `flock -w 5 9` 会一直失败并被 `|| return 0` 吞掉 —— 锁等于没有。
+#
+# 也不能退回 `flock 9`（无超时阻塞）：updown 钩子由 charon 调用，一旦它在持锁
+# 期间卡住，rpcd 的 sessions 会永久挂起，LuCI 每 5s 的轮询随之全部堆积，
+# 只能重启 rpcd 才能恢复。busybox 既没有 -w 也没有 timeout，所以自己重试：
+# 最多等约 3s，仍取不到就无锁继续 —— 宁可冒一次丢更新的风险，也不要挂死轮询。
 flock_lock() {
 	command -v flock >/dev/null 2>&1 || return 0
 	exec 9>"$LOCK_FILE" 2>/dev/null || return 0
-	flock -w 5 9 2>/dev/null || return 0
+	flock -n 9 2>/dev/null && return 0
+	_tries=0
+	while [ "$_tries" -lt 3 ]; do
+		sleep 1
+		flock -n 9 2>/dev/null && return 0
+		_tries=$((_tries + 1))
+	done
+	logger -t ipsec-vpnd "状态文件锁等待超时，本次无锁继续"
+	return 0
 }
 flock_unlock() {
 	command -v flock >/dev/null 2>&1 || return 0
@@ -50,7 +66,10 @@ json_err() {
 # Parse `ipsec statusall` from stdin into TAB-separated online rows:
 #   key\tuser\tremote\tvip\tage
 parse_statusall() {
-	awk '
+	# LC_ALL=C：这里用 substr 截断客户端可控的用户名，必须固定成字节语义。
+	# 不固定的话 busybox awk 按字符、gawk 按字节，同一份输入在两个工具链上
+	# 会得到不同结果，与 sanitize 脚本（head -c，字节语义）也不一致。
+	LC_ALL=C awk '
 function getsa(l) {
 	if (match(l, /^[ \t]*[A-Za-z0-9_.-]+\[[0-9]+\]:/)) {
 		s = substr(l, RSTART, RLENGTH - 1)
@@ -115,7 +134,11 @@ BEGIN { n = 0; last = "" }
 			gsub(/^[ \t"'"'"']+|[ \t"'"'"']+$/, "", v)
 			# 用户名完全由客户端可控（任何能连到 UDP 500 的人）。控制字符
 			# 会把 TSV 行撕开、字段错位并被持久化到历史文件里，这里统一剔除。
+			# 再截断到 64 字符：不限长的话客户端可以塞任意长的身份串，撑大
+			# /etc 状态文件与返回给 LuCI 的 JSON（只限行数不限行宽）。
+			# 与 luci-ipsec-vpnd-sanitize 的 MAXLEN 保持一致。
 			gsub(/[[:cntrl:]]/, "", v)
+			v = substr(v, 1, 64)
 			if (v != "") user[sa] = v
 		}
 		next
@@ -167,7 +190,14 @@ sessions() {
 	# serialize read/merge/write with the updown hook
 	flock_lock
 
-	awk -F'\t' -v now="$now" -v MAXROWS=200 -v state_tmp="$SESSIONS_TMP" -v state="$STATE_FILE" '
+	# 先把临时文件建好并收紧权限，再让 awk 往里写。
+	# awk 的 `> state_tmp` 是新建文件，权限取进程 umask（真机是 0022 → 0644），
+	# 而这个文件里是用户名 + 公网 IP。等 awk 写完再 chmod 的话，中间那段
+	# 全量内容已经以 0644 落到 /tmp 上了 —— 每 5s 的一轮轮询都会重现这个窗口。
+	: > "$SESSIONS_TMP" && chmod 600 "$SESSIONS_TMP"
+
+	# LC_ALL=C 理由同 parse_statusall：这里的 substr 截断必须是字节语义。
+	LC_ALL=C awk -F'\t' -v now="$now" -v MAXROWS=200 -v state_tmp="$SESSIONS_TMP" -v state="$STATE_FILE" '
 function jesc(s) {
 	gsub(/\\/, "\\\\", s)
 	gsub(/"/, "\\\"", s)
@@ -183,8 +213,15 @@ FILENAME == state {
 	gsub(/[[:cntrl:]]/, "", key)
 	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
 	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = $6
+	historic[key] = 1
+	# 记下"上次落盘时它是否在线"：在线行落盘 age 为空、离线行落盘真实 age。
+	# 必须单独存：下面的在线分支会把 ha[key] 覆盖成本轮的真实 age。
+	was_active[key] = ($5 == "")
 	gsub(/[[:cntrl:]]/, "", hu[key]); gsub(/[[:cntrl:]]/, "", hr[key])
 	gsub(/[[:cntrl:]]/, "", hv[key]); gsub(/[[:cntrl:]]/, "", ha[key])
+	# 历史文件可能来自旧版本（那时没有长度限制），读入时也收一次口，
+	# 否则旧脏行会被原样写回并继续占着 JSON 响应。
+	hu[key] = substr(hu[key], 1, 64); hr[key] = substr(hr[key], 1, 64)
 	next
 }
 {
@@ -195,7 +232,15 @@ FILENAME == state {
 	gsub(/[[:cntrl:]]/, "", key)
 	active[key] = 1
 	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
-	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = now
+	hu[key] = substr($2, 1, 64); hr[key] = substr($3, 1, 64)
+	hv[key] = $4; ha[key] = $5
+	# last_seen 的含义是"最后一次见到这个客户端"，只在状态**翻转**时写 now：
+	#   - 首次出现（不在历史里）
+	#   - 离线 → 在线（上次落盘时它不在线）
+	# 持续在线时不写：每轮都写会让下面的 cmp 永不相等，页面开着就每 5 秒
+	# 往 /etc 重写一次状态文件，持续擦写闪存（C1 回归的原因）。
+	if (!(key in historic)) hl[key] = now
+	else if (!was_active[key]) hl[key] = now
 	gsub(/[[:cntrl:]]/, "", hu[key]); gsub(/[[:cntrl:]]/, "", hr[key])
 	gsub(/[[:cntrl:]]/, "", hv[key]); gsub(/[[:cntrl:]]/, "", ha[key])
 }
@@ -238,9 +283,13 @@ END {
 
 	# rewrite persisted history (drop online flag; recomputed each call)
 	# 只写保留下来的行，超出的旧记录就此淘汰。
+	# 在线行的 age 每轮都递增（"10 seconds" -> "15 seconds"），写进文件就会
+	# 让下面的 cmp 永远判定"有变化"，页面开着时每 5 秒重写一次 /etc —— 持续
+	# 擦写闪存。所以在线行的 age 不落盘，历史行（离线）的 age 原样保留。
 	for (i = 1; i <= nc; i++) {
 		k = out[i]
-		printf "%s\t%s\t%s\t%s\t%s\t%s\n", k, hu[k], hr[k], hv[k], ha[k], hl[k] > state_tmp
+		if (active[k]) printf "%s\t%s\t%s\t%s\t%s\t%s\n", k, hu[k], hr[k], hv[k], "", hl[k] > state_tmp
+		else printf "%s\t%s\t%s\t%s\t%s\t%s\n", k, hu[k], hr[k], hv[k], ha[k], hl[k] > state_tmp
 	}
 }' "$STATE_FILE" "$online_tmp"
 
@@ -248,11 +297,11 @@ END {
 	rm -f "$online_tmp"
 	# rewrite the persisted history only when it actually changed, so an idle
 	# 5s poll doesn't keep re-writing the state file on flash.
+	# 临时文件在 awk 之前就已建成 0600，这里不再需要补 chmod。
 	if [ -s "$SESSIONS_TMP" ] && ! cmp -s "$SESSIONS_TMP" "$STATE_FILE"; then
-		mv "$SESSIONS_TMP" "$STATE_FILE"
+		mv "$SESSIONS_TMP" "$STATE_FILE" || cat "$SESSIONS_TMP" > "$STATE_FILE"
 	fi
 	rm -f "$SESSIONS_TMP"
-	# 状态文件里有客户端用户名与公网 IP，权限收紧到 0600
 	chmod 600 "$STATE_FILE" 2>/dev/null
 	flock_unlock
 	return $rc
@@ -262,6 +311,25 @@ apply() {
 	# 把 UCI 配置渲染成 strongSwan 配置，然后按 enabled 启停服务。
 	# charon 由 strongSwan 原生的 `ipsec` 服务托管，本包不再自建服务实例。
 	local render_out render_rc enabled
+
+	# enabled 是总开关。必须在 render 之前读：依赖损坏时 render 会失败，
+	# 而"关开关"恰恰是最该在这种时候也能生效的操作 —— 先 render 后 stop
+	# 的话，用户卸掉 strongswan 之后连服务都停不下来。
+	enabled="$(uci -q get ipsec-vpnd.ipsec.enabled)"
+
+	if [ "$enabled" != "1" ]; then
+		/etc/init.d/ipsec disable >/dev/null 2>&1
+		/etc/init.d/ipsec stop >/dev/null 2>&1
+		# 配置里也不留 conn，否则服务被别的东西拉起时仍会接受连接。
+		# 失败不阻塞：停用是用户的明确意图，渲染出问题也不该让它失效。
+		/usr/lib/ipsec/luci-ipsec-vpnd-render >/dev/null 2>&1
+		json_init
+		json_add_int code 0
+		json_add_string message "disabled"
+		json_dump
+		return 0
+	fi
+
 	render_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-render 2>&1)"
 	render_rc=$?
 	if [ "$render_rc" -ne 0 ]; then
@@ -274,19 +342,11 @@ apply() {
 		return 1
 	fi
 
-	# enabled 是总开关：关掉时连服务一起停，否则页面上开关是"关"、
-	# 服务却还在跑，charon 也不会因为配置里没有 conn 就自己退出。
-	enabled="$(uci -q get ipsec-vpnd.ipsec.enabled)"
-	if [ "$enabled" = "1" ]; then
-		/etc/init.d/ipsec enable >/dev/null 2>&1
-		# 只有配置真的变了才重启服务：别的页面触发一次 apply 不应该
-		# 把正在跑的 VPN 连接踢掉。
-		if [ "$render_out" = "changed" ] || ! /etc/init.d/ipsec status >/dev/null 2>&1; then
-			/etc/init.d/ipsec restart >/dev/null 2>&1
-		fi
-	else
-		/etc/init.d/ipsec disable >/dev/null 2>&1
-		/etc/init.d/ipsec stop >/dev/null 2>&1
+	/etc/init.d/ipsec enable >/dev/null 2>&1
+	# 只有配置真的变了才重启服务：别的页面触发一次 apply 不应该
+	# 把正在跑的 VPN 连接踢掉。
+	if [ "$render_out" = "changed" ] || ! /etc/init.d/ipsec status >/dev/null 2>&1; then
+		/etc/init.d/ipsec restart >/dev/null 2>&1
 	fi
 
 	json_init

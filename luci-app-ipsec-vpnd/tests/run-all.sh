@@ -9,6 +9,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 rc=0
 for t in tests/sanitize-test.sh tests/hotplug-test.sh tests/render-test.sh tests/sessions-parse-test.sh; do
+	[ -f "$t" ] || { echo "缺少测试: $t"; rc=1; continue; }
 	echo "=== $t ==="
 	sh "$t" || rc=1
 	echo

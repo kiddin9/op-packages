@@ -9,8 +9,14 @@
 # 客户端重连后拿到新的 SA。
 #
 # 只在地址真的变化时重启：普通 ifup/renew 不踢在线客户端。
-
-[ "$ACTION" = "ifup" ] || exit 0
+#
+# 接口已经是 UP 状态时换地址，netifd 发的是 ifupdate 而不是 ifup（DHCP 续租
+# 换到新地址、PPPoE 不断链的重协商都属于这种情况）。只认 ifup 的话这些场景
+# 不会重启 charon，旧 SA 会一直假死到 reauth 超时。
+case "$ACTION" in
+	ifup|ifupdate) ;;
+	*) exit 0 ;;
+esac
 [ "$INTERFACE" = "wan" ] || exit 0
 [ "$(uci -q get ipsec-vpnd.ipsec.enabled)" = "1" ] || exit 0
 [ -x /etc/init.d/ipsec ] || exit 0

@@ -12,11 +12,11 @@ IKEv1 + PSK + Xauth（账号密码），目标用户是家用 / 小公司路由�
 
 - **VPN 服务启停**（uhttpd → LuCI → 控制 strongSwan 原生的 `ipsec` 服务，即 `procd` 托管的 `starter` + `charon`）；「启用」是总开关，关掉时服务会停、conn 会从 `ipsec.conf` 里移除、凭据文件也会清掉
 - **账号 / 密码 / PSK 配置** 写在 `/etc/config/ipsec-vpnd`，由 `luci-ipsec-vpnd-render` 翻译成 strongSwan 的 `ipsec.conf` + `ipsec.secrets`
-- **首次安装自动初始化**：建 `network.VPN` 设备（绑 `ipsec0`）+ `firewall.ike/ipsec/ah/esp` 入站规则 + `firewall.VPN` zone + 端口转发；只跑一次，`/etc/config/ipsec-vpnd` 里的 `initialized` 标记防止升级时覆盖用户后续自定义
+- **首次安装自动初始化**：建 `network.VPN` 设备（绑 `ipsec0`）+ `firewall.ike/ipsec/ah/esp` 入站规则 + `firewall.VPN` zone（带 masq）+ 到 wan 的 zone forwarding；只跑一次，`/etc/config/ipsec-vpnd` 里的 `initialized` 标记防止升级时覆盖用户后续自定义
 - **不再自建服务实例**：本包不提供自己的 `ipsec-vpnd` 服务，charon 统一交给 strongSwan 自带的 `ipsec` 服务托管（`strongswan-ipsec` 包提供），从根本上避免两个服务抢 UDP/500、4500——抢端口时后启动的那个会**静默退出**，LuCI 上只显示「未运行」却查不到原因
 - **菜单位置**：`VPN → IPSec VPN Server`（order 30）
-- **依赖自检与诊断**：服务启动前检查 strongSwan 运行时是否完整，缺失时拒绝启动并写明确日志；LuCI 页面顶部直接列出缺哪一项、给出对应安装命令
-- **弱网/漫游默认项**：IKEv1 连接默认开 DPD（死连接约 150s 内清理）；VPN zone 自动做 MSS clamp（ipsec0 MTU 1400，避免大包 PMTU 黑洞）；WAN 公网地址变化时自动重启 ipsec 清理旧 SA
+- **依赖自检与诊断**：服务启动前检查 strongSwan 运行时是否完整，缺失时拒绝启动并写明确日志；LuCI 页面顶部直接列出缺哪一项（文件与软件包都看），并按实际缺失的包生成对应的安装命令
+- **弱网/漫游默认项**：IKEv1 连接默认开 DPD（`dpddelay=30s`/`dpdtimeout=150s`/`dpdaction=clear`，理论上死连接约 2.5 分钟内清理；该现象本身尚未在设备上实测确认）；VPN zone 自动做 MSS clamp（ipsec0 MTU 1400，避免大包 PMTU 黑洞）；WAN 公网地址变化时自动重启 ipsec 清理旧 SA
 - **可选 IKEv2 + MOBIKE**（`ikev2=1`）：额外生成一条 IKEv2 连接，给 iOS/Android 原生「IKEv2」客户端用，手机在 Wi-Fi/蜂窝网络之间切换时不必重新握手；默认关闭，因为它只用 PSK 认证（不再校验账号密码）
 
 ## 界面与配置项
@@ -31,6 +31,9 @@ UCI 路径 `ipsec-vpnd.@ipsec[0]`，字段：
 | `account` | `vpnuser` | Xauth 用户名 |
 | `password` | `changeme` | Xauth 密码 |
 | `secret` | `changeme` | IKE PSK 预共享密钥 |
+
+> 三项凭据仍是默认占位值（`vpnuser` / `changeme`）时，**开启服务会被拒绝**并提示先改掉；
+> 值里只允许可打印 ASCII，不能含空格、双引号、反斜杠（它们会破坏 `ipsec.secrets` 的语法）。
 | `ikev2` | `0` | 是否额外提供 IKEv2（PSK + MOBIKE）连接。开启后 IKEv2 客户端只需 PSK，不需要账号密码 |
 
 VPN 客户端拨号后会拿到 `clientip` 池里一个地址，`clientdns` 指向 VPN 网关（路由器上的 `ipsec0` IP，固定为 `10.9.8.1`）。
@@ -109,9 +112,9 @@ strongSwan 6.0.7 的后续版本（6.1.0 / 发行版 backport）修复了 11 个
 
 | 机制 | 值 | 作用 |
 |---|---|---|
-| DPD | `dpddelay=30s` / `dpdtimeout=150s` / `dpdaction=clear` | 客户端掉线/切网后约 2.5 分钟内清掉旧 SA，不再长期显示"幽灵在线" |
+| DPD | `dpddelay=30s` / `dpdtimeout=150s` / `dpdaction=clear` | 客户端掉线/切网后约 2.5 分钟内清掉旧 SA（按配置推算，未在设备上实测确认） |
 | MSS clamp | `firewall.VPN.mtu_fix=1` | ipsec0 MTU 1400，出方向 SYN 自动 clamp 到 1360，避免大包卡死 |
-| WAN 重拨 | `/etc/hotplug.d/iface/90-ipsec-vpnd` | 公网地址变化时才重启 ipsec；普通 ifup/renew 不踢在线客户端 |
+| WAN 重拨 | `/etc/hotplug.d/iface/90-ipsec-vpnd` | 公网地址变化时才重启 ipsec（含 `ifup` 与接口已 UP 后的 `ifupdate`，即 DHCP 续租换址、PPPoE 不断链重协商）；地址没变不踢在线客户端 |
 | 生命周期 | `lifetime=4h` / `ikelifetime=8h` | 减少弱网下每小时 rekey 的失败点 |
 | 提案 | IKEv2 首选 AES-128-GCM/SHA-256；IKEv1 保留 AES-128-SHA1、3DES 回退 | 新客户端走更快/更强的套件，老客户端仍可连 |
 
@@ -131,7 +134,7 @@ strongSwan 6.0.7 的后续版本（6.1.0 / 发行版 backport）修复了 11 个
 | `strongswan-mod-des` | **可选**。3DES 加密插件，缺它只影响 3DES 回退，AES 不受影响 |
 | `kmod-tun` | TUN/TAP 设备 |
 
-> `strongswan-mod-stroke` 会连带装上 `strongswan-ipsec`（提供 `/usr/sbin/ipsec` 命令与系统自带的 `ipsec` 服务）。
+> `strongswan-mod-stroke` 提供 `/usr/sbin/ipsec` 命令，系统自带的 `ipsec` 服务由 `strongswan-minimal` / `strongswan-default` 这条依赖链带入（`strongswan-ipsec`）。
 > 本包正是复用这个服务来托管 charon：LuCI 服务列表里跑起来的是 `ipsec`，本包不再有独立的 `ipsec-vpnd` 服务实例。
 
 ### 如果提示找不到依赖
@@ -177,7 +180,7 @@ apk add --allow-untrusted luci-i18n-ipsec-vpnd-zh-cn-*.apk   # 可选
 或者从 release 装（GitHub Actions 自动把每次 main 提交 publish 到 `IPSec VPND Latest Build` release，注意该 release 每次推送会重建，文件名里的版本号会变）：
 
 ```sh
-apk add --allow-untrusted https://github.com/szwjp/luci-app-ipsec-vpnd/releases/download/luci-app-ipsec-vpnd/luci-app-ipsec-vpnd-27.906.25.12-r12.apk
+apk add --allow-untrusted https://github.com/szwjp/luci-app-ipsec-vpnd/releases/download/luci-app-ipsec-vpnd/luci-app-ipsec-vpnd-27.906.25.12-r24.apk
 ```
 
 ### 自己构建（社区分发 / 自己做 firmware）
@@ -215,13 +218,15 @@ ls -l *.apk *.ipk
 sh tests/run-all.sh
 ```
 
-三组离线测试，不依赖路由器：
+四组离线测试，不依赖路由器：
 
 - `render-test.sh` —— UCI → `ipsec.conf`/`ipsec.secrets` 的映射、secrets 权限 0600、
-  停用时不留 conn、依赖缺失时不生成配置
+  停用时不留 conn、依赖缺失时不生成配置、凭据含引号/反斜杠/空格时拒绝渲染、
+  默认占位凭据不允许启用
 - `sessions-parse-test.sh` —— 客户端列表解析：控制字符清洗、旧版脏行丢弃、
-  在线但无地址时打 `vip_pending`、历史上限 200 条
+  在线但无地址时打 `vip_pending`、历史上限 200 条、在线行不把 `age` 写回状态文件
 - `sanitize-test.sh` —— 控制字符清洗工具
+- `hotplug-test.sh` —— WAN 地址变化才重启 ipsec（`ifup` 与 `ifupdate`）
 
 脚本用的是 POSIX sh + awk，**在 OpenWrt 的 busybox 上也能跑**（CI 里跑的是
 GNU 环境，所以改完记得也在设备上跑一遍：busybox 的 `tr` 不认 `[:cntrl:]`
@@ -291,9 +296,9 @@ GNU 环境，所以改完记得也在设备上跑一遍：busybox 的 `tr` 不�
 | 客户端拨不上，日志说 "no IKE config" | 看 `/etc/config/ipsec-vpnd` 的 `enabled` 是不是 `1`；看 init 日志（`logread \| grep ipsec`） |
 | 客户端拨不上，日志说 "no acceptable proposal" | 多半缺 3DES 插件：装 `strongswan-mod-des` |
 | 服务显示「未运行」但 charon 明明在跑 | 说明有第二个服务实例抢占了 UDP/500、4500。本包不再自建服务，正常情况下只有系统 `ipsec` 一个实例；`ls /etc/rc.d/*ipsec*` 检查是否残留旧版 `ipsec-vpnd` 链接 |
-| 装完 `ipsec0` 上没有 VPN 网关地址 | 执行 `ifup VPN`；本包在安装与服务启动时都会自动执行一次 |
+| 装完 `ipsec0` 上没有 VPN 网关地址 | 执行 `ifup VPN`；本包只在**首次安装**时自动执行一次（uci-defaults），升级、重启或 apply 重启 ipsec 之后不会自动补齐 |
 | GitHub Actions 出包失败 | 看 `Build` workflow 的 step 日志；常见是 host 工具链 apt 装失败、或 apk-tools/po2lmo 编译报错 |
-| 手机切网后显示"已连接"但打不开网页 | IKEv1 没有 MOBIKE，切网必然断；改用 IKEv2 配置（页面开启 `ikev2`），或等 DPD（约 150s）清掉旧 SA 后让客户端重连。`ipsec statusall` 能看到是否残留旧 SA |
+| 手机切网后显示"已连接"但打不开网页 | IKEv1 没有 MOBIKE，切网必然断；改用 IKEv2 配置（页面开启 `ikev2`），或等 DPD（按配置约 150s，未实测确认）清掉旧 SA 后让客户端重连。`ipsec statusall` 能看到是否残留旧 SA |
 | 网页能开，视频/大文件卡住 | 检查 MSS clamp 是否生效：`nft list ruleset \| grep ipsec0` 应有两条 maxseg；没有就 `uci set firewall.VPN.mtu_fix=1 && uci commit firewall && fw4 reload` |
 | 依赖面板提示 IKEv1 不可用 | 系统 strongSwan 缺 `xauth-generic`（6.1 默认关闭 IKEv1）。IKEv2 不受影响；需要 IKEv1 就换回带 IKEv1 的 strongSwan 构建，或改用 IKEv2 客户端 |
 | 升级后 IKEv2 开关没有/不生效 | `uci get ipsec-vpnd.ipsec.ikev2`（默认 `0`）；在 LuCI 勾选「启用 IKEv2」并保存应用，渲染器会加 `conn ikev2_psk` 并重启 ipsec |

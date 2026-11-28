@@ -79,6 +79,9 @@ uci -q batch <<-EOF >/dev/null
 	set firewall.VPN.forward="ACCEPT"
 	set firewall.VPN.output="ACCEPT"
 	set firewall.VPN.network="VPN"
+	# 客户端拿的是 10.9.8.0/24 里的独立地址，出网必须由本机做 NAT。
+	# 只靠 wan zone 的 masq 在"wan 未开 masq"（旁路由/NAT 由上游做）时不通。
+	set firewall.VPN.masq="1"
 	# ipsec0 MTU 1400，PPPoE 1492；不开 mtu_fix 时客户端可能按 1500
 	# 协商 MSS，遇到 PMTU 黑洞就是"小包通、大包卡死"。
 	set firewall.VPN.mtu_fix="1"
@@ -96,9 +99,10 @@ uci -q batch <<-EOF >/dev/null
 	commit ipsec-vpnd
 EOF
 
-# strongswan 的 /etc/config/ipsec 只是占位配置，直接删除，
-# 避免改名后覆盖本包自带配置（默认 enabled=0）
-[ -f "/etc/config/ipsec" ] && rm -f "/etc/config/ipsec"
+# /etc/config/ipsec 是 strongswan 包的 conffile（出厂只有 globals/syslog 两段，
+# 没有 conn）。旧版本这里直接 `rm -f`，等于删掉别人包的配置文件：破坏包校验和，
+# 升级时反复报冲突，还会把用户自己写进这个文件的 remote 段一并抹掉。
+# 本包不需要它为空，也不依赖它 —— 保持原样即可。
 
 # strongswan-default 会带 swanctl 服务；本包用 ipsec 服务托管 charon，
 # 两个都自启会抢 UDP 500/4500。

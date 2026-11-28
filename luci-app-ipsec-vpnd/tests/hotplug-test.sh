@@ -89,6 +89,13 @@ check "非 WAN 接口不动作" "0" "$(run ifup lan 3.3.3.3)"
 check "WAN 地址变化但服务未启用：不重启" "0" "$(run ifup wan 4.4.4.4 0)"
 check "action=ifdown 不动作" "0" "$(run ifdown wan 5.5.5.5)"
 
+# 接口已 UP 后换地址，netifd 发的是 ifupdate（DHCP 续租换址、PPPoE 重协商）。
+# 只认 ifup 的话这些场景不会重启 charon，旧 SA 会假死到 reauth 超时。
+printf '%s\n' "6.6.6.6" > "$TMP/wan-ip"
+check "action=ifupdate 且地址变化时重启" "1" "$(run ifupdate wan 7.7.7.7)"
+check "action=ifupdate 但地址未变时不重启" "0" "$(run ifupdate wan 7.7.7.7)"
+check "action=ifupdate 时非 WAN 接口不动作" "0" "$(run ifupdate lan 8.8.8.8)"
+
 if [ "$fail" -eq 0 ]; then
 	echo "hotplug-test: 全部通过"
 	exit 0

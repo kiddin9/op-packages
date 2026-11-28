@@ -11,7 +11,7 @@ LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-ipsec-vpnd
 PKG_VERSION:=27.906.25.12
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 define Package/luci-app-ipsec-vpnd/conffiles
 /etc/config/ipsec-vpnd

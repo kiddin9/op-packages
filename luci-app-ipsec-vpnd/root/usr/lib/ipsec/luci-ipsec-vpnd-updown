@@ -25,10 +25,23 @@ UP_TMP="/tmp/.luci-app-ipsec-vpnd-updown.tmp"
 LOCK_FILE="/tmp/.luci-app-ipsec-vpnd-sessions.lock"
 
 # Best-effort advisory lock (same rationale as the rpcd backend).
+#
+# busybox 的 flock 不支持 `-w`（真机实测：flock: unrecognized option: w），
+# 原来的 `flock -w 5 9` 每次都失败、被 `|| return 0` 吞掉，锁形同虚设。
+# 这里同样不能用无超时的 `flock 9`：钩子由 charon 调用，卡在锁上会拖住
+# SA 建立流程。busybox 没有 timeout，自己重试最多约 3s，取不到就无锁继续。
 flock_lock() {
 	command -v flock >/dev/null 2>&1 || return 0
 	exec 9>"$LOCK_FILE" 2>/dev/null || return 0
-	flock -w 5 9 2>/dev/null || return 0
+	flock -n 9 2>/dev/null && return 0
+	_tries=0
+	while [ "$_tries" -lt 3 ]; do
+		sleep 1
+		flock -n 9 2>/dev/null && return 0
+		_tries=$((_tries + 1))
+	done
+	logger -t ipsec-vpnd "状态文件锁等待超时，钩子无锁继续"
+	return 0
 }
 flock_unlock() {
 	command -v flock >/dev/null 2>&1 || return 0
@@ -95,9 +108,11 @@ END {
 		printf "%s\t%s\t%s\t%s\t%s\t%s\n", key, user, remote, vip, "", now
 }' "$STATE_FILE" > "$UP_TMP"
 
-[ -s "$UP_TMP" ] && mv "$UP_TMP" "$STATE_FILE"
+# 先收紧临时文件权限再 mv：否则 mv 会把 umask 下的 0644 带到 /etc 上，
+# 在 chmod 之前留一个可读窗口。跨文件系统时 mv 失败，退回原地写。
+chmod 600 "$UP_TMP" 2>/dev/null
+[ -s "$UP_TMP" ] && { mv "$UP_TMP" "$STATE_FILE" 2>/dev/null || cat "$UP_TMP" > "$STATE_FILE"; }
 rm -f "$UP_TMP"
-# mv 会把临时文件的权限带过来，这里再收紧一次
 chmod 600 "$STATE_FILE" 2>/dev/null
 flock_unlock
 exit 0

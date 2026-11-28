@@ -100,10 +100,68 @@ STATE_FILE="$STATE_FILE" SESSIONS_TMP="$SESSIONS_TMP" online_tmp="$online_tmp" n
 	. "$TMP/merge.sh" > "$TMP/json"
 
 json="$(cat "$TMP/json")"
-check "脏行被丢弃" "0" "$(printf '%s\n' "$json" | grep -c '"user":"ev"')"
-check "合法历史行仍在" "1" "$(printf '%s\n' "$json" | grep -c '"user":"bad"')"
-check "vip_pending 标记存在" "1" "$(printf '%s\n' "$json" | grep -c '"vip_pending":true')"
-check "有地址的在线行不带 vip_pending" "1" "$(printf '%s\n' "$json" | grep -c '"vip":"10.9.8.10"')"
+# 脏行被丢弃：必须按"整个 user 字段"判断。原来的断言查 `"user":"ev"`，
+# 而脏行解析出来是 `"user":"ev\til|10.0.0.2"`，字符串里根本没有 `ev` 结尾的
+# 字段，即使不丢弃脏行测试也照样通过 —— 是假通过。
+check "脏行被丢弃（没有以 ev 开头的 user 字段）" "0" "$(printf '%s' "$json" | grep -o '"user":"ev[^"]*"' | wc -l | tr -d ' ')"
+check "脏行没有被当成一条合法记录（总条数为 3）" "3" "$(printf '%s' "$json" | grep -o '"user":' | wc -l | tr -d ' ')"
+check "合法历史行仍在" "1" "$(printf '%s' "$json" | grep -c '"user":"bad"')"
+# vip_pending 必须只出现在没有地址的那一条上。原来的断言按"行"计数，
+# JSON 是一整行，把标记加到每一条也能通过 —— 也是假通过。
+check "vip_pending 标记只出现在没地址的会话上" "1" "$(printf '%s' "$json" | grep -o '"vip_pending":true' | wc -l | tr -d ' ')"
+check "有地址的在线行不带 vip_pending" "0" "$(printf '%s' "$json" | grep -o '"vip":"10.9.8.10","age":"[^"]*","online":true,"vip_pending":true' | wc -l | tr -d ' ')"
+check "没地址的在线行带 vip_pending" "1" "$(printf '%s' "$json" | grep -o '"vip":"","age":"[^"]*","online":true,"vip_pending":true' | wc -l | tr -d ' ')"
+
+# 在线行的 age 每轮都在变；写进状态文件会让下面的 cmp 永远判定"有变化"，
+# 页面开着时每 5 秒重写一次 /etc（持续擦写闪存）。所以在线行落盘时 age 必须为空。
+online_saved="$(awk -F'\t' -v OFS='\t' '$1 == "good|10.0.0.1" { print $5 }' "$SESSIONS_TMP")"
+check "在线行的 age 不落盘（避免每 5s 重写 flash）" "" "$online_saved"
+
+# 同一份输入再跑一轮：状态文件输出必须与上一轮逐字节相同，否则就是每轮都在写盘。
+# 注意第二轮的状态输入必须是第一轮的输出（模拟真实轮询：上一轮已落盘）。
+cp "$SESSIONS_TMP" "$TMP/state.prev"
+cp "$SESSIONS_TMP" "$STATE_FILE"
+# age 递增是真实情况，第二轮也让它变
+printf 'good|10.0.0.1\tgood\t10.0.0.1\t10.9.8.10\t15 seconds\n' \
+	'pending|10.0.0.9\tpending\t10.0.0.9\t\t8 seconds\n' > "$online_tmp"
+now=2000005
+STATE_FILE="$STATE_FILE" SESSIONS_TMP="$SESSIONS_TMP" online_tmp="$online_tmp" now="$now" \
+	. "$TMP/merge.sh" > /dev/null
+check "轮询一轮后落盘内容不变（不会每轮写 flash）" "0" \
+	"$(cmp -s "$TMP/state.prev" "$SESSIONS_TMP" && echo 0 || echo 1)"
+
+# --- 3b. last_seen 在 离线 → 在线 翻转时刷新（N1） ---------------------------
+# 离线历史行的 age 非空；它重新上线时 last_seen 应更新为 now，否则"最近使用"
+# 排序会把刚回来过的客户端排在很久没来的后面，超过 200 条时被优先淘汰。
+# 注意：持续在线期间不能每轮都刷新（上面那条 cmp 断言守着）。
+: > "$STATE_FILE"
+: > "$SESSIONS_TMP"
+printf 'rejoin|10.0.0.5\trejoin\t10.0.0.5\t10.9.8.30\t300 seconds\t500\n' > "$STATE_FILE"
+printf 'rejoin|10.0.0.5\trejoin\t10.0.0.5\t10.9.8.30\t5 seconds\n' > "$online_tmp"
+now=9000000
+STATE_FILE="$STATE_FILE" SESSIONS_TMP="$SESSIONS_TMP" online_tmp="$online_tmp" now="$now" \
+	. "$TMP/merge.sh" > /dev/null
+check "离线→在线时 last_seen 刷新为 now" "9000000" \
+	"$(awk -F'\t' '$1 == "rejoin|10.0.0.5" { print $6 }' "$SESSIONS_TMP")"
+
+# 持续在线：第二轮不应再刷新（否则每 5s 写一次 /etc）
+cp "$SESSIONS_TMP" "$TMP/state.rejoin"
+printf 'rejoin|10.0.0.5\trejoin\t10.0.0.5\t10.9.8.30\t10 seconds\n' > "$online_tmp"
+now=9000005
+STATE_FILE="$TMP/state.rejoin" SESSIONS_TMP="$SESSIONS_TMP" online_tmp="$online_tmp" now="$now" \
+	. "$TMP/merge.sh" > /dev/null
+check "持续在线时 last_seen 不再刷新" "9000000" \
+	"$(awk -F'\t' '$1 == "rejoin|10.0.0.5" { print $6 }' "$SESSIONS_TMP")"
+
+# 离线行（不在本轮 online 里）的 last_seen 原样保留
+: > "$STATE_FILE"
+printf 'gone|10.0.0.6\tgone\t10.0.0.6\t10.9.8.31\t400 seconds\t700\n' > "$STATE_FILE"
+: > "$online_tmp"
+now=9100000
+STATE_FILE="$STATE_FILE" SESSIONS_TMP="$SESSIONS_TMP" online_tmp="$online_tmp" now="$now" \
+	. "$TMP/merge.sh" > /dev/null
+check "离线行 last_seen 原样保留" "700" \
+	"$(awk -F'\t' '$1 == "gone|10.0.0.6" { print $6 }' "$SESSIONS_TMP")"
 
 # --- 4. 历史上限 200 --------------------------------------------------------
 : > "$STATE_FILE"
