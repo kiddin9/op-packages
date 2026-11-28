@@ -1,0 +1,287 @@
+{#
+	nodes.ut — 单个订阅的节点列表 / 探测（原 Lua 视图 nodes.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const node = require('substore.node');
+	const view = require('substore.view');
+
+	const token = ctx.authtoken ?? '';
+	const id = view.fv(http, 'id') ?? '';
+	const meta = (id != '') ? core.get(id) : null;
+	let nodes = (id != '') ? core.read_nodes(id) : [];
+
+	const proto = view.fv(http, 'proto') ?? '';
+	const keyword = view.fv(http, 'keyword') ?? '';
+	const group = view.fv(http, 'group') ?? '';
+	const sort_by = view.fv(http, 'sort') ?? 'name';
+	const sort_desc = view.fv(http, 'desc') == '1';
+
+	const flash_err = view.fv(http, 'err') ?? '';
+
+	// id 会进入 <script> 里的 JS 字符串字面量，用 JSON 编码 + 转义 "<"（见 view.jsq）
+	const js_id = view.jsq(id);
+
+	// 标注原始数组下标（filter 保留表引用、sort 原地排序，下标可穿透筛选排序）。
+	// 页面/表单/控制器统一使用 1 基下标（与 Lua 版一致），存取时由控制器减一。
+	for (let i = 0; i < length(nodes); i++)
+		nodes[i].__idx = i + 1;
+
+	// 分组下拉选项：当前订阅节点的去重分组集合
+	const group_set = {};
+	let group_list = [];
+	for (let n in nodes) {
+		const g = n.group;
+		if (g != null && g !== false && `${g}` != '' && !group_set[`${g}`]) {
+			group_set[`${g}`] = true;
+			push(group_list, `${g}`);
+		}
+	}
+	sort(group_list);
+
+	if (proto != '')
+		nodes = node.filter(nodes, { proto: proto });
+	if (group != '')
+		nodes = node.filter(nodes, { group: group });
+	if (keyword != '')
+		nodes = node.filter(nodes, { keyword: keyword });
+
+	nodes = node.sort(nodes, sort_by, sort_desc);
+
+	const node_edit_base = dispatcher.build_url('admin', 'services', 'substore', 'node_edit');
+
+	// 服务端按系统语言翻译后注入 JS（JS 里的 _() 不保证拿到应用自己的 .lmo）
+	const js_i18n = view.jsq({
+		del_one: _('Delete this node?'),
+		del_sel: _('Delete selected nodes?'),
+		sel_first: _('Please select nodes first'),
+		group_fail: _('Failed to set group'),
+		testing: _('Testing...'),
+		test_fail: _('Test failed'),
+		parse_error: _('Parse error'),
+		fail: _('Fail')
+	});
+-%}
+{#
+	§18：控制器把失败原因放在 ?err= 上带回来，这里渲染成可见的提示。
+	entityencode 转义：err 可能包含用户提交的内容，不能直接当 HTML 输出。
+-#}
+{% if (flash_err != ''): %}
+<div class="cbi-section substore-errbox">
+	<strong>{{ _('Operation failed') }}:</strong> {{ entityencode(flash_err, true) }}
+</div>
+{% endif %}
+
+<h2>{{ _('Nodes') }} — {{ entityencode(meta?.name ?? '', true) }}</h2>
+<div style="margin:0.5em 0">
+	<a class="cbi-button cbi-button-reset" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'list'), true) }}">{{ _('Back') }}</a>
+</div>
+
+<form method="get" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'nodes'), true) }}" class="cbi-map">
+	<input type="hidden" name="id" value="{{ entityencode(id, true) }}"/>
+	<div style="display:flex;gap:0.5em;align-items:center;flex-wrap:wrap;margin:0.5em 0">
+		<label>{{ _('Type') }}:
+			<select name="proto">
+				<option value="">{{ _('All') }}</option>
+				{#
+					协议清单来自 node.PROTOS，不在这里另抄一份：抄一份就会漂移，
+					症状是节点页的「类型」下拉永远选不到新协议（勾了没用、不报错）。
+				-#}
+				{% for (let p in node.PROTOS): %}
+					<option value="{{ p }}"{% if (proto == p): %} selected="selected"{% endif %}>{{ p }}</option>
+				{% endfor %}
+			</select>
+		</label>
+		<label>{{ _('Group') }}:
+			<select name="group">
+				<option value="">{{ _('All') }}</option>
+				{% for (let g in group_list): %}
+					<option value="{{ entityencode(g, true) }}"{% if (group == g): %} selected="selected"{% endif %}>{{ entityencode(g, true) }}</option>
+				{% endfor %}
+			</select>
+		</label>
+		<label>{{ _('Keyword') }}: <input type="text" name="keyword" size="12" value="{{ entityencode(keyword, true) }}"/></label>
+		<label>{{ _('Sort by') }}:
+			<select name="sort">
+				<option value="name"{% if (sort_by == 'name'): %} selected="selected"{% endif %}>name</option>
+				<option value="server"{% if (sort_by == 'server'): %} selected="selected"{% endif %}>server</option>
+				<option value="proto"{% if (sort_by == 'proto'): %} selected="selected"{% endif %}>proto</option>
+				<option value="port"{% if (sort_by == 'port'): %} selected="selected"{% endif %}>port</option>
+				<option value="group"{% if (sort_by == 'group'): %} selected="selected"{% endif %}>group</option>
+			</select>
+		</label>
+		<label class="substore-check-inline" style="margin-left:0.5em"><input type="checkbox" name="desc" value="1"{% if (sort_desc): %} checked="checked"{% endif %}/> {{ _('Desc') }}</label>
+		<input type="submit" class="cbi-button cbi-button-apply" value="{{ _('Filter') }}"/>
+		<button type="button" class="cbi-button cbi-button-reset" onclick="substore_delete_selected()">{{ _('Delete') }}</button>
+		<button type="button" class="cbi-button" onclick="location.reload()">{{ _('Refresh') }}</button>
+		<button type="button" class="cbi-button" onclick="runProbe('ping')">Ping</button>
+		<button type="button" class="cbi-button" onclick="runProbe('tcping')">TCPing</button>
+		<button type="button" class="cbi-button" onclick="runProbe('url')">{{ _('URL Test') }}</button>
+	</div>
+	<p class="substore-muted" style="margin:0.5em 0">
+		{{ _('Ping, TCPing and URL Test probe the node server directly from this router, not through the proxy; Clash measures delay through the proxy, so the numbers are not directly comparable. Placeholder nodes on 127.0.0.1 are reported as failed.') }}
+	</p>
+</form>
+
+<!-- 勾选批量删除用的隐藏表单：JS 收集选中下标填入 idx（逗号分隔）后提交 -->
+<form id="batch_delete_form" method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'node_delete'), true) }}" style="display:none">
+	<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+	<input type="hidden" name="id" value="{{ entityencode(id, true) }}"/>
+	<input type="hidden" name="idx" value=""/>
+	<input type="hidden" name="proto" value="{{ entityencode(proto, true) }}"/>
+	<input type="hidden" name="keyword" value="{{ entityencode(keyword, true) }}"/>
+	<input type="hidden" name="group" value="{{ entityencode(group, true) }}"/>
+	<input type="hidden" name="sort" value="{{ entityencode(sort_by, true) }}"/>
+	{% if (sort_desc): %}<input type="hidden" name="desc" value="1"/>{% endif %}
+</form>
+
+<table class="cbi-section-table">
+	<tr class="cbi-section-table-titles">
+		<th style="width:1em"><input type="checkbox" onclick="substore_toggle_all(this)"/></th>
+		<th>{{ _('Name') }}</th>
+		<th>{{ _('Group') }}</th>
+		<th>{{ _('Type') }}</th>
+		<th>{{ _('Server') }}</th>
+		<th>{{ _('Port') }}</th>
+		<th>{{ _('Latency') }}</th>
+		<th>{{ _('Actions') }}</th>
+	</tr>
+	{% for (let n in nodes): %}
+	<tr class="cbi-section-table-row" data-server="{{ entityencode(n.server ?? '', true) }}" data-port="{{ entityencode(`${n.port ?? ''}`, true) }}">
+		<td><input type="checkbox" class="node-check" value="{{ n.__idx }}"/></td>
+		<td>{{ entityencode(n.name ?? '', true) }}</td>
+		<td>
+			<input type="text" class="group-input" style="width:8em" value="{{ entityencode(n.group ?? '', true) }}"
+				data-idx="{{ n.__idx }}" onchange="substore_set_group(this)"/>
+		</td>
+		<td>{{ entityencode(n.proto ?? '', true) }}</td>
+		<td>{{ entityencode(n.server ?? '', true) }}</td>
+		<td>{{ entityencode(`${n.port ?? ''}`, true) }}</td>
+		<td class="node-latency">-</td>
+		<td class="substore-nowrap">
+			<a class="cbi-button cbi-button-apply" href="{{ entityencode(node_edit_base, true) }}?id={{ entityencode(http.urlencode(id), true) }}&idx={{ n.__idx }}">{{ _('Edit') }}</a>
+			<form method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'node_delete'), true) }}" class="substore-inline-form"
+			      onsubmit="return confirm(SUBSTORE_I18N.del_one)">
+				<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+				<input type="hidden" name="id" value="{{ entityencode(id, true) }}"/>
+				<input type="hidden" name="idx" value="{{ n.__idx }}"/>
+				<input type="hidden" name="proto" value="{{ entityencode(proto, true) }}"/>
+				<input type="hidden" name="keyword" value="{{ entityencode(keyword, true) }}"/>
+				<input type="hidden" name="group" value="{{ entityencode(group, true) }}"/>
+				<input type="hidden" name="sort" value="{{ entityencode(sort_by, true) }}"/>
+				{% if (sort_desc): %}<input type="hidden" name="desc" value="1"/>{% endif %}
+				<input type="submit" class="cbi-button cbi-button-reset" value="{{ _('Delete') }}"/>
+			</form>
+		</td>
+	</tr>
+	{% endfor %}
+	{% if (length(nodes) == 0): %}
+	<tr class="cbi-section-table-row"><td colspan="8" style="text-align:center" class="substore-muted">{{ _('No nodes found.') }}</td></tr>
+	{% endif %}
+</table>
+<div id="probe_area" style="display:none;margin:0.5em 0">
+	<div id="probe_summary" class="substore-muted" style="margin:0.5em 0"></div>
+</div>
+
+<script>
+	var SUBSTORE_I18N = {{ js_i18n }};
+	var SUBSTORE_ID = {{ js_id }};
+
+	function substore_set_group(el) {
+		el.disabled = true;
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', '{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'node_set_group'), true) }}', true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState !== 4) return;
+			el.disabled = false;
+			var ok = false;
+			try { ok = xhr.status === 200 && JSON.parse(xhr.responseText).ok === true; } catch (e) {}
+			if (ok) {
+				el.classList.add('substore-flash-ok');
+				setTimeout(function() { el.classList.remove('substore-flash-ok'); }, 800);
+			} else {
+				el.classList.add('substore-flash-bad');
+				setTimeout(function() { el.classList.remove('substore-flash-bad'); }, 1600);
+				alert(SUBSTORE_I18N.group_fail);
+			}
+		};
+		xhr.send('id=' + encodeURIComponent(SUBSTORE_ID)
+			+ '&idx=' + encodeURIComponent(el.getAttribute('data-idx'))
+			+ '&group=' + encodeURIComponent(el.value)
+			+ '&token=' + encodeURIComponent('{{ entityencode(token, true) }}'));
+	}
+
+	function substore_toggle_all(el) {
+		var boxes = document.querySelectorAll('.node-check');
+		for (var i = 0; i < boxes.length; i++) boxes[i].checked = el.checked;
+	}
+
+	function substore_delete_selected() {
+		var boxes = document.querySelectorAll('.node-check:checked');
+		if (boxes.length === 0) { alert(SUBSTORE_I18N.sel_first); return; }
+		if (!confirm(SUBSTORE_I18N.del_sel)) return;
+		var idxs = [];
+		for (var i = 0; i < boxes.length; i++) idxs.push(boxes[i].value);
+		var form = document.getElementById('batch_delete_form');
+		form.elements['idx'].value = idxs.join(',');
+		form.submit();
+	}
+
+	function runProbe(mode) {
+		var area = document.getElementById('probe_area');
+		var sum = document.getElementById('probe_summary');
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', '{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'probe'), true) }}', true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		area.style.display = 'none';
+		sum.textContent = SUBSTORE_I18N.testing;
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState !== 4) return;
+			if (xhr.status !== 200) {
+				sum.textContent = SUBSTORE_I18N.test_fail + ' (HTTP ' + xhr.status + ')';
+				return;
+			}
+			var r;
+			try { r = JSON.parse(xhr.responseText); } catch (e) { sum.textContent = SUBSTORE_I18N.parse_error; return; }
+			// Update latency cells in the main table by matching server+port
+			for (var i = 0; i < r.results.length; i++) {
+				var it = r.results[i];
+				var lat = (it.latency === null || it.latency === undefined)
+					? '<span class="substore-error">' + SUBSTORE_I18N.fail + '</span>'
+					: Math.round(it.latency) + ' ms';
+				// Find row by server and port
+				var rows = document.querySelectorAll('tr[data-server][data-port]');
+				for (var j = 0; j < rows.length; j++) {
+					var row = rows[j];
+					var server = row.getAttribute('data-server');
+					var port = row.getAttribute('data-port');
+					if (server === (it.server || '') && port === String(it.port || '')) {
+						var cell = row.querySelector('.node-latency');
+						if (cell) {
+							cell.innerHTML = lat;
+						}
+						break;
+					}
+				}
+			}
+			var avgTxt = (r.avg === null || r.avg === undefined) ? '' : ', avg ' + r.avg + ' ms';
+			sum.textContent = r.ok_count + ' / ' + r.total + ' ok' + avgTxt;
+		};
+		var idEl = document.getElementsByName('id')[0];
+		var protoEl = document.getElementsByName('proto')[0];
+		var kwEl = document.getElementsByName('keyword')[0];
+		var params = 'id=' + encodeURIComponent(idEl ? idEl.value : '')
+			+ '&mode=' + encodeURIComponent(mode)
+			+ '&proto=' + encodeURIComponent(protoEl ? protoEl.value : '')
+			+ '&keyword=' + encodeURIComponent(kwEl ? kwEl.value : '')
+			+ '&token=' + encodeURIComponent('{{ entityencode(token, true) }}');
+		xhr.send(params);
+	}
+</script>
+{% include('footer') %}

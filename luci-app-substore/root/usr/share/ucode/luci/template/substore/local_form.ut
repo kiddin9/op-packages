@@ -1,0 +1,206 @@
+{#
+	local_form.ut — 本地订阅的新增 / 编辑（原 Lua 视图 local_form.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const node = require('substore.node');
+	const view = require('substore.view');
+
+	const token = ctx.authtoken ?? '';
+	const id = view.fv(http, 'id') ?? '';
+	const it = (id != '') ? core.get(id) : null;
+	const is_edit = it != null;
+
+	const rules_enabled = is_edit && (it.rules_enable == true || it.rules_enable == '1');
+	const ki = it?.keyword_include ?? '';
+	const ke = it?.keyword_exclude ?? '';
+	const dedup = is_edit && (it.dedup == '1' || it.dedup == true);
+
+	// 协议筛选 / 重命名：控制器一直在读这两项（read_rules_fields），三个表单
+	// 都必须提交它们，否则每次保存会把已有值重置为空。
+	const proto_sel = {};
+	for (let p in split(`${it?.proto_filter ?? ''}`, ',')) {
+		const tp = trim(p);
+		if (tp != '')
+			proto_sel[tp] = true;
+	}
+
+	const rm = it?.rename_map ?? '';
+
+	// local_mode 是用户可提交的字段，归一为白名单取值后再注入 JS
+	let local_mode = `${it?.local_mode ?? 'text'}`;
+	if (local_mode != 'form')
+		local_mode = 'text';
+
+	const content = `${it?.raw_content ?? ''}`;
+
+	// 注入 JS 的值全部走 view.jsq（JSON + 把全部 "<" 转成 <）：
+	// 同时挡住 "</script" 提前闭合与 "<!--" 吞掉其后整页。
+	const js_content = view.jsq(content);
+	const js_mode = view.jsq(local_mode);
+	const js_protos = view.jsq(node.PROTOS);
+	const js_proto_fields = view.jsq(node.PROTO_FIELDS);
+
+	// 字段标签与界面文本（nodeform.js 读取；翻译由服务端按系统语言渲染）。
+	// 整块用 JSON 注入而不是拼字符串字面量：译文里出现引号也不会破坏 JS。
+	// 标签清单与节点编辑页共用 view.field_labels，避免两份抄写漂移。
+	const js_labels = view.jsq(view.field_labels(_));
+	const js_nodeform_i18n = view.jsq(view.nodeform_i18n(_));
+-%}
+<h2>{{ is_edit ? _('Edit local subscription') : _('Add local subscription') }}</h2>
+
+<form method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', is_edit ? 'local_save' : 'local_create'), true) }}" class="cbi-map"
+      onsubmit="return substore_local_prepare()">
+	<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+	{% if (is_edit): %}<input type="hidden" name="id" value="{{ entityencode(it.id, true) }}"/>{% endif %}
+
+	<div class="cbi-section">
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="name" style="display:inline-block;min-width:10em">{{ _('Name') }}</label>
+			<input type="text" id="name" name="name" value="{{ entityencode(it?.name ?? '', true) }}"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Subscription info') }}</label>
+			<div style="display:inline-block;width:80%">
+				<div style="margin-bottom:0.5em">
+					<select name="local_mode" id="local_mode_sel" onchange="substore_local_switch(this.value)">
+						<option value="text"{% if (local_mode == 'text'): %} selected="selected"{% endif %}>{{ _('Text import') }}</option>
+						<option value="form"{% if (local_mode == 'form'): %} selected="selected"{% endif %}>{{ _('Form import') }}</option>
+					</select>
+				</div>
+				<div id="text_area_wrap" style="display:{{ local_mode == 'text' ? 'block' : 'none' }}">
+					<textarea id="content_text" name="content" rows="16" style="width:100%"
+						{% if (local_mode != 'text'): %}disabled="disabled"{% endif %}>{{ entityencode(content, true) }}</textarea>
+					<div class="substore-muted" style="margin-top:0.25em">{{ _('Paste a node list here — one format at a time (URI / Base64 / YAML / JSON / WireGuard .conf); protocols may be mixed within that format.') }}</div>
+				</div>
+				<div id="form_nodes_container" style="display:{{ local_mode == 'form' ? 'block' : 'none' }}">
+					<div class="substore-muted" style="margin-bottom:0.5em">{{ _('Add nodes via form below. Each node will be saved as JSON and parsed on save.') }}</div>
+					<div id="nodes_list"></div>
+					<button type="button" class="cbi-button cbi-button-apply" onclick="addNodeRow()">+ {{ _('Add node') }}</button>
+					<input type="hidden" name="content" id="form_content" value=""
+						{% if (local_mode != 'form'): %}disabled="disabled"{% endif %}/>
+				</div>
+			</div>
+		</div>
+		<div class="cbi-section-descr substore-check-row" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">{{ _('Enable rules') }}</label>
+			<input type="checkbox" name="rules_enable" value="1"{% if (rules_enabled): %} checked="checked"{% endif %}
+				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
+			<span class="cbi-value-description">{{ _('When enabled, apply keyword include/exclude and dedup rules to nodes') }}</span>
+		</div>
+		<div id="rules_row" style="margin:0.5em 0;display:{{ rules_enabled ? 'block' : 'none' }}">
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Keyword include') }}</label>
+				<input type="text" name="keyword_include" value="{{ entityencode(ki, true) }}" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Keyword exclude') }}</label>
+				<input type="text" name="keyword_exclude" value="{{ entityencode(ke, true) }}" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr substore-check-row" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Dedup') }}</label>
+				<input type="checkbox" name="dedup" value="1"{% if (dedup): %} checked="checked"{% endif %}/>
+			</div>
+			<div class="cbi-section-descr substore-check-row" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Protocol filter') }}</label>
+				{% for (let p in core.RULE_PROTOS): %}
+				<span class="substore-nowrap" style="margin-right:0.75em">
+					<input type="checkbox" id="pf_{{ p }}" name="proto_filter_{{ p }}" value="1" style="vertical-align:text-top;margin:0"{% if (proto_sel[p]): %} checked="checked"{% endif %}/>
+					<label for="pf_{{ p }}">{{ p }}</label>
+				</span>
+				{% endfor %}
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Rename') }}</label>
+				<textarea name="rename_map" rows="3" style="width:60%">{{ entityencode(rm, true) }}</textarea>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span class="substore-muted">{{ _('Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches.') }}<br/>
+				{{ _('Protocol filter: with none ticked no filtering is applied.') }}<br/>
+				{{ _('Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:') }}<br/>
+				{{ _('OLD=NEW — exact match: renames only nodes named exactly OLD.') }}<br/>
+				{{ _('PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (POSIX ERE, not PCRE; $1 for captures).') }}<br/>
+				{{ _('{server}_{port}_{proto} — placeholder template: renames every node unconditionally.') }}<br/>
+				{{ _('Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}.') }}</span>
+			</div>
+		</div>
+		{% if (is_edit && it.last_update != null && it.last_update !== false): %}
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<span class="substore-muted">
+				{{ _('Nodes') }}: {{ int(it.node_count ?? 0) }}
+				| {{ _('Last updated') }}: {{ view.fmt_time(it.last_update) }}
+				{% if (it.error != null && `${it.error}` != ''): %} | <span class="substore-error">{{ entityencode(view.tmsg(it.error, _), true) }}</span>{% endif %}
+			</span>
+		</div>
+		{% endif %}
+		<div class="cbi-page-actions substore-form-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="{{ _('Save') }}"/>
+			<a class="cbi-button cbi-button-reset" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'list'), true) }}">{{ _('Back') }}</a>
+		</div>
+	</div>
+</form>
+
+<script>
+	// 编辑时的初始内容（文本或 JSON），由服务端注入
+	var SUBSTORE_INIT_CONTENT = {{ js_content }};
+	var SUBSTORE_INIT_MODE = {{ js_mode }};
+
+	var FIELD_LABELS = {{ js_labels }};
+	var NODEFORM_I18N = {{ js_nodeform_i18n }};
+
+	// 协议与字段清单由服务端注入（唯一来源：substore/node.uc 的 PROTOS /
+	// PROTO_FIELDS）。core.merge_form_node 用同一份清单决定哪些字段可以被
+	// 表单覆盖，两边必须严格一致，因此不在前端另抄一份。
+	var SUBSTORE_PROTOS = {{ js_protos }};
+	var SUBSTORE_PROTO_FIELDS = {{ js_proto_fields }};
+</script>
+<script src="{{ resource }}/substore/nodeform.js?v=2.9.0"></script>
+<script>
+	// 切换导入模式：仅切换显示/禁用，不提交表单
+	function substore_local_switch(mode) {
+		document.getElementById("text_area_wrap").style.display = (mode === "text") ? "block" : "none";
+		document.getElementById("form_nodes_container").style.display = (mode === "form") ? "block" : "none";
+		document.getElementById("content_text").disabled = (mode !== "text");
+		document.getElementById("form_content").disabled = (mode !== "form");
+		if (mode === "form" && document.getElementById("nodes_list").children.length === 0) addNodeRow();
+	}
+
+	// 提交前：表单模式把节点序列化为 JSON 写入隐藏 content 字段
+	function substore_local_prepare() {
+		var mode = document.getElementById("local_mode_sel").value;
+		if (mode === "form") {
+			var hidden = document.getElementById("form_content");
+			hidden.disabled = false;
+			hidden.value = JSON.stringify(collectNodes());
+			document.getElementById("content_text").disabled = true;
+		}
+		return true;
+	}
+
+	function initLocalForm() {
+		if (SUBSTORE_INIT_MODE !== "form") return;
+		var data = null;
+		try {
+			data = JSON.parse(SUBSTORE_INIT_CONTENT || "[]");
+		} catch (e) {
+			data = null;
+		}
+		if (data && Object.prototype.toString.call(data) === "[object Array]" && data.length > 0) {
+			for (var i = 0; i < data.length; i++) addNodeRow(data[i]);
+		} else {
+			addNodeRow();
+		}
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initLocalForm);
+	} else {
+		initLocalForm();
+	}
+</script>
+{% include('footer') %}

@@ -68,7 +68,7 @@ function nodeTemplate(idx) {
 	for (var i = 0; i < SUBSTORE_PROTOS.length; i++) {
 		opts += '<option value="' + SUBSTORE_PROTOS[i] + '">' + SUBSTORE_PROTOS[i] + '</option>';
 	}
-	return '<div class="node_row" style="border:1px solid #ddd;padding:0.5em;margin:0.5em 0">' +
+	return '<div class="node_row" style="border:1px solid var(--border-color-low, #ddd);padding:0.5em;margin:0.5em 0">' +
 		'<div style="margin-bottom:0.25em"><strong>' + nodeformT("node") + ' ' + (idx + 1) + '</strong> ' +
 		'<button type="button" class="cbi-button cbi-button-reset node_remove" onclick="this.parentNode.parentNode.remove()">×</button></div>' +
 		'<label style="display:inline-block;min-width:10em">' + nodeformLabel("name") + '</label>' +

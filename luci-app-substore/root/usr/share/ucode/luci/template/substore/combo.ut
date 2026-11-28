@@ -1,0 +1,123 @@
+{#
+	combo.ut — 组合订阅的新增 / 编辑（原 Lua 视图 combo.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const view = require('substore.view');
+
+	const token = ctx.authtoken ?? '';
+	const id = view.fv(http, 'id') ?? '';
+	const it = (id != '') ? core.get(id) : null;
+	const is_edit = it != null;
+
+	const rules_enabled = is_edit && (it.rules_enable == true || it.rules_enable == '1');
+	const ki = it?.keyword_include ?? '';
+	const ke = it?.keyword_exclude ?? '';
+	const dedup = is_edit && (it.dedup == '1' || it.dedup == true);
+
+	// 协议筛选 / 重命名：控制器一直在读这两项（read_rules_fields），三个表单
+	// 都必须提交它们，否则每次保存会把已有值重置为空。
+	const proto_sel = {};
+	for (let p in split(`${it?.proto_filter ?? ''}`, ',')) {
+		const tp = trim(p);
+		if (tp != '')
+			proto_sel[tp] = true;
+	}
+
+	const rm = it?.rename_map ?? '';
+
+	const sel = {};
+	if (type(it?.sources) == 'array')
+		for (let s in it.sources)
+			sel[s] = true;
+
+	const [items] = core.list();
+	const srcs = [];
+	for (let x in items)
+		if (!x.combo)
+			push(srcs, x);
+-%}
+<h2>{{ is_edit ? _('Edit combination') : _('Add combination') }}</h2>
+
+<form method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'combo_save'), true) }}" class="cbi-map">
+	<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+	{% if (is_edit): %}<input type="hidden" name="id" value="{{ entityencode(it.id, true) }}"/>{% endif %}
+
+	<div class="cbi-section">
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="name" style="display:inline-block;min-width:10em">{{ _('Name') }}</label>
+			<input type="text" id="name" name="name" value="{{ entityencode(it?.name ?? '', true) }}"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Source subscriptions') }}</label>
+			<div style="display:inline-block">
+				{% for (let x in srcs): %}
+				<div class="substore-check-row" style="margin:0.25em 0">
+					<input type="checkbox" id="src_{{ entityencode(x.id, true) }}" name="src_{{ entityencode(x.id, true) }}" value="1"{% if (sel[x.id]): %} checked="checked"{% endif %}/>
+					<label for="src_{{ entityencode(x.id, true) }}">{{ entityencode(x.name ?? '', true) }}（{{ int(x.node_count ?? 0) }}）</label>
+				</div>
+				{% endfor %}
+				{% if (length(srcs) == 0): %}
+				<span class="substore-muted">{{ _('No subscriptions yet.') }}</span>
+				{% endif %}
+			</div>
+		</div>
+		<div class="cbi-section-descr substore-check-row" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">{{ _('Enable rules') }}</label>
+			<input type="checkbox" name="rules_enable" value="1"{% if (rules_enabled): %} checked="checked"{% endif %}
+				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
+			<span class="cbi-value-description">{{ _('When enabled, apply keyword include/exclude and dedup rules to the merged nodes') }}</span>
+		</div>
+		<div id="rules_row" style="margin:0.5em 0;display:{{ rules_enabled ? 'block' : 'none' }}">
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Keyword include') }}</label>
+				<input type="text" name="keyword_include" value="{{ entityencode(ki, true) }}" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Keyword exclude') }}</label>
+				<input type="text" name="keyword_exclude" value="{{ entityencode(ke, true) }}" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr substore-check-row" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">{{ _('Dedup') }}</label>
+				<input type="checkbox" name="dedup" value="1"{% if (dedup): %} checked="checked"{% endif %}/>
+			</div>
+			<div class="cbi-section-descr substore-check-row" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Protocol filter') }}</label>
+				{% for (let p in core.RULE_PROTOS): %}
+				<span class="substore-nowrap" style="margin-right:0.75em">
+					<input type="checkbox" id="pf_{{ p }}" name="proto_filter_{{ p }}" value="1" style="vertical-align:text-top;margin:0"{% if (proto_sel[p]): %} checked="checked"{% endif %}/>
+					<label for="pf_{{ p }}">{{ p }}</label>
+				</span>
+				{% endfor %}
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top">{{ _('Rename') }}</label>
+				<textarea name="rename_map" rows="3" style="width:60%">{{ entityencode(rm, true) }}</textarea>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span class="substore-muted">{{ _('Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches.') }}<br/>
+				{{ _('Protocol filter: with none ticked no filtering is applied.') }}<br/>
+				{{ _('Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:') }}<br/>
+				{{ _('OLD=NEW — exact match: renames only nodes named exactly OLD.') }}<br/>
+				{{ _('PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (POSIX ERE, not PCRE; $1 for captures).') }}<br/>
+				{{ _('{server}_{port}_{proto} — placeholder template: renames every node unconditionally.') }}<br/>
+				{{ _('Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}.') }}</span>
+			</div>
+		</div>
+		{% if (is_edit): %}
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<span class="substore-muted">{{ _('Nodes') }}: {{ int(it.node_count ?? 0) }} | {{ _('Last updated') }}: {{ view.fmt_time(it.last_update) }}</span>
+		</div>
+		{% endif %}
+		<div class="cbi-page-actions substore-form-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="{{ _('Save') }}"/>
+			<a class="cbi-button cbi-button-reset" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'list'), true) }}">{{ _('Back') }}</a>
+		</div>
+	</div>
+</form>
+{% include('footer') %}

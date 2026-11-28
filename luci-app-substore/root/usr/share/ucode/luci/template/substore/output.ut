@@ -1,0 +1,61 @@
+{#
+	output.ut — 订阅内容输出 / 合并（原 Lua 视图 output.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const output = require('substore.output');
+	const view = require('substore.view');
+
+	const id = view.fv(http, 'id') ?? '';
+	const fmt = view.fv(http, 'fmt') ?? 'clashmeta';
+	const [items] = core.list();
+	const meta = (id != '') ? core.get(id) : null;
+
+	let nodes;
+
+	if (id != '')
+		nodes = core.read_nodes(id);
+	else {
+		// 合并所有已启用的订阅
+		const ids = [];
+		for (let it in items)
+			if (it.enabled)
+				push(ids, it.id);
+		nodes = core.merge(ids);
+	}
+
+	const [out, err] = output.generate(nodes, fmt);
+-%}
+<h2>{{ _('Output') }} — {{ entityencode(meta?.name ?? _('Merged'), true) }}</h2>
+<div style="margin:0.5em 0">
+	<a class="cbi-button cbi-button-reset" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'list'), true) }}">{{ _('Back') }}</a>
+</div>
+
+<form method="get" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'output'), true) }}" class="cbi-map">
+	<input type="hidden" name="id" value="{{ entityencode(id, true) }}"/>
+	<div style="display:flex;gap:0.5em;align-items:center;margin:0.5em 0">
+		<label>{{ _('Format') }}:
+			<select name="fmt">
+				{% for (let fo in output.FORMAT_OPTIONS): %}
+				<option value="{{ fo[0] }}"{% if (fmt == fo[0]): %} selected="selected"{% endif %}>{{ fo[1] }}</option>
+				{% endfor %}
+			</select>
+		</label>
+		<input type="submit" class="cbi-button cbi-button-apply" value="{{ _('Generate') }}"/>
+	</div>
+</form>
+
+{% if (err != null): %}
+<div class="substore-error">{{ entityencode(view.tmsg(err, _), true) }}</div>
+{% else %}
+<textarea id="out_text" readonly style="width:100%;height:300px;font-family:monospace">{{ entityencode(out, true) }}</textarea>
+<div style="margin-top:0.5em">
+	<button onclick="var t=document.getElementById('out_text');t.select();document.execCommand('copy');" class="cbi-button cbi-button-apply">{{ _('Copy') }}</button>
+</div>
+{% endif %}
+{% include('footer') %}

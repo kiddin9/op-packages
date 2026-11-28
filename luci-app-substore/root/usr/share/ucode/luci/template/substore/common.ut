@@ -1,0 +1,247 @@
+{#
+	substore/common.ut — 所有页面共用的样式。
+
+	颜色优先取主题的 CSS 自定义属性，并带第二层回退（成功的绿色是例外，见下）：
+	  - luci-theme-bootstrap（24.10 / 25.12 默认）：--error-color-high /
+	    --text-color-medium / --primary-color-high
+	  - luci-theme-argon 3.x：--muted-text / --link-color / --text-color-low /
+	    --primary-color-high，外加 data-argon-mode 标记亮/暗模式
+	  - luci-theme-argon 2.x：--text-color-low（2.4.x）/ --primary；
+	    更早的 2.2/2.3 落到最后的兜底色
+
+	注意主题变量的语义差异：bootstrap 的 --error-color-low、argon 的 --error-bg /
+	--success-bg 是配白字的实心底色（按钮、徽章），不是浅色底纹，不能拿来当
+	提示框背景（否则红底红字）。提示框/闪烁底色统一用半透明色自己叠。
+	argon 没有“文字用”的错误/成功色变量，--danger / --success 是品牌色（亮色
+	下作小字对比度不足），所以只对 bootstrap 使用其变量，argon 用按亮/暗切换
+	的兜底色（prefers-color-scheme 覆盖自动模式，data-argon-mode 覆盖手动模式）。
+
+	最后一行是既没有变量也没有主题时的兜底。
+-#}
+<style>
+	.substore-muted {
+		color: var(--text-color-medium, var(--muted-text, var(--text-color-low, #808080)));
+	}
+
+	.substore-error {
+		color: var(--error-color-high, #c81e3a);
+	}
+
+	/* bootstrap 的 --success-color-high 只用于背景/边框（白字压在它上面），
+	   当小字文字色对比度不足（亮色下约 3:1），所以成功色不用主题变量。 */
+	.substore-ok {
+		color: #0a7f4f;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.substore-error {
+			color: var(--error-color-high, #ffa9ae);
+		}
+
+		.substore-ok {
+			color: #4ade80;
+		}
+	}
+
+	:root[data-argon-mode="dark"] .substore-error {
+		color: var(--error-color-high, #ffa9ae);
+	}
+
+	:root[data-argon-mode="dark"] .substore-ok {
+		color: #4ade80;
+	}
+
+	:root[data-argon-mode="light"] .substore-error {
+		color: var(--error-color-high, #c81e3a);
+	}
+
+	:root[data-argon-mode="light"] .substore-ok {
+		color: #0a7f4f;
+	}
+
+	.substore-accent {
+		color: var(--primary-color-high, var(--link-color, var(--primary, #0066aa)));
+	}
+
+	.substore-errbox {
+		border-left: 4px solid currentColor;
+		padding: .5em .75em;
+		background: rgba(204, 0, 0, .08);
+		color: var(--error-color-high, #c81e3a);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.substore-errbox {
+			color: var(--error-color-high, #ffa9ae);
+		}
+	}
+
+	:root[data-argon-mode="dark"] .substore-errbox {
+		color: var(--error-color-high, #ffa9ae);
+	}
+
+	:root[data-argon-mode="light"] .substore-errbox {
+		color: var(--error-color-high, #c81e3a);
+	}
+
+	.substore-flash-ok {
+		background: rgba(0, 128, 0, .16) !important;
+	}
+
+	.substore-flash-bad {
+		background: rgba(204, 0, 0, .16) !important;
+	}
+
+	.substore-nowrap {
+		white-space: nowrap;
+	}
+
+	/* 表单底部操作栏：argon 的 .cbi-page-actions 自身没有内边距，
+	   保存/返回紧贴内容区右下角；bootstrap 有内边距但按钮仍贴底。
+	   这里补右下留白，双类选择器优先于两个主题的单类规则。 */
+	.cbi-page-actions.substore-form-actions {
+		padding-inline-end: 1.5em;
+		padding-block-end: 1.5em;
+	}
+
+	/* 复选框行：主题只为 label 内的复选框处理位置，表单里的独立复选框
+	   按基线排版，方框会比同一行的文字高半行。改用 flex 让文字和方框
+	   垂直居中对齐；标签列宽与上方的文本输入保持一致。 */
+	.substore-check-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		row-gap: .25em;
+	}
+
+	.substore-check-row > label:first-child {
+		flex: 0 0 10em;
+	}
+
+	/* flex 布局会丢弃复选框与后续文字之间的空白字符，方框和说明/订阅名
+	   会贴在一起；margin-inline-end 补出固定间距（只加在方框右侧，
+	   不移动方框本身，仍与上方输入框左对齐）。 */
+	.substore-check-row > input[type="checkbox"] {
+		flex: none;
+		margin: 0 .5em 0 0;
+	}
+
+	/* 协议筛选：每个 span 内是复选框 + 协议名，同样居中并留出间距
+	   （方框带内联 margin:0，所以间距只能由容器的 gap 提供） */
+	.substore-check-row > span.substore-nowrap {
+		display: inline-flex;
+		align-items: center;
+		gap: .35em;
+	}
+
+	/* 列多时浏览器会把窄列压到「一个汉字宽」，表头竖排；表头保持单行。
+	   bootstrap 的 cbi-section-table 默认按内容宽度，节点页列会挤在一起。
+	   选择器只作用于本应用的页面（common 只被 substore 模板 include）。 */
+	.cbi-section-table {
+		width: 100%;
+	}
+
+	.cbi-section-table th {
+		white-space: nowrap;
+	}
+
+	/* 各列内容按行居中：长 URL 换行后仍与短列的文字对齐。
+	   argon 的单元格左右内边距各 20px，列一多（列表 9 列、节点页更多）
+	   光内边距就吃掉三分之一宽度，链接输入框被挤到只剩几十像素；
+	   收紧到 .6em，多出的宽度留给内容。 */
+	table.cbi-section-table tbody tr > td,
+	table.cbi-section-table tbody tr > th {
+		padding-inline: .6em;
+		vertical-align: middle;
+	}
+
+	/* 操作列四个按钮始终排成一行（与 2.8.6 一致）：不换行、靠右。
+	   显式留出右内边距 —— 各主题单元格自身的 padding 不一致，
+	   不写死这一点时按钮在 padding 较小的主题里会贴住卡片右缘。 */
+	.substore-actions {
+		display: flex;
+		flex-wrap: nowrap;
+		justify-content: flex-end;
+		gap: .25em;
+		align-items: center;
+		padding-inline-end: .5em;
+	}
+
+	.substore-actions form {
+		margin: 0;
+	}
+
+	/* 「操作」列只占按钮组本身的宽度（表格自动布局里 width:1% 即「收缩到内容」）。
+	   不写它时浏览器把多余宽度按比例分给每一列，「操作」列会比按钮组宽出七八十
+	   像素：按钮仍靠右，左边空出的这一截就变成了「复制」与「更新」之间的间隙。
+	   收缩后多出的宽度回到其他列，「订阅链接」列随之变宽，链接和「复制」自然
+	   贴近右侧的「操作」列（按钮组依旧贴住卡片右缘）。 */
+	table.cbi-section-table th.substore-col-actions,
+	table.cbi-section-table td.substore-col-actions {
+		width: 1%;
+	}
+
+	/* 「选择格式」列同理只占下拉框宽度：否则宽屏下这一列会比下拉框宽出
+	   五六十到一百多像素，下拉框停在左边，与右侧「订阅链接转换」之间留出
+	   一大段空白。收缩后多出的宽度回到链接列，链接与提示都有更多空间。 */
+	table.cbi-section-table th.substore-col-format,
+	table.cbi-section-table td.substore-col-format {
+		width: 1%;
+	}
+
+	/* 未选格式时的提示必须整行显示：列宽不够时换行会把「选择格式后生成
+	   订阅链接，格式可随时切换」挤成两行。nowrap 让这一列至少占提示的
+	   整行宽度，表格布局会从其他列把宽度让过来。 */
+	.substore-linkhint {
+		white-space: nowrap;
+	}
+
+	/* 选定格式后收起提示，但不能用 display:none：上面那条整行提示正是
+	   「订阅链接」列的最小内容宽度。从布局里整个移除后，只有个别行选格式
+	   时列宽还被其他行的提示撑着，看不出变化；等到所有可选项都选过格式，
+	   这一列塌缩、表格把宽度重新分给其他列，整个列表会跳变。
+	   改成留在布局里但不可见、高度归零：提示仍按原样参与列宽计算，
+	   视觉上不占行高，列宽在任何勾选组合下都恒定。 */
+	.substore-linkhint.substore-hint-hidden {
+		visibility: hidden;
+		max-height: 0;
+		overflow: hidden;
+		padding-block: 0;
+		margin-block: 0;
+	}
+
+	/* 过滤栏里的「复选框 + 文字」标签：默认按基线排版，方框比同一行的
+	   文字高出一截（节点页「降序」）。inline-flex 让方框和文字垂直居中，
+	   间距统一由 gap 提供（flex 会丢掉源码里的空白字符，方框自带的内联
+	   外边距也一并去掉）。 */
+	.substore-check-inline {
+		display: inline-flex;
+		align-items: center;
+		gap: .35em;
+	}
+
+	/* argon 为了让普通流里的复选框落在文字基线上，给
+	   label > input[type="checkbox"] 加了 position:relative 加 top/right 偏移。
+	   放进 flex 后这个偏移照样生效，方框反而被往下、往左推出行外，与文字错开；
+	   这里抵消它（选择器权重高于主题的那条规则）。 */
+	.substore-check-inline > input[type="checkbox"] {
+		position: relative;
+		top: 0;
+		right: 0;
+		margin: 0;
+	}
+
+	/* 列表页按钮行本身带 .cbi-section（argon 给 section 上背景色但 padding 为 0），
+	   按钮会紧贴卡片上下沿、第一个按钮顶格；补出四周留白。 */
+	.substore-page-actions {
+		display: flex;
+		gap: .5em;
+		flex-wrap: wrap;
+		align-items: center;
+		padding: .75em;
+	}
+
+	.substore-inline-form {
+		display: inline;
+	}
+</style>

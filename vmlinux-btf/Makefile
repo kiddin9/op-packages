@@ -1,22 +1,19 @@
-# SPDX-License-Identifier: GPL-3.0-only
 #
-# Detached kernel BTF for CO-RE eBPF (dae/daed) on firmware whose kernel was
-# built without CONFIG_DEBUG_INFO_BTF. Builds a shadow kernel from the same
-# OpenWrt source + .config with BTF enabled, then pahole-encodes a detached
-# vmlinux.btf. cilium/ebpf finds it at /usr/lib/debug/boot/vmlinux-<release>.
+# Copyright (C) 2015-2024 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v3.
+#
+
+VMLINUX_BTF_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=vmlinux-btf
-# SDK 内核常落后于目标固件，允许单独指定影子内核版本
-BTF_KERNEL_VERSION?=$(LINUX_VERSION)
-PKG_VERSION:=$(BTF_KERNEL_VERSION)
-PKG_RELEASE:=4
+PKG_VERSION:=$(LINUX_VERSION)
+PKG_RELEASE:=5
 
 include $(INCLUDE_DIR)/package.mk
-
-PKG_BUILD_PARALLEL:=1
 
 define Package/vmlinux-btf
   SECTION:=kernel
@@ -25,106 +22,81 @@ define Package/vmlinux-btf
 endef
 
 define Package/vmlinux-btf/description
-  Supplies detached kernel BTF so CO-RE eBPF programs (dae/daed) load on
-  kernels built without CONFIG_DEBUG_INFO_BTF. Builds a shadow kernel from the
-  OpenWrt kernel source with BTF enabled and encodes a detached vmlinux.btf.
+  Generates detached kernel BTF from target kernel headers and config,
+  enabling CO-RE eBPF programs on OpenWrt without rebuilding the kernel.
 endef
 
 define Package/vmlinux-btf/postinst
 #!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-	ln -sf /usr/lib/debug/boot/vmlinux /usr/lib/debug/boot/vmlinux-$$(uname -r)
-fi
+[ -n "$${IPKG_INSTROOT}" ] || ln -sf vmlinux /usr/lib/debug/boot/vmlinux-$$(uname -r)
 endef
 
 define Package/vmlinux-btf/prerm
 #!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-	rm -f /usr/lib/debug/boot/vmlinux-$$(uname -r)
-fi
+[ -n "$${IPKG_INSTROOT}" ] || rm -f /usr/lib/debug/boot/vmlinux-$$(uname -r)
 endef
 
-PAHOLE_JOBS := $(if $(filter -j%,$(PKG_JOBS)),$(patsubst -j%,%,$(filter -j%,$(PKG_JOBS))),1)
+BTF_CC ?= $(if $(TARGET_CC_NOCACHE),$(TARGET_CC_NOCACHE),$(TARGET_CROSS)gcc)
+BTF_PAHOLE ?= $(firstword \
+	$(wildcard $(STAGING_DIR_HOST)/bin/pahole /usr/bin/pahole /usr/local/bin/pahole) \
+	$(shell command -v pahole 2>/dev/null) \
+	pahole)
+KERNEL_RELEASE := $(if $(wildcard $(LINUX_DIR)/include/config/kernel.release),$(shell cat $(LINUX_DIR)/include/config/kernel.release),$(LINUX_VERSION))
 
-# The SDK ships an extracted kernel but no dl/ tarball, so fetch vanilla source.
-KERNEL_MAJOR:=$(firstword $(subst ., ,$(BTF_KERNEL_VERSION)))
-BTF_LINUX_SOURCE:=linux-$(BTF_KERNEL_VERSION)$(if $(findstring -rc,$(BTF_KERNEL_VERSION)),.tar.gz,.tar.xz)
-LINUX_TARBALL_URL:=https://cdn.kernel.org/pub/linux/kernel/v$(KERNEL_MAJOR).x/$(BTF_LINUX_SOURCE)
-# KERNEL_MAKE_FLAGS 里的 KERNELRELEASE 来自 SDK 内核，覆盖时一并改
-BTF_KERNEL_MAKE_FLAGS =$(filter-out KERNELRELEASE=%,$(KERNEL_MAKE_FLAGS)) KERNELRELEASE=$(BTF_KERNEL_VERSION)
+BTF_CFLAGS := \
+	-nostdinc \
+	-isystem $(shell $(BTF_CC) -print-file-name=include) \
+	-D__KERNEL__ \
+	-include $(LINUX_DIR)/include/linux/kconfig.h \
+	$(if $(wildcard $(LINUX_DIR)/include/linux/compiler-version.h),-include $(LINUX_DIR)/include/linux/compiler-version.h) \
+	$(if $(wildcard $(LINUX_DIR)/include/linux/compiler_types.h),-include $(LINUX_DIR)/include/linux/compiler_types.h) \
+	-I$(LINUX_DIR)/arch/$(LINUX_KARCH)/include \
+	-I$(LINUX_DIR)/arch/$(LINUX_KARCH)/include/generated \
+	-I$(LINUX_DIR)/include \
+	-I$(LINUX_DIR)/include/generated \
+	-I$(LINUX_DIR)/arch/$(LINUX_KARCH)/include/uapi \
+	-I$(LINUX_DIR)/arch/$(LINUX_KARCH)/include/generated/uapi \
+	-I$(LINUX_DIR)/include/uapi \
+	-I$(LINUX_DIR)/include/generated/uapi \
+	-I$(LINUX_DIR) \
+	$(filter -m% -march=% -mcpu=% -mtune=% -EB -EL,$(TARGET_CFLAGS)) \
+	-std=gnu11 -funsigned-char -fshort-wchar -fno-common -fno-PIE \
+	-O2 -g -gdwarf-4 -fno-eliminate-unused-debug-types \
+	-Wno-error -Wno-unused-function -Wno-unused-variable
 
 define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR) $(DL_DIR)
-	[ -f "$(DL_DIR)/$(BTF_LINUX_SOURCE)" ] || \
-		wget -nv -O "$(DL_DIR)/$(BTF_LINUX_SOURCE)" "$(LINUX_TARBALL_URL)"
-	$(TAR) -C $(PKG_BUILD_DIR) -xf $(DL_DIR)/$(BTF_LINUX_SOURCE)
-	mv $(PKG_BUILD_DIR)/linux-$(BTF_KERNEL_VERSION) $(PKG_BUILD_DIR)/shadow-kernel
-	cp $(LINUX_DIR)/.config $(PKG_BUILD_DIR)/shadow-kernel/.config
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) $(VMLINUX_BTF_DIR)/src/* $(PKG_BUILD_DIR)/
 endef
 
 define Build/Compile
-	$(PKG_BUILD_DIR)/shadow-kernel/scripts/config \
-		--file $(PKG_BUILD_DIR)/shadow-kernel/.config \
-		--disable WERROR \
-		--enable CGROUPS \
-		--enable CGROUP_BPF \
-		--enable SOCK_CGROUP_DATA \
-		--enable KALLSYMS \
-		--enable PERF_EVENTS \
-		--enable TRACEPOINTS \
-		--enable KPROBES \
-		--enable UPROBES \
-		--enable BPF \
-		--enable BPF_SYSCALL \
-		--enable BPF_JIT \
-		--enable BPF_JIT_DEFAULT_ON \
-		--enable INET \
-		--enable NET_INGRESS \
-		--enable NET_EGRESS \
-		--enable BPF_STREAM_PARSER \
-		--enable XDP_SOCKETS \
-		--enable NET_SCHED \
-		--enable NET_SCH_INGRESS \
-		--enable NET_CLS \
-		--enable NET_CLS_ACT \
-		--enable KPROBE_EVENTS \
-		--enable UPROBE_EVENTS \
-		--enable BPF_EVENTS \
-		--enable DEBUG_KERNEL \
-		--enable DEBUG_INFO \
-		--disable DEBUG_INFO_NONE \
-		--enable DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT \
-		--disable DEBUG_INFO_REDUCED \
-		--disable DEBUG_INFO_SPLIT \
-		--enable DEBUG_INFO_BTF \
-		--set-str EXTRA_FIRMWARE "" \
-		--set-str INITRAMFS_SOURCE ""
+	@if [ ! -f "$(LINUX_DIR)/include/generated/autoconf.h" ]; then \
+		echo "vmlinux-btf: kernel headers not found in $(LINUX_DIR)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(BTF_PAHOLE)" ] || ! $(BTF_PAHOLE) --version >/dev/null 2>&1; then \
+		echo "vmlinux-btf: pahole not found or not working (install dwarves/pahole on host)"; \
+		exit 1; \
+	fi
 
-	$(MAKE) -C $(PKG_BUILD_DIR)/shadow-kernel \
-		$(BTF_KERNEL_MAKE_FLAGS) \
-		KBUILD_HOSTLDFLAGS="$(KBUILD_HOSTLDFLAGS) -lz" \
-		olddefconfig
-
-	$(MAKE) -C $(PKG_BUILD_DIR)/shadow-kernel \
-		$(BTF_KERNEL_MAKE_FLAGS) \
-		$(PKG_JOBS) \
-		KBUILD_HOSTLDFLAGS="-L$(STAGING_DIR_HOST)/lib -lz" \
-		vmlinux
-
-	pahole \
-		--jobs=$(PAHOLE_JOBS) \
-		--btf_encode_detached=$(PKG_BUILD_DIR)/vmlinux-btf \
-		$(PKG_BUILD_DIR)/shadow-kernel/vmlinux
-endef
-
-define Build/Clean
-	rm -rf $(PKG_BUILD_DIR)
+	$(BTF_CC) $(BTF_CFLAGS) -c $(PKG_BUILD_DIR)/shadow_btf_core.c -o $(PKG_BUILD_DIR)/shadow_btf_core.o
+	-$(BTF_CC) $(BTF_CFLAGS) -c $(PKG_BUILD_DIR)/shadow_btf_modules.c -o $(PKG_BUILD_DIR)/shadow_btf_modules.o 2>/dev/null
+	-$(BTF_CC) $(BTF_CFLAGS) -c $(PKG_BUILD_DIR)/shadow_btf_private.c -o $(PKG_BUILD_DIR)/shadow_btf_private.o 2>/dev/null
+	$(TARGET_CROSS)ld -r -o $(PKG_BUILD_DIR)/shadow_btf.o $(PKG_BUILD_DIR)/shadow_btf_*.o
+	if $(BTF_PAHOLE) --help 2>&1 | grep -q -- '--btf_encode_detached'; then \
+		$(BTF_PAHOLE) --btf_encode_detached=$(PKG_BUILD_DIR)/vmlinux-btf $(PKG_BUILD_DIR)/shadow_btf.o; \
+	else \
+		$(BTF_PAHOLE) -J $(PKG_BUILD_DIR)/shadow_btf.o && \
+		$(TARGET_CROSS)objcopy --dump-section .BTF=$(PKG_BUILD_DIR)/vmlinux-btf $(PKG_BUILD_DIR)/shadow_btf.o; \
+	fi
+	test -s $(PKG_BUILD_DIR)/vmlinux-btf
+	$(BTF_PAHOLE) -C sk_buff $(PKG_BUILD_DIR)/shadow_btf.o >/dev/null
 endef
 
 define Package/vmlinux-btf/install
 	$(INSTALL_DIR) $(1)/usr/lib/debug/boot
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/vmlinux-btf $(1)/usr/lib/debug/boot/vmlinux
-	$(LN) vmlinux $(1)/usr/lib/debug/boot/vmlinux-$(BTF_KERNEL_VERSION)
+	$(LN) vmlinux $(1)/usr/lib/debug/boot/vmlinux-$(KERNEL_RELEASE)
 endef
 
 $(eval $(call BuildPackage,vmlinux-btf))

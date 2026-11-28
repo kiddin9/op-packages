@@ -1,0 +1,297 @@
+{#
+	subscriptions.ut — 订阅列表（原 Lua 视图 subscriptions.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const output = require('substore.output');
+	const view = require('substore.view');
+
+	const token = ctx.authtoken ?? '';
+	const [items] = core.list();
+	const flash_err = view.fv(http, 'err') ?? '';
+
+	// 公开下载链接的前缀：协议 + 主机 + /substore/download
+	const base = dispatcher.build_url('substore', 'download');
+	const https = http.getenv('HTTPS');
+	const scheme = (https != null && https != 'off') ? 'https' : 'http';
+	let host = http.getenv('HTTP_HOST');
+
+	if (host == null) {
+		const sname = http.getenv('SERVER_NAME');
+		host = (sname != null) ? sname + ':' + (http.getenv('SERVER_PORT') ?? '80') : '127.0.0.1';
+	}
+
+	const prefix = scheme + '://' + host + base;
+
+	// 组合订阅的「来源」列要显示来源名称，先建 id → name 的映射
+	const name_by_id = {};
+	for (let it in items)
+		name_by_id[it.id] = it.name ?? it.id;
+
+	// 服务端按系统语言翻译后注入 JS（JS 里的 _() 不保证拿到应用自己的 .lmo）
+	const js_i18n = view.jsq({
+		del_sel: _('Delete selected subscriptions?'),
+		sel_first: _('Please select subscriptions first'),
+		clear_all: _('Clear all subscriptions? Every subscription and its nodes will be deleted, and this cannot be undone')
+	});
+-%}
+<h2>{{ _('Subscriptions') }}</h2>
+
+{#
+	§18：控制器把失败原因放在 ?err= 上带回来，这里渲染成可见的提示。
+	entityencode 转义：err 可能包含用户提交的内容，不能直接当 HTML 输出。
+	控制器已经翻译过这条文案（?err= 链路的边界），这里不再翻。
+-#}
+{% if (flash_err != ''): %}
+<div class="cbi-section substore-errbox">
+	<strong>{{ _('Operation failed') }}:</strong> {{ entityencode(flash_err, true) }}
+</div>
+{% endif %}
+
+<div class="cbi-section substore-page-actions">
+	<a class="cbi-button cbi-button-add" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'form'), true) }}">{{ _('Add subscription link') }}</a>
+	<a class="cbi-button cbi-button-add" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'localform'), true) }}">{{ _('Add local subscription') }}</a>
+	<a class="cbi-button cbi-button-add" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'combo'), true) }}">{{ _('Add combination') }}</a>
+	<button type="button" class="cbi-button cbi-button-reset" onclick="substore_delete_selected()">{{ _('Delete') }}</button>
+	{% if (length(items) > 0): %}
+	<button type="button" class="cbi-button cbi-button-reset" onclick="substore_clear_all()">{{ _('Clear subscriptions') }}</button>
+	{% else %}
+	<button type="button" class="cbi-button cbi-button-reset" disabled="disabled"
+		style="opacity:0.5;cursor:not-allowed">{{ _('Clear subscriptions') }}</button>
+	{% endif %}
+</div>
+
+{#
+	删除 / 清空订阅共用的隐藏表单：JS 把要删的 id（逗号分隔）收集到 id 后提交。
+	顶部的「删除」删勾选的行，「清空订阅」提交列表里的全部 id；行内不再有
+	单独的删除按钮（单个订阅勾选后点顶部「删除」即可）。
+-#}
+<form id="batch_delete_form" method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'delete'), true) }}" style="display:none">
+	<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+	<input type="hidden" name="id" value=""/>
+</form>
+
+<table class="cbi-section-table">
+	<tr class="cbi-section-table-titles">
+		<th style="width:1em"><input type="checkbox" onclick="substore_toggle_all(this)"/></th>
+		<th>{{ _('Name') }}</th>
+		<th>{{ _('Subscription type') }}</th>
+		<th>{{ _('Nodes') }}</th>
+		<th>{{ _('Updated') }}</th>
+		<th>{{ _('Status') }}</th>
+		<th class="substore-col-format">{{ _('Select format') }}</th>
+		<th>{{ _('Subscription link') }}</th>
+		<th class="substore-col-actions">{{ _('Actions') }}</th>
+	</tr>
+
+	{% for (let it in items): %}
+	{%
+		let status_text = _('Pending');
+		let status_cls = 'substore-muted';
+
+		if (it.error != null && `${it.error}` != '') {
+			status_text = view.tmsg(it.error, _);
+			status_cls = 'substore-error';
+		}
+		else if (it.node_count != null && int(it.node_count) > 0) {
+			status_text = _('OK');
+			status_cls = 'substore-ok';
+		}
+
+		// ensure_token 在「token 写不进列表文件」时返回 null：此时链接必然无效，
+		// 用空 token 拼出来，让下载端报「无效的订阅 token」，
+		// 而不是在模板里对 null 做字符串拼接直接 500。
+		const [sub_token] = core.ensure_token(it.id);
+		const sub_link_base = prefix + '?token=' + (sub_token ?? '') + '&target=';
+		const node_count = (it.node_count != null) ? int(it.node_count) : 0;
+		// 还没解析出节点时禁用格式下拉：刚添加还没点「更新」、更新失败、
+		// 或解析结果为空的订阅，转出来的内容必然是空的。
+		const fmt_disabled = node_count <= 0;
+		const cron_on = (it.cron_enable == true || it.cron_enable == '1');
+
+		// 名称过长会把「名称」列撑宽；只显示前 15 个字符（含省略号），
+		// 完整名称放进 title，悬停查看。没超过 15 个字符时不加 title。
+		const name_full = `${it.name ?? ''}`;
+		const name_show = view.truncate_chars(name_full, 15);
+		const name_long = (name_show != name_full);
+	-%}
+	<tr class="cbi-section-table-row">
+		<td><input type="checkbox" class="sub-check" value="{{ entityencode(it.id, true) }}"/></td>
+		<td>
+			{% if (name_long): %}
+			<span title="{{ entityencode(name_full, true) }}">{{ entityencode(name_show, true) }}</span>
+			{% else %}
+			{{ entityencode(name_show, true) }}
+			{% endif %}
+			{% if (cron_on): %}
+			<div class="cbi-value-description">{{ _('Schedule') }}: {{ entityencode(it.cron_time ?? '', true) }}</div>
+			{% endif %}
+		</td>
+		<td style="word-break:break-all">
+			{% if (it.combo): %}
+				{%
+					let combo_names = [];
+					if (type(it.sources) == 'array')
+						for (let sid in it.sources)
+							push(combo_names, name_by_id[sid] ?? sid);
+
+					// 来源名称串超过 30 个字符时只显示前 30 个（含省略号），
+					// 完整内容放进 title；与「远程订阅」的悬停方式一致。
+					const combo_full = join(' + ', combo_names);
+					const combo_show = view.truncate_chars(combo_full, 30);
+					const combo_long = (combo_show != combo_full);
+				-%}
+				<span class="substore-accent">[{{ _('Combination') }}]</span>
+				<span class="substore-muted"{% if (combo_long): %} title="{{ entityencode(combo_full, true) }}"{% endif %}>{{ entityencode(combo_show, true) }}</span>
+			{% elif (it['local']): %}
+				<span class="substore-accent">[{{ _('Local') }}]</span>
+			{% else %}
+				{#
+					远程订阅只显示类型标签，完整订阅地址放在 title 里悬停查看：
+					地址中通常带订阅 token，不再平铺在列表上。
+				-#}
+				<span class="substore-accent" title="{{ entityencode(it.url ?? '', true) }}">[{{ _('Remote subscription') }}]</span>
+			{% endif %}
+		</td>
+		<td>{{ node_count }}</td>
+		<td>{{ view.fmt_time(it.last_update) }}</td>
+		<td class="{{ status_cls }}">{{ entityencode(status_text, true) }}</td>
+		<td class="substore-col-format">
+			<div style="display:flex;gap:0.25em;align-items:center">
+				<select id="fmt_{{ entityencode(it.id, true) }}" data-base="{{ entityencode(sub_link_base, true) }}"
+					onchange="substore_setlink(this, '{{ entityencode(it.id, true) }}')"
+					style="max-width:12em{% if (fmt_disabled): %};opacity:0.5;cursor:not-allowed{% endif %}"
+					{% if (fmt_disabled): %}
+					disabled="disabled" title="{{ entityencode(_('Update and parse nodes before choosing a format'), true) }}"
+					{% endif %}>
+					<option value="">{{ _('Select format') }}</option>
+					{% for (let fo in output.FORMAT_OPTIONS): %}
+					<option value="{{ fo[0] }}">{{ fo[1] }}</option>
+					{% endfor %}
+				</select>
+			</div>
+		</td>
+		<td>
+			<div id="linkwrap_{{ entityencode(it.id, true) }}" style="display:none">
+				{#
+					链接与「复制」靠右对齐：输入框有最大宽度，列再宽时
+					多余空间留在左侧，按钮贴近右侧的「操作」列。
+				-#}
+				<div style="display:flex;gap:0.25em;align-items:center;justify-content:flex-end">
+					{#
+						输入框默认的固有宽度（约 size=20）会成为本列的最小内容宽度，
+						展开链接后整表被撑出卡片右缘；size="1" 加上 width:0 让输入框
+						可以收缩，再由 flex-grow 吃掉列内剩余空间（最宽 280px）。
+					-#}
+					<input id="link_{{ entityencode(it.id, true) }}" type="text" readonly size="1"
+						style="width:0;flex:1 1 0;min-width:0;max-width:280px" value=""/>
+					<button type="button" class="cbi-button cbi-button-apply" style="flex:none"
+						onclick="substore_copy_link('{{ entityencode(it.id, true) }}')">{{ _('Copy') }}</button>
+				</div>
+			</div>
+			<div id="linkhint_{{ entityencode(it.id, true) }}" class="cbi-value-description substore-linkhint">
+				{% if (fmt_disabled): %}
+					{{ _('Update and parse nodes before choosing a format') }}
+				{% else %}
+					{{ _('Pick a format to generate the subscription link; you can switch formats at any time') }}
+				{% endif %}
+			</div>
+		</td>
+		<td class="substore-col-actions">
+			<div class="substore-actions">
+				{% if (it['local']): %}
+				<span class="cbi-button cbi-button-action" style="opacity:0.5;cursor:not-allowed">{{ _('Update') }}</span>
+				{% else %}
+				<form method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'update'), true) }}" class="substore-inline-form">
+					<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+					<input type="hidden" name="id" value="{{ entityencode(it.id, true) }}"/>
+					<input type="submit" class="cbi-button cbi-button-action" value="{{ _('Update') }}"/>
+				</form>
+				{% endif %}
+				{% if (it.combo): %}
+				<a class="cbi-button cbi-button-apply" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'combo'), true) }}?id={{ entityencode(http.urlencode(it.id), true) }}">{{ _('Edit') }}</a>
+				{% elif (it['local']): %}
+				<a class="cbi-button cbi-button-apply" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'localform'), true) }}?id={{ entityencode(http.urlencode(it.id), true) }}">{{ _('Edit') }}</a>
+				{% else %}
+				<a class="cbi-button cbi-button-apply" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'form'), true) }}?id={{ entityencode(http.urlencode(it.id), true) }}">{{ _('Edit') }}</a>
+				{% endif %}
+				<a class="cbi-button cbi-button-apply" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'nodes'), true) }}?id={{ entityencode(http.urlencode(it.id), true) }}">{{ _('Nodes') }}</a>
+				<a class="cbi-button cbi-button-apply" href="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'output'), true) }}?id={{ entityencode(http.urlencode(it.id), true) }}">{{ _('Output') }}</a>
+			</div>
+		</td>
+	</tr>
+	{% endfor %}
+
+	{% if (length(items) == 0): %}
+	<tr class="cbi-section-table-row">
+		<td colspan="9" style="text-align:center" class="substore-muted">{{ _('No subscriptions yet.') }}</td>
+	</tr>
+	{% endif %}
+</table>
+
+<script>
+	var SUBSTORE_I18N = {{ js_i18n }};
+
+	function substore_setlink(sel, id) {
+		var wrap = document.getElementById('linkwrap_' + id);
+		var hint = document.getElementById('linkhint_' + id);
+		if (!wrap) return;
+		if (!sel.value) {
+			wrap.style.display = 'none';
+			if (hint) hint.classList.remove('substore-hint-hidden');
+			return;
+		}
+		var inp = document.getElementById('link_' + id);
+		var base = sel.getAttribute('data-base') || '';
+		inp.value = base + encodeURIComponent(sel.value);
+		wrap.style.display = 'block';
+		// 链接和「复制」出现后，下方的「选择格式后生成订阅链接…」提示就多余了。
+		// 收起时不能用 display:none —— 提示撑着本列的最小宽度，整列都收起后
+		// 列宽会塌缩、表格跳变；类名让提示留在布局里但不可见（见 common.ut）。
+		if (hint) hint.classList.add('substore-hint-hidden');
+	}
+
+	function substore_copy_link(id) {
+		var e = document.getElementById('link_' + id);
+		if (!e) return;
+		e.select();
+		document.execCommand('copy');
+	}
+
+	function substore_toggle_all(el) {
+		var boxes = document.querySelectorAll('.sub-check');
+		for (var i = 0; i < boxes.length; i++) boxes[i].checked = el.checked;
+	}
+
+	function substore_delete_selected() {
+		var boxes = document.querySelectorAll('.sub-check:checked');
+		// 一个都没勾选时什么都不删（否则「删除」会变成「清空全部」）。
+		if (boxes.length === 0) { alert(SUBSTORE_I18N.sel_first); return; }
+		if (!confirm(SUBSTORE_I18N.del_sel)) return;
+		var ids = [];
+		for (var i = 0; i < boxes.length; i++) ids.push(boxes[i].value);
+		var form = document.getElementById('batch_delete_form');
+		form.elements['id'].value = ids.join(',');
+		form.submit();
+	}
+
+	// 清空订阅：提交列表里的全部 id，走与「删除」相同的服务端流程
+	// （逐条 core.remove：剪除组合来源、删节点文件、重写 cron）。
+	function substore_clear_all() {
+		var boxes = document.querySelectorAll('.sub-check');
+		// 列表为空时服务端已把按钮置灰；这里只是兜底，不做任何提示。
+		if (boxes.length === 0) return;
+		if (!confirm(SUBSTORE_I18N.clear_all)) return;
+		var ids = [];
+		for (var i = 0; i < boxes.length; i++) ids.push(boxes[i].value);
+		var form = document.getElementById('batch_delete_form');
+		form.elements['id'].value = ids.join(',');
+		form.submit();
+	}
+</script>
+{% include('footer') %}

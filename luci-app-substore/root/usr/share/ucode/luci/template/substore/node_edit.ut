@@ -1,0 +1,93 @@
+{#
+	node_edit.ut — 单节点编辑（原 Lua 视图 node_edit.htm 的 ucode 移植）
+-#}
+{%
+	include('header');
+-%}
+{% include('substore/common') %}
+
+{%
+	const core = require('substore.core');
+	const node = require('substore.node');
+	const view = require('substore.view');
+
+	const token = ctx.authtoken ?? '';
+	const id = view.fv(http, 'id') ?? '';
+	const idx = int(view.fv(http, 'idx') ?? '');
+	const meta = (id != '') ? core.get(id) : null;
+	const nodes = (id != '') ? core.read_nodes(id) : [];
+
+	// 页面上的 idx 是 1 基下标（见 nodes.ut 的 __idx），存储是 0 基数组
+	const n = (idx >= 1 && idx <= length(nodes)) ? nodes[idx - 1] : null;
+
+	// 注入 JS 的节点对象：view.jsq 同时挡住 "</script" 提前闭合与 "<!--"
+	const js_node = view.jsq(n);
+	const js_protos = view.jsq(node.PROTOS);
+	const js_proto_fields = view.jsq(node.PROTO_FIELDS);
+	const js_labels = view.jsq(view.field_labels(_));
+	const js_nodeform_i18n = view.jsq(view.nodeform_i18n(_));
+
+	const back_url = dispatcher.build_url('admin', 'services', 'substore', 'nodes')
+		+ '?id=' + http.urlencode(id);
+-%}
+<h2>{{ _('Edit node') }} — {{ entityencode(meta?.name ?? '', true) }}</h2>
+
+{% if (n == null): %}
+<div class="cbi-section">
+	<p class="substore-error">{{ _('Node not found.') }}</p>
+	<a class="cbi-button cbi-button-reset" href="{{ entityencode(back_url, true) }}">{{ _('Back') }}</a>
+</div>
+{% else %}
+<form method="post" action="{{ entityencode(dispatcher.build_url('admin', 'services', 'substore', 'node_save'), true) }}" class="cbi-map"
+      onsubmit="return node_edit_prepare()">
+	<input type="hidden" name="token" value="{{ entityencode(token, true) }}"/>
+	<input type="hidden" name="id" value="{{ entityencode(id, true) }}"/>
+	<input type="hidden" name="idx" value="{{ idx }}"/>
+	<div class="cbi-section">
+		<div id="nodes_list"></div>
+		<input type="hidden" name="content" id="form_content" value=""/>
+		<div class="cbi-section-descr substore-muted" style="margin:0.5em 0">
+			{{ _('Note: edits to this node are overwritten the next time the subscription is updated or re-saved.') }}
+		</div>
+		<div class="cbi-page-actions substore-form-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="{{ _('Save') }}"/>
+			<a class="cbi-button cbi-button-reset" href="{{ entityencode(back_url, true) }}">{{ _('Back') }}</a>
+		</div>
+	</div>
+</form>
+
+<script>
+	var FIELD_LABELS = {{ js_labels }};
+	var NODEFORM_I18N = {{ js_nodeform_i18n }};
+
+	// 协议与字段清单由服务端注入（唯一来源：substore/node.uc 的 PROTOS /
+	// PROTO_FIELDS）。core.merge_form_node 用同一份清单决定哪些字段可以被
+	// 表单覆盖，两边必须严格一致，因此不在前端另抄一份。
+	var SUBSTORE_PROTOS = {{ js_protos }};
+	var SUBSTORE_PROTO_FIELDS = {{ js_proto_fields }};
+	var NODE_EDIT_DATA = {{ js_node }};
+</script>
+<script src="{{ resource }}/substore/nodeform.js?v=2.9.0"></script>
+<script>
+	function node_edit_prepare() {
+		var arr = collectNodes();
+		if (arr.length === 0) return false;
+		document.getElementById("form_content").value = JSON.stringify(arr);
+		return true;
+	}
+
+	function initNodeEdit() {
+		var row = addNodeRow(NODE_EDIT_DATA);
+		// 编辑页只有一个节点行，不允许移除
+		var rm = row && row.querySelector(".node_remove");
+		if (rm) rm.style.display = "none";
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initNodeEdit);
+	} else {
+		initNodeEdit();
+	}
+</script>
+{% endif %}
+{% include('footer') %}

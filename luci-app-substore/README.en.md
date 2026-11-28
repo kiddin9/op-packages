@@ -11,11 +11,12 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.7.3-r3`).
+> [Makefile](Makefile) (currently `2.9.0-r1`).
 
-**Minimum supported: OpenWrt / ImmortalWrt 23.05** (older releases are out of scope).
+**Minimum supported: OpenWrt / ImmortalWrt 24.10** (older releases are out of scope).
+The backend is pure ucode since 2.8.0 and no longer depends on the Lua runtime.
 
-opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
+opkg (OpenWrt / ImmortalWrt 24.10):
 
 ```bash
 opkg install luci-app-substore_*.ipk
@@ -63,8 +64,7 @@ make defconfig
 ```
 
 > Note that `make package/luci-i18n-substore-zh-cn/compile` is **not a valid target** —
-> make targets are per directory, not per package name (see
-> [docs/BUILD.md](docs/BUILD.md)).
+> make targets are per directory, not per package name.
 
 The `.ipk` (or `.apk` on apk builds) is produced under `bin/packages/.../`; install
 it as described above.
@@ -77,7 +77,11 @@ it as described above.
   update time and error messages
 - **Batch delete**: tick one or more subscriptions (the header checkbox selects
   all) and hit Delete to remove them in one go; with nothing ticked, Delete
-  removes nothing
+  removes nothing. Rows no longer carry their own Delete button — to remove a
+  single subscription, tick it and hit Delete at the top
+- **Clear subscriptions**: the button next to Delete removes every subscription
+  and its node data after a confirmation (cron entries and combination sources
+  are cleaned up too); it is disabled while the list is empty
 - Remaining traffic / expiry per subscription (parsed from the `subscription-userinfo`
   response header)
 - **Subscription proxy**: fetch through `http` / `https` / `socks4` / `socks5` /
@@ -117,7 +121,12 @@ it as described above.
 
 **Network probing** (nodes page)
 - Ping (ICMP), TCPing (TCP connect) and URL test (HTTP), run in parallel with a
-  success count and average latency
+  success count and average latency. All three probe the node server **directly
+  from the router**, which is not the same metric as the through-proxy delay
+  Clash Verge / OpenClash shows (an HTTP request through the proxy to
+  `generate_204`), so the numbers are not directly comparable; placeholder nodes
+  on `127.0.0.1` are always reported as failed (a local probe would otherwise
+  "succeed" and make fake nodes look fastest)
 
 **Conversion & output**
 - 15 output formats: Plain JSON, Stash, Clash.Meta / Mihomo, Clash (original),
@@ -126,8 +135,8 @@ it as described above.
 - SSR (`ssr://`) can only be emitted to clients that support it (Mihomo, Stash, Loon,
   Shadowrocket); other targets drop it. VLESS works the same way: Surge / Surfboard /
   Surge Mac do not list it among their protocols (see `FAMILY_CAPS` in
-  `output_formats.lua` for the Surge family and Loon; Egern's config is YAML and its
-  list lives in `EGERN_KEY` in `output_egern.lua` — it has VLESS and WireGuard but
+  `output_formats.uc` for the Surge family and Loon; Egern's config is YAML and its
+  list lives in `EGERN_KEY` in `output_egern.uc` — it has VLESS and WireGuard but
   neither SSR nor Hysteria v1)
 - **Only content the target client can actually load is emitted**: protocols are
   filtered by target capability, array-valued fields use the type the client expects,
@@ -144,6 +153,12 @@ it as described above.
   cannot generate a subscription link that is bound to be empty
 
 **LuCI interface & i18n**
+- The backend is pure ucode (controller / templates / core modules), matching
+  upstream LuCI's runtime
+- Follows the LuCI light / dark theme automatically, with no manual switch; adapted
+  to luci-theme-bootstrap (the 24.10 / 25.12 default) and luci-theme-argon 2.x / 3.x —
+  colours come from theme CSS variables first, with light/dark-aware fallbacks, so no
+  single palette is hardcoded
 - English by default, Simplified Chinese when the runtime language is `zh-cn`
 
 ## Usage
@@ -158,16 +173,18 @@ it as described above.
 4. **Export** — pick one of the 15 output formats, or copy the subscription link
    to feed a downstream client (Passwall / OpenClash / …).
 
-> **Rename rules match with Lua patterns, not PCRE.** `|` means "or", but only at
-> the **top level**: `(a|b)` is not expanded into "a or b" — it matches literally,
-> requiring the name to actually contain `a|b`. Write `a|b` for alternatives, or
-> use separate rules. A `|` inside a character class `[...]` is literal too.
+> **Rename rules use POSIX extended regular expressions (ERE), not PCRE.**
+> `|` means "or" both at the top level and inside groups, so `a|b` and `(a|b)`
+> are equivalent; `\d` / `\w` / `\s` are translated to the matching character
+> classes. ERE has no non-greedy quantifiers, so `.*?` behaves as greedy `.*`
+> (no error); `\b` is ignored; PCRE constructs such as lookaround fail to compile
+> and are rejected on save with the line number.
+> A `|` inside a character class `[...]` is still literal.
 
 ## Known limitations
 
 Each of these is a **code-audit-confirmed** limitation kept deliberately, not an
-oversight; the reasoning for each is in
-[docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md) (Chinese).
+oversight.
 
 - **Mixed-format text import is rejected** — pasted node text may contain only one
   format at a time (URI / Base64 / YAML / JSON / WireGuard `.conf`); protocols may
@@ -210,43 +227,43 @@ oversight; the reasoning for each is in
 │   │   ├── config/substore       # UCI placeholder
 │   │   └── uci-defaults/99-substore
 │   ├── usr/
-│   │   ├── bin/substore-cron.sh  # per-subscription cron runner
-│   │   ├── lib/lua/luci/
-│   │   │   ├── controller/admin/substore.lua   # routes / actions
-│   │   │   └── view/substore/*.htm             # templates
+│   │   ├── bin/substore-cron.sh  # per-subscription cron runner (inline ucode)
 │   │   └── share/
+│   │       ├── ucode/
+│   │       │   ├── luci/controller/admin/substore.uc  # LuCI ucode controller
+│   │       │   ├── luci/template/substore/*.ut        # page templates
+│   │       │   └── substore/*.uc                      # core logic (no luci.* dependency)
 │   │       ├── luci/menu.d/luci-app-substore.json
-│   │       ├── rpcd/acl.d/luci-app-substore.json  # ACL group (referenced by menu depends.acl)
-│   │       └── substore/*.lua    # core logic (no luci.* dependency)
-├── po/zh_Hans/substore.po        # Simplified Chinese (built as the separate luci-i18n-substore-zh-cn package)
-├── docs/                         # design & guides
-└── tests/                        # self-contained Lua 5.1 unit tests
+│   │       └── rpcd/acl.d/luci-app-substore.json  # ACL group (referenced by menu depends.acl)
+│   └── www/luci-static/resources/substore/nodeform.js # node form frontend script
+└── po/zh_Hans/substore.po        # Simplified Chinese (built as the separate luci-i18n-substore-zh-cn package)
 ```
 
-## Documentation
+## Changelog
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture design
-- [docs/PLAN.md](docs/PLAN.md) — staged development plan
-- [docs/BUILD.md](docs/BUILD.md) — building from an OpenWrt SDK/source tree
-- [docs/INSTALL.md](docs/INSTALL.md) — installation
-- [docs/SECURITY.md](docs/SECURITY.md) — security model
-- [docs/TESTING.md](docs/TESTING.md) — testing
-- [docs/UCODE_MIGRATION.md](docs/UCODE_MIGRATION.md) — `.htm` → `.ut` (ucode) migration notes
 - [CHANGELOG.md](CHANGELOG.md) — changelog
-- [docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md) — known unfixed issues (pending decision)
+
+Design and testing documents are kept in the local development tree only; they are
+not published to the repository and neither building nor installing depends on them.
 
 ## Development & testing
 
-The core is plain Lua 5.1 with no `luci.*` dependency, so it is unit-testable
-without a device. Each file under `tests/` is self-contained:
+The core is a set of ucode modules (`root/usr/share/ucode/substore/*.uc`) with no
+`luci.*` dependency; they load directly under `ucode` on a device, and the cron
+runner uses the same entry point. The repository ships no test directory. Verify on
+a device with:
 
-```bash
-lua5.1 tests/run_tests.lua          # or any single test file
-for f in tests/*.lua; do lua5.1 "$f" || exit 1; done
+```sh
+# syntax checks: modules & controller, templates
+ucode -c -s /usr/share/ucode/substore/*.uc
+ucode -T -c /usr/share/ucode/luci/template/substore/*.ut
+# cron main loop (updates every enabled subscription)
+/usr/bin/substore-cron.sh
 ```
 
-Target-device verification is required for the LuCI UI and cron behaviour — see
-[docs/TESTING.md](docs/TESTING.md).
+Feature testing is done page by page on the target device: subscription CRUD,
+update/parse, node filter/edit/probe, 15 output formats, subscription-link pull,
+cron.
 
 ## Security
 
@@ -259,7 +276,7 @@ shell quoting, plus probe targets starting with `-` rejected — busybox `getopt
 read them as options), token-based access control on the public download endpoint, and
 no credentials in logs.
 
-**On a box with no DNS resolver** (neither nixio nor `nslookup`), domain targets cannot
+**On a box with no DNS resolver** (no `nslookup` available), domain targets cannot
 be validated before the request; the curl backend then re-checks the actual peer address
 via `%{remote_ip}` **after connecting** (which also closes the DNS-rebinding TOCTOU
 window), while the wget backend has no equivalent and **refuses** instead of allowing it
@@ -272,20 +289,19 @@ silently dropped. **Access control**: the `luci-app-substore` ACL group takes ef
 through `menu.d`'s `depends.acl` — unauthorised LuCI users do not see the app, and
 **direct URL access is refused with 403** (the ucode dispatcher validates the
 `depends.acl` accumulated along the request path at dispatch time; verified against
-upstream source **and measured on a device**). See
-[docs/SECURITY.md](docs/SECURITY.md) for how to grant it.
+upstream source **and measured on a device**). To grant access, add the user to the
+`luci-app-substore` ACL group (defined in
+`root/usr/share/rpcd/acl.d/luci-app-substore.json`).
 
 Data on disk: `/etc/substore` is `0700`, and `subscriptions.json` / `nodes/*.json`
 are `0600` — the former holds subscription URLs and public download tokens, the
-latter uuid / passwords / private keys. `io.open` creates files per the umask
-(typically 0644), readable by any local user, so the mode is tightened explicitly
-after each write.
+latter uuid / passwords / private keys. Files are created per the umask
+(typically 0644), readable by any local user, so `atomic_write` tightens the mode
+explicitly after each write.
 
 Batch node probing is capped at 16 concurrent processes (`probe.MAX_PARALLEL`):
 the node count comes from subscription content, and unbounded concurrency exhausts
-the router's fd / process budget, after which `io.popen` fails silently.
-
-See [docs/SECURITY.md](docs/SECURITY.md).
+the router's fd / process budget, after which `popen` fails silently.
 
 ## License
 

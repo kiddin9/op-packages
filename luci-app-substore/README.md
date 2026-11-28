@@ -13,11 +13,12 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.7.3-r3`）。
+> （当前 `2.9.0-r1`）。
 
-**最低支持 OpenWrt / ImmortalWrt 23.05**（更早的版本不在支持范围内）。
+**最低支持 OpenWrt / ImmortalWrt 24.10**（更早的版本不在支持范围内）。
+后端自 2.8.0 起整体为 ucode，不再依赖 Lua 运行时。
 
-opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
+opkg（OpenWrt / ImmortalWrt 24.10）：
 
 ```bash
 opkg install luci-app-substore_*.ipk
@@ -37,7 +38,7 @@ apk add --allow-untrusted luci-i18n-substore-zh-cn-*.apk
 > （LuCI 的 `PKG_PO_VERSION`），与主包不同名，按文件名通配安装即可。装好后 LuCI
 > 语言设为「简体中文」即生效（该包的 uci-defaults 会自动把它加进 `luci.languages`）。
 
-然后在 LuCI 菜单打开：**服务 → 订阅**。
+然后在 LuCI 菜单打开：**服务 → 订阅管理**。
 
 ### 从源码编译
 
@@ -62,7 +63,7 @@ make defconfig
 ```
 
 > 注意**不存在** `make package/luci-i18n-substore-zh-cn/compile` 这个目标 —— make 的
-> 目标按目录生成，不按包名（详见 [docs/BUILD.md](docs/BUILD.md)）。
+> 目标按目录生成，不按包名。
 
 `.ipk`（或 apk 构建下的 `.apk`）生成于 `bin/packages/.../` 下，按上面的方式安装即可。
 
@@ -72,7 +73,10 @@ make defconfig
 - 多订阅源的新增 / 编辑 / 删除 / 更新，支持手动更新与按订阅的定时（cron）更新；
   状态总览显示节点数、最近更新时间与错误信息
 - **勾选批量删除**：勾选一条或多条订阅（表头选择框可全选）后点「删除」一次删掉；
-  一条都没勾选时不会删除任何东西
+  一条都没勾选时不会删除任何东西。列表行里不再单独放删除按钮，删除单个订阅
+  就是「勾选它 + 点顶部删除」
+- **清空订阅**：「删除」旁的「清空订阅」按钮在二次确认后删除全部订阅及其节点
+  数据（含 cron 与组合来源的整理），列表为空时按钮置灰
 - 每个订阅的剩余流量 / 剩余时长（解析 `subscription-userinfo` 响应头）
 - **订阅代理**：经 `http` / `https` / `socks4` / `socks5` / `socks5h` 代理下载订阅，
   用于订阅源直连失败时
@@ -104,7 +108,10 @@ make defconfig
 - 按订阅规则：关键词包含 / 排除、协议筛选、去重、重命名（精确匹配 / 正则 / 占位符模板）
 
 **网络探测**（节点页）
-- Ping（ICMP）、TCPing（TCP 连接）、URL 测试（HTTP），并行探测并显示成功数与平均延迟
+- Ping（ICMP）、TCPing（TCP 连接）、URL 测试（HTTP），并行探测并显示成功数与平均延迟。
+  三者都是**从路由器直连探测节点服务器**，与 Clash Verge / OpenClash 显示的
+  「经由代理访问 `generate_204`」的延迟不是同一指标，数字不可直接比较；
+  指向 `127.0.0.1` 的占位假节点一律按失败处理（避免本机探测必然「成功」的假象）
 
 **转换与输出**
 - 15 种输出格式：Plain JSON、Stash、Clash.Meta / Mihomo、Clash 原版、Surfboard、Surge、
@@ -112,8 +119,8 @@ make defconfig
   V2Ray URI、WireGuard / AmneziaWG `.conf`
 - SSR（`ssr://`）只能原样输出到支持它的客户端（Mihomo、Stash、Loon、Shadowrocket），
   其余目标会将其丢弃；VLESS 同理，Surge / Surfboard / Surge Mac 的协议清单里没有它
-  （Surge 家族与 Loon 的清单见 `output_formats.lua` 的 `FAMILY_CAPS`；
-  Egern 的配置是 YAML，清单见 `output_egern.lua` 的 `EGERN_KEY` ——
+  （Surge 家族与 Loon 的清单见 `output_formats.uc` 的 `FAMILY_CAPS`；
+  Egern 的配置是 YAML，清单见 `output_egern.uc` 的 `EGERN_KEY` ——
   它有 VLESS 与 WireGuard，没有 SSR 与 Hysteria v1）
 - **只输出目标客户端真正能加载的内容**：按目标能力过滤协议；数组字段按客户端要求的类型
   输出；策略组成员列表剔除会破坏语法的节点名
@@ -126,6 +133,10 @@ make defconfig
   置灰不可选，避免生成必然为空的订阅链接
 
 **LuCI 界面与国际化**
+- 后端整体为 ucode（控制器 / 模板 / 核心模块），与上游 LuCI 的运行时一致
+- 自动跟随 LuCI 亮色 / 暗色主题，无需手动切换；适配 luci-theme-bootstrap
+  （24.10 / 25.12 默认主题）与 luci-theme-argon 2.x / 3.x —— 颜色优先取主题的
+  CSS 变量，缺失时用按亮/暗切换的兜底色，不写死单套配色
 - 默认英文，运行时语言为 `zh-cn` 时自动显示简体中文
 
 ## 使用方法
@@ -137,14 +148,15 @@ make defconfig
    可批量删除，行内可编辑 / 删除 / 改分组，「刷新」重载列表。
 4. **导出** —— 任选 15 种格式之一，或复制订阅链接供下游客户端（Passwall / OpenClash / …）使用。
 
-> **重命名规则的匹配语法是 Lua 模式，不是 PCRE**。`|` 表示「或」，但只在**顶层**
-> 生效：写成 `(a|b)` 不会展开成「a 或 b」，而是按字面匹配（要求名字里真的出现
-> `a|b`）。多分支直接写 `a|b`，或拆成多条规则。字符类 `[...]` 内的 `|` 同样是字面。
+> **重命名规则用的是 POSIX 扩展正则（ERE），不是 PCRE**。顶层和分组内的 `|`
+> 都表示「或」，`a|b` 与 `(a|b)` 等价；`\d` / `\w` / `\s` 简写会翻译成对应的
+> 字符类。ERE 没有非贪婪量词，`.*?` 会按贪婪的 `.*` 处理（不报错）；`\b` 会被
+> 忽略；前后瞻等 PCRE 语法会编译失败，保存时直接拒绝并给出行号。字符类
+> `[...]` 内的 `|` 仍是字面字符。
 
 ## 已知限制
 
-以下均为**经代码级审计确认**的限制，是有意保留而非疏漏；每项「为何不改」的依据见
-[docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md)。
+以下均为**经代码级审计确认**的限制，是有意保留而非疏漏。
 
 - **混合格式文本导入会被拒绝** —— 本地粘贴的节点文本一次只能是一种格式
   （URI / Base64 / YAML / JSON / WireGuard `.conf`），同一种格式内可混用协议。
@@ -179,41 +191,40 @@ make defconfig
 │   │   ├── config/substore       # UCI 占位
 │   │   └── uci-defaults/99-substore
 │   ├── usr/
-│   │   ├── bin/substore-cron.sh  # 按订阅 cron 执行脚本
-│   │   ├── lib/lua/luci/
-│   │   │   ├── controller/admin/substore.lua   # 路由 / 动作
-│   │   │   └── view/substore/*.htm             # 模板
+│   │   ├── bin/substore-cron.sh  # 按订阅 cron 执行脚本（内联 ucode）
 │   │   └── share/
+│   │       ├── ucode/
+│   │       │   ├── luci/controller/admin/substore.uc  # LuCI ucode 控制器
+│   │       │   ├── luci/template/substore/*.ut        # 页面模板
+│   │       │   └── substore/*.uc                      # 核心逻辑（不依赖 luci.*）
 │   │       ├── luci/menu.d/luci-app-substore.json
-│   │       ├── rpcd/acl.d/luci-app-substore.json  # ACL 组（菜单 depends.acl 引用）
-│   │       └── substore/*.lua    # 核心逻辑（不依赖 luci.*）
-├── po/zh_Hans/substore.po        # 简体中文翻译（编译为独立包 luci-i18n-substore-zh-cn）
-├── docs/                         # 设计与指南
-└── tests/                        # 自包含 Lua 5.1 单元测试
+│   │       └── rpcd/acl.d/luci-app-substore.json  # ACL 组（菜单 depends.acl 引用）
+│   └── www/luci-static/resources/substore/nodeform.js # 节点表单前端脚本
+└── po/zh_Hans/substore.po        # 简体中文翻译（编译为独立包 luci-i18n-substore-zh-cn）
 ```
 
-## 文档
+## 更新日志
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 架构设计
-- [docs/PLAN.md](docs/PLAN.md) — 分阶段开发计划
-- [docs/BUILD.md](docs/BUILD.md) — 从 OpenWrt SDK / 源码树构建
-- [docs/INSTALL.md](docs/INSTALL.md) — 安装
-- [docs/SECURITY.md](docs/SECURITY.md) — 安全模型
-- [docs/TESTING.md](docs/TESTING.md) — 测试
-- [docs/UCODE_MIGRATION.md](docs/UCODE_MIGRATION.md) — `.htm` → `.ut`（ucode）迁移说明
 - [CHANGELOG.md](CHANGELOG.md) — 更新日志
-- [docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md) — 遗留缺陷汇总（待决定修复方案）
+
+设计与测试文档仅保留在本地开发目录，不随仓库发布，构建与安装均不依赖它们。
 
 ## 开发与测试
 
-核心逻辑为纯 Lua 5.1，不依赖 `luci.*`，无需设备即可单元测试。`tests/` 下每个测试文件自包含：
+核心逻辑是 ucode 模块（`root/usr/share/ucode/substore/*.uc`），不依赖 `luci.*`，
+可在设备上用 `ucode` 直接加载，cron 脚本就是同一个入口。仓库不发测试目录；
+验证方式：
 
-```bash
-lua5.1 tests/run_tests.lua          # 或任意单个测试文件
-for f in tests/*.lua; do lua5.1 "$f" || exit 1; done
+```sh
+# 语法检查（设备上）：模块与控制器、模板
+ucode -c -s /usr/share/ucode/substore/*.uc
+ucode -T -c /usr/share/ucode/luci/template/substore/*.ut
+# cron 主循环（更新全部已启用订阅）
+/usr/bin/substore-cron.sh
 ```
 
-LuCI 界面与 cron 行为仍需在目标设备上验证 —— 见 [docs/TESTING.md](docs/TESTING.md)。
+功能验证在目标设备上逐页进行：订阅增删改、更新解析、节点筛选 / 编辑 / 探测、
+15 种输出、订阅链接拉取、cron。
 
 ## 安全
 
@@ -223,7 +234,7 @@ SSRF 防护（拒绝内网 / 保留 / 链路本地地址；**有解析手段却�
 tmpfs）、命令注入防护（白名单解析 + shell 引用 + 探测目标拒绝以 `-` 开头的主机名）、
 公开下载端点基于 token 的访问控制、日志不含凭据。
 
-**无 DNS 解析能力的设备**（nixio 与 nslookup 均不可用）无法在下载前校验域名，
+**无 DNS 解析能力的设备**（没有 `nslookup` 可执行文件）无法在下载前校验域名，
 此时 curl 后端改用 `%{remote_ip}` 在**连接建立后**复核实际对端地址（同时关闭
 DNS rebinding 的 TOCTOU 窗口）；wget 后端没有等价手段，**直接拒绝**而非放行
 （见「已知限制」）。
@@ -233,16 +244,16 @@ DNS rebinding 的 TOCTOU 窗口）；wget 后端没有等价手段，**直接拒
 原因**，不会静默丢弃。**访问控制**：`luci-app-substore` ACL 组经 `menu.d` 的
 `depends.acl` 生效 —— 未获授权的 LuCI 用户看不到本应用入口，**直接访问 URL 也会
 被拒（403）**（依据：ucode dispatcher 在分发时校验路径上累积的 `depends.acl`，
-已从上游源码核实，并**已在设备上实测通过**）。授权方式见 [docs/SECURITY.md](docs/SECURITY.md)。
+已从上游源码核实，并**已在设备上实测通过**）。授权方式是把你希望可见的用户加入
+`luci-app-substore` ACL 组（组定义见 `root/usr/share/rpcd/acl.d/luci-app-substore.json`）。
 
 数据落盘权限：`/etc/substore` 目录 `0700`，`subscriptions.json` 与 `nodes/*.json`
 `0600`（前者含订阅 URL 与公开下载 token，后者含 uuid / 密码 / 私钥）——
-`io.open` 按 umask 创建（通常 0644），同机任何用户都能读到，因此写入后显式收紧。
+写文件按 umask 创建（通常 0644），同机任何用户都能读到，因此 `atomic_write`
+写入后显式 `chmod` 收紧。
 
 批量节点探测的并发上限为 16 个进程（`probe.MAX_PARALLEL`）：节点数由订阅内容决定，
-不限并发会把路由器的 fd / 进程额度打满，之后 `io.popen` 静默失败。
-
-详见 [docs/SECURITY.md](docs/SECURITY.md)。
+不限并发会把路由器的 fd / 进程额度打满，之后 `popen` 静默失败。
 
 ## 许可证
 

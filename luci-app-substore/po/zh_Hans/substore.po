@@ -37,8 +37,11 @@ msgstr "返回"
 msgid "Name"
 msgstr "名称"
 
-msgid "URL"
-msgstr "订阅地址"
+msgid "Subscription type"
+msgstr "订阅类型"
+
+msgid "Remote subscription"
+msgstr "远程订阅"
 
 msgid "Updated"
 msgstr "更新时间"
@@ -86,15 +89,19 @@ msgstr "选择格式"
 msgid "No subscriptions yet."
 msgstr "暂无订阅"
 
-msgid "Delete this subscription?"
-msgstr "确定删除该订阅？"
-
 # 订阅页：勾选批量删除
 msgid "Delete selected subscriptions?"
 msgstr "确定删除选中的订阅？"
 
 msgid "Please select subscriptions first"
 msgstr "请先勾选订阅"
+
+# 订阅页：清空全部订阅
+msgid "Clear subscriptions"
+msgstr "清空订阅"
+
+msgid "Clear all subscriptions? Every subscription and its nodes will be deleted, and this cannot be undone"
+msgstr "确定清空所有订阅？所有订阅及其节点数据都会被删除，且无法恢复"
 
 # 订阅编辑表单
 msgid "Subscription URL"
@@ -290,8 +297,8 @@ msgstr "重命名每行一条（# 开头为注释），规则自上而下逐条�
 msgid "OLD=NEW — exact match: renames only nodes named exactly OLD."
 msgstr "旧名称=新名称 —— 精确匹配：只改名字完全相同的节点。"
 
-msgid "PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (Lua patterns, not PCRE; $1 for captures)."
-msgstr "模式 -> 替换 —— 正则替换：替换所有节点名字中的匹配部分（Lua 模式，非 PCRE；捕获引用写 $1）。"
+msgid "PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (POSIX ERE, not PCRE; $1 for captures)."
+msgstr "模式 -> 替换 —— 正则替换：替换所有节点名字中的匹配部分（POSIX 扩展正则，非 PCRE；捕获引用写 $1）。"
 
 msgid "{server}_{port}_{proto} — placeholder template: renames every node unconditionally."
 msgstr "{server}_{port}_{proto} —— 占位符模板：无条件重命名所有节点。"
@@ -743,3 +750,30 @@ msgstr "Clash YAML"
 
 msgid "WireGuard .conf"
 msgstr "WireGuard .conf"
+
+msgid "Last updated"
+msgstr "更新时间"
+
+msgid "Remaining traffic"
+msgstr "剩余流量"
+
+msgid "Remaining time"
+msgstr "剩余时长"
+
+msgid "Schedule"
+msgstr "定时"
+
+msgid "Testing..."
+msgstr "测试中..."
+
+msgid "Test failed"
+msgstr "测试失败"
+
+msgid "Parse error"
+msgstr "解析错误"
+
+msgid "Fail"
+msgstr "失败"
+
+msgid "Ping, TCPing and URL Test probe the node server directly from this router, not through the proxy; Clash measures delay through the proxy, so the numbers are not directly comparable. Placeholder nodes on 127.0.0.1 are reported as failed."
+msgstr "Ping / TCPing / URL 测试是从路由器直连探测节点服务器（不经过代理）；Clash 显示的是经由代理的延迟，两者不可直接比较。指向 127.0.0.1 的占位节点一律按失败处理。"

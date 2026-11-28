@@ -3,8 +3,7 @@
         "title": "Subscriptions",
         "order": 60,
         "action": {
-            "type": "view",
-            "path": "admin/services/substore/list"
+            "type": "firstchild"
         },
         "depends": {
             "acl": [ "luci-app-substore" ]
@@ -14,11 +13,146 @@
         "title": "Subscriptions",
         "order": 10,
         "action": {
-            "type": "view",
-            "path": "admin/services/substore/list"
-        },
-        "depends": {
-            "acl": [ "luci-app-substore" ]
+            "type": "template",
+            "path": "substore/subscriptions"
         }
+    },
+    "admin/services/substore/form": {
+        "order": 20,
+        "action": {
+            "type": "template",
+            "path": "substore/form"
+        }
+    },
+    "admin/services/substore/localform": {
+        "order": 30,
+        "action": {
+            "type": "template",
+            "path": "substore/local_form"
+        }
+    },
+    "admin/services/substore/nodes": {
+        "order": 40,
+        "action": {
+            "type": "template",
+            "path": "substore/nodes"
+        }
+    },
+    "admin/services/substore/node_edit": {
+        "order": 50,
+        "action": {
+            "type": "template",
+            "path": "substore/node_edit"
+        }
+    },
+    "admin/services/substore/output": {
+        "order": 60,
+        "action": {
+            "type": "template",
+            "path": "substore/output"
+        }
+    },
+    "admin/services/substore/combo": {
+        "order": 70,
+        "action": {
+            "type": "template",
+            "path": "substore/combo"
+        }
+    },
+    "admin/services/substore/create": {
+        "order": 80,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_create"
+        }
+    },
+    "admin/services/substore/save": {
+        "order": 81,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_save"
+        }
+    },
+    "admin/services/substore/local_create": {
+        "order": 82,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_local_create"
+        }
+    },
+    "admin/services/substore/local_save": {
+        "order": 83,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_local_save"
+        }
+    },
+    "admin/services/substore/delete": {
+        "order": 84,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_delete"
+        }
+    },
+    "admin/services/substore/node_save": {
+        "order": 85,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_node_save"
+        }
+    },
+    "admin/services/substore/node_delete": {
+        "order": 86,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_node_delete"
+        }
+    },
+    "admin/services/substore/node_set_group": {
+        "order": 87,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_node_set_group"
+        }
+    },
+    "admin/services/substore/combo_save": {
+        "order": 88,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_combo_save"
+        }
+    },
+    "admin/services/substore/update": {
+        "order": 89,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_update"
+        }
+    },
+    "admin/services/substore/probe": {
+        "order": 90,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_probe"
+        }
+    },
+    "substore/download": {
+        "action": {
+            "type": "function",
+            "module": "luci.controller.admin.substore",
+            "function": "action_download"
+        },
+        "auth": {}
     }
 }
